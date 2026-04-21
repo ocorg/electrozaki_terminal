@@ -8,6 +8,7 @@ import { StatusBadge, BatteryBar, EmptyState, SkeletonRow, PageHeader, Btn } fro
 import PhoneForm from '@/components/phones/PhoneForm'
 import type { Phone } from '@/types/database'
 import { toast } from 'sonner'
+import ScanButton from '@/components/scanner/ScanButton'
 import {
   Plus, Search, Filter, RefreshCw,
   Smartphone, Edit2, MapPin, Shield,
@@ -144,22 +145,29 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
         />
 
         {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#B0ADA6]" />
-          <input
-            className="w-full pl-9 pr-10 py-2.5 bg-white border border-[#E8E5DE] rounded-xl text-sm text-[#1A1A1A] placeholder:text-[#B0ADA6] focus:outline-none transition-all"
-            placeholder={isAr ? 'بحث بـ IMEI، الماركة، الموديل...' : 'Rechercher IMEI, marque, modèle...'}
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            onFocus={e => { e.target.style.borderColor = primary; e.target.style.boxShadow = `0 0 0 3px ${primary}20` }}
-            onBlur={e => { e.target.style.borderColor = '#E8E5DE'; e.target.style.boxShadow = 'none' }}
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#B0ADA6]" />
+            <input
+              className="w-full pl-9 pr-10 py-2.5 bg-white border border-[#E8E5DE] rounded-xl text-sm text-[#1A1A1A] placeholder:text-[#B0ADA6] focus:outline-none transition-all"
+              placeholder={isAr ? 'بحث بـ IMEI، الماركة، الموديل...' : 'Rechercher IMEI, marque, modèle...'}
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              onFocus={e => { e.target.style.borderColor = primary; e.target.style.boxShadow = `0 0 0 3px ${primary}20` }}
+              onBlur={e => { e.target.style.borderColor = '#E8E5DE'; e.target.style.boxShadow = 'none' }}
+            />
+            {search && (
+              <button onClick={() => setSearch('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#B0ADA6] hover:text-[#1A1A1A]">
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+          <ScanButton
+            onScan={v => setSearch(v)}
+            hint="Scannez un IMEI ou code-barres"
+            color={primary}
           />
-          {search && (
-            <button onClick={() => setSearch('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#B0ADA6] hover:text-[#1A1A1A] transition-colors">
-              <X className="w-4 h-4" />
-            </button>
-          )}
         </div>
 
         {/* Filters panel */}

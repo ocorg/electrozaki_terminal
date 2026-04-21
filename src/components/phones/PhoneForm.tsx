@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { usePortal } from '@/lib/context/portal'
 import { useLanguageStore } from '@/lib/stores/language'
 import type { Phone, DeviceCondition, DeviceSource, LocationType } from '@/types/database'
+import ScanButton from '@/components/scanner/ScanButton'
 
 interface PhoneFormProps {
   open:     boolean
@@ -160,14 +161,21 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
         {/* Row 4 — IMEI + Battery */}
         <div className="grid grid-cols-2 gap-4">
           <Field label="IMEI">
-            <input
-              type="text"
-              className={inputClass}
-              placeholder="356XXXXXXXXXXXXX"
-              value={form.imei || ''}
-              onChange={e => set('imei', e.target.value)}
-              maxLength={20}
-            />
+            <div className="flex gap-2">
+              <input
+                type="text"
+                className={inputClass}
+                placeholder="356XXXXXXXXXXXXX"
+                value={form.imei || ''}
+                onChange={e => set('imei', e.target.value)}
+                maxLength={20}
+              />
+              <ScanButton
+                onScan={v => set('imei', v)}
+                hint="Scannez le code-barres IMEI"
+                color={primary}
+              />
+            </div>
           </Field>
           <Field label={isAr ? 'مستوى البطارية (%)' : 'Batterie (%)'}>
             <input

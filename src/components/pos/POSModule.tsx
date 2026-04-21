@@ -8,6 +8,7 @@ import { Modal, Field, inputClass, selectClass, Btn, PageHeader } from '@/compon
 import { StatusBadge } from '@/components/shared'
 import { toast } from 'sonner'
 import type { Phone, Laptop, PaymentMethod, OperationType } from '@/types/database'
+import ScanButton from '@/components/scanner/ScanButton'
 import {
   Search, ShoppingCart, User, CreditCard, ArrowLeftRight,
   X, Plus, AlertTriangle, Loader2, CheckCircle,
@@ -311,26 +312,33 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
             subtitle={isAr ? 'ابحث عن جهاز لإضافته للسلة' : 'Recherchez un appareil à vendre'}
           />
 
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#B0ADA6]" />
-            <input
-              className="w-full pl-9 pr-10 py-3 bg-white border border-[#E8E5DE] rounded-xl text-sm placeholder:text-[#B0ADA6] focus:outline-none transition-all"
-              placeholder={isAr ? 'IMEI، ماركة، موديل...' : 'IMEI, marque, modèle...'}
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              autoFocus
-              onFocus={e => { e.target.style.borderColor = primary; e.target.style.boxShadow = `0 0 0 3px ${primary}20` }}
-              onBlur={e => { e.target.style.borderColor = '#E8E5DE'; e.target.style.boxShadow = 'none' }}
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#B0ADA6]" />
+              <input
+                className="w-full pl-9 pr-10 py-3 bg-white border border-[#E8E5DE] rounded-xl text-sm placeholder:text-[#B0ADA6] focus:outline-none transition-all"
+                placeholder={isAr ? 'IMEI، ماركة، موديل...' : 'IMEI, marque, modèle...'}
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                autoFocus
+                onFocus={e => { e.target.style.borderColor = primary; e.target.style.boxShadow = `0 0 0 3px ${primary}20` }}
+                onBlur={e => { e.target.style.borderColor = '#E8E5DE'; e.target.style.boxShadow = 'none' }}
+              />
+              {searching
+                ? <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#B0ADA6] animate-spin" />
+                : search && (
+                    <button onClick={() => { setSearch(''); setResults([]) }}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#B0ADA6] hover:text-[#1A1A1A]">
+                      <X className="w-4 h-4" />
+                    </button>
+                  )
+              }
+            </div>
+            <ScanButton
+              onScan={v => setSearch(v)}
+              hint="Scannez un IMEI pour trouver l'appareil"
+              color={primary}
             />
-            {searching
-              ? <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#B0ADA6] animate-spin" />
-              : search && (
-                  <button onClick={() => { setSearch(''); setResults([]) }}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#B0ADA6] hover:text-[#1A1A1A]">
-                    <X className="w-4 h-4" />
-                  </button>
-                )
-            }
           </div>
 
           {/* Search dropdown */}
