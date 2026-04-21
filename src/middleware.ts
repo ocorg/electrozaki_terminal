@@ -1,19 +1,29 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 
-export async function middleware(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request })
+// Paths that never need auth
+const PUBLIC_PATHS = ['/login', '/select-store']
 
+// Paths that are portal roots — require auth + correct store access
+const PORTAL_PATHS = ['/ez', '/hp', '/bzg']
+
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl
+  let response = NextResponse.next({ request })
+
+  // ── Build supabase client with cookie forwarding ────────────
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() { return request.cookies.getAll() },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-          supabaseResponse = NextResponse.next({ request })
-          cookiesToSet.forEach(({ name, value, options }) => supabaseResponse.cookies.set(name, value, options))
+        getAll()        { return request.cookies.getAll() },
+        setAll(toSet) {
+          toSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          response = NextResponse.next({ request })
+          toSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options)
+          )
         },
       },
     }
@@ -21,19 +31,55 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Redirect unauthenticated users to login
-  if (!user && !request.nextUrl.pathname.startsWith('/login')) {
+  // ── Not authenticated → redirect to login ───────────────────
+  const isPublic = PUBLIC_PATHS.some(p => pathname.startsWith(p))
+  if (!user && !isPublic) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // Redirect authenticated users away from login
-  if (user && request.nextUrl.pathname === '/login') {
-    return NextResponse.redirect(new URL('/', request.url))
+  // ── Already authenticated → keep away from login ────────────
+  if (user && pathname === '/login') {
+    return NextResponse.redirect(new URL('/select-store', request.url))
   }
 
-  return supabaseResponse
+  // ── Authenticated: check portal access ──────────────────────
+  if (user && PORTAL_PATHS.some(p => pathname.startsWith(p))) {
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('role, store_id, store_locked, is_active')
+      .eq('id', user.id)
+      .single()
+
+    // Deactivated account
+    if (!profile || !profile.is_active) {
+      await supabase.auth.signOut()
+      return NextResponse.redirect(new URL('/login?reason=inactive', request.url))
+    }
+
+    // Staff locked to a store: enforce their portal
+    if (profile.store_locked && profile.store_id) {
+      const storePortal = profile.store_id === 'EZ-001' ? '/ez' : '/hp'
+      if (!pathname.startsWith(storePortal)) {
+        return NextResponse.redirect(new URL(`${storePortal}/dashboard`, request.url))
+      }
+    }
+
+    // BZG portal: only manager and owner allowed
+    if (pathname.startsWith('/bzg') && !['manager', 'owner'].includes(profile.role)) {
+      return NextResponse.redirect(new URL('/select-store', request.url))
+    }
+  }
+
+  // ── Root "/" → redirect to select-store ─────────────────────
+  if (user && pathname === '/') {
+    return NextResponse.redirect(new URL('/select-store', request.url))
+  }
+
+  return response
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|icons|manifest.json|sw.js).*)'],
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|icons|manifest.json|sw.js|workbox.*).*)',
+  ],
 }

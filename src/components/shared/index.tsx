@@ -156,7 +156,7 @@ export const inputClass = "w-full bg-ez-bg border border-ez-border rounded-xl px
 export const selectClass = "w-full bg-ez-bg border border-ez-border rounded-xl px-4 py-2.5 text-ez-text text-sm focus:outline-none focus:border-gold focus:ring-2 focus:ring-gold/10 transition-all appearance-none"
 
 // ── Button ────────────────────────────────────────────────────
-export function Btn({ children, onClick, variant = 'primary', size = 'md', disabled, loading, type = 'button', className }: {
+export function Btn({ children, onClick, variant = 'primary', size = 'md', disabled, loading, type = 'button', className, style }: {
   children: React.ReactNode
   onClick?: () => void
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger'
@@ -165,6 +165,7 @@ export function Btn({ children, onClick, variant = 'primary', size = 'md', disab
   loading?: boolean
   type?: 'button' | 'submit'
   className?: string
+  style?: React.CSSProperties
 }) {
   const variants = {
     primary:   'bg-gold hover:bg-gold-500 text-white hover:shadow-ez-gold',
@@ -183,6 +184,7 @@ export function Btn({ children, onClick, variant = 'primary', size = 'md', disab
         'inline-flex items-center justify-center gap-2 font-medium rounded-xl transition-all duration-200 active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed',
         variants[variant], sizes[size], className
       )}
+      style={style}
     >
       {loading && (
         <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">

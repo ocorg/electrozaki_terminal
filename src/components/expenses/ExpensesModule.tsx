@@ -1,0 +1,388 @@
+'use client'
+import { useState, useEffect, useCallback } from 'react'
+import { useUser } from '@/lib/hooks/useUser'
+import { useLanguageStore } from '@/lib/stores/language'
+import { usePortal } from '@/lib/context/portal'
+import { formatMAD, formatDate } from '@/lib/utils'
+import { Modal, Field, inputClass, selectClass, Btn, PageHeader, EmptyState, SkeletonRow } from '@/components/shared'
+import { toast } from 'sonner'
+import type { ExpenseCategory } from '@/types/database'
+import {
+  Receipt, Plus, Trash2, RefreshCw,
+  ShoppingBag, Zap, Truck, Wrench,
+  Users, Megaphone, Monitor, MoreHorizontal,
+  Calendar, AlertTriangle, Loader2
+} from 'lucide-react'
+
+const CATEGORIES: { value: ExpenseCategory; labelFr: string; labelAr: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { value: 'إيجار',    labelFr: 'Loyer',        labelAr: 'إيجار',    icon: ShoppingBag },
+  { value: 'فاتورة',   labelFr: 'Facture',       labelAr: 'فاتورة',   icon: Zap },
+  { value: 'نقل',      labelFr: 'Transport',     labelAr: 'نقل',      icon: Truck },
+  { value: 'صيانة',    labelFr: 'Maintenance',   labelAr: 'صيانة',    icon: Wrench },
+  { value: 'أجور',     labelFr: 'Salaires',      labelAr: 'أجور',     icon: Users },
+  { value: 'تسويق',    labelFr: 'Marketing',     labelAr: 'تسويق',    icon: Megaphone },
+  { value: 'معدات',    labelFr: 'Équipements',   labelAr: 'معدات',    icon: Monitor },
+  { value: 'أخرى',     labelFr: 'Autre',         labelAr: 'أخرى',     icon: MoreHorizontal },
+]
+
+interface Expense {
+  exp_id:            string
+  categorie:         ExpenseCategory
+  montant:           number
+  date:              string
+  facture_ref?:      string | null
+  receipt_photo_url?: string | null
+  store_id?:         string | null
+  notes?:            string | null
+  created_by?:       string | null
+}
+
+const EMPTY_FORM = {
+  categorie:   'أخرى' as ExpenseCategory,
+  montant:     '',
+  date:        new Date().toISOString().split('T')[0],
+  facture_ref: '',
+  notes:       '',
+}
+
+interface ExpensesModuleProps {
+  storeId: string
+}
+
+export default function ExpensesModule({ storeId }: ExpensesModuleProps) {
+  const { user }     = useUser()
+  const { language } = useLanguageStore()
+  const portal       = usePortal()
+  const isAr         = language === 'ar'
+  const primary      = portal.primaryColor
+  const canDelete    = user?.role === 'manager' || user?.role === 'owner'
+
+  const [expenses, setExpenses]     = useState<Expense[]>([])
+  const [loading, setLoading]       = useState(true)
+  const [modalOpen, setModalOpen]   = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [deleting, setDeleting]     = useState<string | null>(null)
+  const [form, setForm]             = useState({ ...EMPTY_FORM })
+
+  // Filters
+  const today = new Date().toISOString().split('T')[0]
+  const [dateFrom, setDateFrom] = useState(today.slice(0, 7) + '-01')
+  const [dateTo, setDateTo]     = useState(today)
+  const [filterCat, setFilterCat] = useState('')
+
+  const fetchExpenses = useCallback(async () => {
+    setLoading(true)
+    try {
+      const params = new URLSearchParams({ store_id: storeId, date_from: dateFrom, date_to: dateTo })
+      if (filterCat) params.set('categorie', filterCat)
+      const res  = await fetch(`/api/expenses?${params}`)
+      const json = await res.json()
+      setExpenses(json.data || [])
+    } catch {
+      toast.error(isAr ? 'خطأ في التحميل' : 'Erreur chargement')
+    } finally {
+      setLoading(false)
+    }
+  }, [storeId, dateFrom, dateTo, filterCat])
+
+  useEffect(() => { fetchExpenses() }, [fetchExpenses])
+
+  function setF(k: keyof typeof EMPTY_FORM, v: string) {
+    setForm(prev => ({ ...prev, [k]: v }))
+  }
+
+  async function handleSubmit() {
+    if (!form.montant || parseFloat(form.montant) <= 0) {
+      toast.error(isAr ? 'أدخل مبلغاً صحيحاً' : 'Montant invalide')
+      return
+    }
+    setSubmitting(true)
+    try {
+      const res  = await fetch('/api/expenses', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          store_id:   storeId,
+          categorie:  form.categorie,
+          montant:    parseFloat(form.montant),
+          date:       form.date,
+          facture_ref: form.facture_ref || null,
+          notes:      form.notes || null,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error)
+      toast.success(isAr ? 'تم تسجيل الدépense ✓' : 'Dépense enregistrée ✓')
+      setModalOpen(false)
+      setForm({ ...EMPTY_FORM })
+      await fetchExpenses()
+    } catch (err: unknown) {
+      toast.error((err as Error).message)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleDelete(expId: string) {
+    if (!confirm(isAr ? 'هل أنت متأكد من الحذف؟' : 'Confirmer la suppression ?')) return
+    setDeleting(expId)
+    try {
+      const res = await fetch(`/api/expenses?exp_id=${expId}`, { method: 'DELETE' })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error)
+      toast.success(isAr ? 'تم الحذف' : 'Supprimée')
+      await fetchExpenses()
+    } catch (err: unknown) {
+      toast.error((err as Error).message)
+    } finally {
+      setDeleting(null)
+    }
+  }
+
+  // Totals
+  const totalPeriod = expenses.reduce((s, e) => s + e.montant, 0)
+  const totalToday  = expenses
+    .filter(e => e.date === today)
+    .reduce((s, e) => s + e.montant, 0)
+
+  function getCatLabel(value: ExpenseCategory) {
+    const cat = CATEGORIES.find(c => c.value === value)
+    return cat ? (isAr ? cat.labelAr : cat.labelFr) : value
+  }
+
+  function getCatIcon(value: ExpenseCategory) {
+    const cat = CATEGORIES.find(c => c.value === value)
+    return cat?.icon ?? MoreHorizontal
+  }
+
+  return (
+    <div className="p-6 space-y-5 animate-fade-in" dir={isAr ? 'rtl' : 'ltr'}>
+
+      {/* Header */}
+      <PageHeader
+        title={isAr ? 'المصاريف' : 'Dépenses'}
+        subtitle={isAr ? 'تسجيل ومتابعة المصاريف اليومية' : 'Enregistrement et suivi des dépenses'}
+        actions={
+          <Btn variant="primary" onClick={() => setModalOpen(true)} style={{ backgroundColor: primary } as React.CSSProperties}>
+            <Plus className="w-4 h-4" />
+            {isAr ? 'مصروف جديد' : 'Nouvelle dépense'}
+          </Btn>
+        }
+      />
+
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 gap-4">
+        <div className="bg-white border border-[#E8E5DE] rounded-2xl p-5"
+             style={{ borderLeftColor: primary, borderLeftWidth: '3px' }}>
+          <p className="text-xs text-[#6B6860] mb-1">{isAr ? 'اليوم' : "Aujourd'hui"}</p>
+          <p className="font-display text-2xl font-bold text-[#1A1A1A]">{formatMAD(totalToday)}</p>
+        </div>
+        <div className="bg-white border border-[#E8E5DE] rounded-2xl p-5"
+             style={{ borderLeftColor: '#EF4444', borderLeftWidth: '3px' }}>
+          <p className="text-xs text-[#6B6860] mb-1">{isAr ? 'إجمالي الفترة' : 'Total période'}</p>
+          <p className="font-display text-2xl font-bold text-[#1A1A1A]">{formatMAD(totalPeriod)}</p>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3">
+        <div className="flex items-center gap-2">
+          <Calendar className="w-4 h-4 text-[#B0ADA6]" />
+          <input
+            type="date"
+            className={`${inputClass} w-auto text-sm py-2`}
+            value={dateFrom}
+            onChange={e => setDateFrom(e.target.value)}
+          />
+          <span className="text-[#B0ADA6] text-sm">→</span>
+          <input
+            type="date"
+            className={`${inputClass} w-auto text-sm py-2`}
+            value={dateTo}
+            onChange={e => setDateTo(e.target.value)}
+          />
+        </div>
+        <select
+          className={`${selectClass} w-auto text-sm py-2`}
+          value={filterCat}
+          onChange={e => setFilterCat(e.target.value)}
+        >
+          <option value="">{isAr ? 'كل الفئات' : 'Toutes catégories'}</option>
+          {CATEGORIES.map(c => (
+            <option key={c.value} value={c.value}>
+              {isAr ? c.labelAr : c.labelFr}
+            </option>
+          ))}
+        </select>
+        <button
+          onClick={fetchExpenses}
+          className="p-2 rounded-xl border border-[#E8E5DE] bg-white text-[#6B6860] hover:bg-[#F8F7F4] transition-all"
+        >
+          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+        </button>
+      </div>
+
+      {/* List */}
+      <div className="bg-white border border-[#E8E5DE] rounded-2xl overflow-hidden">
+        {loading ? (
+          <div className="divide-y divide-[#F2F0EB]">
+            {[...Array(4)].map((_, i) => <SkeletonRow key={i} />)}
+          </div>
+        ) : expenses.length === 0 ? (
+          <EmptyState
+            icon={<Receipt className="w-6 h-6" />}
+            title={isAr ? 'لا توجد مصاريف' : 'Aucune dépense'}
+            description={isAr ? 'لم يتم تسجيل أي مصروف في هذه الفترة' : 'Aucune dépense enregistrée pour cette période'}
+            action={
+              <Btn variant="primary" onClick={() => setModalOpen(true)}>
+                <Plus className="w-4 h-4" />
+                {isAr ? 'إضافة مصروف' : 'Ajouter une dépense'}
+              </Btn>
+            }
+          />
+        ) : (
+          <div className="divide-y divide-[#F2F0EB]">
+            {expenses.map(exp => {
+              const Icon = getCatIcon(exp.categorie)
+              return (
+                <div key={exp.exp_id}
+                     className="flex items-center gap-4 px-5 py-3.5 hover:bg-[#F8F7F4] transition-all">
+                  <div className="w-9 h-9 rounded-xl bg-red-50 flex items-center justify-center flex-shrink-0">
+                    <Icon className="w-4 h-4 text-red-500" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-[#1A1A1A]">{getCatLabel(exp.categorie)}</p>
+                    <p className="text-xs text-[#B0ADA6]">
+                      {formatDate(exp.date)}
+                      {exp.facture_ref && ` · Réf: ${exp.facture_ref}`}
+                      {exp.notes && ` · ${exp.notes}`}
+                    </p>
+                  </div>
+                  <p className="font-bold text-sm text-red-500 flex-shrink-0">
+                    - {formatMAD(exp.montant)}
+                  </p>
+                  {canDelete && (
+                    <button
+                      onClick={() => handleDelete(exp.exp_id)}
+                      disabled={deleting === exp.exp_id}
+                      className="p-1.5 rounded-lg text-[#B0ADA6] hover:text-red-500 hover:bg-red-50 transition-all flex-shrink-0 disabled:opacity-50"
+                    >
+                      {deleting === exp.exp_id
+                        ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        : <Trash2 className="w-3.5 h-3.5" />
+                      }
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Add Modal */}
+      <Modal
+        open={modalOpen}
+        onClose={() => { setModalOpen(false); setForm({ ...EMPTY_FORM }) }}
+        title={isAr ? 'تسجيل مصروف جديد' : 'Nouvelle dépense'}
+        size="sm"
+      >
+        <div className="space-y-4">
+          <Field label={isAr ? 'الفئة' : 'Catégorie'} required>
+            <div className="grid grid-cols-4 gap-2">
+              {CATEGORIES.map(cat => {
+                const Icon = cat.icon
+                const active = form.categorie === cat.value
+                return (
+                  <button
+                    key={cat.value}
+                    type="button"
+                    onClick={() => setF('categorie', cat.value)}
+                    className="flex flex-col items-center gap-1 p-2 rounded-xl border text-xs font-medium transition-all"
+                    style={{
+                      backgroundColor: active ? `${primary}15` : 'transparent',
+                      borderColor:     active ? primary : '#E8E5DE',
+                      color:           active ? primary : '#6B6860',
+                    }}
+                  >
+                    <Icon className="w-4 h-4" />
+                    <span className="truncate w-full text-center">
+                      {isAr ? cat.labelAr : cat.labelFr}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          </Field>
+
+          <Field label={isAr ? 'المبلغ (درهم)' : 'Montant (MAD)'} required>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              className={inputClass}
+              placeholder="0.00"
+              value={form.montant}
+              onChange={e => setF('montant', e.target.value)}
+              autoFocus
+            />
+          </Field>
+
+          <Field label={isAr ? 'التاريخ' : 'Date'} required>
+            <input
+              type="date"
+              className={inputClass}
+              value={form.date}
+              onChange={e => setF('date', e.target.value)}
+            />
+          </Field>
+
+          <Field label={isAr ? 'رقم الفاتورة (اختياري)' : 'Référence facture (optionnel)'}>
+            <input
+              type="text"
+              className={inputClass}
+              placeholder={isAr ? 'رقم الفاتورة...' : 'FAC-001...'}
+              value={form.facture_ref}
+              onChange={e => setF('facture_ref', e.target.value)}
+            />
+          </Field>
+
+          <Field label={isAr ? 'ملاحظات (اختياري)' : 'Notes (optionnel)'}>
+            <textarea
+              className={`${inputClass} resize-none text-sm`}
+              rows={2}
+              value={form.notes}
+              onChange={e => setF('notes', e.target.value)}
+              placeholder={isAr ? 'ملاحظة...' : 'Note...'}
+            />
+          </Field>
+
+          {/* Warning if today's caisse is not open */}
+          <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+            <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-amber-700">
+              {isAr
+                ? 'سيتم خصم هذا المبلغ تلقائياً من كاسيير اليوم'
+                : 'Ce montant sera automatiquement déduit de la caisse du jour'}
+            </p>
+          </div>
+
+          <div className="flex gap-3 justify-end pt-1">
+            <Btn variant="secondary" onClick={() => { setModalOpen(false); setForm({ ...EMPTY_FORM }) }}>
+              {isAr ? 'إلغاء' : 'Annuler'}
+            </Btn>
+            <Btn
+              variant="primary"
+              onClick={handleSubmit}
+              loading={submitting}
+              disabled={!form.montant}
+              style={{ backgroundColor: primary } as React.CSSProperties}
+            >
+              {isAr ? 'تسجيل' : 'Enregistrer'}
+            </Btn>
+          </div>
+        </div>
+      </Modal>
+    </div>
+  )
+}

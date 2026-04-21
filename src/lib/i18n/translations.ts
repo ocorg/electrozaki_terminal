@@ -1,301 +1,131 @@
-// ============================================================
-//  ELECTRO ZAKI — Translations (FR ↔ AR)
-//  Usage: const t = useTranslation()  →  t('nav.pos')
-// ============================================================
+import type { Language } from '@/lib/stores/language'
 
-export type Language = 'fr' | 'ar'
+// ─── Translation map ──────────────────────────────────────────
+// Add keys here as new modules are built.
+// Format: key → { fr, ar, en }
+const T: Record<string, Record<Language, string>> = {
 
-export const translations = {
-  fr: {
-    // Navigation
-    nav: {
-      dashboard:   'Tableau de bord',
-      pos:         'Point de vente',
-      phones:      'Téléphones',
-      laptops:     'Laptops',
-      accessories: 'Accessoires',
-      repairs:     'Réparations',
-      clients:     'Clients',
-      suppliers:   'Fournisseurs',
-      expenses:    'Dépenses',
-      caisse:      'Caisse du jour',
-      movements:   'Transferts',
-      admin:       'Administration',
-      stock:       'Stock',
-    },
-    // Actions
-    actions: {
-      add:        'Ajouter',
-      edit:       'Modifier',
-      delete:     'Supprimer',
-      save:       'Enregistrer',
-      cancel:     'Annuler',
-      search:     'Rechercher',
-      filter:     'Filtrer',
-      export:     'Exporter',
-      print:      'Imprimer',
-      scan:       'Scanner',
-      confirm:    'Confirmer',
-      close:      'Fermer',
-      open:       'Ouvrir',
-      view:       'Voir',
-      refresh:    'Actualiser',
-    },
-    // Status labels (stored as Arabic in DB)
-    status: {
-      'متوفر':       'Disponible',
-      'مباع':        'Vendu',
-      'إستبدال':     'Échangé',
-      'إصلاح':       'En réparation',
-      'معلق':        'En attente',
-      'قيد الإصلاح': 'En cours',
-      'جاهز':        'Prêt',
-      'تم الاستلام': 'Récupéré',
-      'نفذ':         'Épuisé',
-      'تحذير':       'Stock bas',
-    },
-    // Device condition
-    condition: {
-      'جديد':    'Neuf',
-      'مستعمل':  'Occasion',
-      'معطوب':   'Défectueux',
-    },
-    // Payment methods
-    payment: {
-      'نقد':       'Espèces',
-      'تحويل':     'Virement',
-      'تسبيق':     'Avance',
-      'إستبدال':   'Échange',
-      'مختلط':     'Mixte',
-    },
-    // Payment status
-    paymentStatus: {
-      '✅ مسدد':       '✅ Soldé',
-      '🔵 متبقي':     '🔵 Solde restant',
-      '⚠️ زيادة دفع': '⚠️ Trop payé',
-    },
-    // Operations
-    operation: {
-      'بيع':      'Vente',
-      'إستبدال':  'Échange',
-      'تسبيق':    'Avance',
-      'Retour':   'Retour',
-    },
-    // Repair status
-    repair: {
-      'معلق':        'En attente',
-      'قيد الإصلاح': 'En cours',
-      'جاهز':        'Prêt',
-      'تم الاستلام': 'Récupéré',
-    },
-    // Source
-    source: {
-      'Fournisseur': 'Fournisseur',
-      'Reprise':     'Reprise',
-      'Échange':     'Échange',
-    },
-    // Accessory categories
-    accCategory: {
-      'كفر':    'Coque',
-      'شاحن':   'Chargeur',
-      'سماعة':  'Écouteurs',
-      'واقي':   'Protection',
-      'سيم':    'Carte SIM',
-      'أخرى':   'Autre',
-    },
-    // Fields
-    fields: {
-      name:      'Nom',
-      phone:     'Téléphone',
-      price:     'Prix',
-      quantity:  'Quantité',
-      brand:     'Marque',
-      model:     'Modèle',
-      storage:   'Stockage',
-      ram:       'RAM',
-      color:     'Couleur',
-      battery:   'Batterie',
-      imei:      'IMEI',
-      serial:    'Numéro de série',
-      status:    'Statut',
-      location:  'Emplacement',
-      date:      'Date',
-      notes:     'Notes',
-      client:    'Client',
-      amount:    'Montant',
-      total:     'Total',
-      balance:   'Solde',
-      warranty:  'Garantie',
-      condition: 'État',
-    },
-    // Messages
-    messages: {
-      loading:       'Chargement...',
-      saving:        'Enregistrement...',
-      saved:         'Enregistré avec succès',
-      error:         'Une erreur est survenue',
-      deleted:       'Supprimé avec succès',
-      noData:        'Aucune donnée',
-      confirmDelete: 'Confirmer la suppression ?',
-      overridePin:   'Code de dérogation (4 chiffres)',
-      belowMinPrice: 'Prix inférieur au minimum autorisé',
-      scanImei:      'Scanner IMEI / Code-barres',
-      caisseOpen:    'La caisse est ouverte',
-      caisseClosed:  'La caisse est fermée',
-    },
-    // POS
-    pos: {
-      title:        'Point de vente',
-      searchDevice: 'Rechercher un appareil (IMEI, marque, modèle...)',
-      client:       'Client',
-      newClient:    'Nouveau client',
-      payment:      'Paiement',
-      exchange:     'Échange',
-      subtotal:     'Sous-total',
-      discount:     'Remise',
-      finalize:     'Finaliser la vente',
-      receipt:      'Imprimer le reçu',
-    },
-  },
+  // ── Navigation ──────────────────────────────────────────────
+  'nav.dashboard':      { fr: 'Tableau de bord',    ar: 'لوحة التحكم'},
+  'nav.pos':            { fr: 'Point de vente',     ar: 'نقطة البيع'},
+  'nav.phones':         { fr: 'Téléphones',         ar: 'الهواتف'},
+  'nav.laptops':        { fr: 'Laptops',            ar: 'الحواسب'},
+  'nav.accessories':    { fr: 'Accessoires',        ar: 'الإكسسوارات'},
+  'nav.repairs':        { fr: 'Réparations',        ar: 'الإصلاحات'},
+  'nav.clients':        { fr: 'Clients',            ar: 'العملاء'},
+  'nav.suppliers':      { fr: 'Fournisseurs',       ar: 'الموردون'},
+  'nav.expenses':       { fr: 'Dépenses',           ar: 'المصاريف'},
+  'nav.caisse':         { fr: 'Caisse du jour',     ar: 'صندوق اليوم'},
+  'nav.movements':      { fr: 'Transferts stock',   ar: 'تنقلات المخزون'},
+  'nav.logs':           { fr: "Journal d'activité", ar: 'سجل النشاط'},
+  'nav.staff':          { fr: 'Présence équipe',    ar: 'حضور الفريق'},
+  'nav.reports':        { fr: 'Rapports',           ar: 'التقارير'},
+  'nav.users':          { fr: 'Utilisateurs',       ar: 'المستخدمون'},
+  'nav.changelog':      { fr: 'Changelog',          ar: 'سجل التغييرات'},
+  'nav.settings':       { fr: 'Paramètres',         ar: 'الإعدادات'},
+  'nav.switchPortal':   { fr: 'Changer de portail', ar: 'تغيير البوابة'},
+  'nav.logout':         { fr: 'Déconnecter',        ar: 'تسجيل الخروج'},
 
-  ar: {
-    nav: {
-      dashboard:   'لوحة التحكم',
-      pos:         'نقطة البيع',
-      phones:      'الهواتف',
-      laptops:     'اللابتوبات',
-      accessories: 'الإكسسوارات',
-      repairs:     'الإصلاحات',
-      clients:     'العملاء',
-      suppliers:   'الموردون',
-      expenses:    'المصاريف',
-      caisse:      'صندوق اليوم',
-      movements:   'التنقلات',
-      admin:       'الإدارة',
-      stock:       'المخزون',
-    },
-    actions: {
-      add:        'إضافة',
-      edit:       'تعديل',
-      delete:     'حذف',
-      save:       'حفظ',
-      cancel:     'إلغاء',
-      search:     'بحث',
-      filter:     'تصفية',
-      export:     'تصدير',
-      print:      'طباعة',
-      scan:       'مسح',
-      confirm:    'تأكيد',
-      close:      'إغلاق',
-      open:       'فتح',
-      view:       'عرض',
-      refresh:    'تحديث',
-    },
-    status: {
-      'متوفر':       'متوفر',
-      'مباع':        'مباع',
-      'إستبدال':     'إستبدال',
-      'إصلاح':       'قيد الإصلاح',
-      'معلق':        'معلق',
-      'قيد الإصلاح': 'قيد الإصلاح',
-      'جاهز':        'جاهز',
-      'تم الاستلام': 'تم الاستلام',
-      'نفذ':         'نفذ',
-      'تحذير':       'مخزون منخفض',
-    },
-    condition: {
-      'جديد':    'جديد',
-      'مستعمل':  'مستعمل',
-      'معطوب':   'معطوب',
-    },
-    payment: {
-      'نقد':      'نقد',
-      'تحويل':    'تحويل',
-      'تسبيق':    'تسبيق',
-      'إستبدال':  'إستبدال',
-      'مختلط':    'مختلط',
-    },
-    paymentStatus: {
-      '✅ مسدد':       '✅ مسدد',
-      '🔵 متبقي':     '🔵 متبقي',
-      '⚠️ زيادة دفع': '⚠️ زيادة دفع',
-    },
-    operation: {
-      'بيع':      'بيع',
-      'إستبدال':  'إستبدال',
-      'تسبيق':    'تسبيق',
-      'Retour':   'إرجاع',
-    },
-    repair: {
-      'معلق':        'معلق',
-      'قيد الإصلاح': 'قيد الإصلاح',
-      'جاهز':        'جاهز',
-      'تم الاستلام': 'تم الاستلام',
-    },
-    source: {
-      'Fournisseur': 'مورد',
-      'Reprise':     'استرداد',
-      'Échange':     'مبادلة',
-    },
-    accCategory: {
-      'كفر':    'كفر',
-      'شاحن':   'شاحن',
-      'سماعة':  'سماعة',
-      'واقي':   'واقي',
-      'سيم':    'سيم',
-      'أخرى':   'أخرى',
-    },
-    fields: {
-      name:      'الاسم',
-      phone:     'الهاتف',
-      price:     'السعر',
-      quantity:  'الكمية',
-      brand:     'الماركة',
-      model:     'الموديل',
-      storage:   'التخزين',
-      ram:       'الرام',
-      color:     'اللون',
-      battery:   'البطارية',
-      imei:      'الرقم التسلسلي',
-      serial:    'الرقم التسلسلي',
-      status:    'الحالة',
-      location:  'الموقع',
-      date:      'التاريخ',
-      notes:     'ملاحظات',
-      client:    'العميل',
-      amount:    'المبلغ',
-      total:     'الإجمالي',
-      balance:   'الرصيد',
-      warranty:  'الضمان',
-      condition: 'الحالة',
-    },
-    messages: {
-      loading:       'جارٍ التحميل...',
-      saving:        'جارٍ الحفظ...',
-      saved:         'تم الحفظ بنجاح',
-      error:         'حدث خطأ',
-      deleted:       'تم الحذف بنجاح',
-      noData:        'لا توجد بيانات',
-      confirmDelete: 'تأكيد الحذف؟',
-      overridePin:   'رمز التجاوز (4 أرقام)',
-      belowMinPrice: 'السعر أقل من الحد المسموح',
-      scanImei:      'مسح الرمز',
-      caisseOpen:    'الصندوق مفتوح',
-      caisseClosed:  'الصندوق مغلق',
-    },
-    pos: {
-      title:        'نقطة البيع',
-      searchDevice: 'بحث عن جهاز (IMEI، ماركة، موديل...)',
-      client:       'العميل',
-      newClient:    'عميل جديد',
-      payment:      'الدفع',
-      exchange:     'المبادلة',
-      subtotal:     'المجموع الجزئي',
-      discount:     'الخصم',
-      finalize:     'إتمام البيع',
-      receipt:      'طباعة الفاتورة',
-    },
+  // ── Auth ────────────────────────────────────────────────────
+  'auth.choosePortal':  { fr: 'Choisissez votre portail', ar: 'اختر بوابتك'},
+  'auth.email':         { fr: 'Email',                    ar: 'البريد الإلكتروني'},
+  'auth.password':      { fr: 'Mot de passe',             ar: 'كلمة المرور'},
+  'auth.login':         { fr: 'Se connecter',             ar: 'تسجيل الدخول'},
+  'auth.loggingIn':     { fr: 'Connexion...',             ar: 'جارٍ الدخول...'},
+  'auth.wrongCredentials': { fr: 'Email ou mot de passe incorrect', ar: 'البريد أو كلمة المرور غلط'},
+  'auth.deactivated':   { fr: 'Compte désactivé',         ar: 'الحساب معطل'},
+  'auth.switchPortal':  { fr: 'Changer de portail',       ar: 'تغيير البوابة'},
+
+  // ── Dashboard ───────────────────────────────────────────────
+  'dash.welcome':       { fr: 'Bonjour',             ar: 'مرحباً'},
+  'dash.caToday':       { fr: "CA du jour",          ar: 'رقم أعمال اليوم'},
+  'dash.salesMonth':    { fr: 'Ventes ce mois',      ar: 'مبيعات الشهر'},
+  'dash.activeRepairs': { fr: 'Réparations actives', ar: 'إصلاحات نشطة'},
+  'dash.stockAlerts':   { fr: 'Alertes stock',       ar: 'تنبيهات المخزون' },
+
+  // ── POS ─────────────────────────────────────────────────────
+  'pos.title':          { fr: 'Point de vente',      ar: 'نقطة البيع'},
+  'pos.search':         { fr: 'IMEI, marque, modèle...', ar: 'IMEI، الماركة، الموديل...'},
+  'pos.emptyCart':      { fr: 'Panier vide',         ar: 'السلة فارغة'},
+  'pos.finalize':       { fr: 'Finaliser la vente',  ar: 'إتمام البيع'},
+  'pos.client':         { fr: 'Client',              ar: 'العميل'},
+  'pos.clientName':     { fr: 'Nom client',          ar: 'اسم العميل'},
+  'pos.clientPhone':    { fr: 'Téléphone',           ar: 'الهاتف'},
+  'pos.opType':         { fr: "Type d'opération",    ar: 'نوع العملية'},
+  'pos.payment':        { fr: 'Paiement',            ar: 'الدفع'},
+  'pos.total':          { fr: 'Total panier',        ar: 'مجموع السلة'},
+  'pos.remaining':      { fr: 'Reste à payer',       ar: 'المتبقي للدفع'},
+  'pos.saleRecorded':   { fr: 'Vente enregistrée',   ar: 'تم تسجيل البيع'},
+  'pos.newSale':        { fr: 'Nouvelle vente',      ar: 'بيع جديد'},
+
+  // ── Stock ───────────────────────────────────────────────────
+  'stock.add':          { fr: 'Ajouter',             ar: 'إضافة'},
+  'stock.edit':         { fr: 'Modifier',            ar: 'تعديل'},
+  'stock.available':    { fr: 'Disponible',          ar: 'متوفر'},
+  'stock.sold':         { fr: 'Vendu',               ar: 'مباع'},
+  'stock.inRepair':     { fr: 'En réparation',       ar: 'قيد الإصلاح'},
+  'stock.exchanged':    { fr: 'Échangé',             ar: 'مستبدل' },
+
+  // ── Repairs ─────────────────────────────────────────────────
+  'rep.newRepair':      { fr: 'Nouvelle réparation', ar: 'إصلاح جديد'},
+  'rep.pending':        { fr: 'En attente',          ar: 'معلق'},
+  'rep.inProgress':     { fr: 'En cours',            ar: 'قيد الإصلاح'},
+  'rep.ready':          { fr: 'Prêt',                ar: 'جاهز'},
+  'rep.collected':      { fr: 'Récupéré',            ar: 'تم الاستلام'},
+
+  // ── Caisse ──────────────────────────────────────────────────
+  'caisse.open':        { fr: 'Ouverte',             ar: 'مفتوح'},
+  'caisse.pending':     { fr: 'Clôture en attente',  ar: 'في انتظار الإغلاق'},
+  'caisse.closed':      { fr: 'Clôturée',            ar: 'مغلق'},
+  'caisse.bod':         { fr: 'Ouverture du jour',   ar: 'فتح اليوم'},
+  'caisse.eod':         { fr: 'Clôture du jour',     ar: 'إغلاق اليوم'},
+  'caisse.approve':     { fr: 'Approuver',           ar: 'موافقة'},
+  'caisse.reject':      { fr: 'Rejeter',             ar: 'رفض'},
+
+  // ── Common ──────────────────────────────────────────────────
+  'common.save':        { fr: 'Enregistrer',         ar: 'حفظ'},
+  'common.cancel':      { fr: 'Annuler',             ar: 'إلغاء'},
+  'common.delete':      { fr: 'Supprimer',           ar: 'حذف'},
+  'common.close':       { fr: 'Fermer',              ar: 'إغلاق'},
+  'common.confirm':     { fr: 'Confirmer',           ar: 'تأكيد'},
+  'common.search':      { fr: 'Rechercher',          ar: 'بحث'},
+  'common.filter':      { fr: 'Filtrer',             ar: 'تصفية'},
+  'common.refresh':     { fr: 'Actualiser',          ar: 'تحديث'},
+  'common.loading':     { fr: 'Chargement...',       ar: 'جارٍ التحميل...'},
+  'common.noData':      { fr: 'Aucune donnée',       ar: 'لا توجد بيانات'},
+  'common.error':       { fr: 'Une erreur est survenue', ar: 'حدث خطأ'},
+  'common.success':     { fr: 'Succès',              ar: 'نجح'},
+  'common.required':    { fr: 'Obligatoire',         ar: 'مطلوب'},
+  'common.notes':       { fr: 'Notes',               ar: 'ملاحظات'},
+  'common.date':        { fr: 'Date',                ar: 'التاريخ'},
+  'common.amount':      { fr: 'Montant',             ar: 'المبلغ'},
+  'common.actions':     { fr: 'Actions',             ar: 'إجراءات'},
+  'common.status':      { fr: 'Statut',              ar: 'الحالة'},
+  'common.name':        { fr: 'Nom',                 ar: 'الاسم'},
+  'common.phone':       { fr: 'Téléphone',           ar: 'الهاتف'},
+  'common.store':       { fr: 'Magasin',             ar: 'المتجر'},
+  'common.total':       { fr: 'Total',               ar: 'المجموع'},
+  'common.print':       { fr: 'Imprimer',            ar: 'طباعة'},
+  'common.export':      { fr: 'Exporter',            ar: 'مشاركة'},
+  'common.back':        { fr: 'Retour',              ar: 'رجوع'},
+  'common.yes':         { fr: 'Oui',                 ar: 'نعم'},
+  'common.no':          { fr: 'Non',                 ar: 'لا'},
+  'common.all':         { fr: 'Tous',                ar: 'الكل'},
+  'common.today':       { fr: "Aujourd'hui",         ar: 'اليوم'},
+}
+
+// ─── Translation hook ─────────────────────────────────────────
+export function useTranslation(language: Language) {
+  return function t(key: string, fallback?: string): string {
+    const entry = T[key]
+    if (!entry) return fallback ?? key
+    return entry[language] ?? entry['fr'] ?? fallback ?? key
   }
-} as const
+}
 
-export type TranslationKeys = typeof translations['fr']
+// ─── Standalone translate (for use outside components) ────────
+export function translate(key: string, language: Language, fallback?: string): string {
+  const entry = T[key]
+  if (!entry) return fallback ?? key
+  return entry[language] ?? entry['fr'] ?? fallback ?? key
+}

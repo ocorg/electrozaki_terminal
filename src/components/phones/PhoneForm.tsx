@@ -3,39 +3,53 @@ import { useState, useEffect } from 'react'
 import { Modal, Field, inputClass, selectClass, Btn } from '@/components/shared'
 import { BatteryBar } from '@/components/shared'
 import { toast } from 'sonner'
+import { usePortal } from '@/lib/context/portal'
+import { useLanguageStore } from '@/lib/stores/language'
 import type { Phone, DeviceCondition, DeviceSource, LocationType } from '@/types/database'
 
 interface PhoneFormProps {
-  open: boolean
-  onClose: () => void
-  onSaved: () => void
-  phone?: Phone | null
-  role?: string
+  open:     boolean
+  onClose:  () => void
+  onSaved:  () => void
+  phone?:   Phone | null
+  role?:    string
+  storeId:  string
 }
+
+const MARQUES   = ['Apple', 'Samsung', 'Xiaomi', 'Redmi', 'Huawei', 'Oppo', 'Realme', 'Autre']
+const STOCKAGES = ['16GB', '32GB', '64GB', '128GB', '256GB', '512GB', '1TB']
+const RAMS      = ['2GB', '3GB', '4GB', '6GB', '8GB', '12GB', '16GB']
+const COULEURS  = ['Noir', 'Blanc', 'Gris', 'Bleu', 'Rouge', 'Vert', 'Or', 'Violet', 'Rose', 'Autre']
 
 const EMPTY: Partial<Phone> = {
-  source: 'Fournisseur',
-  condition: 'مستعمل',
-  marque: '',
-  model: '',
-  stockage: '',
-  ram: '',
-  couleur: '',
-  battery_level: undefined,
-  imei: '',
-  prix_achat: undefined,
+  source:                'Fournisseur',
+  condition:             'مستعمل',
+  marque:                '',
+  model:                 '',
+  stockage:              '',
+  ram:                   '',
+  couleur:               '',
+  battery_level:         undefined,
+  imei:                  '',
+  prix_achat:            undefined,
   prix_vente_recommande: undefined,
-  prix_vente_minimum: undefined,
-  warranty_months: 6,
-  status: 'متوفر',
-  location: 'Magasin Principal',
-  description: '',
+  prix_vente_minimum:    undefined,
+  warranty_months:       6,
+  status:                'متوفر',
+  location:              'Magasin Principal',
+  description:           '',
 }
 
-export default function PhoneForm({ open, onClose, onSaved, phone, role }: PhoneFormProps) {
-  const [form, setForm] = useState<Partial<Phone>>(EMPTY)
+export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId }: PhoneFormProps) {
+  const portal   = usePortal()
+  const { language } = useLanguageStore()
+  const isAr     = language === 'ar'
+  const primary  = portal.primaryColor
+  const isEdit   = !!phone
+  const canSeeFinancials = role === 'manager' || role === 'owner'
+
+  const [form, setForm]       = useState<Partial<Phone>>({ ...EMPTY })
   const [loading, setLoading] = useState(false)
-  const isEdit = !!phone
 
   useEffect(() => {
     setForm(phone ? { ...phone } : { ...EMPTY })
@@ -48,19 +62,22 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role }: Phone
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!form.marque || !form.model) {
-      toast.error('Marque et modèle obligatoires')
+      toast.error(isAr ? 'الماركة والموديل مطلوبان' : 'Marque et modèle obligatoires')
       return
     }
     setLoading(true)
     try {
+      const payload = { ...form, store_id: storeId }
       const res = await fetch('/api/phones', {
-        method: isEdit ? 'PATCH' : 'POST',
+        method:  isEdit ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(isEdit ? { ...form, phone_id: phone!.phone_id } : form),
+        body:    JSON.stringify(isEdit ? { phone_id: phone!.phone_id, ...payload } : payload),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
-      toast.success(isEdit ? 'Téléphone modifié ✓' : 'Téléphone ajouté ✓')
+      toast.success(isEdit
+        ? (isAr ? 'تم التعديل ✓' : 'Modifié ✓')
+        : (isAr ? 'تم الإضافة ✓' : 'Ajouté ✓'))
       onSaved()
       onClose()
     } catch (err: unknown) {
@@ -70,145 +87,204 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role }: Phone
     }
   }
 
-  const canSeePrices = role !== 'staff'
-
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title={isEdit ? `Modifier — ${phone?.marque} ${phone?.model}` : 'Ajouter un téléphone'}
+      title={isEdit
+        ? (isAr ? 'تعديل الهاتف' : 'Modifier le téléphone')
+        : (isAr ? 'إضافة هاتف جديد' : 'Ajouter un téléphone')}
       size="lg"
     >
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} className="space-y-5" dir={isAr ? 'rtl' : 'ltr'}>
 
         {/* Row 1 — Source + Condition */}
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Source" required>
+          <Field label={isAr ? 'المصدر' : 'Source'} required>
             <select className={selectClass} value={form.source || ''} onChange={e => set('source', e.target.value as DeviceSource)}>
               <option value="Fournisseur">Fournisseur</option>
               <option value="Reprise">Reprise</option>
               <option value="Échange">Échange</option>
             </select>
           </Field>
-          <Field label="État" required>
+          <Field label={isAr ? 'الحالة' : 'Condition'} required>
             <select className={selectClass} value={form.condition || ''} onChange={e => set('condition', e.target.value as DeviceCondition)}>
-              <option value="جديد">Neuf (جديد)</option>
-              <option value="مستعمل">Occasion (مستعمل)</option>
-              <option value="معطوب">Défectueux (معطوب)</option>
+              <option value="جديد">{isAr ? 'جديد' : 'Neuf'}</option>
+              <option value="مستعمل">{isAr ? 'مستعمل' : 'Occasion'}</option>
+              <option value="معطوب">{isAr ? 'معطوب' : 'Défectueux'}</option>
             </select>
           </Field>
         </div>
 
-        {/* Row 2 — Marque + Modèle */}
+        {/* Row 2 — Marque + Model */}
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Marque" required>
+          <Field label={isAr ? 'الماركة' : 'Marque'} required>
             <select className={selectClass} value={form.marque || ''} onChange={e => set('marque', e.target.value)}>
-              <option value="">Sélectionner...</option>
-              {['Apple','Samsung','Xiaomi','Redmi','Huawei','Oppo','Realme','OnePlus','Autre'].map(m => (
-                <option key={m} value={m}>{m}</option>
-              ))}
+              <option value="">{isAr ? 'اختر...' : 'Choisir...'}</option>
+              {MARQUES.map(m => <option key={m} value={m}>{m}</option>)}
             </select>
           </Field>
-          <Field label="Modèle" required>
-            <input className={inputClass} value={form.model || ''} onChange={e => set('model', e.target.value)} placeholder="iPhone 14 Pro, Galaxy S23..." />
+          <Field label={isAr ? 'الموديل' : 'Modèle'} required>
+            <input
+              type="text"
+              className={inputClass}
+              placeholder="iPhone 15 Pro, Galaxy S24..."
+              value={form.model || ''}
+              onChange={e => set('model', e.target.value)}
+            />
           </Field>
         </div>
 
-        {/* Row 3 — Série + Couleur */}
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="Série">
-            <input className={inputClass} value={form.serie || ''} onChange={e => set('serie', e.target.value)} placeholder="Ex: iPhone 15 Pro Max" />
-          </Field>
-          <Field label="Couleur">
-            <input className={inputClass} value={form.couleur || ''} onChange={e => set('couleur', e.target.value)} placeholder="Noir Minuit, Blanc..." />
-          </Field>
-        </div>
-
-        {/* Row 4 — Stockage + RAM */}
+        {/* Row 3 — Stockage + RAM + Couleur */}
         <div className="grid grid-cols-3 gap-4">
-          <Field label="Stockage">
+          <Field label={isAr ? 'السعة' : 'Stockage'}>
             <select className={selectClass} value={form.stockage || ''} onChange={e => set('stockage', e.target.value)}>
               <option value="">—</option>
-              {['16GB','32GB','64GB','128GB','256GB','512GB','1TB'].map(s => <option key={s} value={s}>{s}</option>)}
+              {STOCKAGES.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </Field>
           <Field label="RAM">
             <select className={selectClass} value={form.ram || ''} onChange={e => set('ram', e.target.value)}>
               <option value="">—</option>
-              {['2GB','3GB','4GB','6GB','8GB','12GB','16GB'].map(r => <option key={r} value={r}>{r}</option>)}
+              {RAMS.map(r => <option key={r} value={r}>{r}</option>)}
             </select>
           </Field>
-          <Field label="Batterie (%)">
-            <input type="number" min={0} max={100} className={inputClass} value={form.battery_level ?? ''} onChange={e => set('battery_level', e.target.value ? Number(e.target.value) : undefined)} placeholder="85" />
+          <Field label={isAr ? 'اللون' : 'Couleur'}>
+            <select className={selectClass} value={form.couleur || ''} onChange={e => set('couleur', e.target.value)}>
+              <option value="">—</option>
+              {COULEURS.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
           </Field>
         </div>
 
-        {/* IMEI */}
-        <Field label="IMEI" hint="Scannez le code-barres ou saisissez manuellement">
-          <input className={inputClass} value={form.imei || ''} onChange={e => set('imei', e.target.value)} placeholder="352999XXXXXXXXX" maxLength={17} />
-        </Field>
-
-        {/* Prices — manager/owner only */}
-        {canSeePrices && (
-          <div className="bg-gold/5 border border-gold/15 rounded-xl p-4">
-            <p className="text-xs font-bold text-gold/70 uppercase tracking-widest mb-3">Tarification</p>
-            <div className="grid grid-cols-3 gap-4">
-              <Field label="Prix achat (MAD)">
-                <input type="number" className={inputClass} value={form.prix_achat ?? ''} onChange={e => set('prix_achat', e.target.value ? Number(e.target.value) : undefined)} placeholder="0.00" />
-              </Field>
-              <Field label="Prix conseillé (MAD)">
-                <input type="number" className={inputClass} value={form.prix_vente_recommande ?? ''} onChange={e => set('prix_vente_recommande', e.target.value ? Number(e.target.value) : undefined)} placeholder="0.00" />
-              </Field>
-              <Field label="Prix minimum (MAD)">
-                <input type="number" className={inputClass} value={form.prix_vente_minimum ?? ''} onChange={e => set('prix_vente_minimum', e.target.value ? Number(e.target.value) : undefined)} placeholder="0.00" />
-              </Field>
-            </div>
-          </div>
-        )}
-
-        {/* Location + Warranty */}
+        {/* Row 4 — IMEI + Battery */}
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Emplacement">
-            <select className={selectClass} value={form.location || 'Magasin Principal'} onChange={e => set('location', e.target.value as LocationType)}>
-              <option value="Magasin Principal">Magasin Principal</option>
-              <option value="Magasin Secondaire">Magasin Secondaire</option>
-              <option value="Externe">Externe</option>
+          <Field label="IMEI">
+            <input
+              type="text"
+              className={inputClass}
+              placeholder="356XXXXXXXXXXXXX"
+              value={form.imei || ''}
+              onChange={e => set('imei', e.target.value)}
+              maxLength={20}
+            />
+          </Field>
+          <Field label={isAr ? 'مستوى البطارية (%)' : 'Batterie (%)'}>
+            <input
+              type="number"
+              min={0} max={100}
+              className={inputClass}
+              placeholder="85"
+              value={form.battery_level ?? ''}
+              onChange={e => set('battery_level', e.target.value ? Number(e.target.value) : undefined)}
+            />
+            {form.battery_level != null && (
+              <div className="mt-2">
+                <BatteryBar level={form.battery_level} />
+              </div>
+            )}
+          </Field>
+        </div>
+
+        {/* Row 5 — Status + Location */}
+        <div className="grid grid-cols-2 gap-4">
+          <Field label={isAr ? 'الحالة في المخزون' : 'Statut'} required>
+            <select className={selectClass} value={form.status || 'متوفر'} onChange={e => set('status', e.target.value)}>
+              <option value="متوفر">{isAr ? 'متوفر' : 'Disponible'}</option>
+              <option value="مباع">{isAr ? 'مباع' : 'Vendu'}</option>
+              <option value="إستبدال">{isAr ? 'مستبدل' : 'Échangé'}</option>
+              <option value="إصلاح">{isAr ? 'في الإصلاح' : 'En réparation'}</option>
             </select>
           </Field>
-          <Field label="Garantie (mois)">
-            <select className={selectClass} value={form.warranty_months ?? 6} onChange={e => set('warranty_months', Number(e.target.value))}>
-              {[0,1,3,6,12,18,24].map(m => <option key={m} value={m}>{m} mois</option>)}
+          <Field label={isAr ? 'الموقع' : 'Emplacement'}>
+            <select className={selectClass} value={form.location || 'Magasin Principal'} onChange={e => set('location', e.target.value as LocationType)}>
+              <option value="Magasin Principal">{isAr ? 'المحل الرئيسي' : 'Magasin Principal'}</option>
+              <option value="Magasin Secondaire">{isAr ? 'المحل الثاني' : 'Magasin Secondaire'}</option>
+              <option value="Externe">{isAr ? 'خارجي' : 'Externe'}</option>
             </select>
           </Field>
         </div>
 
-        {/* Description */}
-        <Field label="Description / Notes">
-          <textarea
-            className={`${inputClass} resize-none`}
-            rows={2}
-            value={form.description || ''}
-            onChange={e => set('description', e.target.value)}
-            placeholder="Défauts, détails Good Deal..."
+        {/* Warranty */}
+        <Field label={isAr ? 'مدة الضمان (شهر)' : 'Garantie (mois)'}>
+          <input
+            type="number"
+            min={0} max={36}
+            className={inputClass}
+            value={form.warranty_months ?? 6}
+            onChange={e => set('warranty_months', Number(e.target.value))}
           />
         </Field>
 
-        {/* Status (edit only) */}
-        {isEdit && (
-          <Field label="Statut">
-            <select className={selectClass} value={form.status || 'متوفر'} onChange={e => set('status', e.target.value)}>
-              <option value="متوفر">Disponible (متوفر)</option>
-              <option value="مباع">Vendu (مباع)</option>
-              <option value="إصلاح">Réparation (إصلاح)</option>
-            </select>
-          </Field>
+        {/* Description */}
+        <Field label={isAr ? 'الوصف' : 'Description'}>
+          <textarea
+            className={`${inputClass} resize-none`}
+            rows={2}
+            placeholder={isAr ? 'ملاحظات عن الجهاز...' : 'Notes sur l\'appareil...'}
+            value={form.description || ''}
+            onChange={e => set('description', e.target.value)}
+          />
+        </Field>
+
+        {/* Financial fields — manager/owner only */}
+        {canSeeFinancials && (
+          <>
+            <div className="border-t border-[#E8E5DE] pt-4">
+              <p className="text-xs font-bold text-[#6B6860] uppercase tracking-widest mb-4">
+                {isAr ? 'الأسعار (للإدارة فقط)' : 'Prix (gestion uniquement)'}
+              </p>
+              <div className="grid grid-cols-3 gap-4">
+                <Field label={isAr ? 'سعر الشراء' : 'Prix achat'}>
+                  <input type="number" min={0} step={0.01} className={inputClass}
+                    placeholder="0.00"
+                    value={form.prix_achat ?? ''} onChange={e => set('prix_achat', e.target.value ? Number(e.target.value) : undefined)} />
+                </Field>
+                <Field label={isAr ? 'سعر البيع المقترح' : 'Prix vente recommandé'}>
+                  <input type="number" min={0} step={0.01} className={inputClass}
+                    placeholder="0.00"
+                    value={form.prix_vente_recommande ?? ''} onChange={e => set('prix_vente_recommande', e.target.value ? Number(e.target.value) : undefined)} />
+                </Field>
+                <Field label={isAr ? 'سعر البيع الأدنى' : 'Prix vente minimum'}>
+                  <input type="number" min={0} step={0.01} className={inputClass}
+                    placeholder="0.00"
+                    value={form.prix_vente_minimum ?? ''} onChange={e => set('prix_vente_minimum', e.target.value ? Number(e.target.value) : undefined)} />
+                </Field>
+              </div>
+            </div>
+
+            {/* iCloud — Apple only */}
+            {(form.marque === 'Apple' || form.marque === 'apple') && (
+              <div className="grid grid-cols-2 gap-4 p-4 bg-[#F8F7F4] rounded-xl border border-[#E8E5DE]">
+                <Field label="Compte iCloud">
+                  <input type="text" className={inputClass}
+                    placeholder="exemple@icloud.com"
+                    value={form.icloud_compte || ''} onChange={e => set('icloud_compte', e.target.value)} />
+                </Field>
+                <Field label="Mot de passe iCloud">
+                  <input type="text" className={inputClass}
+                    placeholder="••••••••"
+                    value={form.icloud_mdp || ''} onChange={e => set('icloud_mdp', e.target.value)} />
+                </Field>
+              </div>
+            )}
+          </>
         )}
 
         {/* Actions */}
-        <div className="flex justify-end gap-3 pt-2 border-t border-ez-border">
-          <Btn variant="secondary" onClick={onClose}>Annuler</Btn>
-          <Btn variant="primary" type="submit" loading={loading}>
-            {isEdit ? 'Enregistrer' : 'Ajouter le téléphone'}
+        <div className="flex gap-3 justify-end pt-2 border-t border-[#E8E5DE]">
+          <Btn variant="secondary" type="button" onClick={onClose}>
+            {isAr ? 'إلغاء' : 'Annuler'}
+          </Btn>
+          <Btn
+            variant="primary"
+            type="submit"
+            loading={loading}
+            style={{ backgroundColor: primary } as React.CSSProperties}
+          >
+            {isEdit
+              ? (isAr ? 'حفظ التعديلات' : 'Enregistrer les modifications')
+              : (isAr ? 'إضافة الهاتف' : 'Ajouter le téléphone')}
           </Btn>
         </div>
       </form>

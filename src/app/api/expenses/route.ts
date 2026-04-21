@@ -6,22 +6,23 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = createUntypedClient()
     const { searchParams } = new URL(request.url)
-    const status   = searchParams.get('status')
-    const search   = searchParams.get('search')
-    const location = searchParams.get('location')
-    const store_id = searchParams.get('store_id')
+    const store_id   = searchParams.get('store_id')
+    const date_from  = searchParams.get('date_from')
+    const date_to    = searchParams.get('date_to')
+    const categorie  = searchParams.get('categorie')
+
+    if (!store_id) return NextResponse.json({ error: 'store_id requis' }, { status: 400 })
 
     let query = supabase
-      .from('laptops')
+      .from('expenses')
       .select('*')
+      .eq('store_id', store_id)
+      .order('date', { ascending: false })
       .order('created_at', { ascending: false })
 
-    if (store_id) query = query.eq('store_id', store_id)
-    if (status)   query = query.eq('status', status)
-    if (location) query = query.eq('location', location)
-    if (search)   query = query.or(
-      `serial.ilike.%${search}%,model.ilike.%${search}%,marque.ilike.%${search}%`
-    )
+    if (date_from) query = query.gte('date', date_from)
+    if (date_to)   query = query.lte('date', date_to)
+    if (categorie) query = query.eq('categorie', categorie)
 
     const { data, error } = await query
     if (error) throw error
@@ -45,9 +46,12 @@ export async function POST(request: NextRequest) {
       .single() as { data: { display_name: string; store_id: string | null } | null }
 
     const body = await request.json()
+    if (!body.montant || !body.categorie) {
+      return NextResponse.json({ error: 'montant et categorie requis' }, { status: 400 })
+    }
 
     const { data, error } = await supabase
-      .from('laptops')
+      .from('expenses')
       .insert({
         ...body,
         store_id:   body.store_id ?? profile?.store_id ?? null,
@@ -65,10 +69,11 @@ export async function POST(request: NextRequest) {
       user_id:     user.id,
       user_name:   profile?.display_name ?? '—',
       action_type: 'INSERT',
-      module:      'laptops',
-      record_id:   data.laptop_id as string,
+      module:      'expenses',
+      record_id:   data.exp_id as string,
       after_state: data,
       ip_address:  getIpFromRequest(request),
+      notes:       `${body.categorie} — ${body.montant} MAD`,
     })
 
     return NextResponse.json({ data }, { status: 201 })
@@ -77,7 +82,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function PATCH(request: NextRequest) {
+export async function DELETE(request: NextRequest) {
   try {
     const supabase      = createUntypedClient()
     const typedSupabase = createClient()
@@ -86,43 +91,43 @@ export async function PATCH(request: NextRequest) {
 
     const { data: profile } = await supabase
       .from('user_profiles')
-      .select('display_name')
+      .select('display_name, role')
       .eq('id', user.id)
-      .single() as { data: { display_name: string } | null }
+      .single() as { data: { display_name: string; role: string } | null }
 
-    const body = await request.json()
-    const { laptop_id, ...updates } = body
-    if (!laptop_id) return NextResponse.json({ error: 'laptop_id requis' }, { status: 400 })
+    if (!['manager', 'owner'].includes(profile?.role ?? '')) {
+      return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
+    }
+
+    const { searchParams } = new URL(request.url)
+    const exp_id = searchParams.get('exp_id')
+    if (!exp_id) return NextResponse.json({ error: 'exp_id requis' }, { status: 400 })
 
     const { data: before } = await supabase
-      .from('laptops')
+      .from('expenses')
       .select('*')
-      .eq('laptop_id', laptop_id)
+      .eq('exp_id', exp_id)
       .single() as { data: Record<string, unknown> | null }
 
-    const { data, error } = await supabase
-      .from('laptops')
-      .update({ ...updates, updated_by: user.id })
-      .eq('laptop_id', laptop_id)
-      .select()
-      .single() as { data: Record<string, unknown> | null; error: unknown }
+    const { error } = await supabase
+      .from('expenses')
+      .delete()
+      .eq('exp_id', exp_id)
 
     if (error) throw error
-    if (!data) throw new Error('No data returned')
 
     await logActivity({
-      store_id:     data.store_id as string ?? null,
+      store_id:     before?.store_id as string ?? null,
       user_id:      user.id,
       user_name:    profile?.display_name ?? '—',
-      action_type:  'UPDATE',
-      module:       'laptops',
-      record_id:    laptop_id,
+      action_type:  'DELETE',
+      module:       'expenses',
+      record_id:    exp_id,
       before_state: before ?? null,
-      after_state:  data,
       ip_address:   getIpFromRequest(request),
     })
 
-    return NextResponse.json({ data })
+    return NextResponse.json({ success: true })
   } catch (err: unknown) {
     return NextResponse.json({ error: (err as Error).message }, { status: 500 })
   }
