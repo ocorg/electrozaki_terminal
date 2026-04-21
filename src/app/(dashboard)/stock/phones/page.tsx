@@ -223,8 +223,7 @@ export default function PhonesPage() {
         onClose={() => setFormOpen(false)}
         onSaved={fetchPhones}
         phone={editPhone}
-        role={user?.role}
-      />
+        role={user?.role} storeId={''}      />
     </div>
   )
 }
