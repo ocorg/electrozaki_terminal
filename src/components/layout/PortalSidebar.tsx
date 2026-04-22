@@ -28,18 +28,18 @@ interface NavItem {
 function getNavItems(portalBase: string, portalType: string): NavItem[] {
   if (portalType === 'bzg') {
     return [
-      { href: `${portalBase}/dashboard`,   icon: LayoutDashboard, label: 'Tableau de bord',   roles: ['manager','owner'] },
-      { divider: true, label: 'OPÉRATIONS',                                                    roles: ['manager','owner'] },
-      { href: `${portalBase}/transactions`, icon: ShoppingCart,    label: 'Transactions',       roles: ['manager','owner'] },
-      { href: `${portalBase}/caisse`,       icon: Vault,           label: 'Caisse — Validation',roles: ['manager','owner'] },
-      { divider: true, label: 'ANALYSE',                                                        roles: ['manager','owner'] },
-      { href: `${portalBase}/reports`,      icon: BarChart3,       label: 'Rapports',           roles: ['manager','owner'] },
-      { href: `${portalBase}/staff`,        icon: UserCheck,       label: 'Présence équipe',    roles: ['manager','owner'] },
-      { divider: true, label: 'ADMIN',                                                          roles: ['manager','owner'] },
-      { href: `${portalBase}/logs`,         icon: ScrollText,      label: 'Journal d\'activité',roles: ['manager','owner'] },
-      { href: `${portalBase}/users`,        icon: Shield,          label: 'Utilisateurs',       roles: ['owner'] },
-      { href: `${portalBase}/changelog`,    icon: FileText,        label: 'Changelog plateforme',roles: ['manager','owner'] },
-      { href: `${portalBase}/settings`,     icon: Settings,        label: 'Paramètres',         roles: ['owner'] },
+      { href: `${portalBase}/dashboard`,    icon: LayoutDashboard, label: 'Tableau de bord',    roles: ['manager','owner'] as UserRole[] },
+      { divider: true, label: 'OPÉRATIONS',                                                      roles: ['manager','owner'] as UserRole[] },
+      { href: `${portalBase}/transactions`, icon: ShoppingCart,    label: 'Transactions',        roles: ['manager','owner'] as UserRole[] },
+      { href: `${portalBase}/caisse`,       icon: Vault,           label: 'Caisse — Validation', roles: ['manager','owner'] as UserRole[] },
+      { divider: true, label: 'ANALYSE',                                                          roles: ['manager','owner'] as UserRole[] },
+      { href: `${portalBase}/reports`,      icon: BarChart3,       label: 'Rapports',            roles: ['manager','owner'] as UserRole[] },
+      { href: `${portalBase}/staff`,        icon: UserCheck,       label: 'Présence équipe',     roles: ['manager','owner'] as UserRole[] },
+      { divider: true, label: 'ADMIN',                                                            roles: ['manager','owner'] as UserRole[] },
+      { href: `${portalBase}/logs`,         icon: ScrollText,      label: "Journal d'activité",  roles: ['manager','owner'] as UserRole[] },
+      { href: `${portalBase}/users`,        icon: Shield,          label: 'Utilisateurs',        roles: ['manager','owner'] as UserRole[] },
+      { href: `${portalBase}/changelog`,    icon: FileText,        label: 'Changelog plateforme',roles: ['manager','owner'] as UserRole[] },
+      { href: `${portalBase}/settings`,     icon: Settings,        label: 'Paramètres',          roles: ['owner'] as UserRole[] },
     ]
   }
 
@@ -56,6 +56,7 @@ function getNavItems(portalBase: string, portalType: string): NavItem[] {
       { href: `${portalBase}/expenses`,         icon: Receipt,         label: 'Dépenses',          roles: ['manager','owner'] },
       { href: `${portalBase}/caisse`,           icon: Vault,           label: 'Caisse du jour',    roles: ['staff','manager','owner'] },
       { href: `${portalBase}/movements`,        icon: ArrowLeftRight,  label: 'Transferts stock',  roles: ['manager','owner'] },
+      { href: `${portalBase}/suppliers`,        icon: Truck,           label: 'Fournisseurs',       roles: ['manager','owner'] },
     ]
   }
 
