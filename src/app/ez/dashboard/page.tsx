@@ -11,6 +11,7 @@ import {
   Loader2, RefreshCw, Clock, ArrowRight
 } from 'lucide-react'
 import Link from 'next/link'
+import AttendanceWidget from '@/components/attendance/AttendanceWidget'
 
 interface DashboardData {
   ca_today:         number
@@ -177,6 +178,9 @@ export default function EZDashboard() {
 
   return (
     <div className="p-6 space-y-6 animate-fade-in" dir={isAr ? 'rtl' : 'ltr'}>
+
+      {/* Attendance widget */}
+      <AttendanceWidget storeId={STORE_ID} />
 
       {/* Header */}
       <div className="flex items-start justify-between">

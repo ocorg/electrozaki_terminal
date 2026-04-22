@@ -10,6 +10,7 @@ import {
   RefreshCw, Clock, ArrowRight, Package
 } from 'lucide-react'
 import Link from 'next/link'
+import AttendanceWidget from '@/components/attendance/AttendanceWidget'
 
 const STORE_ID = 'HP-001'
 const PRIMARY  = '#0EA5E9'
@@ -148,6 +149,9 @@ export default function HPDashboard() {
 
   return (
     <div className="p-6 space-y-6 animate-fade-in" dir={isAr ? 'rtl' : 'ltr'}>
+
+      {/* Attendance widget */}
+      <AttendanceWidget storeId={STORE_ID} />
 
       {/* Header */}
       <div className="flex items-start justify-between">
