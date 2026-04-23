@@ -9,6 +9,7 @@ import PhoneForm from '@/components/phones/PhoneForm'
 import type { Phone } from '@/types/database'
 import { toast } from 'sonner'
 import ScanButton from '@/components/scanner/ScanButton'
+import LabelGenerator, { type LabelProduct } from '@/components/print/LabelGenerator'
 import {
   Plus, Search, Filter, RefreshCw,
   Smartphone, Edit2, MapPin, Shield,
@@ -36,6 +37,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
   const [formOpen, setFormOpen]       = useState(false)
   const [editPhone, setEditPhone]     = useState<Phone | null>(null)
   const [showFilters, setShowFilters] = useState(false)
+  const [labelProduct, setLabelProduct] = useState<LabelProduct | null>(null)
 
   // Filters
   const [search, setSearch]       = useState('')
@@ -341,12 +343,31 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                     )}
 
                     {/* Actions */}
-                    <button
-                      onClick={() => openEdit(phone)}
-                      className="flex items-center justify-center w-8 h-8 rounded-lg text-[#B0ADA6] hover:text-[#1A1A1A] hover:bg-[#F2F0EB] transition-all"
-                    >
-                      <Edit2 className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => setLabelProduct({
+                          id:       phone.phone_id,
+                          name:     `${phone.marque} ${phone.model}${phone.stockage ? ' ' + phone.stockage : ''}`,
+                          category: 'Téléphone',
+                          type:     phone.condition === 'جديد' ? 'Neuf' : phone.condition === 'مستعمل' ? 'Occasion' : 'Défectueux',
+                          prix:     canSeeFinancials ? (phone.prix_vente_recommande ?? undefined) : undefined,
+                          barcode:  phone.imei ?? undefined,
+                        })}
+                        className="flex items-center justify-center w-8 h-8 rounded-lg text-[#B0ADA6] hover:text-[#1A1A1A] hover:bg-[#F2F0EB] transition-all"
+                        title="Générer étiquette"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                            d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 8V5a2 2 0 012-2h2z" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => openEdit(phone)}
+                        className="flex items-center justify-center w-8 h-8 rounded-lg text-[#B0ADA6] hover:text-[#1A1A1A] hover:bg-[#F2F0EB] transition-all"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 )
               })}
@@ -386,6 +407,15 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
           )}
         </div>
       </div>
+
+      {/* Label generator */}
+      {labelProduct && (
+        <LabelGenerator
+          product={labelProduct}
+          open={!!labelProduct}
+          onClose={() => setLabelProduct(null)}
+        />
+      )}
 
       {/* Form modal */}
       <PhoneForm
