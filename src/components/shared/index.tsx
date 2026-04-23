@@ -1,4 +1,5 @@
 'use client'
+import React from 'react'
 import { cn } from '@/lib/utils'
 
 // ── Status Badge ──────────────────────────────────────────────
@@ -116,6 +117,14 @@ export function Modal({ open, onClose, title, children, size = 'md' }: {
   children: React.ReactNode
   size?: 'sm' | 'md' | 'lg' | 'xl'
 }) {
+  // Escape key closes the modal
+  React.useEffect(() => {
+    if (!open) return
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [open, onClose])
+
   if (!open) return null
   const widths = { sm: 'max-w-md', md: 'max-w-xl', lg: 'max-w-2xl', xl: 'max-w-4xl' }
   return (

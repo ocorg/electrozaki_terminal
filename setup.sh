@@ -39,7 +39,6 @@ npm install \
   @zxing/library \
   jspdf \
   html2canvas \
-  resend \
   clsx \
   tailwind-merge \
   class-variance-authority \
@@ -209,10 +208,8 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
 # Supabase service role key — NEVER expose to client
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
 
-# Resend (email alerts)
-RESEND_API_KEY=re_xxxxxxxxxxxxx
-ALERT_FROM_EMAIL=alerts@electrozaki.ma
-ALERT_TO_EMAIL=owner@electrozaki.ma
+# Email integration — pending separate implementation
+# TODO: email integration pending — will be implemented separately
 
 # App
 NEXT_PUBLIC_APP_URL=http://localhost:3000

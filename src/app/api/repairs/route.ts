@@ -4,7 +4,11 @@ import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createUntypedClient()
+    const supabase      = createUntypedClient()
+    const typedSupabase = createClient()
+    const { data: { user } } = await typedSupabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+
     const { searchParams } = new URL(request.url)
     const store_id = searchParams.get('store_id')
     const statut   = searchParams.get('statut')

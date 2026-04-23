@@ -71,12 +71,41 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
 
   useEffect(() => { fetchCaisse() }, [fetchCaisse])
 
-  // Auto-refresh every 60 seconds while open
+  // Realtime subscription — replaces 60-second polling
   useEffect(() => {
-    if (caisse?.status !== 'open') return
-    const interval = setInterval(fetchCaisse, 60_000)
-    return () => clearInterval(interval)
-  }, [caisse?.status, fetchCaisse])
+    const { createClient: createBrowserClient } = require('@/lib/supabase/client')
+    const supabase = createBrowserClient()
+
+    const channel = supabase
+      .channel(`caisse-realtime-${storeId}`)
+      .on('postgres_changes', {
+        event:  '*',
+        schema: 'public',
+        table:  'caisse',
+        filter: `store_id=eq.${storeId}`,
+      }, () => { fetchCaisse() })
+      .on('postgres_changes', {
+        event:  '*',
+        schema: 'public',
+        table:  'transactions',
+        filter: `store_id=eq.${storeId}`,
+      }, () => { fetchCaisse() })
+      .on('postgres_changes', {
+        event:  '*',
+        schema: 'public',
+        table:  'expenses',
+        filter: `store_id=eq.${storeId}`,
+      }, () => { fetchCaisse() })
+      .on('postgres_changes', {
+        event:  '*',
+        schema: 'public',
+        table:  'reparations',
+        filter: `store_id=eq.${storeId}`,
+      }, () => { fetchCaisse() })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [storeId, fetchCaisse])
 
   async function handleBOD() {
     const amount = parseFloat(bodAmount)

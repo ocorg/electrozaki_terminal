@@ -4,7 +4,11 @@ import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createUntypedClient()
+    const supabase      = createUntypedClient()
+    const typedSupabase = createClient()
+    const { data: { user } } = await typedSupabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+
     const { searchParams } = new URL(request.url)
     const store_id  = searchParams.get('store_id')
     const search    = searchParams.get('search')
@@ -128,6 +132,60 @@ export async function PATCH(request: NextRequest) {
     })
 
     return NextResponse.json({ data })
+  } catch (err: unknown) {
+    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const supabase      = createUntypedClient()
+    const typedSupabase = createClient()
+    const { data: { user } } = await typedSupabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('display_name, role')
+      .eq('id', user.id)
+      .single() as { data: { display_name: string; role: string } | null }
+
+    if (!['manager', 'owner'].includes(profile?.role ?? '')) {
+      return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
+    }
+
+    const { searchParams } = new URL(request.url)
+    const acc_id = searchParams.get('acc_id')
+    if (!acc_id) return NextResponse.json({ error: 'acc_id requis' }, { status: 400 })
+
+    const { data: before } = await supabase
+      .from('accessories')
+      .select('*')
+      .eq('acc_id', acc_id)
+      .single() as { data: Record<string, unknown> | null }
+
+    if (!before) return NextResponse.json({ error: 'Accessoire introuvable' }, { status: 404 })
+
+    const { error } = await supabase
+      .from('accessories')
+      .update({ is_deleted: true, updated_by: user.id, updated_at: new Date().toISOString() })
+      .eq('acc_id', acc_id)
+
+    if (error) throw error
+
+    await logActivity({
+      store_id:     before.store_id as string ?? null,
+      user_id:      user.id,
+      user_name:    profile?.display_name ?? '—',
+      action_type:  'DELETE',
+      module:       'accessories',
+      record_id:    acc_id,
+      before_state: before,
+      after_state:  null,
+      ip_address:   getIpFromRequest(request),
+    })
+
+    return NextResponse.json({ status: 'success' })
   } catch (err: unknown) {
     return NextResponse.json({ error: (err as Error).message }, { status: 500 })
   }

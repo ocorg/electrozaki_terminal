@@ -36,9 +36,14 @@ interface LabelGeneratorProps {
   onClose:  () => void
 }
 
-// Label dimensions: 4in × 3in at 96dpi = 384 × 288px
-const W = 384
-const H = 288
+// Label dimensions: 40mm × 30mm (physical Phomemo size)
+// Rendered at 3× for sharp on-screen preview: 453 × 339px
+// html2canvas captures at this size; jsPDF uses the real 40×30mm
+const W = 453  // 40mm / 25.4 * 96 * 3
+const H = 339  // 30mm / 25.4 * 96 * 3
+// Physical mm dimensions for PDF export
+const W_MM = 40
+const H_MM = 30
 
 export default function LabelGenerator({ product, open, onClose }: LabelGeneratorProps) {
   const portal   = usePortal()
@@ -56,7 +61,7 @@ export default function LabelGenerator({ product, open, onClose }: LabelGenerato
     try {
       const html2canvas = (await import('html2canvas')).default
       const canvas = await html2canvas(labelRef.current, {
-        scale:           2,
+        scale:           1,
         useCORS:         true,
         backgroundColor: '#FFFFFF',
         width:           W,
@@ -85,10 +90,10 @@ export default function LabelGenerator({ product, open, onClose }: LabelGenerato
     setExporting(true)
     try {
       const { jsPDF } = await import('jspdf')
-      // 4×3 inches
-      const pdf  = new jsPDF({ orientation: 'landscape', unit: 'in', format: [4, 3] })
+      // 40×30mm — exact Phomemo physical label size
+      const pdf  = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [W_MM, H_MM] })
       const imgData = await blobToDataURL(blob)
-      pdf.addImage(imgData, 'PNG', 0, 0, 4, 3)
+      pdf.addImage(imgData, 'PNG', 0, 0, W_MM, H_MM)
       pdf.save(`label-${product.id}.pdf`)
     } finally {
       setExporting(false)
@@ -134,11 +139,11 @@ export default function LabelGenerator({ product, open, onClose }: LabelGenerato
               height:          `${H}px`,
               backgroundColor: '#FFFFFF',
               border:          '1px solid #E8E5DE',
-              borderRadius:    '8px',
-              padding:         '16px',
+              borderRadius:    '6px',
+              padding:         '12px',
               display:         'flex',
               flexDirection:   'row',
-              gap:             '12px',
+              gap:             '10px',
               fontFamily:      "'Barlow Condensed', Arial, sans-serif",
               overflow:        'hidden',
               flexShrink:      0,
@@ -153,14 +158,14 @@ export default function LabelGenerator({ product, open, onClose }: LabelGenerato
               gap:            '6px',
               flexShrink:     0,
             }}>
-              <QRCode value={product.id} size={100} />
+              <QRCode value={product.id} size={107} />
               <p style={{
                 fontSize:    '8px',
                 color:       '#6B6860',
                 fontFamily:  'monospace',
                 textAlign:   'center',
                 wordBreak:   'break-all',
-                maxWidth:    '104px',
+                maxWidth:    '112px',
               }}>
                 {product.id}
               </p>
@@ -176,11 +181,11 @@ export default function LabelGenerator({ product, open, onClose }: LabelGenerato
             }}>
               {/* Store name */}
               <p style={{
-                fontSize:      '10px',
+                fontSize:      '9px',
                 fontWeight:    'bold',
                 color:         primary,
                 textTransform: 'uppercase',
-                letterSpacing: '0.1em',
+                letterSpacing: '0.08em',
               }}>
                 {siteName}
               </p>
@@ -188,11 +193,11 @@ export default function LabelGenerator({ product, open, onClose }: LabelGenerato
               {/* Product name */}
               <div>
                 <p style={{
-                  fontSize:    '18px',
+                  fontSize:    '15px',
                   fontWeight:  'bold',
                   color:       '#1A1A1A',
                   lineHeight:  '1.1',
-                  marginBottom: '4px',
+                  marginBottom: '3px',
                 }}>
                   {product.name}
                 </p>
@@ -245,7 +250,7 @@ export default function LabelGenerator({ product, open, onClose }: LabelGenerato
                   marginTop:  '4px',
                 }}>
                   <p style={{
-                    fontSize:   '22px',
+                    fontSize:   '18px',
                     fontWeight: 'bold',
                     color:      primary,
                     lineHeight: '1',
@@ -273,7 +278,7 @@ export default function LabelGenerator({ product, open, onClose }: LabelGenerato
 
         {/* Phomemo size note */}
         <p className="text-xs text-[#B0ADA6] text-center">
-          {isAr ? 'حجم الملصق: 4 × 3 بوصة — متوافق مع Phomemo' : 'Format: 4×3 pouces — Compatible Phomemo'}
+          {isAr ? 'حجم الملصق: 40 × 30 ملم — متوافق مع Phomemo' : 'Format: 40×30 mm — Compatible Phomemo'}
         </p>
 
         {/* Actions */}

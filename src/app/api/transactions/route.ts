@@ -4,7 +4,11 @@ import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createUntypedClient()
+    const supabase      = createUntypedClient()
+    const typedSupabase = createClient()
+    const { data: { user } } = await typedSupabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+
     const { searchParams } = new URL(request.url)
     const client_id = searchParams.get('client_id')
     const store_id  = searchParams.get('store_id')
@@ -114,6 +118,73 @@ export async function POST(request: NextRequest) {
     })
 
     return NextResponse.json({ data }, { status: 201 })
+  } catch (err: unknown) {
+    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const supabase      = createUntypedClient()
+    const typedSupabase = createClient()
+    const { data: { user } } = await typedSupabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('display_name, role')
+      .eq('id', user.id)
+      .single() as { data: { display_name: string; role: string } | null }
+
+    if (!['manager', 'owner'].includes(profile?.role ?? '')) {
+      return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
+    }
+
+    const body = await request.json()
+    const { txn_id, voided_reason } = body as { txn_id: string; voided_reason: string }
+    if (!txn_id) return NextResponse.json({ error: 'txn_id requis' }, { status: 400 })
+    if (!voided_reason || voided_reason.trim().length < 10) {
+      return NextResponse.json({ error: 'Motif d\'annulation requis (10 caractères minimum)' }, { status: 400 })
+    }
+
+    const { data: before } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('txn_id', txn_id)
+      .single() as { data: Record<string, unknown> | null }
+
+    if (!before) return NextResponse.json({ error: 'Transaction introuvable' }, { status: 404 })
+    if (before.voided) return NextResponse.json({ error: 'Transaction déjà annulée' }, { status: 400 })
+
+    const { data: voided, error } = await supabase
+      .from('transactions')
+      .update({
+        voided:        true,
+        voided_by:     user.id,
+        voided_at:     new Date().toISOString(),
+        voided_reason: voided_reason.trim(),
+        updated_by:    user.id,
+      })
+      .eq('txn_id', txn_id)
+      .select()
+      .single() as { data: Record<string, unknown> | null; error: unknown }
+
+    if (error) throw error
+
+    await logActivity({
+      store_id:     before.store_id as string ?? null,
+      user_id:      user.id,
+      user_name:    profile?.display_name ?? '—',
+      action_type:  'VOID',
+      module:       'transactions',
+      record_id:    txn_id,
+      before_state: before,
+      after_state:  voided ?? null,
+      ip_address:   getIpFromRequest(request),
+      notes:        voided_reason.trim(),
+    })
+
+    return NextResponse.json({ status: 'success' })
   } catch (err: unknown) {
     return NextResponse.json({ error: (err as Error).message }, { status: 500 })
   }

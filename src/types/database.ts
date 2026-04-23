@@ -39,8 +39,8 @@ export interface UserProfile {
   id:           string
   display_name: string
   role:         UserRole
-  override_pin?: string | null
-  is_active:    boolean
+  // override_pin intentionally omitted — server-side only (verify-override route)
+  is_active: boolean
   store_id:     string | null
   avatar_url:   string | null
   store_locked: boolean
