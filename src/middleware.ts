@@ -9,12 +9,18 @@ const PORTAL_PATHS = ['/ez', '/hp', '/bzg']
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
+
+  // Guard: if Supabase env vars are missing, skip auth and let the page handle it
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    return NextResponse.next({ request })
+  }
+
   let response = NextResponse.next({ request })
 
   // ── Build supabase client with cookie forwarding ────────────
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
       cookies: {
         getAll()        { return request.cookies.getAll() },
@@ -29,7 +35,14 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  let user = null
+  try {
+    const { data } = await supabase.auth.getUser()
+    user = data.user
+  } catch {
+    // Edge network error — fail open (let the page/API handle auth)
+    return NextResponse.next({ request })
+  }
 
   // ── Not authenticated → redirect to login ───────────────────
   const isPublic = PUBLIC_PATHS.some(p => pathname.startsWith(p))
