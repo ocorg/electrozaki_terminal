@@ -29,11 +29,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {children}
         <Toaster
           position="top-right"
+          richColors={false}
+          expand={false}
           toastOptions={{
+            duration: 4000,
             style: {
               background: '#1A1A1A',
-              color: '#E5E5E5',
-              border: '1px solid #2A2A2A',
+              color:      '#E5E5E5',
+              border:     '1px solid #2A2A2A',
+              fontFamily: "'Inter', sans-serif",
+              fontSize:   '13px',
             },
           }}
         />
