@@ -9,7 +9,12 @@ export const metadata: Metadata = {
   title: 'Electro Zaki',
   description: 'Système de gestion — Electro Zaki',
   manifest: '/manifest.json',
-  icons: { apple: '/icons/icon-192x192.png' },
+  icons: {
+    icon: [
+      { url: '/logo.png', type: 'image/png' },
+    ],
+    apple: '/icons/icon-192x192.png',
+  },
 }
 
 export const viewport: Viewport = {
