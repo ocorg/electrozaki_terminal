@@ -19,6 +19,7 @@
     "@radix-ui/react-toast": "^1.2.15",
     "@radix-ui/react-tooltip": "^1.2.8",
     "@supabase/ssr": "^0.10.2",
+    "sonner": "^1.7.4",
     "@supabase/supabase-js": "^2.103.0",
     "@types/qrcode": "^1.5.6",
     "@zxing/browser": "^0.1.5",
