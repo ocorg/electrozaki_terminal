@@ -469,15 +469,15 @@ export interface Database {
       }
     }
     Views: {
-      client_summary:          { Row: Client }
-      supplier_summary:        { Row: Supplier }
-      accessories_with_status: { Row: Accessory & { status_computed: string; is_low_stock: boolean } }
-      dashboard_kpis:          { Row: { ca_today: number; nb_ventes_today: number; ca_month: number; nb_ventes_month: number; total_credit_open: number } }
-    }
-    Functions: {
-      get_user_role:       { Args: Record<never, never>; Returns: string }
-      get_user_store:      { Args: Record<never, never>; Returns: string }
-      verify_override_pin: { Args: { p_pin: string };    Returns: string | null }
+  client_summary:          { Row: Client }
+  supplier_summary:        { Row: Supplier }
+  accessories_with_status: { Row: Accessory & { status_computed: string; is_low_stock: boolean } }
+}
+Functions: {
+  get_user_role:        { Args: Record<never, never>; Returns: string }
+  get_user_store:       { Args: Record<never, never>; Returns: string }
+  verify_override_pin:  { Args: { p_pin: string };    Returns: string | null }
+  get_dashboard_kpis:   { Args: { p_store_id: string }; Returns: { ca_today: number; nb_ventes_today: number; ca_month: number; nb_ventes_month: number; total_credit_open: number }[] }
     }
   }
 }
