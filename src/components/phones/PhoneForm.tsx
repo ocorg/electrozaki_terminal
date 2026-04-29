@@ -7,6 +7,12 @@ import { usePortal } from '@/lib/context/portal'
 import { useLanguageStore } from '@/lib/stores/language'
 import type { Phone, DeviceCondition, DeviceSource, LocationType } from '@/types/database'
 import ScanButton from '@/components/scanner/ScanButton'
+import ComboBox from '@/components/phones/ComboBox'
+import {
+  ALL_BRANDS,
+  getModelsForBrand,
+  getColorsForModel,
+} from '@/lib/data/phone-catalog'
 
 interface PhoneFormProps {
   open:     boolean
@@ -17,10 +23,8 @@ interface PhoneFormProps {
   storeId:  string
 }
 
-const MARQUES   = ['Apple', 'Samsung', 'Xiaomi', 'Redmi', 'Huawei', 'Oppo', 'Realme', 'Autre']
 const STOCKAGES = ['16GB', '32GB', '64GB', '128GB', '256GB', '512GB', '1TB']
 const RAMS      = ['2GB', '3GB', '4GB', '6GB', '8GB', '12GB', '16GB']
-const COULEURS  = ['Noir', 'Blanc', 'Gris', 'Bleu', 'Rouge', 'Vert', 'Or', 'Violet', 'Rose', 'Autre']
 
 const EMPTY: Partial<Phone> = {
   source:                'Fournisseur',
@@ -52,12 +56,47 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
   const [form, setForm]       = useState<Partial<Phone>>({ ...EMPTY })
   const [loading, setLoading] = useState(false)
 
+  // ── Derived state ───────────────────────────────────────
+  const isApple   = form.marque === 'Apple'
+  const isNeuf    = form.condition === 'جديد'
+
+  // Models for selected brand, colors for selected model
+  const brandModels  = getModelsForBrand(form.marque ?? '')
+  const modelOptions = brandModels.map(m => m.model)
+  const colorOptions = getColorsForModel(form.marque ?? '', form.model ?? '')
+
+  // ── Init ────────────────────────────────────────────────
   useEffect(() => {
     setForm(phone ? { ...phone } : { ...EMPTY })
   }, [phone, open])
 
+  // ── Auto-set battery to 100 when Neuf + Apple ──────────
+  useEffect(() => {
+    if (isApple && isNeuf) {
+      setForm(prev => ({ ...prev, battery_level: 100 }))
+    }
+  }, [isApple, isNeuf])
+
   function set(field: keyof Phone, value: unknown) {
     setForm(prev => ({ ...prev, [field]: value }))
+  }
+
+  // ── When marque changes, reset model + couleur ──────────
+  function handleMarqueChange(val: string) {
+    setForm(prev => ({
+      ...prev,
+      marque:  val,
+      model:   '',
+      couleur: '',
+      // Clear battery/ram based on new brand
+      battery_level: val === 'Apple' && prev.condition === 'جديد' ? 100 : (val === 'Apple' ? prev.battery_level : undefined),
+      ram:           val === 'Apple' ? '' : prev.ram,
+    }))
+  }
+
+  // ── When model changes, reset couleur ───────────────────
+  function handleModelChange(val: string) {
+    setForm(prev => ({ ...prev, model: val, couleur: '' }))
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -117,48 +156,73 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
           </Field>
         </div>
 
-        {/* Row 2 — Marque + Model */}
-        <div className="grid grid-cols-2 gap-4">
-          <Field label={isAr ? 'الماركة' : 'Marque'} required>
-            <select className={selectClass} value={form.marque || ''} onChange={e => set('marque', e.target.value)}>
-              <option value="">{isAr ? 'اختر...' : 'Choisir...'}</option>
-              {MARQUES.map(m => <option key={m} value={m}>{m}</option>)}
-            </select>
+        {/* Row 2 — Marque (combobox) */}
+        <Field label={isAr ? 'الماركة' : 'Marque'} required>
+          <ComboBox
+            options={ALL_BRANDS}
+            value={form.marque ?? ''}
+            onChange={handleMarqueChange}
+            placeholder={isAr ? 'اختر أو اكتب...' : 'Choisir ou saisir...'}
+          />
+        </Field>
+
+        {/* Row 3 — Modèle (dependent on Marque) */}
+        <Field label={isAr ? 'الموديل' : 'Modèle'} required>
+          <ComboBox
+            options={modelOptions}
+            value={form.model ?? ''}
+            onChange={handleModelChange}
+            placeholder={
+              !form.marque
+                ? (isAr ? 'Choisissez d\'abord la marque' : 'Choisissez d\'abord la marque')
+                : (isAr ? 'اختر أو اكتب...' : 'Choisir ou saisir...')
+            }
+            disabled={!form.marque}
+          />
+        </Field>
+
+        {/* Row 4 — Stockage + RAM (non-Apple) ou Batterie (Apple) + Couleur */}
+        <div className={`grid gap-4 ${isApple ? 'grid-cols-2' : 'grid-cols-3'}`}>
+
+          {/* Stockage — always visible */}
+          <Field label={isAr ? 'السعة' : 'Stockage'}>
+            <ComboBox
+              options={STOCKAGES}
+              value={form.stockage ?? ''}
+              onChange={v => set('stockage', v)}
+              placeholder="128GB..."
+            />
           </Field>
-          <Field label={isAr ? 'الموديل' : 'Modèle'} required>
-            <input
-              type="text"
-              className={inputClass}
-              placeholder="iPhone 15 Pro, Galaxy S24..."
-              value={form.model || ''}
-              onChange={e => set('model', e.target.value)}
+
+          {/* RAM — only for non-Apple */}
+          {!isApple && (
+            <Field label="RAM">
+              <ComboBox
+                options={RAMS}
+                value={form.ram ?? ''}
+                onChange={v => set('ram', v)}
+                placeholder="4GB..."
+              />
+            </Field>
+          )}
+
+          {/* Couleur — dependent on Modèle */}
+          <Field label={isAr ? 'اللون' : 'Couleur'}>
+            <ComboBox
+              options={colorOptions}
+              value={form.couleur ?? ''}
+              onChange={v => set('couleur', v)}
+              placeholder={
+                !form.model
+                  ? (isAr ? 'Choisissez d\'abord le modèle' : 'Choisissez d\'abord le modèle')
+                  : (isAr ? 'اختر أو اكتب...' : 'Choisir...')
+              }
+              disabled={!form.model}
             />
           </Field>
         </div>
 
-        {/* Row 3 — Stockage + RAM + Couleur */}
-        <div className="grid grid-cols-3 gap-4">
-          <Field label={isAr ? 'السعة' : 'Stockage'}>
-            <select className={selectClass} value={form.stockage || ''} onChange={e => set('stockage', e.target.value)}>
-              <option value="">—</option>
-              {STOCKAGES.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </Field>
-          <Field label="RAM">
-            <select className={selectClass} value={form.ram || ''} onChange={e => set('ram', e.target.value)}>
-              <option value="">—</option>
-              {RAMS.map(r => <option key={r} value={r}>{r}</option>)}
-            </select>
-          </Field>
-          <Field label={isAr ? 'اللون' : 'Couleur'}>
-            <select className={selectClass} value={form.couleur || ''} onChange={e => set('couleur', e.target.value)}>
-              <option value="">—</option>
-              {COULEURS.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </Field>
-        </div>
-
-        {/* Row 4 — IMEI + Battery */}
+        {/* Row 5 — IMEI + Batterie (Apple only) */}
         <div className="grid grid-cols-2 gap-4">
           <Field label="IMEI">
             <div className="flex gap-2">
@@ -177,24 +241,33 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
               />
             </div>
           </Field>
-          <Field label={isAr ? 'مستوى البطارية (%)' : 'Batterie (%)'}>
-            <input
-              type="number"
-              min={0} max={100}
-              className={inputClass}
-              placeholder="85"
-              value={form.battery_level ?? ''}
-              onChange={e => set('battery_level', e.target.value ? Number(e.target.value) : undefined)}
-            />
-            {form.battery_level != null && (
-              <div className="mt-2">
-                <BatteryBar level={form.battery_level} />
-              </div>
-            )}
-          </Field>
+
+          {/* Batterie — Apple only */}
+          {isApple && (
+            <Field label={isAr ? 'مستوى البطارية (%)' : 'Batterie (%)'}>
+              <input
+                type="number"
+                min={0} max={100}
+                className={inputClass}
+                placeholder="85"
+                value={form.battery_level ?? ''}
+                onChange={e => set('battery_level', e.target.value ? Number(e.target.value) : undefined)}
+              />
+              {form.battery_level != null && (
+                <div className="mt-2">
+                  <BatteryBar level={form.battery_level} />
+                </div>
+              )}
+              {isNeuf && isApple && (
+                <p className="text-xs text-[#9A9690] mt-1">
+                  ✓ Automatiquement défini à 100% pour un appareil neuf
+                </p>
+              )}
+            </Field>
+          )}
         </div>
 
-        {/* Row 5 — Status + Location */}
+        {/* Row 6 — Statut + Emplacement */}
         <div className="grid grid-cols-2 gap-4">
           <Field label={isAr ? 'الحالة في المخزون' : 'Statut'} required>
             <select className={selectClass} value={form.status || 'متوفر'} onChange={e => set('status', e.target.value)}>
@@ -213,7 +286,7 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
           </Field>
         </div>
 
-        {/* Warranty */}
+        {/* Garantie */}
         <Field label={isAr ? 'مدة الضمان (شهر)' : 'Garantie (mois)'}>
           <input
             type="number"
@@ -262,7 +335,7 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
             </div>
 
             {/* iCloud — Apple only */}
-            {(form.marque === 'Apple' || form.marque === 'apple') && (
+            {isApple && (
               <div className="grid grid-cols-2 gap-4 p-4 bg-[#F8F7F4] rounded-xl border border-[#E8E5DE]">
                 <Field label="Compte iCloud">
                   <input type="text" className={inputClass}
