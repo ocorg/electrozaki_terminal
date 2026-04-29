@@ -38,20 +38,20 @@ export function usePhoneCatalog(): CatalogState {
     load()
   }, [supabase])
 
-  const brands = [...new Set(catalog.map(e => e.marque))].sort()
+  const brands = Array.from(new Set(catalog.map(e => e.marque))).sort()
 
   const seriesFor = useCallback((brand: string) =>
-    [...new Set(catalog.filter(e => e.marque === brand).map(e => e.serie))].sort()
+    Array.from(new Set(catalog.filter(e => e.marque === brand).map(e => e.serie))).sort()
   , [catalog])
 
   const modelsFor = useCallback((brand: string, serie?: string) => {
     let entries = catalog.filter(e => e.marque === brand)
     if (serie) entries = entries.filter(e => e.serie === serie)
-    return [...new Set(entries.map(e => e.model))].sort()
+    return Array.from(new Set(entries.map(e => e.model))).sort()
   }, [catalog])
 
   const couleursFor = useCallback((model: string) =>
-    [...new Set(catalog.filter(e => e.model === model).map(e => e.couleur))].sort()
+    Array.from(new Set(catalog.filter(e => e.model === model).map(e => e.couleur))).sort()
   , [catalog])
 
   // Called when staff types a model/color not in the catalog
