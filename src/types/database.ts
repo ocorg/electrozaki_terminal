@@ -377,6 +377,11 @@ export interface PlatformChangelog {
 export interface Database {
   public: {
     Tables: {
+      phone_catalog: {
+        Row:    { catalog_id: string; marque: string; serie: string; type: string; model: string; couleur: string; created_at: string }
+        Insert: { catalog_id?: string; marque: string; serie: string; type: string; model: string; couleur: string; created_at?: string }
+        Update: { catalog_id?: string; marque?: string; serie?: string; type?: string; model?: string; couleur?: string; created_at?: string }
+      }
       stores: {
         Row:    Store
         Insert: Partial<Store>

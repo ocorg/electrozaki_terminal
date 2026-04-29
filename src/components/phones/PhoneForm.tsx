@@ -8,11 +8,7 @@ import { useLanguageStore } from '@/lib/stores/language'
 import type { Phone, DeviceCondition, DeviceSource, LocationType } from '@/types/database'
 import ScanButton from '@/components/scanner/ScanButton'
 import ComboBox from '@/components/phones/ComboBox'
-import {
-  ALL_BRANDS,
-  getModelsForBrand,
-  getColorsForModel,
-} from '@/lib/data/phone-catalog'
+import { usePhoneCatalog } from '@/lib/hooks/usePhoneCatalog'
 
 interface PhoneFormProps {
   open:     boolean
@@ -30,6 +26,8 @@ const EMPTY: Partial<Phone> = {
   source:                'Fournisseur',
   condition:             'مستعمل',
   marque:                '',
+  serie:                 '',
+  type:                  '',
   model:                 '',
   stockage:              '',
   ram:                   '',
@@ -53,24 +51,26 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
   const isEdit   = !!phone
   const canSeeFinancials = role === 'manager' || role === 'owner'
 
+  const { brands, seriesFor, modelsFor, couleursFor, addEntry, loading: catalogLoading } = usePhoneCatalog()
+
   const [form, setForm]       = useState<Partial<Phone>>({ ...EMPTY })
   const [loading, setLoading] = useState(false)
 
-  // ── Derived state ───────────────────────────────────────
-  const isApple   = form.marque === 'Apple'
-  const isNeuf    = form.condition === 'جديد'
+  // ── Derived state ────────────────────────────────────────
+  const isApple = form.marque === 'Apple'
+  const isNeuf  = form.condition === 'جديد'
 
-  // Models for selected brand, colors for selected model
-  const brandModels  = getModelsForBrand(form.marque ?? '')
-  const modelOptions = brandModels.map(m => m.model)
-  const colorOptions = getColorsForModel(form.marque ?? '', form.model ?? '')
+  // Dependent dropdown options
+  const serieOptions  = seriesFor(form.marque ?? '')
+  const modelOptions  = modelsFor(form.marque ?? '', form.serie ?? '')
+  const couleurOptions = couleursFor(form.model ?? '')
 
-  // ── Init ────────────────────────────────────────────────
+  // ── Init ─────────────────────────────────────────────────
   useEffect(() => {
     setForm(phone ? { ...phone } : { ...EMPTY })
   }, [phone, open])
 
-  // ── Auto-set battery to 100 when Neuf + Apple ──────────
+  // ── Auto-set battery 100 when Neuf + Apple ───────────────
   useEffect(() => {
     if (isApple && isNeuf) {
       setForm(prev => ({ ...prev, battery_level: 100 }))
@@ -81,20 +81,23 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
     setForm(prev => ({ ...prev, [field]: value }))
   }
 
-  // ── When marque changes, reset model + couleur ──────────
   function handleMarqueChange(val: string) {
     setForm(prev => ({
       ...prev,
       marque:  val,
+      serie:   '',
+      type:    '',
       model:   '',
       couleur: '',
-      // Clear battery/ram based on new brand
+      ram:     val === 'Apple' ? '' : prev.ram,
       battery_level: val === 'Apple' && prev.condition === 'جديد' ? 100 : (val === 'Apple' ? prev.battery_level : undefined),
-      ram:           val === 'Apple' ? '' : prev.ram,
     }))
   }
 
-  // ── When model changes, reset couleur ───────────────────
+  function handleSerieChange(val: string) {
+    setForm(prev => ({ ...prev, serie: val, model: '', couleur: '' }))
+  }
+
   function handleModelChange(val: string) {
     setForm(prev => ({ ...prev, model: val, couleur: '' }))
   }
@@ -107,6 +110,17 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
     }
     setLoading(true)
     try {
+      // If the model+couleur combo doesn't exist in catalog, auto-add it
+      if (form.marque && form.model && form.couleur) {
+        await addEntry({
+          marque:  form.marque,
+          serie:   form.serie  || form.marque,
+          type:    form.type   || 'Normal',
+          model:   form.model,
+          couleur: form.couleur,
+        })
+      }
+
       const payload = { ...form, store_id: storeId }
       const res = await fetch('/api/phones', {
         method:  isEdit ? 'PATCH' : 'POST',
@@ -156,35 +170,43 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
           </Field>
         </div>
 
-        {/* Row 2 — Marque (combobox) */}
+        {/* Row 2 — Marque */}
         <Field label={isAr ? 'الماركة' : 'Marque'} required>
           <ComboBox
-            options={ALL_BRANDS}
+            options={brands}
             value={form.marque ?? ''}
             onChange={handleMarqueChange}
-            placeholder={isAr ? 'اختر أو اكتب...' : 'Choisir ou saisir...'}
+            placeholder={catalogLoading
+              ? 'Chargement...'
+              : (isAr ? 'اختر أو اكتب...' : 'Choisir ou saisir...')}
+            disabled={catalogLoading}
           />
         </Field>
 
-        {/* Row 3 — Modèle (dependent on Marque) */}
-        <Field label={isAr ? 'الموديل' : 'Modèle'} required>
-          <ComboBox
-            options={modelOptions}
-            value={form.model ?? ''}
-            onChange={handleModelChange}
-            placeholder={
-              !form.marque
-                ? (isAr ? 'Choisissez d\'abord la marque' : 'Choisissez d\'abord la marque')
-                : (isAr ? 'اختر أو اكتب...' : 'Choisir ou saisir...')
-            }
-            disabled={!form.marque}
-          />
-        </Field>
+        {/* Row 3 — Série + Modèle */}
+        <div className="grid grid-cols-2 gap-4">
+          <Field label={isAr ? 'السلسلة' : 'Série'}>
+            <ComboBox
+              options={serieOptions}
+              value={form.serie ?? ''}
+              onChange={handleSerieChange}
+              placeholder={!form.marque ? 'Choisissez d\'abord la marque' : 'Choisir ou saisir...'}
+              disabled={!form.marque}
+            />
+          </Field>
+          <Field label={isAr ? 'الموديل' : 'Modèle'} required>
+            <ComboBox
+              options={modelOptions}
+              value={form.model ?? ''}
+              onChange={handleModelChange}
+              placeholder={!form.marque ? 'Choisissez d\'abord la marque' : 'Choisir ou saisir...'}
+              disabled={!form.marque}
+            />
+          </Field>
+        </div>
 
-        {/* Row 4 — Stockage + RAM (non-Apple) ou Batterie (Apple) + Couleur */}
+        {/* Row 4 — Stockage + RAM (non-Apple) + Couleur */}
         <div className={`grid gap-4 ${isApple ? 'grid-cols-2' : 'grid-cols-3'}`}>
-
-          {/* Stockage — always visible */}
           <Field label={isAr ? 'السعة' : 'Stockage'}>
             <ComboBox
               options={STOCKAGES}
@@ -194,7 +216,6 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
             />
           </Field>
 
-          {/* RAM — only for non-Apple */}
           {!isApple && (
             <Field label="RAM">
               <ComboBox
@@ -206,17 +227,12 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
             </Field>
           )}
 
-          {/* Couleur — dependent on Modèle */}
           <Field label={isAr ? 'اللون' : 'Couleur'}>
             <ComboBox
-              options={colorOptions}
+              options={couleurOptions}
               value={form.couleur ?? ''}
               onChange={v => set('couleur', v)}
-              placeholder={
-                !form.model
-                  ? (isAr ? 'Choisissez d\'abord le modèle' : 'Choisissez d\'abord le modèle')
-                  : (isAr ? 'اختر أو اكتب...' : 'Choisir...')
-              }
+              placeholder={!form.model ? 'Choisissez d\'abord le modèle' : 'Choisir ou saisir...'}
               disabled={!form.model}
             />
           </Field>
@@ -242,7 +258,6 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
             </div>
           </Field>
 
-          {/* Batterie — Apple only */}
           {isApple && (
             <Field label={isAr ? 'مستوى البطارية (%)' : 'Batterie (%)'}>
               <input
@@ -254,11 +269,9 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
                 onChange={e => set('battery_level', e.target.value ? Number(e.target.value) : undefined)}
               />
               {form.battery_level != null && (
-                <div className="mt-2">
-                  <BatteryBar level={form.battery_level} />
-                </div>
+                <div className="mt-2"><BatteryBar level={form.battery_level} /></div>
               )}
-              {isNeuf && isApple && (
+              {isNeuf && (
                 <p className="text-xs text-[#9A9690] mt-1">
                   ✓ Automatiquement défini à 100% pour un appareil neuf
                 </p>
@@ -288,13 +301,9 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
 
         {/* Garantie */}
         <Field label={isAr ? 'مدة الضمان (شهر)' : 'Garantie (mois)'}>
-          <input
-            type="number"
-            min={0} max={36}
-            className={inputClass}
+          <input type="number" min={0} max={36} className={inputClass}
             value={form.warranty_months ?? 6}
-            onChange={e => set('warranty_months', Number(e.target.value))}
-          />
+            onChange={e => set('warranty_months', Number(e.target.value))} />
         </Field>
 
         {/* Description */}
@@ -308,7 +317,7 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
           />
         </Field>
 
-        {/* Financial fields — manager/owner only */}
+        {/* Financial fields */}
         {canSeeFinancials && (
           <>
             <div className="border-t border-[#E8E5DE] pt-4">
@@ -317,34 +326,28 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
               </p>
               <div className="grid grid-cols-3 gap-4">
                 <Field label={isAr ? 'سعر الشراء' : 'Prix achat'}>
-                  <input type="number" min={0} step={0.01} className={inputClass}
-                    placeholder="0.00"
+                  <input type="number" min={0} step={0.01} className={inputClass} placeholder="0.00"
                     value={form.prix_achat ?? ''} onChange={e => set('prix_achat', e.target.value ? Number(e.target.value) : undefined)} />
                 </Field>
                 <Field label={isAr ? 'سعر البيع المقترح' : 'Prix vente recommandé'}>
-                  <input type="number" min={0} step={0.01} className={inputClass}
-                    placeholder="0.00"
+                  <input type="number" min={0} step={0.01} className={inputClass} placeholder="0.00"
                     value={form.prix_vente_recommande ?? ''} onChange={e => set('prix_vente_recommande', e.target.value ? Number(e.target.value) : undefined)} />
                 </Field>
                 <Field label={isAr ? 'سعر البيع الأدنى' : 'Prix vente minimum'}>
-                  <input type="number" min={0} step={0.01} className={inputClass}
-                    placeholder="0.00"
+                  <input type="number" min={0} step={0.01} className={inputClass} placeholder="0.00"
                     value={form.prix_vente_minimum ?? ''} onChange={e => set('prix_vente_minimum', e.target.value ? Number(e.target.value) : undefined)} />
                 </Field>
               </div>
             </div>
 
-            {/* iCloud — Apple only */}
             {isApple && (
               <div className="grid grid-cols-2 gap-4 p-4 bg-[#F8F7F4] rounded-xl border border-[#E8E5DE]">
                 <Field label="Compte iCloud">
-                  <input type="text" className={inputClass}
-                    placeholder="exemple@icloud.com"
+                  <input type="text" className={inputClass} placeholder="exemple@icloud.com"
                     value={form.icloud_compte || ''} onChange={e => set('icloud_compte', e.target.value)} />
                 </Field>
                 <Field label="Mot de passe iCloud">
-                  <input type="text" className={inputClass}
-                    placeholder="••••••••"
+                  <input type="text" className={inputClass} placeholder="••••••••"
                     value={form.icloud_mdp || ''} onChange={e => set('icloud_mdp', e.target.value)} />
                 </Field>
               </div>
@@ -357,12 +360,8 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
           <Btn variant="secondary" type="button" onClick={onClose}>
             {isAr ? 'إلغاء' : 'Annuler'}
           </Btn>
-          <Btn
-            variant="primary"
-            type="submit"
-            loading={loading}
-            style={{ backgroundColor: primary } as React.CSSProperties}
-          >
+          <Btn variant="primary" type="submit" loading={loading}
+            style={{ backgroundColor: primary } as React.CSSProperties}>
             {isEdit
               ? (isAr ? 'حفظ التعديلات' : 'Enregistrer les modifications')
               : (isAr ? 'إضافة الهاتف' : 'Ajouter le téléphone')}
