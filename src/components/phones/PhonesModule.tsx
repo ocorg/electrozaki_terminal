@@ -13,7 +13,7 @@ import LabelGenerator, { type LabelProduct } from '@/components/print/LabelGener
 import {
   Plus, Search, Filter, RefreshCw,
   Smartphone, Edit2, MapPin, Shield,
-  ChevronDown, X, Eye, EyeOff
+  ChevronDown, X, Eye, EyeOff, Trash2, Loader2
 } from 'lucide-react'
 
 const STATUSES = ['متوفر', 'مباع', 'إستبدال', 'إصلاح']
@@ -37,7 +37,9 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
   const [formOpen, setFormOpen]       = useState(false)
   const [editPhone, setEditPhone]     = useState<Phone | null>(null)
   const [showFilters, setShowFilters] = useState(false)
-  const [labelProduct, setLabelProduct] = useState<LabelProduct | null>(null)
+  const [labelProduct,  setLabelProduct]  = useState<LabelProduct | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)  // holds phone_id
+  const [deleting,      setDeleting]      = useState(false)
 
   // Filters
   const [search, setSearch]       = useState('')
@@ -71,6 +73,21 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
   }, [fetchPhones, search])
 
   function openAdd() { setEditPhone(null); setFormOpen(true) }
+  async function handleDelete(phone_id: string) {
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/phones?phone_id=${phone_id}`, { method: 'DELETE' })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error)
+      toast.success(isAr ? 'تم الحذف ✓' : 'Supprimé ✓')
+      setConfirmDelete(null)
+      fetchPhones()
+    } catch (err: unknown) {
+      toast.error((err as Error).message)
+    } finally {
+      setDeleting(false)
+    }
+  }
   function openEdit(p: Phone) { setEditPhone(p); setFormOpen(true) }
 
   function clearFilters() {
@@ -371,6 +388,14 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                       >
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
+                      {canSeeFinancials && (
+                        <button
+                          onClick={() => setConfirmDelete(phone.phone_id)}
+                          className="flex items-center justify-center w-8 h-8 rounded-lg text-[#B0ADA6] hover:text-red-500 hover:bg-red-50 transition-all"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 )
@@ -412,6 +437,31 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
           )}
         </div>
       </div>
+
+      {/* Delete confirmation */}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+            <p className="text-base font-bold text-[#1A1A1A] mb-2">
+              {isAr ? 'تأكيد الحذف' : 'Confirmer la suppression'}
+            </p>
+            <p className="text-sm text-[#6B6860] mb-6">
+              {isAr ? 'هذا الإجراء لا يمكن التراجع عنه.' : 'Cette action est irréversible.'}
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button onClick={() => setConfirmDelete(null)}
+                className="px-4 py-2 rounded-xl border border-[#E8E5DE] text-sm text-[#6B6860] hover:bg-[#F8F7F4] transition-all">
+                {isAr ? 'إلغاء' : 'Annuler'}
+              </button>
+              <button onClick={() => handleDelete(confirmDelete)} disabled={deleting}
+                className="px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-medium hover:bg-red-600 transition-all disabled:opacity-50 flex items-center gap-2">
+                {deleting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                {isAr ? 'حذف' : 'Supprimer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Label generator */}
       {labelProduct && (

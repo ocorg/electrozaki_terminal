@@ -11,7 +11,7 @@ import { toast } from 'sonner'
 import type { AccCategory } from '@/types/database'
 import {
   Package, Plus, Search, X, RefreshCw,
-  Edit2, AlertTriangle, Minus, TrendingUp
+  Edit2, AlertTriangle, Minus, TrendingUp, Trash2, Loader2
 } from 'lucide-react'
 
 const CATEGORIES: { value: AccCategory; labelFr: string; labelAr: string }[] = [
@@ -75,7 +75,9 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
   const [form, setForm]               = useState({ ...EMPTY_FORM })
   const [submitting, setSubmitting]   = useState(false)
   const [adjusting, setAdjusting]     = useState<string | null>(null)
-  const [labelProduct, setLabelProduct] = useState<LabelProduct | null>(null)
+  const [labelProduct,  setLabelProduct]  = useState<LabelProduct | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+  const [deleting,      setDeleting]      = useState(false)
 
   const fetchAccessories = useCallback(async () => {
     setLoading(true)
@@ -101,6 +103,22 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
 
   function setF(k: keyof typeof EMPTY_FORM, v: string) {
     setForm(prev => ({ ...prev, [k]: v }))
+  }
+
+  async function handleDelete(acc_id: string) {
+    setDeleting(true)
+    try {
+      const res  = await fetch(`/api/accessories?acc_id=${acc_id}`, { method: 'DELETE' })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error)
+      toast.success(isAr ? 'تم الحذف ✓' : 'Supprimé ✓')
+      setConfirmDelete(null)
+      fetchAccessories()
+    } catch (err: unknown) {
+      toast.error((err as Error).message)
+    } finally {
+      setDeleting(false)
+    }
   }
 
   function openAdd() {
@@ -404,6 +422,14 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
                     >
                       <Edit2 className="w-3.5 h-3.5" />
                     </button>
+                    {canFinancials && (
+                      <button
+                        onClick={() => setConfirmDelete(acc.acc_id)}
+                        className="p-1.5 rounded-lg text-[#B0ADA6] hover:text-red-500 hover:bg-red-50 transition-all"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -446,6 +472,31 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
           )}
         </div>
       </div>
+
+      {/* Delete confirmation */}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+            <p className="text-base font-bold text-[#1A1A1A] mb-2">
+              {isAr ? 'تأكيد الحذف' : 'Confirmer la suppression'}
+            </p>
+            <p className="text-sm text-[#6B6860] mb-6">
+              {isAr ? 'هذا الإجراء لا يمكن التراجع عنه.' : 'Cette action est irréversible.'}
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button onClick={() => setConfirmDelete(null)}
+                className="px-4 py-2 rounded-xl border border-[#E8E5DE] text-sm text-[#6B6860] hover:bg-[#F8F7F4] transition-all">
+                {isAr ? 'إلغاء' : 'Annuler'}
+              </button>
+              <button onClick={() => handleDelete(confirmDelete)} disabled={deleting}
+                className="px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-medium hover:bg-red-600 transition-all disabled:opacity-50 flex items-center gap-2">
+                {deleting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                {isAr ? 'حذف' : 'Supprimer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Label generator */}
       {labelProduct && (

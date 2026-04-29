@@ -1,5 +1,5 @@
 'use client'
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { usePortal } from '@/lib/context/portal'
 import { useLanguageStore } from '@/lib/stores/language'
 import { Modal, Btn } from '@/components/shared'
@@ -10,13 +10,11 @@ import dynamic from 'next/dynamic'
 const QRCode = dynamic(() => import('qrcode').then(m => ({
   default: ({ value, size }: { value: string; size: number }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null)
-    const [ready, setReady] = useState(false)
-    // Draw QR on mount
-    if (typeof window !== 'undefined' && canvasRef.current && !ready) {
-      m.toCanvas(canvasRef.current, value, { width: size, margin: 1 })
-        .then(() => setReady(true))
-        .catch(() => {})
-    }
+    useEffect(() => {
+      if (canvasRef.current) {
+        m.toCanvas(canvasRef.current, value, { width: size, margin: 1 }).catch(() => {})
+      }
+    }, [value, size])
     return <canvas ref={canvasRef} width={size} height={size} />
   },
 })), { ssr: false })
