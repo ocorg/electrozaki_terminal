@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 export interface CatalogEntry {
@@ -21,22 +21,23 @@ interface CatalogState {
 }
 
 export function usePhoneCatalog(): CatalogState {
-  const supabase = createClient()
+  const supabase = useRef(createClient()).current
   const [catalog, setCatalog] = useState<CatalogEntry[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function load() {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('phone_catalog')
         .select('*')
         .order('marque')
         .order('model')
-      if (data) setCatalog(data)
+      if (data && data.length > 0) setCatalog(data)
+      if (error) console.error('[usePhoneCatalog]', error.message)
       setLoading(false)
     }
     load()
-  }, [supabase])
+  }, [])
 
   const brands = Array.from(new Set(catalog.map(e => e.marque))).sort()
 
