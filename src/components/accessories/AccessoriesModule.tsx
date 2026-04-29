@@ -387,8 +387,8 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
                         id:       acc.acc_id,
                         name:     `${acc.marque ? acc.marque + ' ' : ''}${acc.nom}`,
                         category: getCatLabel(acc.categorie),
-                        prix:     canFinancials ? (acc.prix_vente_recommande ?? undefined) : undefined,
-                        barcode:  acc.barcode ?? undefined,
+                        stockage: undefined,
+                        couleur:  undefined,
                       })}
                       className="p-1.5 rounded-lg text-[#B0ADA6] hover:text-[#1A1A1A] hover:bg-[#F2F0EB] transition-all"
                       title="Générer étiquette"
