@@ -286,7 +286,8 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                 return (
                   <div
                     key={phone.phone_id}
-                    className="hidden lg:grid items-center px-5 py-3.5 hover:bg-[#F8F7F4] transition-all"
+                    onClick={() => openEdit(phone)}
+                    className="hidden lg:grid items-center px-5 py-3.5 hover:bg-[#F8F7F4] transition-all cursor-pointer"
                     style={{ gridTemplateColumns: canSeeFinancials ? '2fr 1fr 1fr 1fr 1fr 1fr 80px' : '2fr 1fr 1fr 1fr 1fr 80px' }}
                   >
                     {/* Device name */}
@@ -343,15 +344,18 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                     )}
 
                     {/* Actions */}
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
                       <button
                         onClick={() => setLabelProduct({
-                          id:       phone.phone_id,
-                          name:     `${phone.marque} ${phone.model}${phone.stockage ? ' ' + phone.stockage : ''}`,
-                          category: 'Téléphone',
-                          type:     phone.condition === 'جديد' ? 'Neuf' : phone.condition === 'مستعمل' ? 'Occasion' : 'Défectueux',
-                          prix:     canSeeFinancials ? (phone.prix_vente_recommande ?? undefined) : undefined,
-                          barcode:  phone.imei ?? undefined,
+                          id:            phone.phone_id,
+                          name:          `${phone.marque} ${phone.model}`,
+                          category:      'Téléphone',
+                          type:          phone.condition === 'جديد' ? 'Neuf' : phone.condition === 'مستعمل' ? 'Occasion' : 'Défectueux',
+                          imei:          phone.imei          ?? undefined,
+                          couleur:       phone.couleur       ?? undefined,
+                          stockage:      phone.stockage      ?? undefined,
+                          battery_level: phone.marque === 'Apple' ? (phone.battery_level ?? undefined) : undefined,
+                          ram:           phone.marque !== 'Apple' ? (phone.ram ?? undefined) : undefined,
                         })}
                         className="flex items-center justify-center w-8 h-8 rounded-lg text-[#B0ADA6] hover:text-[#1A1A1A] hover:bg-[#F2F0EB] transition-all"
                         title="Générer étiquette"
@@ -377,7 +381,8 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                 const deviceName = `${phone.marque} ${phone.model}${phone.stockage ? ` ${phone.stockage}` : ''}`
                 return (
                   <div key={`mob-${phone.phone_id}`}
-                       className="lg:hidden flex items-center gap-4 px-4 py-3.5 hover:bg-[#F8F7F4] transition-all">
+                       onClick={() => openEdit(phone)}
+                       className="lg:hidden flex items-center gap-4 px-4 py-3.5 hover:bg-[#F8F7F4] transition-all cursor-pointer">
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
                          style={{ backgroundColor: `${primary}12` }}>
                       <Smartphone className="w-5 h-5" style={{ color: primary }} />

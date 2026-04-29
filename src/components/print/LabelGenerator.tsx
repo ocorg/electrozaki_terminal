@@ -22,12 +22,15 @@ const QRCode = dynamic(() => import('qrcode').then(m => ({
 })), { ssr: false })
 
 export interface LabelProduct {
-  id:         string   // PHO-0001, LAP-0001, EZ-ACC-000001
-  name:       string   // Full display name e.g. "Apple iPhone 15 Pro 256GB"
-  category:   string   // Téléphone / Laptop / Accessoire
-  type?:      string   // Neuf / Occasion / Défectueux
-  prix?:      number   // Selling price (optional — shown if provided)
-  barcode?:   string   // Barcode/IMEI if available
+  id:             string   // PHO-0001, LAP-0001, EZ-ACC-000001
+  name:           string   // Full display name e.g. "Apple iPhone 15 Pro"
+  category:       string   // Téléphone / Laptop / Accessoire
+  type?:          string   // Neuf / Occasion / Défectueux
+  imei?:          string   // IMEI — encoded in QR code
+  couleur?:       string
+  stockage?:      string
+  battery_level?: number   // shown for iPhones
+  ram?:           string   // shown for non-Apple
 }
 
 interface LabelGeneratorProps {
@@ -158,17 +161,7 @@ export default function LabelGenerator({ product, open, onClose }: LabelGenerato
               gap:            '6px',
               flexShrink:     0,
             }}>
-              <QRCode value={product.id} size={107} />
-              <p style={{
-                fontSize:    '8px',
-                color:       '#6B6860',
-                fontFamily:  'monospace',
-                textAlign:   'center',
-                wordBreak:   'break-all',
-                maxWidth:    '112px',
-              }}>
-                {product.id}
-              </p>
+              <QRCode value={product.imei || product.id} size={107} />
             </div>
 
             {/* Right: Info */}
@@ -230,39 +223,25 @@ export default function LabelGenerator({ product, open, onClose }: LabelGenerato
                 </div>
               </div>
 
-              {/* Barcode / IMEI */}
-              {product.barcode && (
-                <p style={{
-                  fontSize:   '9px',
-                  color:      '#6B6860',
-                  fontFamily: 'monospace',
-                  marginTop:  '2px',
-                }}>
-                  {product.barcode}
+              {/* Spec line */}
+              {(product.stockage || product.couleur || product.battery_level != null || product.ram) && (
+                <p style={{ fontSize: '10px', fontWeight: '600', color: '#3A3835', margin: '0 0 4px', lineHeight: '1.2' }}>
+                  {[
+                    product.stockage,
+                    product.couleur,
+                    product.battery_level != null ? `${product.battery_level}% 🔋` : null,
+                    product.ram ? `${product.ram} RAM` : null,
+                  ].filter(Boolean).join(' · ')}
                 </p>
               )}
 
-              {/* Price */}
-              {product.prix != null && (
-                <div style={{
-                  borderTop:  `2px solid ${primary}`,
-                  paddingTop: '6px',
-                  marginTop:  '4px',
-                }}>
-                  <p style={{
-                    fontSize:   '18px',
-                    fontWeight: 'bold',
-                    color:      primary,
-                    lineHeight: '1',
-                  }}>
-                    {new Intl.NumberFormat('fr-MA', {
-                      style:                 'currency',
-                      currency:              'MAD',
-                      minimumFractionDigits: 0,
-                    }).format(product.prix)}
-                  </p>
-                </div>
+              {/* IMEI */}
+              {product.imei && (
+                <p style={{ fontSize: '8px', color: '#9A9690', fontFamily: 'monospace', margin: 0 }}>
+                  {product.imei}
+                </p>
               )}
+
 
               {/* Bottom: date */}
               <p style={{

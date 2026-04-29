@@ -28,20 +28,27 @@ type CartItem = DeviceResult & {
 }
 
 interface SaleForm {
-  client_nom:          string
-  client_tel:          string
-  type_operation:      OperationType
-  payment_method:      PaymentMethod
-  montant_especes:     number
-  montant_carte:       number
-  avance:              number
-  payment_ref:         string
-  valeur_echange:      number
-  marque_echange:      string
-  model_echange:       string
-  imei_echange:        string
-  description_echange: string
-  notes:               string
+  client_nom:              string
+  client_tel:              string
+  type_operation:          OperationType
+  payment_method:          PaymentMethod
+  montant_especes:         number
+  montant_carte:           number
+  avance:                  number
+  payment_ref:             string
+  valeur_echange:          number
+  marque_echange:          string
+  model_echange:           string
+  imei_echange:            string
+  description_echange:     string
+  notes:                   string
+  couleur_echange?:        string
+  stockage_echange?:       string
+  battery_echange?:        number
+  ram_echange?:            string
+  prix_vente_echange?:     number
+  prix_min_echange?:       number
+  echange_vers_reparation?: boolean
 }
 
 const EMPTY_SALE: SaleForm = {
@@ -52,6 +59,10 @@ const EMPTY_SALE: SaleForm = {
   avance: 0, payment_ref: '',
   valeur_echange: 0, marque_echange: '', model_echange: '',
   imei_echange: '', description_echange: '', notes: '',
+  couleur_echange: '', stockage_echange: '',
+  battery_echange: undefined, ram_echange: '',
+  prix_vente_echange: undefined, prix_min_echange: undefined,
+  echange_vers_reparation: false,
 }
 
 interface POSModuleProps {
@@ -557,22 +568,94 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
               <p className="text-xs font-bold text-blue-700 uppercase tracking-widest">
                 {isAr ? 'الجهاز المستبدل' : 'Appareil échangé'}
               </p>
+
+              {/* Marque + Modèle */}
               <div className="grid grid-cols-2 gap-2">
                 <input className={inputClass} placeholder={isAr ? 'الماركة' : 'Marque'}
                   value={saleForm.marque_echange} onChange={e => setSale('marque_echange', e.target.value)} />
                 <input className={inputClass} placeholder={isAr ? 'الموديل' : 'Modèle'}
                   value={saleForm.model_echange} onChange={e => setSale('model_echange', e.target.value)} />
               </div>
-              <input className={inputClass} placeholder="IMEI"
-                value={saleForm.imei_echange} onChange={e => setSale('imei_echange', e.target.value)} />
+
+              {/* Couleur + Stockage */}
+              <div className="grid grid-cols-2 gap-2">
+                <input className={inputClass} placeholder={isAr ? 'اللون' : 'Couleur'}
+                  value={saleForm.couleur_echange ?? ''} onChange={e => setSale('couleur_echange', e.target.value)} />
+                <input className={inputClass} placeholder="Stockage (128GB…)"
+                  value={saleForm.stockage_echange ?? ''} onChange={e => setSale('stockage_echange', e.target.value)} />
+              </div>
+
+              {/* Battery (Apple) or RAM (others) */}
+              {saleForm.marque_echange?.toLowerCase().includes('apple') ? (
+                <div>
+                  <label className="text-xs text-blue-700 font-medium">Batterie (%)</label>
+                  <input type="number" min={0} max={100} className={`${inputClass} mt-1`}
+                    placeholder="85"
+                    value={saleForm.battery_echange ?? ''} onChange={e => setSale('battery_echange', e.target.value ? Number(e.target.value) : undefined)} />
+                </div>
+              ) : (
+                <div>
+                  <label className="text-xs text-blue-700 font-medium">RAM</label>
+                  <input className={`${inputClass} mt-1`} placeholder="4GB…"
+                    value={saleForm.ram_echange ?? ''} onChange={e => setSale('ram_echange', e.target.value)} />
+                </div>
+              )}
+
+              {/* IMEI with scanner */}
               <div>
-                <label className="text-xs text-[#6B6860]">
-                  {isAr ? 'قيمة الاستبدال (درهم)' : 'Valeur échange (MAD)'}
+                <label className="text-xs text-blue-700 font-medium">IMEI</label>
+                <div className="flex gap-2 mt-1">
+                  <input className={inputClass} placeholder="356XXXXXXXXXXXXX"
+                    value={saleForm.imei_echange} onChange={e => setSale('imei_echange', e.target.value)} />
+                  <ScanButton onScan={v => setSale('imei_echange', v)}
+                    hint="Scannez l'IMEI de l'appareil repris" color={primary} />
+                </div>
+              </div>
+
+              {/* Prix vente recommandé + minimum */}
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs text-blue-700 font-medium">
+                    {isAr ? 'سعر البيع المقترح' : 'Prix vente (MAD)'}
+                  </label>
+                  <input type="number" className={`${inputClass} mt-1`} placeholder="0"
+                    value={saleForm.prix_vente_echange ?? ''} onChange={e => setSale('prix_vente_echange', e.target.value ? Number(e.target.value) : undefined)} />
+                </div>
+                <div>
+                  <label className="text-xs text-blue-700 font-medium">
+                    {isAr ? 'السعر الأدنى' : 'Prix minimum (MAD)'}
+                  </label>
+                  <input type="number" className={`${inputClass} mt-1`} placeholder="0"
+                    value={saleForm.prix_min_echange ?? ''} onChange={e => setSale('prix_min_echange', e.target.value ? Number(e.target.value) : undefined)} />
+                </div>
+              </div>
+
+              {/* Valeur échange */}
+              <div>
+                <label className="text-xs text-blue-700 font-medium">
+                  {isAr ? 'قيمة الاستبدال (تُخصم من الإجمالي)' : 'Valeur échange déduite (MAD)'}
                 </label>
                 <input type="number" className={`${inputClass} mt-1`}
                   value={saleForm.valeur_echange || ''}
                   onChange={e => setSale('valeur_echange', Number(e.target.value))} />
               </div>
+
+              {/* Send to repair toggle */}
+              <label className="flex items-center gap-3 cursor-pointer select-none">
+                <div
+                  onClick={() => setSale('echange_vers_reparation', !saleForm.echange_vers_reparation)}
+                  className={`w-10 h-5 rounded-full transition-colors flex-shrink-0 flex items-center px-0.5 ${
+                    saleForm.echange_vers_reparation ? 'bg-amber-500' : 'bg-[#D4D1CC]'
+                  }`}
+                >
+                  <div className={`w-4 h-4 rounded-full bg-white shadow transition-transform ${
+                    saleForm.echange_vers_reparation ? 'translate-x-5' : 'translate-x-0'
+                  }`} />
+                </div>
+                <span className="text-xs font-medium text-blue-700">
+                  {isAr ? 'إرسال للإصلاح قبل الوضع في المخزون' : 'Envoyer en réparation avant mise en stock'}
+                </span>
+              </label>
             </div>
           )}
 
@@ -742,18 +825,22 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
           body:    JSON.stringify({
-            marque:        exchangeForm.marque || 'Inconnu',
-            model:         exchangeForm.modele,
-            imei:          exchangeForm.imei,
-            prix_achat:    exchangeForm.prix_achat,
-            couleur:       exchangeForm.couleur || null,
-            stockage:      exchangeForm.capacite || null,
-            condition:     'مستعمل',
-            source:        'Échange',
-            status:        'متوفر',
-            location:      'Magasin Principal',
-            txn_ref_id:    exchangePanel?.txn_id,
-          }),
+              marque:                exchangeForm.marque || 'Inconnu',
+              model:                 exchangeForm.modele,
+              imei:                  exchangeForm.imei,
+              prix_achat:            exchangeForm.prix_achat,
+              prix_vente_recommande: saleForm.prix_vente_echange ?? null,
+              prix_vente_minimum:    saleForm.prix_min_echange   ?? null,
+              couleur:               exchangeForm.couleur   || null,
+              stockage:              exchangeForm.capacite  || null,
+              battery_level:         saleForm.battery_echange    ?? null,
+              ram:                   saleForm.ram_echange        || null,
+              condition:             'مستعمل',
+              source:                'Échange',
+              status:                saleForm.echange_vers_reparation ? 'إصلاح' : 'متوفر',
+              location:              'Magasin Principal',
+              txn_ref_id:            exchangePanel?.txn_id,
+            }),
         })
         const json = await res.json()
         if (!res.ok) throw new Error(json.error)
