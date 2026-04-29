@@ -9,6 +9,8 @@ import { StatusBadge } from '@/components/shared'
 import { toast } from 'sonner'
 import type { Phone, Laptop, PaymentMethod, OperationType } from '@/types/database'
 import ScanButton from '@/components/scanner/ScanButton'
+import ComboBox from '@/components/phones/ComboBox'
+import { usePhoneCatalog } from '@/lib/hooks/usePhoneCatalog'
 import {
   Search, ShoppingCart, User, CreditCard, ArrowLeftRight,
   X, Plus, AlertTriangle, Loader2, CheckCircle,
@@ -28,26 +30,26 @@ type CartItem = DeviceResult & {
 }
 
 interface SaleForm {
-  client_nom:              string
-  client_tel:              string
-  type_operation:          OperationType
-  payment_method:          PaymentMethod
-  montant_especes:         number
-  montant_carte:           number
-  avance:                  number
-  payment_ref:             string
-  valeur_echange:          number
-  marque_echange:          string
-  model_echange:           string
-  imei_echange:            string
-  description_echange:     string
-  notes:                   string
-  couleur_echange?:        string
-  stockage_echange?:       string
-  battery_echange?:        number
-  ram_echange?:            string
-  prix_vente_echange?:     number
-  prix_min_echange?:       number
+  client_nom:               string
+  client_tel:               string
+  type_operation:           OperationType
+  payment_method:           PaymentMethod
+  montant_especes:          number
+  montant_carte:            number
+  avance:                   number
+  payment_ref:              string
+  valeur_echange:           number
+  marque_echange:           string
+  model_echange:            string
+  imei_echange:             string
+  description_echange:      string
+  notes:                    string
+  couleur_echange?:         string
+  stockage_echange?:        string
+  battery_echange?:         number
+  ram_echange?:             string
+  prix_vente_echange?:      number
+  prix_min_echange?:        number
   echange_vers_reparation?: boolean
 }
 
@@ -84,6 +86,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
   const [searching, setSearching] = useState(false)
   const [cart, setCart]           = useState<CartItem[]>([])
   const [saleForm, setSaleForm]   = useState<SaleForm>({ ...EMPTY_SALE })
+  const { brands, seriesFor, modelsFor, couleursFor } = usePhoneCatalog()
 
   const [overrideOpen, setOverrideOpen]     = useState(false)
   const [overridePin, setOverridePin]       = useState('')
@@ -93,12 +96,19 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
   const [submitting, setSubmitting]   = useState(false)
   // Exchange intake panel (shown after successful sale with exchange)
   const [exchangePanel, setExchangePanel] = useState<{
-    open: boolean
-    txn_id: string
-    valeur_echange: number
-    marque_echange: string
-    model_echange: string
-    imei_echange: string
+    open:                    boolean
+    txn_id:                  string
+    valeur_echange:          number
+    marque_echange:          string
+    model_echange:           string
+    imei_echange:            string
+    couleur_echange:         string
+    stockage_echange:        string
+    battery_echange?:        number
+    ram_echange:             string
+    prix_vente_echange?:     number
+    prix_min_echange?:       number
+    echange_vers_reparation: boolean
   } | null>(null)
   const [exchangeForm, setExchangeForm] = useState({
     modele: '', imei: '', marque: '', prix_achat: 0, couleur: '', capacite: '',
@@ -288,13 +298,20 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
       // Check if exchange device needs intake
       if (saleForm.valeur_echange > 0) {
         setExchangePanel({
-          open:           true,
-          txn_id:         lastTxnId || '',
-          valeur_echange: saleForm.valeur_echange,
-          marque_echange: saleForm.marque_echange ?? '',
-          model_echange:  saleForm.model_echange  ?? '',
-          imei_echange:   saleForm.imei_echange   ?? '',
-        })
+        open:                   true,
+        txn_id:                 lastTxnId || '',
+        valeur_echange:         saleForm.valeur_echange,
+        marque_echange:         saleForm.marque_echange         ?? '',
+        model_echange:          saleForm.model_echange          ?? '',
+        imei_echange:           saleForm.imei_echange           ?? '',
+        couleur_echange:        saleForm.couleur_echange        ?? '',
+        stockage_echange:       saleForm.stockage_echange       ?? '',
+        battery_echange:        saleForm.battery_echange,
+        ram_echange:            saleForm.ram_echange            ?? '',
+        prix_vente_echange:     saleForm.prix_vente_echange,
+        prix_min_echange:       saleForm.prix_min_echange,
+        echange_vers_reparation: saleForm.echange_vers_reparation ?? false,
+      })
         setExchangeForm({
           modele:      saleForm.model_echange  ?? '',
           imei:        saleForm.imei_echange   ?? '',
@@ -342,6 +359,103 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
       </div>
     </div>
   )
+
+  // ── Render exchange intake panel ─────────────────────────
+  // Inline component for post-sale exchange intake
+  function ExchangeIntakePanel() {
+    if (!exchangePanel?.open) return null
+
+    async function handleAddToStock() {
+      if (!exchangeForm.modele || !exchangeForm.imei) {
+        toast.error(isAr ? 'الموديل والرقم التسلسلي مطلوبان' : 'Modèle et IMEI requis')
+        return
+      }
+      setAddingExchange(true)
+      try {
+        const res = await fetch('/api/phones', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({
+              marque:                exchangeForm.marque || 'Inconnu',
+              model:                 exchangeForm.modele,
+              imei:                  exchangeForm.imei,
+              prix_achat:            exchangeForm.prix_achat,
+              prix_vente_recommande: exchangePanel?.prix_vente_echange     ?? null,
+              prix_vente_minimum:    exchangePanel?.prix_min_echange        ?? null,
+              couleur:               exchangePanel?.couleur_echange         || exchangeForm.couleur  || null,
+              stockage:              exchangePanel?.stockage_echange        || exchangeForm.capacite || null,
+              battery_level:         exchangePanel?.battery_echange         ?? null,
+              ram:                   exchangePanel?.ram_echange             || null,
+              condition:             'مستعمل',
+              source:                'Échange',
+              status:                exchangePanel?.echange_vers_reparation ? 'إصلاح' : 'متوفر',
+              location:              'Magasin Principal',
+              txn_ref_id:            exchangePanel?.txn_id,
+            }),
+        })
+        const json = await res.json()
+        if (!res.ok) throw new Error(json.error)
+        setAddedPhoneId(json.data.phone_id)
+        toast.success(`${isAr ? 'أضيف إلى المخزون' : 'Ajouté au stock'}: ${json.data.phone_id}`)
+        setExchangePanel(p => p ? { ...p, open: false } : null)
+      } catch (err: unknown) {
+        toast.error((err as Error).message)
+      } finally {
+        setAddingExchange(false)
+      }
+    }
+
+    return (
+      <div className="mt-4 border border-amber-200 bg-amber-50 rounded-xl p-4 animate-fade-in">
+        <p className="text-sm font-bold text-amber-800 mb-3">
+          {isAr ? 'إضافة الجهاز المستلم إلى المخزون؟' : 'Ajouter l\'appareil repris à l\'inventaire ?'}
+        </p>
+        <div className="grid grid-cols-2 gap-3 mb-3">
+          <div>
+            <label className="text-xs text-amber-700 font-medium">{isAr ? 'الماركة' : 'Marque'}</label>
+            <input className="w-full mt-1 border border-amber-200 rounded-lg px-3 py-2 text-sm bg-white"
+              value={exchangeForm.marque}
+              onChange={e => setExchangeForm(p => ({ ...p, marque: e.target.value }))} />
+          </div>
+          <div>
+            <label className="text-xs text-amber-700 font-medium">{isAr ? 'الموديل' : 'Modèle'} *</label>
+            <input className="w-full mt-1 border border-amber-200 rounded-lg px-3 py-2 text-sm bg-white"
+              value={exchangeForm.modele}
+              onChange={e => setExchangeForm(p => ({ ...p, modele: e.target.value }))} />
+          </div>
+          <div>
+            <label className="text-xs text-amber-700 font-medium">IMEI *</label>
+            <input className="w-full mt-1 border border-amber-200 rounded-lg px-3 py-2 text-sm bg-white font-mono"
+              value={exchangeForm.imei}
+              onChange={e => setExchangeForm(p => ({ ...p, imei: e.target.value }))} />
+          </div>
+          <div>
+            <label className="text-xs text-amber-700 font-medium">{isAr ? 'سعر الشراء (درهم)' : 'Prix achat (MAD)'}</label>
+            <input type="number" className="w-full mt-1 border border-amber-200 rounded-lg px-3 py-2 text-sm bg-white"
+              value={exchangeForm.prix_achat}
+              onChange={e => setExchangeForm(p => ({ ...p, prix_achat: Number(e.target.value) }))} />
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleAddToStock}
+            disabled={addingExchange}
+            className="px-4 py-2 rounded-xl bg-amber-600 text-white text-sm font-medium hover:bg-amber-700 transition-all disabled:opacity-50"
+          >
+            {addingExchange
+              ? (isAr ? 'جارٍ الإضافة...' : 'Ajout en cours...')
+              : (isAr ? 'إضافة إلى المخزون' : 'Ajouter au stock')}
+          </button>
+          <button
+            onClick={() => setExchangePanel(p => p ? { ...p, open: false } : null)}
+            className="px-4 py-2 rounded-xl border border-amber-200 text-amber-700 text-sm font-medium hover:bg-amber-100 transition-all"
+          >
+            {isAr ? 'تجاهل' : 'Ignorer'}
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   // ── Main POS layout ───────────────────────────────────────
   return (
@@ -569,20 +683,38 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                 {isAr ? 'الجهاز المستبدل' : 'Appareil échangé'}
               </p>
 
-              {/* Marque + Modèle */}
-              <div className="grid grid-cols-2 gap-2">
-                <input className={inputClass} placeholder={isAr ? 'الماركة' : 'Marque'}
-                  value={saleForm.marque_echange} onChange={e => setSale('marque_echange', e.target.value)} />
-                <input className={inputClass} placeholder={isAr ? 'الموديل' : 'Modèle'}
-                  value={saleForm.model_echange} onChange={e => setSale('model_echange', e.target.value)} />
-              </div>
+              {/* Marque — dependent dropdown */}
+              <ComboBox
+                options={brands}
+                value={saleForm.marque_echange}
+                onChange={v => { setSale('marque_echange', v); setSale('model_echange', ''); setSale('couleur_echange', '') }}
+                placeholder={isAr ? 'الماركة' : 'Marque'}
+              />
+
+              {/* Modèle — filtered by marque */}
+              <ComboBox
+                options={modelsFor(saleForm.marque_echange)}
+                value={saleForm.model_echange}
+                onChange={v => { setSale('model_echange', v); setSale('couleur_echange', '') }}
+                placeholder={!saleForm.marque_echange ? 'Choisissez d\'abord la marque' : (isAr ? 'الموديل' : 'Modèle')}
+                disabled={!saleForm.marque_echange}
+              />
 
               {/* Couleur + Stockage */}
               <div className="grid grid-cols-2 gap-2">
-                <input className={inputClass} placeholder={isAr ? 'اللون' : 'Couleur'}
-                  value={saleForm.couleur_echange ?? ''} onChange={e => setSale('couleur_echange', e.target.value)} />
-                <input className={inputClass} placeholder="Stockage (128GB…)"
-                  value={saleForm.stockage_echange ?? ''} onChange={e => setSale('stockage_echange', e.target.value)} />
+                <ComboBox
+                  options={couleursFor(saleForm.model_echange)}
+                  value={saleForm.couleur_echange ?? ''}
+                  onChange={v => setSale('couleur_echange', v)}
+                  placeholder={!saleForm.model_echange ? 'Modèle d\'abord' : 'Couleur'}
+                  disabled={!saleForm.model_echange}
+                />
+                <ComboBox
+                  options={['32GB','64GB','128GB','256GB','512GB','1TB']}
+                  value={saleForm.stockage_echange ?? ''}
+                  onChange={v => setSale('stockage_echange', v)}
+                  placeholder="Stockage"
+                />
               </div>
 
               {/* Battery (Apple) or RAM (others) */}
@@ -638,6 +770,17 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                 <input type="number" className={`${inputClass} mt-1`}
                   value={saleForm.valeur_echange || ''}
                   onChange={e => setSale('valeur_echange', Number(e.target.value))} />
+              </div>
+
+              {/* Notes sur l'appareil repris */}
+              <div>
+                <label className="text-xs text-blue-700 font-medium block mb-1">
+                  {isAr ? 'ملاحظات عن الجهاز' : "Notes sur l'appareil repris"}
+                </label>
+                <textarea className={`${inputClass} resize-none text-xs`} rows={2}
+                  placeholder={isAr ? 'حالة الجهاز، الخدوش، المشاكل...' : 'État, rayures, problèmes connus...'}
+                  value={saleForm.description_echange}
+                  onChange={e => setSale('description_echange', e.target.value)} />
               </div>
 
               {/* Send to repair toggle */}
@@ -759,6 +902,17 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
         </div>
       </div>
 
+      {/* Exchange intake panel */}
+      {exchangePanel?.open && (
+        <div className="fixed inset-0 z-40 flex items-end lg:items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
+            <div className="p-5">
+              <ExchangeIntakePanel />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Override PIN modal */}
       <Modal
         open={overrideOpen}
@@ -809,100 +963,5 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
       </Modal>
     </div>
   )
-  // ── Render exchange intake panel ─────────────────────────
-  // Inline component for post-sale exchange intake
-  function ExchangeIntakePanel() {
-    if (!exchangePanel?.open) return null
-
-    async function handleAddToStock() {
-      if (!exchangeForm.modele || !exchangeForm.imei) {
-        toast.error(isAr ? 'الموديل والرقم التسلسلي مطلوبان' : 'Modèle et IMEI requis')
-        return
-      }
-      setAddingExchange(true)
-      try {
-        const res = await fetch('/api/phones', {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({
-              marque:                exchangeForm.marque || 'Inconnu',
-              model:                 exchangeForm.modele,
-              imei:                  exchangeForm.imei,
-              prix_achat:            exchangeForm.prix_achat,
-              prix_vente_recommande: saleForm.prix_vente_echange ?? null,
-              prix_vente_minimum:    saleForm.prix_min_echange   ?? null,
-              couleur:               exchangeForm.couleur   || null,
-              stockage:              exchangeForm.capacite  || null,
-              battery_level:         saleForm.battery_echange    ?? null,
-              ram:                   saleForm.ram_echange        || null,
-              condition:             'مستعمل',
-              source:                'Échange',
-              status:                saleForm.echange_vers_reparation ? 'إصلاح' : 'متوفر',
-              location:              'Magasin Principal',
-              txn_ref_id:            exchangePanel?.txn_id,
-            }),
-        })
-        const json = await res.json()
-        if (!res.ok) throw new Error(json.error)
-        setAddedPhoneId(json.data.phone_id)
-        toast.success(`${isAr ? 'أضيف إلى المخزون' : 'Ajouté au stock'}: ${json.data.phone_id}`)
-        setExchangePanel(p => p ? { ...p, open: false } : null)
-      } catch (err: unknown) {
-        toast.error((err as Error).message)
-      } finally {
-        setAddingExchange(false)
-      }
-    }
-
-    return (
-      <div className="mt-4 border border-amber-200 bg-amber-50 rounded-xl p-4 animate-fade-in">
-        <p className="text-sm font-bold text-amber-800 mb-3">
-          {isAr ? 'إضافة الجهاز المستلم إلى المخزون؟' : 'Ajouter l\'appareil repris à l\'inventaire ?'}
-        </p>
-        <div className="grid grid-cols-2 gap-3 mb-3">
-          <div>
-            <label className="text-xs text-amber-700 font-medium">{isAr ? 'الماركة' : 'Marque'}</label>
-            <input className="w-full mt-1 border border-amber-200 rounded-lg px-3 py-2 text-sm bg-white"
-              value={exchangeForm.marque}
-              onChange={e => setExchangeForm(p => ({ ...p, marque: e.target.value }))} />
-          </div>
-          <div>
-            <label className="text-xs text-amber-700 font-medium">{isAr ? 'الموديل' : 'Modèle'} *</label>
-            <input className="w-full mt-1 border border-amber-200 rounded-lg px-3 py-2 text-sm bg-white"
-              value={exchangeForm.modele}
-              onChange={e => setExchangeForm(p => ({ ...p, modele: e.target.value }))} />
-          </div>
-          <div>
-            <label className="text-xs text-amber-700 font-medium">IMEI *</label>
-            <input className="w-full mt-1 border border-amber-200 rounded-lg px-3 py-2 text-sm bg-white font-mono"
-              value={exchangeForm.imei}
-              onChange={e => setExchangeForm(p => ({ ...p, imei: e.target.value }))} />
-          </div>
-          <div>
-            <label className="text-xs text-amber-700 font-medium">{isAr ? 'سعر الشراء (درهم)' : 'Prix achat (MAD)'}</label>
-            <input type="number" className="w-full mt-1 border border-amber-200 rounded-lg px-3 py-2 text-sm bg-white"
-              value={exchangeForm.prix_achat}
-              onChange={e => setExchangeForm(p => ({ ...p, prix_achat: Number(e.target.value) }))} />
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleAddToStock}
-            disabled={addingExchange}
-            className="px-4 py-2 rounded-xl bg-amber-600 text-white text-sm font-medium hover:bg-amber-700 transition-all disabled:opacity-50"
-          >
-            {addingExchange
-              ? (isAr ? 'جارٍ الإضافة...' : 'Ajout en cours...')
-              : (isAr ? 'إضافة إلى المخزون' : 'Ajouter au stock')}
-          </button>
-          <button
-            onClick={() => setExchangePanel(p => p ? { ...p, open: false } : null)}
-            className="px-4 py-2 rounded-xl border border-amber-200 text-amber-700 text-sm font-medium hover:bg-amber-100 transition-all"
-          >
-            {isAr ? 'تجاهل' : 'Ignorer'}
-          </button>
-        </div>
-      </div>
-    )
-  }
+  
 }
