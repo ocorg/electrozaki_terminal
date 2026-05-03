@@ -88,10 +88,12 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
   const [saleForm, setSaleForm]   = useState<SaleForm>({ ...EMPTY_SALE })
   const { brands, seriesFor, modelsFor, couleursFor } = usePhoneCatalog()
 
-  const [overrideOpen, setOverrideOpen]     = useState(false)
-  const [overridePin, setOverridePin]       = useState('')
-  const [overrideItem, setOverrideItem]     = useState<CartItem | null>(null)
-  const [overrideLoading, setOverrideLoading] = useState(false)
+  const [overrideOpen, setOverrideOpen]         = useState(false)
+  const [overridePin, setOverridePin]           = useState('')
+  const [overrideItem, setOverrideItem]         = useState<CartItem | null>(null)
+  const [overrideLoading, setOverrideLoading]   = useState(false)
+  const [overrideReason, setOverrideReason]     = useState('')
+  const [overrideAuthorizedBy, setOverrideAuthorizedBy] = useState<string | null>(null)
 
   const [submitting, setSubmitting]   = useState(false)
   // Exchange intake panel (shown after successful sale with exchange)
@@ -203,6 +205,8 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
       })
       const json = await res.json()
       if (!json.authorized) throw new Error(isAr ? 'كود غلط' : 'Code incorrect')
+      if (!overrideReason.trim()) throw new Error(isAr ? 'سبب التجاوز مطلوب' : 'Motif de dérogation obligatoire')
+      setOverrideAuthorizedBy(json.user_id ?? null)
       if (overrideItem) {
         setCart(prev => prev.map(c =>
           c._id === overrideItem._id
@@ -233,6 +237,11 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
     saleForm.type_operation === 'إستبدال' ? saleForm.valeur_echange : 0
   )
   const statutPaiement = computeStatutPaiement(fariq)
+  const montantRendu   = saleForm.payment_method === 'نقد' && saleForm.montant_especes > totalVente
+    ? saleForm.montant_especes - totalVente
+    : saleForm.payment_method === 'مختلط' && (saleForm.montant_especes + saleForm.montant_carte) > totalVente
+    ? (saleForm.montant_especes + saleForm.montant_carte) - totalVente
+    : 0
 
   // ── Submit sale ───────────────────────────────────────────
   async function handleSubmit() {
@@ -278,8 +287,12 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
           model_echange:  saleForm.model_echange  || undefined,
           imei_echange:   saleForm.imei_echange   || undefined,
           description_echange: saleForm.description_echange || undefined,
-          warranty_start: new Date().toISOString().split('T')[0],
-          notes:          saleForm.notes          || undefined,
+          warranty_start:    new Date().toISOString().split('T')[0],
+          notes:             saleForm.notes || undefined,
+          montant_rendu:     montantRendu > 0 ? montantRendu : 0,
+          override_required: overrideAuthorizedBy != null ? true : undefined,
+          override_by:       overrideAuthorizedBy ?? undefined,
+          override_reason:   overrideAuthorizedBy != null ? overrideReason : undefined,
         }
 
         const res  = await fetch('/api/transactions', {
@@ -324,6 +337,8 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
       }
       setCart([])
       setSaleForm({ ...EMPTY_SALE })
+      setOverrideAuthorizedBy(null)
+      setOverrideReason('')
     } catch (err: unknown) {
       toast.error((err as Error).message)
     } finally {
@@ -376,6 +391,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
           body:    JSON.stringify({
+              store_id:              storeId,
               marque:                exchangeForm.marque || 'Inconnu',
               model:                 exchangeForm.modele,
               imei:                  exchangeForm.imei,
@@ -654,8 +670,8 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
               <ArrowLeftRight className="w-3.5 h-3.5" />
               {isAr ? 'نوع العملية' : "Type d'opération"}
             </p>
-            <div className="grid grid-cols-3 gap-2">
-              {(['بيع', 'إستبدال', 'تسبيق'] as OperationType[]).map(op => (
+            <div className="grid grid-cols-4 gap-2">
+              {(['بيع', 'إستبدال', 'تسبيق', 'Retour'] as OperationType[]).map(op => (
                 <button
                   key={op}
                   onClick={() => setSale('type_operation', op)}
@@ -666,11 +682,10 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                     color:           saleForm.type_operation === op ? 'white' : '#6B6860',
                   }}
                 >
-                  {op === 'بيع'
-                    ? (isAr ? 'بيع' : 'Vente')
-                    : op === 'إستبدال'
-                    ? (isAr ? 'إستبدال' : 'Échange')
-                    : (isAr ? 'تسبيق' : 'Avance')}
+                  {op === 'بيع'      ? (isAr ? 'بيع' : 'Vente')
+                   : op === 'إستبدال' ? (isAr ? 'إستبدال' : 'Échange')
+                   : op === 'تسبيق'  ? (isAr ? 'تسبيق' : 'Avance')
+                   : (isAr ? 'إرجاع' : 'Retour')}
                 </button>
               ))}
             </div>
@@ -873,6 +888,12 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                 <span className="text-[#1A1A1A]">- {formatMAD(saleForm.valeur_echange)}</span>
               </div>
             )}
+            {montantRendu > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-[#6B6860]">{isAr ? 'المبلغ المُسلَّم' : 'Espèces remises'}</span>
+                <span className="text-[#1A1A1A]">{formatMAD(saleForm.payment_method === 'نقد' ? saleForm.montant_especes : saleForm.montant_especes + saleForm.montant_carte)}</span>
+              </div>
+            )}
             <div className="flex justify-between items-end pt-2 border-t border-[#E8E5DE]">
               <span className="font-bold text-[#1A1A1A]">{isAr ? 'المتبقي للدفع' : 'Reste à payer'}</span>
               <div className="text-right">
@@ -880,6 +901,11 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                   {formatMAD(fariq)}
                 </p>
                 <StatusBadge status={statutPaiement} />
+                {montantRendu > 0 && (
+                  <div className="mt-1 px-2 py-1 bg-emerald-50 border border-emerald-200 rounded-lg text-xs font-bold text-emerald-700">
+                    {isAr ? `المونطان رونديو: ${formatMAD(montantRendu)}` : `Rendu: ${formatMAD(montantRendu)}`}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -943,6 +969,15 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
               onChange={e => setOverridePin(e.target.value.replace(/\D/g, '').slice(0, 4))}
               placeholder="••••"
               autoFocus
+            />
+          </Field>
+          <Field label={isAr ? 'سبب التجاوز *' : 'Motif de dérogation *'}>
+            <input
+              type="text"
+              className={inputClass}
+              value={overrideReason}
+              onChange={e => setOverrideReason(e.target.value)}
+              placeholder={isAr ? 'مثال: موافقة العميل، مبيع بالجملة...' : 'Ex: Accord client, vente en gros...'}
             />
           </Field>
           <div className="flex gap-3 justify-end">

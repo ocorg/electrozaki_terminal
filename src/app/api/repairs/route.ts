@@ -10,17 +10,21 @@ export async function GET(request: NextRequest) {
     if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
 
     const { searchParams } = new URL(request.url)
-    const store_id = searchParams.get('store_id')
-    const statut   = searchParams.get('statut')
-    const search   = searchParams.get('search')
+    const store_id  = searchParams.get('store_id')
+    const statut    = searchParams.get('statut')
+    const search    = searchParams.get('search')
+    const client_id = searchParams.get('client_id')
 
-    if (!store_id) return NextResponse.json({ error: 'store_id requis' }, { status: 400 })
+    if (!store_id && !client_id) return NextResponse.json({ error: 'store_id ou client_id requis' }, { status: 400 })
 
     let query = supabase
       .from('reparations')
       .select('*, clients(nom, telephone), reparations_parts(*)')
-      .eq('store_id', store_id)
+      .eq('is_deleted', false)
       .order('created_at', { ascending: false })
+
+    if (store_id)  query = query.eq('store_id', store_id)
+    if (client_id) query = query.eq('client_id', client_id)
 
     if (statut) query = query.eq('statut', statut)
     if (search) query = query.or(

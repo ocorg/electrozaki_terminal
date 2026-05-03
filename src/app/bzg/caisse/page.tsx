@@ -30,7 +30,9 @@ interface CaisseRecord {
   notes?:            string | null
 }
 
-const STORES = [
+// STORES is now fetched dynamically — see useEffect below.
+// Keep this as a fallback only:
+const STORES_FALLBACK = [
   { id: 'EZ-001', name: 'Electro Zaki', color: '#C9A440' },
   { id: 'HP-001', name: 'Hamid Phone',  color: '#0EA5E9' },
 ]
@@ -51,6 +53,11 @@ export default function BZGCaissePage() {
   const [loading, setLoading]     = useState(true)
   const [expanded, setExpanded]   = useState<string | null>(null)
   const [approving, setApproving] = useState<string | null>(null)
+    const [stores, setStores] = useState(STORES_FALLBACK)
+  useEffect(() => {
+    (supabase as any).from('stores').select('store_id,name,theme_color').eq('is_active', true)
+      .then(({ data }: any) => { if (data?.length) setStores(data.map((s: any) => ({ id: s.store_id, name: s.name, color: s.theme_color }))) })
+  }, [])
   const [filterStore, setFilterStore] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
   const [selectedDate, setSelectedDate] = useState('')
@@ -84,15 +91,13 @@ export default function BZGCaissePage() {
   async function approve(caisseId: string) {
     setApproving(caisseId)
     try {
-      const { error } = await (supabase as any)
-        .from('caisse')
-        .update({
-          status:      'closed',
-          approved_by: user?.id,
-          approved_at: new Date().toISOString(),
-        })
-        .eq('caisse_id', caisseId)
-      if (error) throw error
+      const res  = await fetch('/api/caisse', {
+        method:  'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ caisse_id: caisseId }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error)
       toast.success(isAr ? 'تمت الموافقة ✓' : 'Clôture approuvée ✓')
       await fetchRecords()
     } catch (err: unknown) {

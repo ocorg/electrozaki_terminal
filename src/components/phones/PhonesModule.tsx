@@ -40,6 +40,33 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
   const [labelProduct,  setLabelProduct]  = useState<LabelProduct | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)  // holds phone_id
   const [deleting,      setDeleting]      = useState(false)
+  const [catalogOpen, setCatalogOpen]   = useState(false)
+  const [catalogItems, setCatalogItems] = useState<{ catalog_id: string; marque: string; serie: string; type: string; model: string; couleur: string }[]>([])
+  const [catForm, setCatForm]           = useState({ marque: '', serie: '', type: 'Normal', model: '', couleur: '' })
+  const [catSaving, setCatSaving]       = useState(false)
+
+  async function fetchCatalog() {
+    const res  = await fetch('/api/phones/catalog')
+    const json = await res.json()
+    setCatalogItems(json.data || [])
+  }
+
+  async function saveCatalogEntry() {
+    if (!catForm.marque || !catForm.model || !catForm.couleur) return
+    setCatSaving(true)
+    try {
+      const res  = await fetch('/api/phones/catalog', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(catForm),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error)
+      toast.success('Modèle ajouté ✓')
+      setCatForm({ marque: '', serie: '', type: 'Normal', model: '', couleur: '' })
+      fetchCatalog()
+    } catch (err: unknown) { toast.error((err as Error).message) }
+    finally { setCatSaving(false) }
+  }
 
   // Filters
   const [search, setSearch]       = useState('')
@@ -151,6 +178,12 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
               >
                 <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
               </button>
+              {canSeeFinancials && (
+                <Btn variant="secondary" onClick={() => { setCatalogOpen(true); fetchCatalog() }}>
+                  <span className="text-xs">📋</span>
+                  {isAr ? 'إدارة الكتالوج' : 'Catalogue'}
+                </Btn>
+              )}
               <Btn
                 variant="primary"
                 onClick={openAdd}

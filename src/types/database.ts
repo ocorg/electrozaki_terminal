@@ -19,7 +19,7 @@ export type SupplierCategory = 'هواتف' | 'لابتوبات' | 'إكسسوا
 export type ExpenseCategory  = 'إيجار' | 'فاتورة' | 'نقل' | 'صيانة' | 'أجور' | 'تسويق' | 'معدات' | 'أخرى'
 export type CaisseStatus     = 'open' | 'pending_eod' | 'closed'
 export type PunchType        = 'in' | 'out'
-export type ActionType       = 'INSERT' | 'UPDATE' | 'DELETE' | 'LOGIN' | 'LOGOUT' | 'OVERRIDE' | 'EOD_SUBMIT' | 'EOD_APPROVE' | 'EOD_REJECT' | 'PUNCH_IN' | 'PUNCH_OUT'
+export type ActionType       = 'INSERT' | 'UPDATE' | 'DELETE' | 'VOID' | 'LOGIN' | 'LOGOUT' | 'OVERRIDE' | 'EOD_SUBMIT' | 'EOD_APPROVE' | 'EOD_REJECT' | 'PUNCH_IN' | 'PUNCH_OUT'
 export type LogModule        = 'phones' | 'laptops' | 'accessories' | 'transactions' | 'reparations' | 'clients' | 'suppliers' | 'supplier_payments' | 'expenses' | 'caisse' | 'stock_movements' | 'users' | 'settings' | 'auth' | 'attendance'
 
 // ─── Interfaces ───────────────────────────────────────────────
@@ -194,6 +194,7 @@ export interface Reparation {
   date_prevue?:      string | null
   date_livraison?:   string | null
   technicien?:       string | null
+  technicien_id?:    string | null
   whatsapp_notified?: boolean | null
   store_id?:         string | null
   notes?:            string | null

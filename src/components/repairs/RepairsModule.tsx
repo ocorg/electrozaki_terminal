@@ -87,12 +87,75 @@ const EMPTY_FORM = {
   cout_reparation:  '',
   avance_rep:       '',
   technicien:       '',
+  technicien_id:    '',
   date_prevue:      '',
   notes:            '',
 }
 
 interface RepairsModuleProps {
   storeId: string
+}
+
+function AddPartForm({ repId, isAr, onAdded }: { repId: string; isAr: boolean; onAdded: () => void }) {
+  const [desc, setDesc]       = useState('')
+  const [cout, setCout]       = useState('')
+  const [fournisseur, setFournisseur] = useState('')
+  const [adding, setAdding]   = useState(false)
+  const [open, setOpen]       = useState(false)
+
+  async function handleAdd() {
+    if (!desc || !cout) return
+    setAdding(true)
+    try {
+      const res  = await fetch('/api/repairs/parts', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ rep_id: repId, description: desc, cout: Number(cout), fournisseur: fournisseur || null }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error)
+      toast.success(isAr ? 'تم إضافة القطعة ✓' : 'Pièce ajoutée ✓')
+      setDesc(''); setCout(''); setFournisseur(''); setOpen(false)
+      onAdded()
+    } catch (err: unknown) {
+      toast.error((err as Error).message)
+    } finally {
+      setAdding(false)
+    }
+  }
+
+  return (
+    <div className="border-t border-[#E8E5DE] pt-4">
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-xs font-bold text-[#6B6860] uppercase tracking-widest">
+          {isAr ? 'إضافة قطعة' : 'Ajouter une pièce'}
+        </p>
+        <button onClick={() => setOpen(!open)}
+          className="text-xs text-[#C9A440] font-medium hover:underline">
+          {open ? (isAr ? 'إلغاء' : 'Annuler') : (isAr ? '+ إضافة' : '+ Ajouter')}
+        </button>
+      </div>
+      {open && (
+        <div className="space-y-2">
+          <input className="w-full border border-[#E8E5DE] rounded-xl px-3 py-2 text-sm"
+            placeholder={isAr ? 'وصف القطعة *' : 'Description *'}
+            value={desc} onChange={e => setDesc(e.target.value)} />
+          <div className="grid grid-cols-2 gap-2">
+            <input type="number" className="border border-[#E8E5DE] rounded-xl px-3 py-2 text-sm"
+              placeholder={isAr ? 'التكلفة (درهم) *' : 'Coût (MAD) *'}
+              value={cout} onChange={e => setCout(e.target.value)} />
+            <input className="border border-[#E8E5DE] rounded-xl px-3 py-2 text-sm"
+              placeholder={isAr ? 'المورد' : 'Fournisseur'}
+              value={fournisseur} onChange={e => setFournisseur(e.target.value)} />
+          </div>
+          <button onClick={handleAdd} disabled={adding || !desc || !cout}
+            className="w-full py-2 rounded-xl bg-[#C9A440] text-white text-sm font-bold disabled:opacity-50">
+            {adding ? '...' : (isAr ? 'إضافة' : 'Ajouter')}
+          </button>
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function RepairsModule({ storeId }: RepairsModuleProps) {
@@ -102,6 +165,15 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
   const isAr         = language === 'ar'
   const primary      = portal.primaryColor
   const canEdit      = user?.role !== undefined
+
+  const [staffList, setStaffList] = useState<{ id: string; display_name: string }[]>([])
+
+  useEffect(() => {
+    fetch('/api/users')
+      .then(r => r.json())
+      .then(j => setStaffList((j.data || []).filter((u: { is_active: boolean }) => u.is_active)))
+      .catch(() => {})
+  }, [])
 
   const [repairs, setRepairs]       = useState<RepairWithExtras[]>([])
   const [loading, setLoading]       = useState(true)
@@ -212,6 +284,7 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
           cout_reparation:   form.cout_reparation   ? Number(form.cout_reparation)  : 0,
           avance_rep:        form.avance_rep        ? Number(form.avance_rep)        : 0,
           technicien:        form.technicien        || null,
+          technicien_id:     form.technicien_id     || null,
           date_prevue:       form.date_prevue       || null,
           statut:            'معلق',
           date_depot:        new Date().toISOString().split('T')[0],
@@ -536,6 +609,13 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
               </div>
             )}
 
+            {/* ── Add part inline form ── */}
+            <AddPartForm
+              repId={detailRep.rep_id}
+              isAr={isAr}
+              onAdded={() => fetchRepairs()}
+            />
+
             {/* Notes */}
             {detailRep.notes && (
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
@@ -551,20 +631,37 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
               const phone = detailRep.clients!.telephone.replace(/^0/, '')
               const name  = detailRep.clients!.nom
               const device = `${detailRep.marque ?? ''} ${detailRep.model}`.trim()
+              const repId = detailRep.rep_id
               const msg   = isAr
                 ? `مرحباً ${name}، جهازك ${device} جاهز للاستلام. شكراً لثقتك.`
                 : `Bonjour ${name}, votre appareil ${device} est prêt. Merci de votre confiance.`
               const waUrl = `https://wa.me/212${phone}?text=${encodeURIComponent(msg)}`
+              async function markNotified() {
+                await fetch('/api/repairs', {
+                  method:  'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  body:    JSON.stringify({ rep_id: repId, whatsapp_notified: true }),
+                })
+                fetchRepairs()
+              }
               return (
-                <a
-                  href={waUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-bold bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 transition-all"
-                >
-                  <MessageCircle className="w-4 h-4" />
-                  {isAr ? 'إشعار العميل عبر واتساب' : 'Notifier le client via WhatsApp'}
-                </a>
+                <div className="space-y-2">
+                  <a
+                    href={waUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={markNotified}
+                    className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-bold bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 transition-all"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    {isAr ? 'إشعار العميل عبر واتساب' : 'Notifier le client via WhatsApp'}
+                  </a>
+                  {detailRep.whatsapp_notified && (
+                    <p className="text-center text-xs text-emerald-600 font-medium">
+                      ✓ {isAr ? 'تم الإشعار' : 'Client notifié'}
+                    </p>
+                  )}
+                </div>
               )
             })()}
 
@@ -664,9 +761,19 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
 
           <div className="grid grid-cols-2 gap-4">
             <Field label={isAr ? 'التقني المكلف' : 'Technicien assigné'}>
-              <input type="text" className={inputClass}
-                placeholder={isAr ? 'اسم التقني...' : 'Nom technicien...'}
-                value={form.technicien} onChange={e => setF('technicien', e.target.value)} />
+              <select className={selectClass}
+                value={form.technicien_id}
+                onChange={e => {
+                  const staff = staffList.find(s => s.id === e.target.value)
+                  setF('technicien_id', e.target.value)
+                  setF('technicien', staff?.display_name || '')
+                }}
+              >
+                <option value="">{isAr ? '— بدون تعيين —' : '— Non assigné —'}</option>
+                {staffList.map(s => (
+                  <option key={s.id} value={s.id}>{s.display_name}</option>
+                ))}
+              </select>
             </Field>
             <Field label={isAr ? 'تاريخ التسليم المتوقع' : 'Date prévue de livraison'}>
               <input type="date" className={inputClass}

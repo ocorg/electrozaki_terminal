@@ -19,6 +19,7 @@ interface DashboardData {
   nb_ventes_month:  number
   active_repairs:   number
   low_stock_count:  number
+  low_stock_items:  { acc_id: string; nom: string; quantite: number; seuil_alerte: number }[]
   pending_credits:  number
   recent_txns:      RecentTxn[]
   repair_counts:    Record<string, number>
@@ -71,8 +72,9 @@ export default function EZDashboard() {
         // Low stock accessories
         supabase
           .from('accessories')
-          .select('acc_id, quantite, seuil_alerte')
-          .eq('store_id', STORE_ID),
+          .select('acc_id, nom, quantite, seuil_alerte')
+          .eq('store_id', STORE_ID)
+          .eq('is_deleted', false),
 
         // Open credit transactions (fariq > 0)
         supabase
@@ -104,9 +106,8 @@ export default function EZDashboard() {
       }
 
       // Low stock
-      const low_stock_count = accessories.filter(
-        a => (a.quantite as number) <= (a.seuil_alerte as number)
-      ).length
+      const lowStockItems  = (stockRes.data || []).filter((a: any) => a.quantite <= a.seuil_alerte)
+      const low_stock_count = lowStockItems.length
 
       // Open credits
       const pending_credits = credits.filter(c => {
@@ -127,14 +128,9 @@ export default function EZDashboard() {
       }))
 
       setData({
-        ca_today,
-        ca_month,
-        nb_ventes_month: monthTxns.length,
-        active_repairs:  repairs.length,
-        low_stock_count,
-        pending_credits,
-        recent_txns,
-        repair_counts,
+        ca_today, ca_month, nb_ventes_month, active_repairs,
+        low_stock_count, low_stock_items: lowStockItems as any,
+        pending_credits, recent_txns, repair_counts,
       })
       setLastSync(new Date())
     } finally {
@@ -246,6 +242,28 @@ export default function EZDashboard() {
       {/* Bottom grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
+            {/* Low stock alert */}
+      {data && data.low_stock_count > 0 && (
+        <div className="mx-6 mb-4 bg-amber-50 border border-amber-200 rounded-2xl p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <AlertTriangle className="w-4 h-4 text-amber-600" />
+            <p className="text-sm font-bold text-amber-800">
+              {isAr ? `${data.low_stock_count} أصناف قاربت على النفاد` : `${data.low_stock_count} article(s) en rupture de stock`}
+            </p>
+          </div>
+          <div className="space-y-1">
+            {data.low_stock_items.map(item => (
+              <div key={item.acc_id} className="flex justify-between text-xs text-amber-700">
+                <span>{item.nom}</span>
+                <span className="font-bold">{item.quantite} / {item.seuil_alerte}</span>
+              </div>
+            ))}
+          </div>
+          <Link href="/ez/stock/accessories" className="mt-3 inline-flex items-center gap-1 text-xs text-amber-700 font-bold hover:underline">
+            {isAr ? 'إدارة المخزون' : 'Gérer le stock'} →
+          </Link>
+        </div>
+      )}
         {/* Recent transactions */}
         <div className="lg:col-span-2 bg-white border border-[#E8E5DE] rounded-2xl overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b border-[#E8E5DE]">

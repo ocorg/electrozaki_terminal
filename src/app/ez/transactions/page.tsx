@@ -1,14 +1,18 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
+import { toast } from 'react-hot-toast'
 import { useLanguageStore } from '@/lib/stores/language'
 import { formatMAD, formatDate } from '@/lib/utils'
 import { PageHeader, SkeletonRow, EmptyState, StatusBadge } from '@/components/shared'
+import { useUser } from '@/lib/hooks/useUser'
 import {
   ShoppingCart, RefreshCw, Calendar, X,
-  ChevronDown, ChevronUp
+  ChevronDown, ChevronUp, Ban, AlertTriangle
 } from 'lucide-react'
 
 const STORE_ID = 'EZ-001'
+// Void modal state — lifted to page level
+
 
 interface Transaction {
   txn_id:          string
@@ -27,12 +31,18 @@ interface Transaction {
   override_required?: boolean
   warranty_expiry?:string | null
   notes?:          string | null
+  voided?:         boolean
+  voided_reason?:  string | null
   created_at:      string
 }
 
 const OP_LABELS_FR: Record<string, string> = {
   'بيع': 'Vente', 'إستبدال': 'Échange', 'تسبيق': 'Avance', 'Retour': 'Retour',
 }
+// Inside the transaction row JSX, add a voided indicator next to txn_id.
+// Also update the Transaction interface to include voided:
+// voided?: boolean
+// voided_reason?: string | null
 const PAY_LABELS_FR: Record<string, string> = {
   'نقد': 'Espèces', 'تحويل': 'Virement', 'تسبيق': 'Avance',
   'إستبدال': 'Échange', 'مختلط': 'Mixte',
@@ -52,19 +62,48 @@ export default function EZTransactionsPage() {
   const [dateFrom,  setDateFrom]        = useState(monthStart)
   const [dateTo,    setDateTo]          = useState(today)
 
+    const { user }                    = useUser()
+  const [voidTxnId, setVoidTxnId]   = useState<string | null>(null)
+  const [voidReason, setVoidReason] = useState('')
+  const [voiding, setVoiding]       = useState(false)
+
+  const canVoid = user?.role === 'manager' || user?.role === 'owner'
+
+  async function handleVoid() {
+    if (!voidTxnId || voidReason.trim().length < 10) {
+      toast.error('Motif requis (10 caractères minimum)')
+      return
+    }
+    setVoiding(true)
+    try {
+      const res  = await fetch('/api/transactions', {
+        method:  'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ txn_id: voidTxnId, voided_reason: voidReason.trim() }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error)
+      toast.success('Transaction annulée ✓')
+      setVoidTxnId(null)
+      setVoidReason('')
+      fetchTransactions()
+    } catch (err: unknown) {
+      toast.error((err as Error).message)
+    } finally {
+      setVoiding(false)
+    }
+  }
+
   const fetchTransactions = useCallback(async () => {
     setLoading(true)
     try {
-      const params = new URLSearchParams({ store_id: STORE_ID, limit: '300' })
+      const params = new URLSearchParams({ store_id: STORE_ID, limit: '500' })
+      if (dateFrom) params.set('date_from', dateFrom)
+      if (dateTo)   params.set('date_to',   dateTo)
+      if (filterOp) params.set('type_operation', filterOp)
       const res  = await fetch(`/api/transactions?${params}`)
       const json = await res.json()
-      let data: Transaction[] = json.data || []
-
-      if (dateFrom) data = data.filter(t => t.date_vente >= dateFrom)
-      if (dateTo)   data = data.filter(t => t.date_vente <= dateTo)
-      if (filterOp) data = data.filter(t => t.type_operation === filterOp)
-
-      setTransactions(data)
+      setTransactions(json.data || [])
     } finally {
       setLoading(false)
     }
@@ -263,6 +302,20 @@ export default function EZTransactionsPage() {
                             </div>
                           )}
                         </div>
+                        {canVoid && !txn.voided && (
+                          <button
+                            onClick={e => { e.stopPropagation(); setVoidTxnId(txn.txn_id); setVoidReason('') }}
+                            className="flex items-center gap-2 px-3 py-2 rounded-xl border border-red-200 bg-red-50 text-red-600 text-xs font-medium hover:bg-red-100 transition-all"
+                          >
+                            <Ban className="w-3.5 h-3.5" />
+                            Annuler la transaction
+                          </button>
+                        )}
+                        {txn.voided && (
+                          <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-50 border border-red-200 text-red-600 text-xs font-bold">
+                            <Ban className="w-3.5 h-3.5" /> ANNULÉE
+                          </span>
+                        )}
                         {txn.notes && (
                           <p className="text-xs text-[#6B6860] mt-2 px-1">{txn.notes}</p>
                         )}
@@ -275,6 +328,44 @@ export default function EZTransactionsPage() {
           )}
         </div>
       </div>
+            {/* Void confirmation modal */}
+      {voidTxnId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-6 space-y-4">
+            <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-xl">
+              <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold text-red-800 text-sm">Annuler la transaction {voidTxnId}?</p>
+                <p className="text-red-600 text-xs mt-1">Cette action est irréversible.</p>
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-bold text-[#6B6860] uppercase tracking-widest block mb-1">
+                Motif d'annulation *
+              </label>
+              <textarea
+                className="w-full border border-[#E8E5DE] rounded-xl px-3 py-2 text-sm resize-none focus:outline-none"
+                rows={3}
+                placeholder="Minimum 10 caractères..."
+                value={voidReason}
+                onChange={e => setVoidReason(e.target.value)}
+                autoFocus
+              />
+              <p className="text-[10px] text-[#B0ADA6] mt-1">{voidReason.length}/10 min</p>
+            </div>
+            <div className="flex gap-3 justify-end">
+              <button onClick={() => { setVoidTxnId(null); setVoidReason('') }}
+                className="px-4 py-2 rounded-xl border border-[#E8E5DE] text-[#6B6860] text-sm hover:bg-[#F8F7F4] transition-all">
+                Annuler
+              </button>
+              <button onClick={handleVoid} disabled={voiding || voidReason.trim().length < 10}
+                className="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-bold hover:bg-red-700 transition-all disabled:opacity-50">
+                {voiding ? 'Annulation...' : 'Confirmer l\'annulation'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

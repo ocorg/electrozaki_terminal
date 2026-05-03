@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from('client_summary')
       .select('*')
+      .eq('is_deleted', false)
       .order('created_at', { ascending: false })
 
     if (store_id) query = query.eq('store_id', store_id)

@@ -10,9 +10,14 @@ export async function GET(request: NextRequest) {
     if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
 
     const { searchParams } = new URL(request.url)
-    const client_id = searchParams.get('client_id')
-    const store_id  = searchParams.get('store_id')
-    const limit     = searchParams.get('limit') || '50'
+    const client_id      = searchParams.get('client_id')
+    const store_id       = searchParams.get('store_id')
+    const limit          = searchParams.get('limit') || '50'
+    const date_from      = searchParams.get('date_from')
+    const date_to        = searchParams.get('date_to')
+    const type_operation = searchParams.get('type_operation')
+
+    const include_voided = searchParams.get('include_voided') === 'true'
 
     let query = supabase
       .from('transactions')
@@ -20,8 +25,12 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false })
       .limit(Number(limit))
 
-    if (client_id) query = query.eq('client_id', client_id)
-    if (store_id)  query = query.eq('store_id', store_id)
+    if (client_id)       query = query.eq('client_id', client_id)
+    if (store_id)        query = query.eq('store_id', store_id)
+    if (!include_voided) query = query.eq('voided', false)
+    if (date_from)       query = query.gte('date_vente', date_from)
+    if (date_to)         query = query.lte('date_vente', date_to)
+    if (type_operation)  query = query.eq('type_operation', type_operation)
 
     const { data, error } = await query
     if (error) throw error

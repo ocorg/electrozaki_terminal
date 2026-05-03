@@ -340,14 +340,14 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
               </div>
             </div>
 
-            {isApple && (
+            {isApple && canSeeFinancials && (
               <div className="grid grid-cols-2 gap-4 p-4 bg-[#F8F7F4] rounded-xl border border-[#E8E5DE]">
                 <Field label="Compte iCloud">
                   <input type="text" className={inputClass} placeholder="exemple@icloud.com"
                     value={form.icloud_compte || ''} onChange={e => set('icloud_compte', e.target.value)} />
                 </Field>
                 <Field label="Mot de passe iCloud">
-                  <input type="text" className={inputClass} placeholder="••••••••"
+                  <input type="password" className={inputClass} placeholder="••••••••"
                     value={form.icloud_mdp || ''} onChange={e => set('icloud_mdp', e.target.value)} />
                 </Field>
               </div>

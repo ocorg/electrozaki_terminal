@@ -43,6 +43,7 @@ const EMPTY_FORM = {
   date:        new Date().toISOString().split('T')[0],
   facture_ref: '',
   notes:       '',
+  receipt_photo_url: '' as string,
 }
 
 interface ExpensesModuleProps {
@@ -63,6 +64,8 @@ export default function ExpensesModule({ storeId }: ExpensesModuleProps) {
   const [submitting, setSubmitting] = useState(false)
   const [deleting, setDeleting]     = useState<string | null>(null)
   const [form, setForm]             = useState({ ...EMPTY_FORM })
+  const [uploading, setUploading]   = useState(false)
+  
 
   // Filters
   const today = new Date().toISOString().split('T')[0]
@@ -102,12 +105,13 @@ export default function ExpensesModule({ storeId }: ExpensesModuleProps) {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({
-          store_id:   storeId,
-          categorie:  form.categorie,
-          montant:    parseFloat(form.montant),
-          date:       form.date,
-          facture_ref: form.facture_ref || null,
-          notes:      form.notes || null,
+          store_id:         storeId,
+          categorie:        form.categorie,
+          montant:          parseFloat(form.montant),
+          date:             form.date,
+          facture_ref:      form.facture_ref || null,
+          notes:            form.notes || null,
+          receipt_photo_url: form.receipt_photo_url || null,
         }),
       })
       const json = await res.json()
@@ -366,6 +370,41 @@ export default function ExpensesModule({ storeId }: ExpensesModuleProps) {
                 : 'Ce montant sera automatiquement déduit de la caisse du jour'}
             </p>
           </div>
+
+            <Field label={isAr ? 'صورة الفاتورة' : 'Photo du reçu'}>
+            <div className="space-y-2">
+              <input
+                type="file"
+                accept="image/*"
+                disabled={uploading}
+                onChange={async e => {
+                  const file = e.target.files?.[0]
+                  if (!file) return
+                  setUploading(true)
+                  try {
+                    const { createClient: mkClient } = await import('@/lib/supabase/client')
+                    const sb = mkClient()
+                    const ext  = file.name.split('.').pop()
+                    const path = `receipts/${storeId}/${Date.now()}.${ext}`
+                    const { error: upErr } = await sb.storage.from('expenses').upload(path, file, { upsert: true })
+                    if (upErr) throw upErr
+                    const { data: { publicUrl } } = sb.storage.from('expenses').getPublicUrl(path)
+                    setForm(p => ({ ...p, receipt_photo_url: publicUrl }))
+                    toast.success(isAr ? 'تم رفع الصورة ✓' : 'Photo téléversée ✓')
+                  } catch (err: unknown) {
+                    toast.error((err as Error).message)
+                  } finally {
+                    setUploading(false)
+                  }
+                }}
+                className="w-full text-sm text-[#6B6860] file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-[#F2F0EB] file:text-[#1A1A1A] cursor-pointer"
+              />
+              {uploading && <p className="text-xs text-[#B0ADA6]">{isAr ? 'جارٍ الرفع...' : 'Téléversement...'}</p>}
+              {form.receipt_photo_url && (
+                <img src={form.receipt_photo_url} alt="reçu" className="h-24 rounded-xl object-cover border border-[#E8E5DE]" />
+              )}
+            </div>
+          </Field>      
 
           <div className="flex gap-3 justify-end pt-1">
             <Btn variant="secondary" onClick={() => { setModalOpen(false); setForm({ ...EMPTY_FORM }) }}>

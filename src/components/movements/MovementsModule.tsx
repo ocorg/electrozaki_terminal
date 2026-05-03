@@ -56,13 +56,16 @@ const REASON_LABELS_AR: Record<string, string> = {
 }
 
 const EMPTY_FORM = {
-  device_type:   'هاتف' as DeviceType,
-  device_id:     '',
-  from_location: 'Magasin Principal' as LocationType,
-  to_location:   'Magasin Secondaire' as LocationType,
-  reason:        'Transfert' as MovementReason,
-  external_name: '',
-  notes:         '',
+  device_type:    'هاتف' as DeviceType,
+  device_id:      '',
+  from_location:  'Magasin Principal' as LocationType,
+  to_location:    'Magasin Secondaire' as LocationType,
+  from_store_id:  '',
+  to_store_id:    '',
+  is_inter_store: false,
+  reason:         'Transfert' as MovementReason,
+  external_name:  '',
+  notes:          '',
 }
 
 const DEVICE_ICONS: Record<string, React.ComponentType<React.SVGProps<SVGSVGElement>>> = {
@@ -123,9 +126,15 @@ export default function MovementsModule({ storeId }: MovementsModuleProps) {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({
-          ...form,
-          store_id:      storeId,
-          external_name: form.to_location === 'Externe' ? form.external_name || null : null,
+          store_id:      form.is_inter_store ? form.from_store_id : storeId,
+          device_type:   form.device_type,
+          device_id:     form.device_id,
+          from_location: form.from_location,
+          to_location:   form.to_location,
+          from_store_id: form.is_inter_store ? form.from_store_id : null,
+          to_store_id:   form.is_inter_store ? form.to_store_id   : null,
+          reason:        form.reason,
+          external_name: form.external_name || null,
           notes:         form.notes || null,
         }),
       })
@@ -317,6 +326,42 @@ export default function MovementsModule({ storeId }: MovementsModuleProps) {
               />
             </div>
           </Field>
+
+              <Field label={isAr ? 'نوع النقل' : 'Type de transfert'}>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setForm(p => ({ ...p, is_inter_store: false }))}
+                  className={`flex-1 py-2 rounded-xl text-sm font-medium border transition-all ${!form.is_inter_store ? 'bg-[#C9A440] text-white border-[#C9A440]' : 'bg-white text-[#6B6860] border-[#E8E5DE]'}`}
+                >
+                  {isAr ? 'داخل المحل' : 'Intra-magasin'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setForm(p => ({ ...p, is_inter_store: true }))}
+                  className={`flex-1 py-2 rounded-xl text-sm font-medium border transition-all ${form.is_inter_store ? 'bg-[#C9A440] text-white border-[#C9A440]' : 'bg-white text-[#6B6860] border-[#E8E5DE]'}`}
+                >
+                  {isAr ? 'بين المحلات' : 'Inter-magasin'}
+                </button>
+              </div>
+            </Field>
+
+            {form.is_inter_store && (
+              <div className="grid grid-cols-2 gap-4">
+                <Field label={isAr ? 'من المحل' : 'Magasin source'}>
+                  <select className={selectClass} value={form.from_store_id} onChange={e => setForm(p => ({ ...p, from_store_id: e.target.value }))}>
+                    <option value="EZ-001">Electro Zaki (EZ)</option>
+                    <option value="HP-001">Hamid Phone (HP)</option>
+                  </select>
+                </Field>
+                <Field label={isAr ? 'إلى المحل' : 'Magasin destination'}>
+                  <select className={selectClass} value={form.to_store_id} onChange={e => setForm(p => ({ ...p, to_store_id: e.target.value }))}>
+                    <option value="EZ-001">Electro Zaki (EZ)</option>
+                    <option value="HP-001">Hamid Phone (HP)</option>
+                  </select>
+                </Field>
+              </div>
+            )}
 
           <div className="grid grid-cols-2 gap-4">
             <Field label={isAr ? 'من' : 'De'} required>

@@ -24,6 +24,29 @@ export default function BZGSettingsPage() {
   const [saving, setSaving]       = useState<string | null>(null)
   const [edits, setEdits]         = useState<Record<string, Partial<StoreSetting>>>({})
 
+  const [kvSettings, setKvSettings] = useState<{ key: string; value: string; notes?: string }[]>([])
+  const [kvEdits, setKvEdits] = useState<Record<string, string>>({})
+
+  async function fetchSettings() {
+    const { data } = await (supabase as any).from('settings').select('*').order('key')
+    if (data) {
+      setKvSettings(data)
+      const edits: Record<string, string> = {}
+      data.forEach((s: { key: string; value: string }) => { edits[s.key] = s.value ?? '' })
+      setKvEdits(edits)
+    }
+  }
+
+  async function saveKvSetting(key: string) {
+    const { error } = await (supabase as any).from('settings').upsert({
+      key,
+      value:      kvEdits[key],
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'key,store_id' })
+    if (error) toast.error(error.message)
+    else toast.success(`${key} sauvegardé ✓`)
+  }
+
   async function fetchStores() {
     setLoading(true)
     try {
@@ -38,7 +61,7 @@ export default function BZGSettingsPage() {
     }
   }
 
-  useEffect(() => { fetchStores() }, [])
+  useEffect(() => { fetchStores(); fetchSettings() }, [])
 
   function setEdit(storeId: string, field: keyof StoreSetting, value: string) {
     setEdits(prev => ({
@@ -80,6 +103,35 @@ export default function BZGSettingsPage() {
       </div>
 
       <div className="flex-1 px-6 pb-6 space-y-6">
+        {/* ── Key-Value Settings ── */}
+      <div className="mt-8">
+        <h2 className="font-display text-xl font-bold text-[#1A1A1A] tracking-wide mb-4">
+          {isAr ? 'إعدادات متقدمة (مفتاح / قيمة)' : 'Paramètres avancés (clé / valeur)'}
+        </h2>
+        {kvSettings.length === 0 ? (
+          <p className="text-sm text-[#B0ADA6]">
+            {isAr ? 'لا توجد إعدادات بعد' : 'Aucun paramètre configuré.'}
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {kvSettings.map(s => (
+              <div key={s.key} className="bg-white border border-[#E8E5DE] rounded-xl p-4 flex items-center gap-4">
+                <div className="flex-shrink-0 w-48">
+                  <p className="text-xs font-mono text-[#6B6860]">{s.key}</p>
+                  {s.notes && <p className="text-[10px] text-[#B0ADA6] mt-0.5">{s.notes}</p>}
+                </div>
+                <input className="flex-1 border border-[#E8E5DE] rounded-xl px-3 py-2 text-sm"
+                  value={kvEdits[s.key] ?? ''}
+                  onChange={e => setKvEdits(p => ({ ...p, [s.key]: e.target.value }))} />
+                <button onClick={() => saveKvSetting(s.key)}
+                  className="px-4 py-2 rounded-xl bg-[#C9A440] text-white text-sm font-bold hover:opacity-90 transition-all">
+                  {isAr ? 'حفظ' : 'Sauver'}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
         {loading ? (
           <div className="space-y-4">
             {[...Array(2)].map((_, i) => (

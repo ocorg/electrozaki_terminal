@@ -72,7 +72,16 @@ async function handleMiddleware(request: NextRequest): Promise<NextResponse> {
 
       // Staff locked to a store: enforce their portal
       if (profile.store_locked && profile.store_id) {
-        const storePortal = profile.store_id === 'EZ-001' ? '/ez' : '/hp'
+        const STORE_PORTAL_MAP: Record<string, string> = {
+          'EZ-001': '/ez',
+          'HP-001': '/hp',
+        }
+        const storePortal = STORE_PORTAL_MAP[profile.store_id]
+        if (!storePortal) {
+          // store_id not recognised — block access entirely
+          await supabase.auth.signOut()
+          return NextResponse.redirect(new URL('/login?reason=store_not_found', request.url))
+        }
         if (!pathname.startsWith(storePortal)) {
           return NextResponse.redirect(new URL(`${storePortal}/dashboard`, request.url))
         }

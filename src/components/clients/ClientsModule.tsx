@@ -51,8 +51,26 @@ export default function ClientsModule({ storeId }: ClientsModuleProps) {
   const [loading, setLoading]       = useState(true)
   const [search, setSearch]         = useState('')
   const [selected, setSelected]     = useState<Client | null>(null)
+    async function loadClientHistory(clientId: string) {
+    setHistoryLoading(true)
+    try {
+      const [txnRes, repRes] = await Promise.all([
+        fetch(`/api/transactions?client_id=${clientId}&limit=50`),
+        fetch(`/api/repairs?client_id=${clientId}&store_id=${storeId}&limit=50`),
+      ])
+      const [txnJson, repJson] = await Promise.all([txnRes.json(), repRes.json()])
+      setClientTxns(txnJson.data || [])
+      setClientReps(repJson.data || [])
+    } finally {
+      setHistoryLoading(false)
+    }
+  }
   const [formOpen, setFormOpen]     = useState(false)
   const [editClient, setEditClient] = useState<Client | null>(null)
+  const [historyTab, setHistoryTab]   = useState<'txns' | 'repairs'>('txns')
+  const [clientTxns, setClientTxns]   = useState<Record<string, unknown>[]>([])
+  const [clientReps, setClientReps]   = useState<Record<string, unknown>[]>([])
+  const [historyLoading, setHistoryLoading] = useState(false)
   const [form, setForm]             = useState({ ...EMPTY_FORM })
   const [submitting, setSubmitting] = useState(false)
 
@@ -237,7 +255,7 @@ export default function ClientsModule({ storeId }: ClientsModuleProps) {
                 <div
                   key={client.client_id}
                   className="flex items-center gap-4 px-5 py-4 hover:bg-[#F8F7F4] transition-all cursor-pointer"
-                  onClick={() => setSelected(client)}
+                  onClick={() => { setSelected(client); loadClientHistory(client.client_id) }}
                 >
                   {/* Avatar */}
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 font-bold text-sm"
@@ -361,6 +379,50 @@ export default function ClientsModule({ storeId }: ClientsModuleProps) {
                   <p className="text-xs text-amber-700 font-bold mb-1">{isAr ? 'ملاحظات' : 'Notes'}</p>
                   <p className="text-sm text-amber-800">{selected.notes}</p>
                 </div>
+              )}
+            </div>
+
+            {/* History tabs */}
+            <div className="border-t border-[#E8E5DE] pt-4">
+              <div className="flex gap-2 mb-3">
+                {(['txns', 'repairs'] as const).map(tab => (
+                  <button key={tab} onClick={() => setHistoryTab(tab)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${historyTab === tab ? 'border-[#C9A440] bg-[#C9A440] text-white' : 'border-[#E8E5DE] bg-white text-[#6B6860]'}`}>
+                    {tab === 'txns' ? (isAr ? 'المشتريات' : 'Achats') : (isAr ? 'الإصلاحات' : 'Réparations')}
+                  </button>
+                ))}
+              </div>
+
+              {historyLoading ? (
+                <div className="py-4 text-center text-xs text-[#B0ADA6]">Chargement...</div>
+              ) : historyTab === 'txns' ? (
+                clientTxns.length === 0 ? (
+                  <p className="text-xs text-[#B0ADA6] py-2">{isAr ? 'لا توجد معاملات' : 'Aucune transaction'}</p>
+                ) : (
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {clientTxns.map((t: any) => (
+                      <div key={t.txn_id} className="flex justify-between items-center py-2 border-b border-[#F2F0EB] text-xs last:border-0">
+                        <span className="text-[#6B6860] font-mono">{t.txn_id}</span>
+                        <span className="text-[#6B6860]">{t.date_vente}</span>
+                        <span className="font-bold text-[#1A1A1A]">{formatMAD(t.prix_vente)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )
+              ) : (
+                clientReps.length === 0 ? (
+                  <p className="text-xs text-[#B0ADA6] py-2">{isAr ? 'لا توجد إصلاحات' : 'Aucune réparation'}</p>
+                ) : (
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {clientReps.map((r: any) => (
+                      <div key={r.rep_id} className="flex justify-between items-center py-2 border-b border-[#F2F0EB] text-xs last:border-0">
+                        <span className="text-[#6B6860] font-mono">{r.rep_id}</span>
+                        <span className="text-[#1A1A1A]">{r.marque} {r.model}</span>
+                        <span className={`font-bold ${r.statut === 'تم الاستلام' ? 'text-emerald-600' : 'text-amber-600'}`}>{r.statut}</span>
+                      </div>
+                    ))}
+                  </div>
+                )
               )}
             </div>
 
