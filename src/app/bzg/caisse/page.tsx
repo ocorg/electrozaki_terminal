@@ -163,7 +163,7 @@ export default function BZGCaissePage() {
             className="text-sm border border-[#E8E5DE] rounded-xl px-3 py-2.5 bg-white text-[#6B6860] focus:outline-none"
             value={filterStore} onChange={e => setFilterStore(e.target.value)}>
             <option value="">{isAr ? 'كل المتاجر' : 'Tous magasins'}</option>
-            {STORES.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            {stores.map((s: { id: string; name: string; color: string }) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
 
           <select
@@ -205,7 +205,7 @@ export default function BZGCaissePage() {
           ) : (
             <div className="divide-y divide-[#F2F0EB]">
               {records.map(rec => {
-                const store   = STORES.find(s => s.id === rec.store_id)
+                const store   = stores.find((s: { id: string; name: string; color: string }) => s.id === rec.store_id)
                 const style   = STATUS_STYLES[rec.status]
                 const isExp   = expanded === rec.caisse_id
                 const hasEcart = rec.ecart != null && rec.ecart !== 0

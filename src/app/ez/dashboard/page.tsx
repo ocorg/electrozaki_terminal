@@ -97,6 +97,10 @@ export default function EZDashboard() {
       // CA + count this month
       const monthTxns = txns.filter(t => (t.date_vente as string) >= monthStart)
       const ca_month  = monthTxns.reduce((sum: number, t) => sum + ((t.prix_vente as number) || 0), 0)
+      const nb_ventes_month = monthTxns.length
+
+      // Active repairs count
+      const active_repairs = repairs.length
 
       // Repair counts by status
       const repair_counts: Record<string, number> = {}
@@ -239,12 +243,9 @@ export default function EZDashboard() {
         </div>
       )}
 
-      {/* Bottom grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-            {/* Low stock alert */}
+      {/* Low stock alert — full width, ABOVE the grid */}
       {data && data.low_stock_count > 0 && (
-        <div className="mx-6 mb-4 bg-amber-50 border border-amber-200 rounded-2xl p-4">
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
           <div className="flex items-center gap-2 mb-3">
             <AlertTriangle className="w-4 h-4 text-amber-600" />
             <p className="text-sm font-bold text-amber-800">
@@ -264,6 +265,10 @@ export default function EZDashboard() {
           </Link>
         </div>
       )}
+
+      {/* Bottom grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
         {/* Recent transactions */}
         <div className="lg:col-span-2 bg-white border border-[#E8E5DE] rounded-2xl overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b border-[#E8E5DE]">
