@@ -24,7 +24,7 @@ export default function BZGSettingsPage() {
   const [saving, setSaving]       = useState<string | null>(null)
   const [edits, setEdits]         = useState<Record<string, Partial<StoreSetting>>>({})
 
-  const [kvSettings, setKvSettings] = useState<{ key: string; value: string; notes?: string }[]>([])
+  const [kvSettings, setKvSettings] = useState<{ key: string; value: string; store_id: string; notes?: string }[]>([])
   const [kvEdits, setKvEdits] = useState<Record<string, string>>({})
 
   async function fetchSettings() {
@@ -32,15 +32,19 @@ export default function BZGSettingsPage() {
     if (data) {
       setKvSettings(data)
       const edits: Record<string, string> = {}
-      data.forEach((s: { key: string; value: string }) => { edits[s.key] = s.value ?? '' })
+      data.forEach((s: { key: string; value: string; store_id: string }) => {
+        edits[`${s.store_id}__${s.key}`] = s.value ?? ''
+        edits[s.key] = s.value ?? ''   // fallback for single-store reads
+      })
       setKvEdits(edits)
     }
   }
 
-  async function saveKvSetting(key: string) {
+  async function saveKvSetting(key: string, storeId: string) {
     const { error } = await (supabase as any).from('settings').upsert({
       key,
-      value:      kvEdits[key],
+      store_id:   storeId,
+      value:      kvEdits[`${storeId}__${key}`] ?? kvEdits[key],
       updated_at: new Date().toISOString(),
     }, { onConflict: 'key,store_id' })
     if (error) toast.error(error.message)
@@ -123,7 +127,7 @@ export default function BZGSettingsPage() {
                 <input className="flex-1 border border-[#E8E5DE] rounded-xl px-3 py-2 text-sm"
                   value={kvEdits[s.key] ?? ''}
                   onChange={e => setKvEdits(p => ({ ...p, [s.key]: e.target.value }))} />
-                <button onClick={() => saveKvSetting(s.key)}
+                <button onClick={() => saveKvSetting(s.key, s.store_id)}
                   className="px-4 py-2 rounded-xl bg-[#C9A440] text-white text-sm font-bold hover:opacity-90 transition-all">
                   {isAr ? 'حفظ' : 'Sauver'}
                 </button>
