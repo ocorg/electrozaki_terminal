@@ -25,16 +25,18 @@ export default function BZGSettingsPage() {
   const [edits, setEdits]         = useState<Record<string, Partial<StoreSetting>>>({})
 
   const [kvSettings, setKvSettings] = useState<{ key: string; value: string; store_id: string; notes?: string }[]>([])
-  const [kvEdits, setKvEdits] = useState<Record<string, string>>({})
+  const [kvEdits, setKvEdits]       = useState<Record<string, string>>({})
+
+  // Composite key prevents EZ and HP rows for the same key colliding in the edit map
+  function kvKey(storeId: string, key: string) { return `${storeId}__${key}` }
 
   async function fetchSettings() {
-    const { data } = await (supabase as any).from('settings').select('*').order('key')
+    const { data } = await (supabase as any).from('settings').select('*').order('store_id').order('key')
     if (data) {
       setKvSettings(data)
       const edits: Record<string, string> = {}
       data.forEach((s: { key: string; value: string; store_id: string }) => {
-        edits[`${s.store_id}__${s.key}`] = s.value ?? ''
-        edits[s.key] = s.value ?? ''   // fallback for single-store reads
+        edits[kvKey(s.store_id, s.key)] = s.value ?? ''
       })
       setKvEdits(edits)
     }
@@ -44,11 +46,11 @@ export default function BZGSettingsPage() {
     const { error } = await (supabase as any).from('settings').upsert({
       key,
       store_id:   storeId,
-      value:      kvEdits[`${storeId}__${key}`] ?? kvEdits[key],
+      value:      kvEdits[kvKey(storeId, key)],
       updated_at: new Date().toISOString(),
     }, { onConflict: 'key,store_id' })
     if (error) toast.error(error.message)
-    else toast.success(`${key} sauvegardé ✓`)
+    else toast.success(`${key} — ${storeId} sauvegardé ✓`)
   }
 
   async function fetchStores() {
@@ -119,16 +121,26 @@ export default function BZGSettingsPage() {
         ) : (
           <div className="space-y-3">
             {kvSettings.map(s => (
-              <div key={s.key} className="bg-white border border-[#E8E5DE] rounded-xl p-4 flex items-center gap-4">
-                <div className="flex-shrink-0 w-48">
+              <div key={kvKey(s.store_id, s.key)} className="bg-white border border-[#E8E5DE] rounded-xl p-4 flex items-center gap-4">
+                <div className="flex-shrink-0 w-52">
                   <p className="text-xs font-mono text-[#6B6860]">{s.key}</p>
                   {s.notes && <p className="text-[10px] text-[#B0ADA6] mt-0.5">{s.notes}</p>}
+                  <span className="mt-1 inline-block text-[9px] font-bold font-mono px-1.5 py-0.5 rounded"
+                    style={{
+                      backgroundColor: s.store_id === 'EZ-001' ? '#FAF5E8' : '#EFF6FF',
+                      color:           s.store_id === 'EZ-001' ? '#C9A440' : '#3B82F6',
+                    }}>
+                    {s.store_id}
+                  </span>
                 </div>
-                <input className="flex-1 border border-[#E8E5DE] rounded-xl px-3 py-2 text-sm"
-                  value={kvEdits[s.key] ?? ''}
-                  onChange={e => setKvEdits(p => ({ ...p, [s.key]: e.target.value }))} />
-                <button onClick={() => saveKvSetting(s.key, s.store_id)}
-                  className="px-4 py-2 rounded-xl bg-[#C9A440] text-white text-sm font-bold hover:opacity-90 transition-all">
+                <input
+                  className="flex-1 border border-[#E8E5DE] rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#C9A440] transition-all"
+                  value={kvEdits[kvKey(s.store_id, s.key)] ?? ''}
+                  onChange={e => setKvEdits(p => ({ ...p, [kvKey(s.store_id, s.key)]: e.target.value }))}
+                />
+                <button
+                  onClick={() => saveKvSetting(s.key, s.store_id)}
+                  className="px-4 py-2 rounded-xl bg-[#C9A440] text-white text-sm font-bold hover:opacity-90 transition-all flex-shrink-0">
                   {isAr ? 'حفظ' : 'Sauver'}
                 </button>
               </div>
