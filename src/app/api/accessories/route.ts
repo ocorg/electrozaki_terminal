@@ -60,6 +60,7 @@ export async function POST(request: NextRequest) {
       .insert({
         ...body,
         store_id:   body.store_id ?? profile?.store_id ?? null,
+        is_deleted: false,
         created_by: user.id,
         updated_by: user.id,
       })

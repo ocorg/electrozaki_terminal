@@ -2,17 +2,26 @@ import { createUntypedClient, createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET() {
-  const supabase = createUntypedClient()
-  const { data, error } = await supabase
-    .from('phone_catalog')
-    .select('*')
-    .order('marque')
-    .order('model')
+  try {
+    const typedSupabase = createClient()
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    const { data: { user } } = await typedSupabase.auth.getUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+    }
+
+    const { data, error } = await typedSupabase
+      .from('phone_catalog')
+      .select('*')
+      .order('marque')
+      .order('model')
+
+    if (error) throw error
+
+    return NextResponse.json({ data: data || [] })
+  } catch (err: unknown) {
+    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
   }
-  return NextResponse.json({ data })
 }
 
 export async function POST(request: NextRequest) {

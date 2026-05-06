@@ -377,7 +377,9 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                     </div>
 
                     {/* Status */}
-                    <StatusBadge status={phone.status} lang={isAr ? 'ar' : 'fr'} />
+                    <div className="min-w-0 overflow-hidden">
+                      <StatusBadge status={phone.status} lang={isAr ? 'ar' : 'fr'} />
+                    </div>
 
                     {/* Price — manager/owner only */}
                     {canSeeFinancials && (

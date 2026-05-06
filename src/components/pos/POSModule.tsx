@@ -10,6 +10,7 @@ import { toast } from 'sonner'
 import type { Phone, Laptop, PaymentMethod, OperationType } from '@/types/database'
 import ScanButton from '@/components/scanner/ScanButton'
 import ComboBox from '@/components/phones/ComboBox'
+import RetourModal from '@/components/pos/RetourModal'
 import { usePhoneCatalog } from '@/lib/hooks/usePhoneCatalog'
 import {
   Search, ShoppingCart, User, CreditCard, ArrowLeftRight,
@@ -72,6 +73,35 @@ interface POSModuleProps {
   hasLaptops?: boolean   // EZ = true, HP = false
 }
 
+function LiveClock() {
+  const [time, setTime] = useState(() =>
+    new Date().toLocaleTimeString('fr-FR', {
+      hour:   '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    })
+  )
+
+  useEffect(() => {
+    const id = setInterval(() =>
+      setTime(
+        new Date().toLocaleTimeString('fr-FR', {
+          hour:   '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+        })
+      )
+    , 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  return (
+    <p className="text-xs font-mono font-bold text-[#6B6860] tabular-nums">
+      {time}
+    </p>
+  )
+}
+
 // ─── Component ───────────────────────────────────────────────
 export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps) {
   const { user }     = useUser()
@@ -96,6 +126,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
   const [overrideAuthorizedBy, setOverrideAuthorizedBy] = useState<string | null>(null)
 
   const [submitting, setSubmitting]   = useState(false)
+  const [retourOpen, setRetourOpen] = useState(false)
   // Exchange intake panel (shown after successful sale with exchange)
   const [exchangePanel, setExchangePanel] = useState<{
     open:                    boolean
@@ -119,6 +150,10 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
   const [addedPhoneId, setAddedPhoneId] = useState<string | null>(null)
   const [successTxn, setSuccessTxn]   = useState<string | null>(null)
   const searchRef = useRef<ReturnType<typeof setTimeout>>()
+
+  const [activeCategory, setActiveCategory] = useState('phones')
+  const [gridItems,      setGridItems]      = useState<DeviceResult[]>([])
+  const [gridLoading,    setGridLoading]    = useState(false)
 
   // ── Device search ─────────────────────────────────────────
   useEffect(() => {
@@ -160,6 +195,61 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
       }
     }, 300)
   }, [search, storeId, hasLaptops])
+
+  // ── Grid category fetch ────────────────────────────────────
+  useEffect(() => {
+    if (search) return
+    setGridLoading(true)
+
+    async function loadGrid() {
+      try {
+        if (activeCategory === 'phones') {
+          const res  = await fetch(`/api/phones?status=متوفر&store_id=${storeId}&limit=24`)
+          const json = await res.json()
+          setGridItems(
+            (json.data || []).map((p: Phone) => ({
+              ...p,
+              _type:        'phone' as const,
+              _id:          p.phone_id,
+              _displayName: [p.marque, p.model, p.stockage, p.couleur ? `· ${p.couleur}` : '']
+                .filter(Boolean).join(' '),
+            }))
+          )
+        } else if (activeCategory === 'laptops') {
+          const res  = await fetch(`/api/laptops?status=متوفر&store_id=${storeId}&limit=24`)
+          const json = await res.json()
+          setGridItems(
+            (json.data || []).map((l: Laptop) => ({
+              ...l,
+              _type:        'laptop' as const,
+              _id:          l.laptop_id,
+              _displayName: [l.marque, l.model, l.stockage].filter(Boolean).join(' '),
+            }))
+          )
+        } else if (activeCategory.startsWith('acc_')) {
+          const cat  = activeCategory.replace('acc_', '')
+          const res  = await fetch(
+            `/api/accessories?store_id=${storeId}&categorie=${encodeURIComponent(cat)}`
+          )
+          const json = await res.json()
+          setGridItems(
+            (json.data || []).map((a: Record<string, unknown>) => ({
+              ...a,
+              _type:        'accessory' as const,
+              _id:          a.acc_id as string,
+              _displayName: [a.nom, a.marque ? `· ${a.marque}` : ''].filter(Boolean).join(' '),
+            }))
+          )
+        }
+      } catch {
+        // silent — grid just stays empty
+      } finally {
+        setGridLoading(false)
+      }
+    }
+
+    loadGrid()
+  }, [activeCategory, storeId, search])
 
   // ── Cart helpers ──────────────────────────────────────────
   function addToCart(device: DeviceResult) {
@@ -478,37 +568,53 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
     <div className="h-full flex flex-col lg:flex-row overflow-hidden animate-fade-in"
          dir={isAr ? 'rtl' : 'ltr'}>
 
-      {/* ── LEFT: Search + Cart ─────────────────────────── */}
+      {/* ── LEFT: Zones A–E ─────────────────────────────── */}
       <div className="flex-1 flex flex-col overflow-hidden border-r border-[#E8E5DE]">
 
-        {/* Search header */}
-        <div className="p-5 border-b border-[#E8E5DE] flex-shrink-0 space-y-3">
-          <PageHeader
-            title={isAr ? 'نقطة البيع' : 'Point de vente'}
-            subtitle={isAr ? 'ابحث عن جهاز لإضافته للسلة' : 'Recherchez un appareil à vendre'}
-          />
+        {/* Zone A — Slim top bar */}
+        <div className="flex items-center justify-between px-5 py-3 border-b border-[#E8E5DE] flex-shrink-0 bg-white">
+          <p
+            className="font-bold text-sm tracking-widest"
+            style={{ color: primary, fontFamily: "'Barlow Condensed', sans-serif" }}
+          >
+            {portal.storeName.toUpperCase()}
+          </p>
+          <LiveClock />
+        </div>
 
+        {/* Zone B — Search bar */}
+        <div className="px-5 pt-4 pb-2 flex-shrink-0">
           <div className="flex gap-2">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#B0ADA6]" />
               <input
-                className="w-full pl-9 pr-10 py-3 bg-white border border-[#E8E5DE] rounded-xl text-sm placeholder:text-[#B0ADA6] focus:outline-none transition-all"
-                placeholder={isAr ? 'IMEI، ماركة، موديل...' : 'IMEI, marque, modèle...'}
+                className="w-full pl-9 pr-10 py-3 bg-white border-2 border-[#E8E5DE] rounded-xl text-sm placeholder:text-[#B0ADA6] focus:outline-none transition-all"
+                placeholder={isAr ? 'IMEI، ماركة، موديل، باركود...' : 'IMEI, marque, modèle, code-barres...'}
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 autoFocus
-                onFocus={e => { e.target.style.borderColor = primary; e.target.style.boxShadow = `0 0 0 3px ${primary}20` }}
-                onBlur={e => { e.target.style.borderColor = '#E8E5DE'; e.target.style.boxShadow = 'none' }}
+                onFocus={e => {
+                  e.target.style.borderColor = primary
+                  e.target.style.boxShadow   = `0 0 0 3px ${primary}20`
+                }}
+                onBlur={e => {
+                  e.target.style.borderColor = '#E8E5DE'
+                  e.target.style.boxShadow   = 'none'
+                }}
               />
-              {searching
-                ? <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#B0ADA6] animate-spin" />
-                : search && (
-                    <button onClick={() => { setSearch(''); setResults([]) }}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#B0ADA6] hover:text-[#1A1A1A]">
-                      <X className="w-4 h-4" />
-                    </button>
-                  )
-              }
+              {searching ? (
+                <Loader2
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#B0ADA6]"
+                  style={{ animation: 'spin 1s linear infinite' }}
+                />
+              ) : search ? (
+                <button
+                  onClick={() => { setSearch(''); setResults([]) }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#B0ADA6] hover:text-[#1A1A1A]"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              ) : null}
             </div>
             <ScanButton
               onScan={v => setSearch(v)}
@@ -517,28 +623,33 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
             />
           </div>
 
-          {/* Search dropdown */}
-          {results.length > 0 && (
-            <div className="bg-white border border-[#E8E5DE] rounded-xl shadow-lg overflow-hidden max-h-64 overflow-y-auto">
+          {/* Inline search results */}
+          {search && results.length > 0 && (
+            <div className="mt-2 bg-white border border-[#E8E5DE] rounded-xl shadow-lg overflow-hidden max-h-56 overflow-y-auto">
               {results.map(device => (
                 <button
                   key={device._id}
                   onClick={() => addToCart(device)}
                   className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#F8F7F4] transition-all text-left border-b border-[#F2F0EB] last:border-0"
                 >
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                       style={{ backgroundColor: `${primary}15` }}>
-                    {device._type === 'phone'
-                      ? <Smartphone className="w-4 h-4" style={{ color: primary }} />
-                      : <LaptopIcon className="w-4 h-4" style={{ color: primary }} />
-                    }
+                  <div
+                    className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                    style={{ backgroundColor: `${primary}15` }}
+                  >
+                    {device._type === 'phone'   ? <Smartphone className="w-4 h-4" style={{ color: primary }} />
+                    : device._type === 'laptop' ? <LaptopIcon  className="w-4 h-4" style={{ color: primary }} />
+                    :                             <Package     className="w-4 h-4" style={{ color: primary }} />}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-[#1A1A1A] truncate">{device._displayName}</p>
+                    <p className="text-sm font-medium text-[#1A1A1A] truncate">
+                      {device._displayName}
+                    </p>
                     <p className="text-xs text-[#B0ADA6]">
-                      {(device as Phone).imei || (device as Laptop).serial || '—'}
+                      {(device as Phone).imei || '—'}
                       {' · '}
-                      <span className="text-emerald-600">{isAr ? 'متوفر' : 'Disponible'}</span>
+                      <span className="text-emerald-600">
+                        {isAr ? 'متوفر' : 'Disponible'}
+                      </span>
                     </p>
                   </div>
                   {canSeePrices && (
@@ -551,93 +662,175 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
               ))}
             </div>
           )}
+
+          {search.length >= 2 && !searching && results.length === 0 && (
+            <p className="text-xs text-[#B0ADA6] mt-2 text-center">
+              {isAr ? 'لا توجد نتائج' : 'Aucun résultat'}
+            </p>
+          )}
         </div>
 
-        {/* Cart */}
-        <div className="flex-1 overflow-y-auto p-5">
-          {cart.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center">
-              <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
-                   style={{ backgroundColor: `${primary}12` }}>
-                <ShoppingCart className="w-8 h-8" style={{ color: `${primary}60` }} />
-              </div>
-              <p className="text-[#6B6860] text-sm font-medium">
-                {isAr ? 'السلة فارغة' : 'Panier vide'}
-              </p>
-              <p className="text-[#B0ADA6] text-xs mt-1">
-                {isAr ? 'ابحث عن جهاز أعلاه' : 'Recherchez un appareil ci-dessus'}
-              </p>
+        {/* Zone C — Category pills (hidden during active search) */}
+        {!search && (
+          <div className="px-5 py-2 flex-shrink-0">
+            <div
+              className="flex gap-2 overflow-x-auto pb-1"
+              style={{ scrollbarWidth: 'none' }}
+            >
+              {[
+                { key: 'phones',    label: isAr ? 'هواتف'  : 'Téléphones', icon: <Smartphone className="w-3 h-3" /> },
+                ...(hasLaptops ? [{ key: 'laptops', label: isAr ? 'لابتوب' : 'Laptops', icon: <LaptopIcon className="w-3 h-3" /> }] : []),
+                { key: 'acc_كفر',   label: isAr ? 'كفر'    : 'Coques',     icon: <Package className="w-3 h-3" /> },
+                { key: 'acc_شاحن',  label: isAr ? 'شاحن'   : 'Chargeurs',  icon: <Package className="w-3 h-3" /> },
+                { key: 'acc_سماعة', label: isAr ? 'سماعة'  : 'Écouteurs',  icon: <Package className="w-3 h-3" /> },
+                { key: 'acc_واقي',  label: isAr ? 'واقي'   : 'Vitres',     icon: <Package className="w-3 h-3" /> },
+                { key: 'acc_أخرى',  label: isAr ? 'أخرى'   : 'Autres',     icon: <Package className="w-3 h-3" /> },
+              ].map(cat => (
+                <button
+                  key={cat.key}
+                  onClick={() => setActiveCategory(cat.key)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap border transition-all flex-shrink-0"
+                  style={{
+                    backgroundColor: activeCategory === cat.key ? primary  : 'white',
+                    borderColor:     activeCategory === cat.key ? primary  : '#E8E5DE',
+                    color:           activeCategory === cat.key ? 'white'  : '#6B6860',
+                  }}
+                >
+                  {cat.icon}
+                  {cat.label}
+                </button>
+              ))}
             </div>
-          ) : (
-            <div className="space-y-3">
-              {cart.map(item => (
-                <div key={item._id} className="bg-white border border-[#E8E5DE] rounded-2xl p-4 shadow-sm">
-                  <div className="flex items-start gap-3 mb-3">
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-                         style={{ backgroundColor: `${primary}12` }}>
-                      {item._type === 'phone'
-                        ? <Smartphone className="w-4 h-4" style={{ color: primary }} />
-                        : <LaptopIcon className="w-4 h-4" style={{ color: primary }} />
-                      }
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm text-[#1A1A1A] truncate">{item._displayName}</p>
-                      <p className="text-xs text-[#B0ADA6]">
-                        {(item as Phone).imei || (item as Laptop).serial || '—'}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => removeFromCart(item._id)}
-                      className="p-1.5 rounded-lg text-[#B0ADA6] hover:text-red-500 hover:bg-red-50 transition-all"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
+          </div>
+        )}
 
-                  <div className="flex items-end gap-3">
-                    <div className="flex-1">
-                      <label className="text-[10px] text-[#6B6860] uppercase tracking-widest">
-                        {isAr ? 'سعر البيع (درهم)' : 'Prix de vente (MAD)'}
-                      </label>
+        {/* Zone D — Product grid (hidden during active search) */}
+        {!search && (
+          <div className="flex-1 overflow-y-auto px-5 pb-2">
+            {gridLoading ? (
+              <div className="flex items-center justify-center h-32">
+                <Loader2
+                  className="w-6 h-6 text-[#B0ADA6]"
+                  style={{ animation: 'spin 1s linear infinite' }}
+                />
+              </div>
+            ) : gridItems.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-32 text-center">
+                <Package className="w-8 h-8 text-[#B0ADA6] mb-2 opacity-40" />
+                <p className="text-sm text-[#B0ADA6]">
+                  {isAr ? 'لا توجد منتجات متاحة' : 'Aucun produit disponible'}
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-1">
+                {gridItems.map(item => (
+                  <button
+                    key={item._id}
+                    onClick={() => addToCart(item)}
+                    className="bg-white border border-[#E8E5DE] rounded-2xl p-3 text-left hover:shadow-md transition-all active:scale-[0.98]"
+                    onMouseEnter={e => (e.currentTarget.style.borderColor = primary)}
+                    onMouseLeave={e => (e.currentTarget.style.borderColor = '#E8E5DE')}
+                  >
+                    <div
+                      className="w-10 h-10 rounded-xl flex items-center justify-center mb-2"
+                      style={{ backgroundColor: `${primary}12` }}
+                    >
+                      {item._type === 'phone'   ? <Smartphone className="w-5 h-5" style={{ color: primary }} />
+                      : item._type === 'laptop' ? <LaptopIcon  className="w-5 h-5" style={{ color: primary }} />
+                      :                           <Package     className="w-5 h-5" style={{ color: primary }} />}
+                    </div>
+                    <p className="text-xs font-bold text-[#1A1A1A] leading-tight truncate">
+                      {item._displayName}
+                    </p>
+                    <p className="text-[10px] text-[#B0ADA6] mt-0.5 truncate">
+                      {(item as Phone).imei
+                        ? (item as Phone).imei?.slice(-6)
+                        : isAr ? 'متوفر' : 'Disponible'}
+                    </p>
+                    {canSeePrices && (
+                      <p className="text-sm font-bold mt-2" style={{ color: primary }}>
+                        {formatMAD((item as Phone).prix_vente_recommande || 0)}
+                      </p>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Zone E — Cart strip (always visible) */}
+        <div className="flex-shrink-0 border-t border-[#E8E5DE] bg-white">
+          <div className="px-5 py-3 max-h-48 overflow-y-auto">
+            {cart.length === 0 ? (
+              <div className="flex items-center gap-3 text-[#B0ADA6] py-1">
+                <ShoppingCart className="w-4 h-4" />
+                <p className="text-xs">
+                  {isAr
+                    ? 'السلة فارغة — اضغط على بطاقة لإضافتها'
+                    : 'Panier vide — tapez une carte pour ajouter'}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {cart.map((item, idx) => (
+                  <div
+                    key={item._id}
+                    className="flex items-center gap-3 bg-[#F8F7F4] border border-[#E8E5DE] rounded-xl px-3 py-2"
+                  >
+                    <span className="text-xs font-bold text-[#B0ADA6] w-5 text-center flex-shrink-0">
+                      {idx + 1}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold text-[#1A1A1A] truncate">
+                        {item._displayName}
+                      </p>
+                      {(item as Phone).imei && (
+                        <p className="text-[10px] text-[#B0ADA6] font-mono truncate">
+                          {(item as Phone).imei}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
                       <input
                         type="number"
                         min={0}
                         step={0.01}
-                        className={`${inputClass} mt-1 font-bold text-base`}
+                        className="w-24 border border-[#E8E5DE] rounded-lg px-2 py-1 text-xs font-bold text-right bg-white focus:outline-none"
                         value={item.prix_vente_saisi || ''}
                         onChange={e => updatePrice(item._id, Number(e.target.value))}
+                        style={{
+                          borderColor: isBelowMinimum(
+                            item.prix_vente_saisi,
+                            (item as Phone).prix_vente_minimum
+                          ) ? '#F59E0B' : undefined,
+                        }}
                       />
-                    </div>
-                    {canSeePrices && (item as Phone).prix_achat && (
-                      <div className="text-right pb-2.5 flex-shrink-0">
-                        <p className="text-[10px] text-[#B0ADA6]">{isAr ? 'الهامش' : 'Marge'}</p>
-                        <p className={`text-sm font-bold ${
+                      {canSeePrices && (item as Phone).prix_achat && (
+                        <span className={`text-[10px] font-bold w-16 text-right flex-shrink-0 ${
                           item.prix_vente_saisi - ((item as Phone).prix_achat || 0) >= 0
-                            ? 'text-emerald-600' : 'text-red-500'
+                            ? 'text-emerald-600'
+                            : 'text-red-500'
                         }`}>
                           {formatMAD(item.prix_vente_saisi - ((item as Phone).prix_achat || 0))}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Below minimum warning */}
-                  {isBelowMinimum(item.prix_vente_saisi, (item as Phone).prix_vente_minimum) && (
-                    <div className="mt-2 flex items-center gap-2 text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 text-xs">
-                      <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
-                      {isAr
-                        ? `أقل من الحد الأدنى (${formatMAD((item as Phone).prix_vente_minimum || 0)})`
-                        : `Sous le prix minimum (${formatMAD((item as Phone).prix_vente_minimum || 0)})`}
+                        </span>
+                      )}
+                      <button
+                        onClick={() => removeFromCart(item._id)}
+                        className="p-1 rounded-lg text-[#B0ADA6] hover:text-red-500 hover:bg-red-50 transition-all"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
                     </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
-      </div>
 
-      {/* ── RIGHT: Sale form ─────────────────────────────── */}
+      </div>
+      {/* ── RIGHT panel starts here — leave completely untouched ── */}
       <div className="w-full lg:w-96 flex flex-col bg-[#F8F7F4] border-t lg:border-t-0 border-[#E8E5DE] overflow-y-auto">
         <div className="p-5 space-y-5">
 
@@ -671,7 +864,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
               {isAr ? 'نوع العملية' : "Type d'opération"}
             </p>
             <div className="grid grid-cols-4 gap-2">
-              {(['بيع', 'إستبدال', 'تسبيق', 'Retour'] as OperationType[]).map(op => (
+              {(['بيع', 'إستبدال', 'تسبيق'] as OperationType[]).map(op => (
                 <button
                   key={op}
                   onClick={() => setSale('type_operation', op)}
@@ -682,12 +875,18 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                     color:           saleForm.type_operation === op ? 'white' : '#6B6860',
                   }}
                 >
-                  {op === 'بيع'      ? (isAr ? 'بيع' : 'Vente')
-                   : op === 'إستبدال' ? (isAr ? 'إستبدال' : 'Échange')
-                   : op === 'تسبيق'  ? (isAr ? 'تسبيق' : 'Avance')
-                   : (isAr ? 'إرجاع' : 'Retour')}
+                  {op === 'بيع'       ? (isAr ? 'بيع' : 'Vente')
+                  : op === 'إستبدال' ? (isAr ? 'إستبدال' : 'Échange')
+                  :                    (isAr ? 'تسبيق' : 'Avance')}
                 </button>
               ))}
+              <button
+                onClick={() => setRetourOpen(true)}
+                className="py-2.5 rounded-xl text-xs font-bold border transition-all"
+                style={{ backgroundColor: 'white', borderColor: '#FCA5A5', color: '#EF4444' }}
+              >
+                {isAr ? 'إرجاع' : 'Retour'}
+              </button>
             </div>
           </div>
 
@@ -938,6 +1137,18 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
           </div>
         </div>
       )}
+
+      {/* Retour modal */}
+      <RetourModal
+        open={retourOpen}
+        onClose={() => setRetourOpen(false)}
+        storeId={storeId}
+        primary={primary}
+        onRetourDone={() => {
+          setCart([])
+          setSaleForm({ ...EMPTY_SALE })
+        }}
+      />
 
       {/* Override PIN modal */}
       <Modal

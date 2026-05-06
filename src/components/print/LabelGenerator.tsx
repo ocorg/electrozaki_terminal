@@ -132,12 +132,17 @@ export default function LabelGenerator({ product, open, onClose }: LabelGenerato
       <div className="space-y-5">
 
         {/* Label preview */}
-        <div className="flex justify-center">
+        <div className="flex justify-center overflow-hidden w-full">
+          <div style={{
+            transform:       'scale(0.72)',
+            transformOrigin: 'top center',
+            marginBottom:    `-${Math.round(H * 0.28)}px`,
+          }}>
           <div
             ref={labelRef}
             style={{
-              width:           `${W}px`,
-              height:          `${H}px`,
+              width:  `${W}px`,
+              height: `${H}px`,
               backgroundColor: '#FFFFFF',
               border:          '1px solid #E8E5DE',
               borderRadius:    '6px',
@@ -250,10 +255,11 @@ export default function LabelGenerator({ product, open, onClose }: LabelGenerato
                 {new Date().toLocaleDateString('fr-FR')}
               </p>
             </div>
-          </div>
         </div>
+        </div>
+      </div>
 
-        {/* Phomemo size note */}
+      {/* Phomemo size note */}
         <p className="text-xs text-[#B0ADA6] text-center">
           {isAr ? 'حجم الملصق: 40 × 30 ملم — متوافق مع Phomemo' : 'Format: 40×30 mm — Compatible Phomemo'}
         </p>
