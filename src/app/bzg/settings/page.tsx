@@ -5,6 +5,7 @@ import { PageHeader, Field, inputClass, Btn } from '@/components/shared'
 import { toast } from 'sonner'
 import { Settings, Save, Store, Palette } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import StoreControlSection from '@/components/bzg/StoreControlSection'
 
 interface StoreSetting {
   store_id:    string
@@ -19,15 +20,14 @@ export default function BZGSettingsPage() {
   const isAr   = language === 'ar'
   const supabase = createClient()
 
-  const [stores, setStores]       = useState<StoreSetting[]>([])
-  const [loading, setLoading]     = useState(true)
-  const [saving, setSaving]       = useState<string | null>(null)
-  const [edits, setEdits]         = useState<Record<string, Partial<StoreSetting>>>({})
+  const [stores,  setStores]  = useState<StoreSetting[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saving,  setSaving]  = useState<string | null>(null)
+  const [edits,   setEdits]   = useState<Record<string, Partial<StoreSetting>>>({})
 
   const [kvSettings, setKvSettings] = useState<{ key: string; value: string; store_id: string; notes?: string }[]>([])
-  const [kvEdits, setKvEdits]       = useState<Record<string, string>>({})
+  const [kvEdits,    setKvEdits]    = useState<Record<string, string>>({})
 
-  // Composite key prevents EZ and HP rows for the same key colliding in the edit map
   function kvKey(storeId: string, key: string) { return `${storeId}__${key}` }
 
   async function fetchSettings() {
@@ -58,7 +58,6 @@ export default function BZGSettingsPage() {
     try {
       const { data } = await supabase.from('stores').select('*').order('created_at')
       setStores((data || []) as StoreSetting[])
-      // Init edits
       const init: Record<string, Partial<StoreSetting>> = {}
       ;(data || []).forEach((s: StoreSetting) => { init[s.store_id] = { ...s } })
       setEdits(init)
@@ -109,45 +108,61 @@ export default function BZGSettingsPage() {
       </div>
 
       <div className="flex-1 px-6 pb-6 space-y-6">
+
+        {/* ── Store Control (owner only) ── */}
+        <StoreControlSection />
+
         {/* ── Key-Value Settings ── */}
-      <div className="mt-8">
-        <h2 className="font-display text-xl font-bold text-[#1A1A1A] tracking-wide mb-4">
-          {isAr ? 'إعدادات متقدمة (مفتاح / قيمة)' : 'Paramètres avancés (clé / valeur)'}
-        </h2>
-        {kvSettings.length === 0 ? (
-          <p className="text-sm text-[#B0ADA6]">
-            {isAr ? 'لا توجد إعدادات بعد' : 'Aucun paramètre configuré.'}
-          </p>
-        ) : (
-          <div className="space-y-3">
-            {kvSettings.map(s => (
-              <div key={kvKey(s.store_id, s.key)} className="bg-white border border-[#E8E5DE] rounded-xl p-4 flex items-center gap-4">
-                <div className="flex-shrink-0 w-52">
-                  <p className="text-xs font-mono text-[#6B6860]">{s.key}</p>
-                  {s.notes && <p className="text-[10px] text-[#B0ADA6] mt-0.5">{s.notes}</p>}
-                  <span className="mt-1 inline-block text-[9px] font-bold font-mono px-1.5 py-0.5 rounded"
-                    style={{
-                      backgroundColor: s.store_id === 'EZ-001' ? '#FAF5E8' : '#EFF6FF',
-                      color:           s.store_id === 'EZ-001' ? '#C9A440' : '#3B82F6',
-                    }}>
-                    {s.store_id}
-                  </span>
+        <div className="mt-8">
+          <h2 className="font-display text-xl font-bold text-[#1A1A1A] tracking-wide mb-4">
+            {isAr ? 'إعدادات متقدمة (مفتاح / قيمة)' : 'Paramètres avancés (clé / valeur)'}
+          </h2>
+          {kvSettings.length === 0 ? (
+            <p className="text-sm text-[#B0ADA6]">
+              {isAr ? 'لا توجد إعدادات بعد' : 'Aucun paramètre configuré.'}
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {kvSettings.map(s => (
+                <div
+                  key={kvKey(s.store_id, s.key)}
+                  className="bg-white border border-[#E8E5DE] rounded-xl p-4 flex items-center gap-4"
+                >
+                  <div className="flex-shrink-0 w-52">
+                    <p className="text-xs font-mono text-[#6B6860]">{s.key}</p>
+                    {s.notes && (
+                      <p className="text-[10px] text-[#B0ADA6] mt-0.5">{s.notes}</p>
+                    )}
+                    <span
+                      className="mt-1 inline-block text-[9px] font-bold font-mono px-1.5 py-0.5 rounded"
+                      style={{
+                        backgroundColor: s.store_id === 'EZ-001' ? '#FAF5E8' : '#EFF6FF',
+                        color:           s.store_id === 'EZ-001' ? '#C9A440' : '#3B82F6',
+                      }}
+                    >
+                      {s.store_id}
+                    </span>
+                  </div>
+                  <input
+                    className="flex-1 border border-[#E8E5DE] rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#C9A440] transition-all"
+                    value={kvEdits[kvKey(s.store_id, s.key)] ?? ''}
+                    onChange={e =>
+                      setKvEdits(p => ({ ...p, [kvKey(s.store_id, s.key)]: e.target.value }))
+                    }
+                  />
+                  <button
+                    onClick={() => saveKvSetting(s.key, s.store_id)}
+                    className="px-4 py-2 rounded-xl bg-[#C9A440] text-white text-sm font-bold hover:opacity-90 transition-all flex-shrink-0"
+                  >
+                    {isAr ? 'حفظ' : 'Sauver'}
+                  </button>
                 </div>
-                <input
-                  className="flex-1 border border-[#E8E5DE] rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#C9A440] transition-all"
-                  value={kvEdits[kvKey(s.store_id, s.key)] ?? ''}
-                  onChange={e => setKvEdits(p => ({ ...p, [kvKey(s.store_id, s.key)]: e.target.value }))}
-                />
-                <button
-                  onClick={() => saveKvSetting(s.key, s.store_id)}
-                  className="px-4 py-2 rounded-xl bg-[#C9A440] text-white text-sm font-bold hover:opacity-90 transition-all flex-shrink-0">
-                  {isAr ? 'حفظ' : 'Sauver'}
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ── Store Settings ── */}
         {loading ? (
           <div className="space-y-4">
             {[...Array(2)].map((_, i) => (
@@ -158,13 +173,17 @@ export default function BZGSettingsPage() {
           stores.map(store => {
             const edit = edits[store.store_id] ?? store
             return (
-              <div key={store.store_id} className="bg-white border-2 border-[#E8E5DE] rounded-2xl overflow-hidden"
-                   style={{ borderTopColor: edit.theme_color ?? store.theme_color, borderTopWidth: '3px' }}>
-
+              <div
+                key={store.store_id}
+                className="bg-white border-2 border-[#E8E5DE] rounded-2xl overflow-hidden"
+                style={{ borderTopColor: edit.theme_color ?? store.theme_color, borderTopWidth: '3px' }}
+              >
                 {/* Header */}
                 <div className="flex items-center gap-3 px-5 py-4 border-b border-[#E8E5DE]">
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center"
-                       style={{ backgroundColor: `${edit.theme_color ?? store.theme_color}20` }}>
+                  <div
+                    className="w-8 h-8 rounded-lg flex items-center justify-center"
+                    style={{ backgroundColor: `${edit.theme_color ?? store.theme_color}20` }}
+                  >
                     <Store className="w-4 h-4" style={{ color: edit.theme_color ?? store.theme_color }} />
                   </div>
                   <div>
@@ -177,34 +196,49 @@ export default function BZGSettingsPage() {
                 <div className="p-5 space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <Field label={isAr ? 'اسم المتجر' : 'Nom du magasin'}>
-                      <input type="text" className={inputClass}
+                      <input
+                        type="text"
+                        className={inputClass}
                         value={edit.name ?? ''}
-                        onChange={e => setEdit(store.store_id, 'name', e.target.value)} />
+                        onChange={e => setEdit(store.store_id, 'name', e.target.value)}
+                      />
                     </Field>
                     <Field label={isAr ? 'رقم الهاتف' : 'Téléphone'}>
-                      <input type="tel" className={inputClass}
+                      <input
+                        type="tel"
+                        className={inputClass}
                         placeholder="05XXXXXXXX"
                         value={edit.phone ?? ''}
-                        onChange={e => setEdit(store.store_id, 'phone', e.target.value)} />
+                        onChange={e => setEdit(store.store_id, 'phone', e.target.value)}
+                      />
                     </Field>
                   </div>
 
                   <Field label={isAr ? 'العنوان' : 'Adresse'}>
-                    <input type="text" className={inputClass}
+                    <input
+                      type="text"
+                      className={inputClass}
                       placeholder={isAr ? 'مكناس، المغرب' : 'Meknès, Maroc'}
                       value={edit.address ?? ''}
-                      onChange={e => setEdit(store.store_id, 'address', e.target.value)} />
+                      onChange={e => setEdit(store.store_id, 'address', e.target.value)}
+                    />
                   </Field>
 
                   <Field label={isAr ? 'لون العلامة التجارية' : 'Couleur de la marque'}>
                     <div className="flex items-center gap-3">
-                      <input type="color" className="w-10 h-10 rounded-xl cursor-pointer border border-[#E8E5DE]"
-                        value={edit.theme_color ?? store.theme_color}
-                        onChange={e => setEdit(store.store_id, 'theme_color', e.target.value)} />
-                      <input type="text" className={inputClass}
+                      <input
+                        type="color"
+                        className="w-10 h-10 rounded-xl cursor-pointer border border-[#E8E5DE]"
                         value={edit.theme_color ?? store.theme_color}
                         onChange={e => setEdit(store.store_id, 'theme_color', e.target.value)}
-                        placeholder="#C9A440" />
+                      />
+                      <input
+                        type="text"
+                        className={inputClass}
+                        value={edit.theme_color ?? store.theme_color}
+                        onChange={e => setEdit(store.store_id, 'theme_color', e.target.value)}
+                        placeholder="#C9A440"
+                      />
                       <Palette className="w-4 h-4 text-[#B0ADA6]" />
                     </div>
                   </Field>

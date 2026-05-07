@@ -91,6 +91,38 @@ async function handleMiddleware(request: NextRequest): Promise<NextResponse> {
       if (pathname.startsWith('/bzg') && !['manager', 'owner'].includes(profile.role)) {
         return NextResponse.redirect(new URL('/select-store', request.url))
       }
+
+      // Store is_active guard — /ez and /hp only, /bzg is always exempt
+      const PORTAL_STORE_MAP: Record<string, string> = {
+        '/ez': 'EZ-001',
+        '/hp': 'HP-001',
+      }
+
+      const matchedPortal = Object.keys(PORTAL_STORE_MAP).find(p =>
+        pathname.startsWith(p)
+      )
+
+      if (matchedPortal) {
+        const guardStoreId = PORTAL_STORE_MAP[matchedPortal]
+        try {
+          const { data: storeRow } = await supabase
+            .from('stores')
+            .select('is_active')
+            .eq('store_id', guardStoreId)
+            .single()
+
+          if (storeRow && storeRow.is_active === false) {
+            return NextResponse.redirect(
+              new URL(
+                `/store-unavailable?store=${encodeURIComponent(guardStoreId)}`,
+                request.url
+              )
+            )
+          }
+        } catch {
+          // Fail open on lookup error — let the page handle it
+        }
+      }
     } catch {
       // Profile fetch failed — fail open, let the page handle it
       return NextResponse.next({ request })

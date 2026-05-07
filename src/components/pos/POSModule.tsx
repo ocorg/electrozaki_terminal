@@ -11,6 +11,7 @@ import type { Phone, Laptop, PaymentMethod, OperationType } from '@/types/databa
 import ScanButton from '@/components/scanner/ScanButton'
 import ComboBox from '@/components/phones/ComboBox'
 import RetourModal from '@/components/pos/RetourModal'
+import { ReceiptPrint, type ReceiptData } from '@/components/print/ReceiptGenerator'
 import { usePhoneCatalog } from '@/lib/hooks/usePhoneCatalog'
 import {
   Search, ShoppingCart, User, CreditCard, ArrowLeftRight,
@@ -127,6 +128,8 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
 
   const [submitting, setSubmitting]   = useState(false)
   const [retourOpen, setRetourOpen] = useState(false)
+  const [receiptOpen, setReceiptOpen] = useState(false)
+  const [receiptData, setReceiptData] = useState<ReceiptData | null>(null)
   // Exchange intake panel (shown after successful sale with exchange)
   const [exchangePanel, setExchangePanel] = useState<{
     open:                    boolean
@@ -396,6 +399,27 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
       }
 
       setSuccessTxn(lastTxnId)
+      setReceiptData({
+        store_name:      portal.storeName,
+        txn_id:          lastTxnId ?? '—',
+        date_vente:      new Date().toISOString(),
+        cashier_name:    user?.display_name ?? '—',
+        items: cart.map(item => ({
+          name:       item._displayName,
+          qty:        1,
+          unit_price: item.prix_vente_saisi,
+          line_total: item.prix_vente_saisi,
+          imei:       (item as Phone).imei ?? undefined,
+        })),
+        total:           totalVente,
+        avance:          saleForm.avance       > 0 ? saleForm.avance       : undefined,
+        valeur_echange:  saleForm.valeur_echange > 0 ? saleForm.valeur_echange : undefined,
+        fariq,
+        payment_method:  saleForm.payment_method,
+        montant_especes: saleForm.montant_especes || undefined,
+        montant_carte:   saleForm.montant_carte   || undefined,
+        montant_rendu:   montantRendu > 0 ? montantRendu : undefined,
+      })
       toast.success(isAr ? 'تمت عملية البيع ✓' : 'Vente enregistrée ✓')
 
       // Check if exchange device needs intake
@@ -454,12 +478,19 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
           </Btn>
           <Btn
             variant="primary"
-            onClick={() => window.print()}
+            onClick={() => setReceiptOpen(true)}
             style={{ backgroundColor: primary } as React.CSSProperties}
           >
             <Printer className="w-4 h-4" />
             {isAr ? 'طباعة الفاتورة' : 'Imprimer reçu'}
           </Btn>
+
+          {receiptOpen && receiptData && (
+            <ReceiptPrint
+              data={receiptData}
+              onClose={() => setReceiptOpen(false)}
+            />
+          )}
         </div>
       </div>
     </div>

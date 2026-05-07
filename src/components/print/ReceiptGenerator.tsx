@@ -1,146 +1,307 @@
 'use client'
-import { formatMAD, formatDate } from '@/lib/utils'
+import React from 'react'
 
-interface ReceiptTransaction {
+// ─── Types ────────────────────────────────────────────────────
+export interface ReceiptItem {
+  name:       string
+  qty:        number
+  unit_price: number
+  line_total: number
+  imei?:      string
+}
+
+export interface ReceiptData {
+  store_name:       string
+  store_address?:   string
+  store_phone?:     string
   txn_id:           string
-  device_type:      string
-  device_id:        string
-  type_operation:   string
-  prix_vente:       number
+  date_vente:       string
+  cashier_name:     string
+  items:            ReceiptItem[]
+  total:            number
   avance?:          number
   valeur_echange?:  number
   fariq?:           number
   payment_method:   string
+  montant_especes?: number
+  montant_carte?:   number
+  montant_rendu?:   number
+  warranty_start?:  string
   warranty_expiry?: string
-  created_at:       string
-  // Joined from clients
-  client_nom?:      string
-  client_tel?:      string
-  // Device display
-  device_model?:    string
-  device_imei?:     string
+  warranty_months?: number
 }
 
-interface ReceiptStore {
-  name:    string
-  address: string
-  phone:   string
+interface ReceiptPrintProps {
+  data:    ReceiptData
+  onClose: () => void
 }
 
-interface ReceiptGeneratorProps {
-  transaction: ReceiptTransaction
-  store:       ReceiptStore
+// ─── Helpers ──────────────────────────────────────────────────
+function fmtMAD(n: number): string {
+  return n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + ' MAD'
 }
 
-export async function generateReceiptPDF(props: ReceiptGeneratorProps): Promise<void> {
-  const { jsPDF } = await import('jspdf')
-  const { transaction: t, store } = props
+function fmtDate(s?: string): string {
+  if (!s) return '—'
+  const d = new Date(s)
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`
+}
 
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
-  const pageW = 210
-  let y = 20
+function fmtDateTime(s?: string): string {
+  if (!s) return '—'
+  const d = new Date(s)
+  return `${fmtDate(s)} — ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
 
-  // ── Helper functions ──────────────────────────────────────
-  const line   = (x1: number, x2: number) => { doc.line(x1, y, x2, y); y += 4 }
-  const text   = (str: string, x: number, size = 10, bold = false, align: 'left'|'center'|'right' = 'left') => {
-    doc.setFontSize(size)
-    doc.setFont('helvetica', bold ? 'bold' : 'normal')
-    doc.text(str, x, y, { align })
-  }
-  const row    = (label: string, value: string, labelX = 20, valueX = 190) => {
-    text(label, labelX, 10)
-    text(value, valueX, 10, false, 'right')
-    y += 6
-  }
+const PM_LABELS: Record<string, string> = {
+  'نقد':     'Espèces / نقداً',
+  'تحويل':   'Virement / تحويل',
+  'تسبيق':   'Avance / تسبيق',
+  'إستبدال': 'Échange / استبدال',
+  'مختلط':   'Mixte / مختلط',
+}
 
-  // ── Header ────────────────────────────────────────────────
-  text(store.name.toUpperCase(), pageW / 2, 16, true, 'center')
-  y += 8
-  text(store.address, pageW / 2, 9, false, 'center')
-  y += 5
-  text(store.phone, pageW / 2, 9, false, 'center')
-  y += 8
+// ─── Component ────────────────────────────────────────────────
+export function ReceiptPrint({ data, onClose }: ReceiptPrintProps) {
+  const fariq = data.fariq ?? (
+    data.total - (data.avance ?? 0) - (data.valeur_echange ?? 0)
+  )
 
-  doc.setDrawColor(180, 180, 180)
-  line(15, pageW - 15)
+  return (
+    <>
+      <style>{`
+        @media print {
+          body > *:not(#receipt-root) { display: none !important; }
+          #receipt-root {
+            display:    block !important;
+            position:   static !important;
+            background: white;
+          }
+          .receipt-no-print { display: none !important; }
+          @page { margin: 0; size: 80mm auto; }
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+      `}</style>
 
-  // ── Receipt metadata ──────────────────────────────────────
-  text('REÇU DE VENTE', pageW / 2, 13, true, 'center')
-  y += 7
-  row('N° Transaction:', t.txn_id)
-  row('Date:', formatDate(t.created_at))
+      {/* Backdrop */}
+      <div
+        className="receipt-no-print fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+      />
 
-  if (t.client_nom) {
-    row('Client:', t.client_nom)
-    if (t.client_tel) row('Téléphone:', t.client_tel)
-  }
+      {/* Receipt panel */}
+      <div
+        id="receipt-root"
+        className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none p-4"
+      >
+        <div
+          className="pointer-events-auto bg-white rounded-2xl shadow-2xl overflow-y-auto"
+          style={{
+            width:      '320px',
+            maxHeight:  '90vh',
+            fontFamily: "'Courier New', Courier, monospace",
+            fontSize:   '12px',
+          }}
+        >
+          <div className="p-5 space-y-3">
 
-  y += 2
-  doc.setDrawColor(200, 200, 200)
-  line(15, pageW - 15)
+            {/* Store header */}
+            <div className="text-center space-y-0.5 pb-1">
+              <p className="font-bold text-base tracking-widest uppercase">
+                {data.store_name}
+              </p>
+              {data.store_address && (
+                <p className="text-[11px] text-gray-500">{data.store_address}</p>
+              )}
+              {data.store_phone && (
+                <p className="text-[11px] text-gray-500">{data.store_phone}</p>
+              )}
+            </div>
 
-  // ── Item table header ─────────────────────────────────────
-  text('Article', 20, 10, true)
-  text('Prix', 190, 10, true, 'right')
-  y += 6
-  line(15, pageW - 15)
+            <div className="border-t border-dashed border-gray-300" />
 
-  // ── Item ─────────────────────────────────────────────────
-  const itemName = t.device_model
-    ? `${t.device_type} — ${t.device_model}`
-    : `${t.device_type} (${t.device_id})`
-  text(itemName, 20, 10)
-  text(formatMAD(t.prix_vente), 190, 10, false, 'right')
-  y += 6
-  if (t.device_imei) {
-    text(`IMEI: ${t.device_imei}`, 20, 8)
-    y += 5
-  }
+            {/* Transaction meta */}
+            <div className="space-y-1">
+              <div className="flex justify-between">
+                <span className="text-gray-500">Ticket N° / رقم</span>
+                <span className="font-bold">{data.txn_id}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Date / التاريخ</span>
+                <span>{fmtDateTime(data.date_vente)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Caissier / الكاشير</span>
+                <span className="truncate max-w-[160px] text-right">
+                  {data.cashier_name}
+                </span>
+              </div>
+            </div>
 
-  y += 2
-  line(15, pageW - 15)
+            <div className="border-t border-dashed border-gray-300" />
 
-  // ── Payment breakdown ─────────────────────────────────────
-  text('DÉTAIL DU PAIEMENT', 20, 10, true)
-  y += 6
+            {/* Items */}
+            <div className="space-y-2">
+              <p className="font-bold text-[11px] uppercase tracking-widest text-gray-500">
+                Articles / المواد
+              </p>
+              {data.items.map((item, i) => (
+                <div key={i}>
+                  <div className="flex justify-between font-medium">
+                    <span className="flex-1 pr-2 leading-tight text-[11px]">
+                      {item.name}
+                    </span>
+                    <span className="flex-shrink-0 text-[11px]">
+                      {fmtMAD(item.line_total)}
+                    </span>
+                  </div>
+                  {item.imei && (
+                    <p className="text-[10px] text-gray-400 font-mono mt-0.5">
+                      IMEI: {item.imei}
+                    </p>
+                  )}
+                  {item.qty > 1 && (
+                    <p className="text-[10px] text-gray-400">
+                      {item.qty} × {fmtMAD(item.unit_price)}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
 
-  row('Prix de vente:', formatMAD(t.prix_vente))
-  if (t.avance && t.avance > 0) {
-    row('Avance versée:', `- ${formatMAD(t.avance)}`)
-  }
-  if (t.valeur_echange && t.valeur_echange > 0) {
-    row('Valeur reprise (échange):', `- ${formatMAD(t.valeur_echange)}`)
-  }
+            <div className="border-t border-dashed border-gray-300" />
 
-  const fariq = t.fariq ?? (t.prix_vente - (t.avance ?? 0) - (t.valeur_echange ?? 0))
-  const isSettled = fariq === 0
+            {/* Payment breakdown */}
+            <div className="space-y-1">
+              <div className="flex justify-between text-[11px]">
+                <span className="text-gray-500">Sous-total / المجموع</span>
+                <span className="font-bold">{fmtMAD(data.total)}</span>
+              </div>
 
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(11)
-  doc.text('Reste à payer:', 20, y)
-  doc.text(isSettled ? '✓ SOLDÉ' : formatMAD(fariq), 190, y, { align: 'right' })
-  y += 7
+              {(data.avance ?? 0) > 0 && (
+                <div className="flex justify-between text-[11px] text-amber-700">
+                  <span>Avance versée / التسبيق</span>
+                  <span>- {fmtMAD(data.avance!)}</span>
+                </div>
+              )}
 
-  row('Mode de paiement:', t.payment_method)
+              {(data.valeur_echange ?? 0) > 0 && (
+                <div className="flex justify-between text-[11px] text-blue-700">
+                  <span>Reprise échange / الاستبدال</span>
+                  <span>- {fmtMAD(data.valeur_echange!)}</span>
+                </div>
+              )}
 
-  // ── Warranty ─────────────────────────────────────────────
-  if (t.warranty_expiry) {
-    y += 3
-    doc.setDrawColor(200, 200, 200)
-    line(15, pageW - 15)
-    text('GARANTIE', 20, 10, true)
-    y += 6
-    row("Date d'expiration:", formatDate(t.warranty_expiry))
-  }
+              <div className="flex justify-between font-bold text-[13px] border-t border-gray-200 pt-1 mt-1">
+                <span>
+                  {fariq === 0 ? '✓ Soldé / مسدد' : 'Reste à payer / المتبقي'}
+                </span>
+                <span>
+                  {fariq === 0 ? '0,00 MAD' : fmtMAD(fariq)}
+                </span>
+              </div>
 
-  // ── Footer ────────────────────────────────────────────────
-  y = 270
-  doc.setDrawColor(180, 180, 180)
-  doc.line(15, y, pageW - 15, y)
-  y += 6
-  text('Merci de votre confiance — BZG Group', pageW / 2, 10, false, 'center')
-  y += 5
-  text(store.phone, pageW / 2, 9, false, 'center')
+              <div className="flex justify-between text-[11px] text-gray-500">
+                <span>Règlement / الدفع</span>
+                <span className="text-right max-w-[180px]">
+                  {PM_LABELS[data.payment_method] ?? data.payment_method}
+                  {data.payment_method === 'مختلط' &&
+                   data.montant_especes != null &&
+                   data.montant_carte   != null
+                    ? ` (${fmtMAD(data.montant_especes)} esp. + ${fmtMAD(data.montant_carte)} vir.)`
+                    : ''}
+                </span>
+              </div>
 
-  doc.save(`recu-${t.txn_id}.pdf`)
+              {(data.montant_rendu ?? 0) > 0 && (
+                <div className="flex justify-between text-[11px] font-bold text-emerald-700">
+                  <span>Monnaie rendue / الباقي</span>
+                  <span>{fmtMAD(data.montant_rendu!)}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Warranty */}
+            {data.warranty_expiry && (
+              <>
+                <div className="border-t border-dashed border-gray-300" />
+                <div className="space-y-1">
+                  <p className="font-bold text-[11px] uppercase tracking-widest text-gray-500">
+                    Garantie / الضمان
+                  </p>
+                  <div className="flex justify-between text-[11px]">
+                    <span className="text-gray-500">Début / البداية</span>
+                    <span>{fmtDate(data.warranty_start)}</span>
+                  </div>
+                  <div className="flex justify-between text-[11px]">
+                    <span className="text-gray-500">Expiration / الانتهاء</span>
+                    <span className="font-bold">{fmtDate(data.warranty_expiry)}</span>
+                  </div>
+                  {data.warranty_months != null && (
+                    <div className="flex justify-between text-[11px]">
+                      <span className="text-gray-500">Durée / المدة</span>
+                      <span>{data.warranty_months} mois / أشهر</span>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+
+            <div className="border-t border-dashed border-gray-300" />
+
+            {/* Signature + stamp */}
+            <div className="space-y-4">
+              <div>
+                <p className="text-[11px] text-gray-500 mb-6">
+                  Signature client / توقيع العميل :
+                </p>
+                <div className="border-b border-gray-400 w-full" />
+              </div>
+              <div className="border border-gray-300 rounded-lg h-14 flex items-center justify-center">
+                <span className="text-[10px] text-gray-400">
+                  Cachet magasin / ختم المحل
+                </span>
+              </div>
+            </div>
+
+            <div className="border-t border-dashed border-gray-300" />
+
+            {/* Footer */}
+            <div className="text-center space-y-0.5">
+              <p className="text-[11px] font-medium">Merci de votre confiance !</p>
+              <p className="text-[10px] text-gray-400">
+                شكراً لثقتكم — نتمنى رؤيتك مجدداً
+              </p>
+              {data.store_phone && (
+                <p className="text-[10px] text-gray-400">{data.store_phone}</p>
+              )}
+            </div>
+
+          </div>
+
+          {/* Controls — hidden in print */}
+          <div className="receipt-no-print flex gap-2 px-5 pb-5">
+            <button
+              onClick={() => window.print()}
+              className="flex-1 py-3 rounded-xl bg-[#1A1A1A] text-white text-sm font-bold hover:bg-[#333] transition-all"
+            >
+              🖨 Imprimer
+            </button>
+            <button
+              onClick={onClose}
+              className="flex-1 py-3 rounded-xl border border-[#E8E5DE] text-[#6B6860] text-sm font-medium hover:bg-[#F8F7F4] transition-all"
+            >
+              Fermer
+            </button>
+          </div>
+
+        </div>
+      </div>
+    </>
+  )
+}
+
+// Legacy shim — keeps existing imports from breaking
+export async function generateReceiptPDF(): Promise<void> {
+  console.warn('[ReceiptGenerator] Deprecated — use ReceiptPrint component instead.')
 }

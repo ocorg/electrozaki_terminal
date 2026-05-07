@@ -10,7 +10,7 @@ import {
   Wrench, Users, Truck, Receipt, Vault, ArrowLeftRight,
   Settings, LogOut, Globe, ChevronRight,
   PanelLeftClose, PanelLeftOpen, Store, FileText, Clock,
-  BarChart3, UserCheck, ScrollText, Shield
+  BarChart3, UserCheck, ScrollText, Shield, PackageCheck
 } from 'lucide-react'
 import type { UserRole } from '@/types/database'
 import { useLanguageStore } from '@/lib/stores/language'
@@ -56,9 +56,10 @@ function getNavItems(portalBase: string, portalType: string): NavItem[] {
       { href: `${portalBase}/expenses`,         icon: Receipt,         label: 'Dépenses',          roles: ['manager','owner'] },
       { href: `${portalBase}/caisse`,           icon: Vault,           label: 'Caisse du jour',    roles: ['staff','manager','owner'] },
       { href: `${portalBase}/movements`,        icon: ArrowLeftRight,  label: 'Transferts stock',  roles: ['manager','owner'] },
-      { href: `${portalBase}/suppliers`,        icon: Truck,           label: 'Fournisseurs',       roles: ['manager','owner'] },
-    ]
-  }
+      { href: `${portalBase}/suppliers`,        icon: Truck,           label: 'Fournisseurs',      roles: ['manager','owner'] },
+      { href: `${portalBase}/deliveries`,       icon: PackageCheck,    label: 'Livraisons',        roles: ['manager','owner'] },
+  ]
+}
 
   // Default: EZ portal
   return [
@@ -75,6 +76,7 @@ function getNavItems(portalBase: string, portalType: string): NavItem[] {
     { href: `${portalBase}/expenses`,         icon: Receipt,         label: 'Dépenses',           roles: ['manager','owner'] },
     { href: `${portalBase}/caisse`,           icon: Vault,           label: 'Caisse du jour',     roles: ['staff','manager','owner'] },
     { href: `${portalBase}/movements`,        icon: ArrowLeftRight,  label: 'Transferts stock',   roles: ['manager','owner'] },
+    { href: `${portalBase}/deliveries`,       icon: PackageCheck,    label: 'Livraisons',         roles: ['manager','owner'] },
   ]
 }
 
@@ -85,7 +87,7 @@ interface PortalSidebarProps {
 }
 
 export default function PortalSidebar({ onClose, collapsed = false, onCollapsedChange }: PortalSidebarProps) {
-  const pathname    = usePathname()
+  const pathname    = usePathname() ?? ''
   const router      = useRouter()
   const supabase    = createClient()
   const { user }    = useUser()
