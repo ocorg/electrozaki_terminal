@@ -27,8 +27,8 @@ async function setDeviceStatus(
 // ── GET — list deliveries ─────────────────────────────────────
 export async function GET(request: NextRequest) {
   try {
-    const supabase      = createUntypedClient()
-    const typedSupabase = createClient()
+    const supabase      = await createUntypedClient()
+    const typedSupabase = await createClient()
 
     const { data: { user } } = await typedSupabase.auth.getUser()
     if (!user) {
@@ -60,8 +60,8 @@ export async function GET(request: NextRequest) {
 // ── POST — create delivery ────────────────────────────────────
 export async function POST(request: NextRequest) {
   try {
-    const supabase      = createUntypedClient()
-    const typedSupabase = createClient()
+    const supabase      = await createUntypedClient()
+    const typedSupabase = await createClient()
 
     const { data: { user } } = await typedSupabase.auth.getUser()
     if (!user) {
@@ -173,8 +173,8 @@ export async function POST(request: NextRequest) {
 // ── PATCH — update delivery status ───────────────────────────
 export async function PATCH(request: NextRequest) {
   try {
-    const supabase      = createUntypedClient()
-    const typedSupabase = createClient()
+    const supabase      = await createUntypedClient()
+    const typedSupabase = await createClient()
 
     const { data: { user } } = await typedSupabase.auth.getUser()
     if (!user) {

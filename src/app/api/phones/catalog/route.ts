@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET() {
   try {
-    const typedSupabase = createClient()
+    const typedSupabase = await createClient()
 
     const { data: { user } } = await typedSupabase.auth.getUser()
     if (!user) {
@@ -25,8 +25,8 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const supabase = createUntypedClient()
-  const typedSupabase = createClient()
+  const supabase = await createUntypedClient()
+  const typedSupabase = await createClient()
   const { data: { user } } = await typedSupabase.auth.getUser()
 
   if (!user) {
@@ -60,8 +60,8 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  const supabase = createUntypedClient()
-  const typedSupabase = createClient()
+  const supabase = await createUntypedClient()
+  const typedSupabase = await createClient()
   const { data: { user } } = await typedSupabase.auth.getUser()
 
   if (!user) {

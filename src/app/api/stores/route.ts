@@ -5,8 +5,8 @@ import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 // ── GET — list all stores ─────────────────────────────────────
 export async function GET() {
   try {
-    const supabase      = createUntypedClient()
-    const typedSupabase = createClient()
+    const supabase      = await createUntypedClient()
+    const typedSupabase = await createClient()
 
     const { data: { user } } = await typedSupabase.auth.getUser()
     if (!user) {
@@ -39,8 +39,8 @@ export async function GET() {
 // ── PATCH — toggle is_active ──────────────────────────────────
 export async function PATCH(request: NextRequest) {
   try {
-    const supabase      = createUntypedClient()
-    const typedSupabase = createClient()
+    const supabase      = await createUntypedClient()
+    const typedSupabase = await createClient()
 
     const { data: { user } } = await typedSupabase.auth.getUser()
     if (!user) {

@@ -4,8 +4,8 @@ import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 
 export async function PATCH(request: NextRequest) {
   try {
-    const supabase      = createUntypedClient()
-    const typedSupabase = createClient()
+    const supabase      = await createUntypedClient()
+    const typedSupabase = await createClient()
 
     const { data: { user } } = await typedSupabase.auth.getUser()
     if (!user) {

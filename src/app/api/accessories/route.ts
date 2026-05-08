@@ -4,8 +4,8 @@ import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase      = createUntypedClient()
-    const typedSupabase = createClient()
+    const supabase      = await createUntypedClient()
+    const typedSupabase = await createClient()
     const { data: { user } } = await typedSupabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
 
@@ -39,8 +39,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase      = createUntypedClient()
-    const typedSupabase = createClient()
+    const supabase      = await createUntypedClient()
+    const typedSupabase = await createClient()
     const { data: { user } } = await typedSupabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
 
@@ -89,8 +89,8 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const supabase      = createUntypedClient()
-    const typedSupabase = createClient()
+    const supabase      = await createUntypedClient()
+    const typedSupabase = await createClient()
     const { data: { user } } = await typedSupabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
 
@@ -140,8 +140,8 @@ export async function PATCH(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const supabase      = createUntypedClient()
-    const typedSupabase = createClient()
+    const supabase      = await createUntypedClient()
+    const typedSupabase = await createClient()
     const { data: { user } } = await typedSupabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
 

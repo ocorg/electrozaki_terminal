@@ -6,8 +6,8 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import type { Database } from '@/types/database'
 
-export function createClient() {
-  const cookieStore = cookies()
+export async function createClient() {
+  const cookieStore = await cookies()
   return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -36,8 +36,8 @@ export function createAdminClient() {
 
 // Untyped client — used in API routes to bypass schema inference errors.
 // Safe because server routes validate their own data shapes.
-export function createUntypedClient() {
-  const cookieStore = cookies()
+export async function createUntypedClient() {
+  const cookieStore = await cookies()
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,

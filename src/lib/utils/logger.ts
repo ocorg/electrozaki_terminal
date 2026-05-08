@@ -15,7 +15,7 @@ export interface LogPayload {
 
 export async function logActivity(payload: LogPayload): Promise<void> {
   try {
-    const supabase = createUntypedClient()
+    const supabase = await createUntypedClient()
     await supabase.from('activity_log').insert({
       store_id:     payload.store_id     ?? null,
       user_id:      payload.user_id,
