@@ -6,7 +6,7 @@ import { usePortal } from '@/lib/context/portal'
 import { formatDate } from '@/lib/utils'
 import { Modal, Field, inputClass, selectClass, Btn, PageHeader, EmptyState, SkeletonRow } from '@/components/shared'
 import ScanButton from '@/components/scanner/ScanButton'
-import { toast } from 'sonner'
+import { showSuccess, showError } from '@/lib/utils/toasts'
 import type { DeviceType, LocationType, MovementReason } from '@/types/database'
 import {
   ArrowLeftRight, Plus, RefreshCw,
@@ -113,11 +113,11 @@ export default function MovementsModule({ storeId }: MovementsModuleProps) {
 
   async function handleSubmit() {
     if (!form.device_id.trim()) {
-      toast.error(isAr ? 'معرف الجهاز مطلوب' : 'ID de l\'appareil requis')
+      showError(isAr ? 'معرف الجهاز مطلوب' : 'ID de l\'appareil requis')
       return
     }
     if (form.from_location === form.to_location) {
-      toast.error(isAr ? 'المصدر والوجهة متطابقان' : 'Source et destination identiques')
+      showError(isAr ? 'المصدر والوجهة متطابقان' : 'Source et destination identiques')
       return
     }
     setSubmitting(true)
@@ -140,12 +140,12 @@ export default function MovementsModule({ storeId }: MovementsModuleProps) {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
-      toast.success(isAr ? 'تم تسجيل الحركة ✓' : 'Transfert enregistré ✓')
+      showSuccess(isAr ? 'تم تسجيل الحركة ✓' : 'Transfert enregistré ✓')
       setFormOpen(false)
       setForm({ ...EMPTY_FORM })
       await fetchMovements()
     } catch (err: unknown) {
-      toast.error((err as Error).message)
+      showError((err as Error).message)
     } finally {
       setSubmitting(false)
     }

@@ -5,7 +5,7 @@ import { useLanguageStore } from '@/lib/stores/language'
 import { usePortal } from '@/lib/context/portal'
 import { formatMAD, formatDate } from '@/lib/utils'
 import { Modal, Field, inputClass, selectClass, Btn, EmptyState } from '@/components/shared'
-import { toast } from 'sonner'
+import { showSuccess, showError } from '@/lib/utils/toasts'
 import type { Reparation, RepairStatus } from '@/types/database'
 import {
   Wrench, Plus, Clock, User, Phone,
@@ -114,11 +114,11 @@ function AddPartForm({ repId, isAr, onAdded }: { repId: string; isAr: boolean; o
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
-      toast.success(isAr ? 'تم إضافة القطعة ✓' : 'Pièce ajoutée ✓')
+      showSuccess(isAr ? 'تم إضافة القطعة ✓' : 'Pièce ajoutée ✓')
       setDesc(''); setCout(''); setFournisseur(''); setOpen(false)
       onAdded()
     } catch (err: unknown) {
-      toast.error((err as Error).message)
+      showError((err as Error).message)
     } finally {
       setAdding(false)
     }
@@ -194,7 +194,7 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
       if (!res.ok) throw new Error(json.error)
       setRepairs(json.data || [])
     } catch (err: unknown) {
-      toast.error((err as Error).message)
+      showError((err as Error).message)
     } finally {
       setLoading(false)
     }
@@ -232,14 +232,14 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
-      toast.success(isAr ? 'تم التحديث ✓' : 'Statut mis à jour ✓')
+      showSuccess(isAr ? 'تم التحديث ✓' : 'Statut mis à jour ✓')
       await fetchRepairs()
       // Update detail view if open
       if (detailRep?.rep_id === rep.rep_id) {
         setDetailRep(prev => prev ? { ...prev, statut: next } : null)
       }
     } catch (err: unknown) {
-      toast.error((err as Error).message)
+      showError((err as Error).message)
     } finally {
       setStatusLoading(null)
     }
@@ -248,7 +248,7 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
   // ── Create repair ─────────────────────────────────────────
   async function handleSubmit() {
     if (!form.model || !form.probleme) {
-      toast.error(isAr ? 'الموديل والمشكلة مطلوبان' : 'Modèle et problème obligatoires')
+      showError(isAr ? 'الموديل والمشكلة مطلوبان' : 'Modèle et problème obligatoires')
       return
     }
     setSubmitting(true)
@@ -293,12 +293,12 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
-      toast.success(isAr ? 'تم تسجيل الإصلاح ✓' : 'Réparation enregistrée ✓')
+      showSuccess(isAr ? 'تم تسجيل الإصلاح ✓' : 'Réparation enregistrée ✓')
       setFormOpen(false)
       setForm({ ...EMPTY_FORM })
       await fetchRepairs()
     } catch (err: unknown) {
-      toast.error((err as Error).message)
+      showError((err as Error).message)
     } finally {
       setSubmitting(false)
     }

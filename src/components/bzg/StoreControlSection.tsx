@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useUser } from '@/lib/hooks/useUser'
-import { toast } from 'sonner'
+import { showSuccess, showError } from '@/lib/utils/toasts'
 import { Store, Loader2 } from 'lucide-react'
 
 interface StoreRecord {
@@ -21,7 +21,7 @@ export default function StoreControlSection() {
     fetch('/api/stores')
       .then(r => r.json())
       .then(j => setStores(j.data || []))
-      .catch(e => toast.error(e.message))
+      .catch(e => showError(e.message))
       .finally(() => setLoading(false))
   }, [])
 
@@ -41,9 +41,9 @@ export default function StoreControlSection() {
       setStores(prev =>
         prev.map(s => s.store_id === store_id ? { ...s, is_active: !current } : s)
       )
-      toast.success(`${store_id} — ${!current ? 'activée ✓' : 'désactivée'}`)
+      showSuccess(`${store_id} — ${!current ? 'activée ✓' : 'désactivée'}`)
     } catch (err: unknown) {
-      toast.error((err as Error).message)
+      showError((err as Error).message)
     } finally {
       setToggling(null)
     }

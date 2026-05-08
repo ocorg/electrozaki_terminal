@@ -4,7 +4,7 @@ import { useUser } from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
 import { formatMAD, formatDate } from '@/lib/utils'
 import { PageHeader, SkeletonRow, EmptyState } from '@/components/shared'
-import { toast } from 'sonner'
+import { showSuccess, showError } from '@/lib/utils/toasts'
 import {
   Vault, RefreshCw, CheckCircle, XCircle,
   Clock, AlertTriangle, ChevronDown, ChevronUp, Calendar
@@ -80,7 +80,7 @@ export default function BZGCaissePage() {
       if (error) throw error
       setRecords(data || [])
     } catch (err: unknown) {
-      toast.error((err as Error).message)
+      showError((err as Error).message)
     } finally {
       setLoading(false)
     }
@@ -98,10 +98,10 @@ export default function BZGCaissePage() {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
-      toast.success(isAr ? 'تمت الموافقة ✓' : 'Clôture approuvée ✓')
+      showSuccess(isAr ? 'تمت الموافقة ✓' : 'Clôture approuvée ✓')
       await fetchRecords()
     } catch (err: unknown) {
-      toast.error((err as Error).message)
+      showError((err as Error).message)
     } finally {
       setApproving(null)
     }
@@ -117,10 +117,10 @@ export default function BZGCaissePage() {
         .update({ status: 'open', rejection_note: note })
         .eq('caisse_id', caisseId)
       if (error) throw error
-      toast.success(isAr ? 'تم الرفض' : 'Clôture rejetée')
+      showSuccess(isAr ? 'تم الرفض' : 'Clôture rejetée')
       await fetchRecords()
     } catch (err: unknown) {
-      toast.error((err as Error).message)
+      showError((err as Error).message)
     } finally {
       setApproving(null)
     }

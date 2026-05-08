@@ -5,7 +5,7 @@ import { useLanguageStore } from '@/lib/stores/language'
 import { usePortal } from '@/lib/context/portal'
 import { formatMAD, formatDate } from '@/lib/utils'
 import { Modal, Field, inputClass, selectClass, Btn, PageHeader, EmptyState, SkeletonRow } from '@/components/shared'
-import { toast } from 'sonner'
+import { showSuccess, showError } from '@/lib/utils/toasts'
 import type { SupplierCategory } from '@/types/database'
 import {
   Truck, Plus, Search, X, RefreshCw,
@@ -93,7 +93,7 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
       if (!res.ok) throw new Error(json.error)
       setSuppliers(json.data || [])
     } catch (err: unknown) {
-      toast.error((err as Error).message)
+      showError((err as Error).message)
     } finally {
       setLoading(false)
     }
@@ -147,7 +147,7 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
 
   async function handleSubmit() {
     if (!form.nom.trim()) {
-      toast.error(isAr ? 'اسم المورد مطلوب' : 'Nom obligatoire')
+      showError(isAr ? 'اسم المورد مطلوب' : 'Nom obligatoire')
       return
     }
     setSubmitting(true)
@@ -172,13 +172,13 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
-      toast.success(isEdit
+      showSuccess(isEdit
         ? (isAr ? 'تم التعديل ✓' : 'Modifié ✓')
         : (isAr ? 'تم الإضافة ✓' : 'Fournisseur ajouté ✓'))
       setFormOpen(false)
       await fetchSuppliers()
     } catch (err: unknown) {
-      toast.error((err as Error).message)
+      showError((err as Error).message)
     } finally {
       setSubmitting(false)
     }
@@ -186,7 +186,7 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
 
   async function handlePayment() {
     if (!selected || !payForm.montant || parseFloat(payForm.montant) <= 0) {
-      toast.error(isAr ? 'أدخل مبلغاً صحيحاً' : 'Montant invalide')
+      showError(isAr ? 'أدخل مبلغاً صحيحاً' : 'Montant invalide')
       return
     }
     setSubmitting(true)
@@ -206,7 +206,7 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
-      toast.success(isAr ? 'تم تسجيل الدفع ✓' : 'Paiement enregistré ✓')
+      showSuccess(isAr ? 'تم تسجيل الدفع ✓' : 'Paiement enregistré ✓')
       setPayOpen(false)
       setPayForm({ ...EMPTY_PAYMENT })
       await fetchSuppliers()
@@ -217,7 +217,7 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
         total_paye: (prev.total_paye ?? 0) + parseFloat(payForm.montant),
       } : null)
     } catch (err: unknown) {
-      toast.error((err as Error).message)
+      showError((err as Error).message)
     } finally {
       setSubmitting(false)
     }

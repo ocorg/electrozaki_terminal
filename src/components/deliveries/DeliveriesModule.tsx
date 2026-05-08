@@ -5,7 +5,7 @@ import { useLanguageStore } from '@/lib/stores/language'
 import { usePortal }        from '@/lib/context/portal'
 import { formatMAD }        from '@/lib/utils'
 import { Modal, Btn, inputClass, selectClass } from '@/components/shared'
-import { toast } from 'sonner'
+import { showSuccess, showError } from '@/lib/utils/toasts'
 import {
   Loader2, Plus, Package, Truck,
   List, LayoutGrid, Download, Printer,
@@ -274,7 +274,7 @@ export default function DeliveriesModule({ storeId }: DeliveriesModuleProps) {
       const json = await res.json()
       setDeliveries(json.data || [])
     } catch (e: unknown) {
-      toast.error((e as Error).message)
+      showError((e as Error).message)
     } finally {
       setLoading(false)
     }
@@ -290,7 +290,7 @@ export default function DeliveriesModule({ storeId }: DeliveriesModuleProps) {
       !form.montant_total ||
       !form.device_id
     ) {
-      toast.error('Client, montant et appareil sont obligatoires')
+      showError('Client, montant et appareil sont obligatoires')
       return
     }
     setSubmitting(true)
@@ -317,12 +317,12 @@ export default function DeliveriesModule({ storeId }: DeliveriesModuleProps) {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
-      toast.success('Livraison créée ✓')
+      showSuccess('Livraison créée ✓')
       setFormOpen(false)
       setForm({ ...EMPTY_FORM })
       fetchDeliveries()
     } catch (e: unknown) {
-      toast.error((e as Error).message)
+      showError((e as Error).message)
     } finally {
       setSubmitting(false)
     }
@@ -337,10 +337,10 @@ export default function DeliveriesModule({ storeId }: DeliveriesModuleProps) {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
-      toast.success(`→ ${COLUMNS.find(c => c.key === newStatut)?.label}`)
+      showSuccess(`→ ${COLUMNS.find(c => c.key === newStatut)?.label}`)
       fetchDeliveries()
     } catch (e: unknown) {
-      toast.error((e as Error).message)
+      showError((e as Error).message)
     }
   }
 
@@ -359,7 +359,7 @@ export default function DeliveriesModule({ storeId }: DeliveriesModuleProps) {
     const toCol   = COLUMNS.find(c => c.key === targetStatut)
 
     if (fromCol?.terminal || toCol?.terminal) {
-      toast.error('Statut terminal — impossible de déplacer')
+      showError('Statut terminal — impossible de déplacer')
       setDragging(null)
       return
     }

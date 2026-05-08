@@ -5,7 +5,7 @@ import { useLanguageStore } from '@/lib/stores/language'
 import { usePortal } from '@/lib/context/portal'
 import { formatMAD, formatDate, getWarrantyFlag } from '@/lib/utils'
 import { StatusBadge, BatteryBar, EmptyState, SkeletonRow, PageHeader, Btn, Modal, Field, inputClass, selectClass } from '@/components/shared'
-import { toast } from 'sonner'
+import { showSuccess, showError } from '@/lib/utils/toasts'
 import type { Laptop, DeviceCondition, DeviceSource, LocationType } from '@/types/database'
 import { Plus, Search, RefreshCw, Laptop as LaptopIcon, Edit2, MapPin, X, Filter } from 'lucide-react'
 
@@ -69,7 +69,7 @@ export default function EZLaptopsPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!form.marque || !form.model) {
-      toast.error(isAr ? 'الماركة والموديل مطلوبان' : 'Marque et modèle obligatoires')
+      showError(isAr ? 'الماركة والموديل مطلوبان' : 'Marque et modèle obligatoires')
       return
     }
     setSubmitting(true)
@@ -83,11 +83,11 @@ export default function EZLaptopsPage() {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
-      toast.success(isEdit ? (isAr ? 'تم التعديل ✓' : 'Modifié ✓') : (isAr ? 'تم الإضافة ✓' : 'Ajouté ✓'))
+      showSuccess(isEdit ? (isAr ? 'تم التعديل ✓' : 'Modifié ✓') : (isAr ? 'تم الإضافة ✓' : 'Ajouté ✓'))
       setFormOpen(false)
       await fetchLaptops()
     } catch (err: unknown) {
-      toast.error((err as Error).message)
+      showError((err as Error).message)
     } finally {
       setSubmitting(false)
     }

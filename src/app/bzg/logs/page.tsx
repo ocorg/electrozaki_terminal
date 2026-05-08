@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useUser } from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
 import { PageHeader, EmptyState, SkeletonRow } from '@/components/shared'
-import { toast } from 'sonner'
+import { showSuccess, showError } from '@/lib/utils/toasts'
 import {
   ScrollText, RefreshCw, Search, X,
   ChevronDown, ChevronUp, Calendar
@@ -105,7 +105,7 @@ export default function BZGLogsPage() {
 
       setLogs(result)
     } catch (err: unknown) {
-      toast.error((err as Error).message)
+      showError((err as Error).message)
     } finally {
       setLoading(false)
     }

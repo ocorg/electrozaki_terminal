@@ -4,7 +4,7 @@ import { useUser } from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
 import { formatDate } from '@/lib/utils'
 import { PageHeader, Modal, Field, inputClass, selectClass, Btn, EmptyState, SkeletonRow } from '@/components/shared'
-import { toast } from 'sonner'
+import { showSuccess, showError } from '@/lib/utils/toasts'
 import { FileText, Plus, RefreshCw, Tag, Layers, User, Calendar } from 'lucide-react'
 
 interface ChangeEntry {
@@ -84,7 +84,7 @@ export default function BZGChangelogPage() {
 
   async function handleSubmit() {
     if (!form.title.trim() || !form.author.trim()) {
-      toast.error(isAr ? 'العنوان والمؤلف مطلوبان' : 'Titre et auteur obligatoires')
+      showError(isAr ? 'العنوان والمؤلف مطلوبان' : 'Titre et auteur obligatoires')
       return
     }
     setSubmitting(true)
@@ -103,12 +103,12 @@ export default function BZGChangelogPage() {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
-      toast.success(isAr ? 'تم الإضافة ✓' : 'Entrée ajoutée ✓')
+      showSuccess(isAr ? 'تم الإضافة ✓' : 'Entrée ajoutée ✓')
       setFormOpen(false)
       setForm({ ...EMPTY_FORM, author: user?.display_name ?? '' })
       await fetchChangelog()
     } catch (err: unknown) {
-      toast.error((err as Error).message)
+      showError((err as Error).message)
     } finally {
       setSubmitting(false)
     }

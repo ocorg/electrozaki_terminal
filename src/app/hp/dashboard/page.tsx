@@ -54,6 +54,7 @@ export default function HPDashboard() {
           .from('transactions')
           .select('prix_vente, date_vente')
           .eq('store_id', STORE_ID)
+          .eq('voided', false)
           .order('created_at', { ascending: false })
           .limit(200),
 

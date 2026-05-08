@@ -5,7 +5,7 @@ import { useLanguageStore } from '@/lib/stores/language'
 import { usePortal } from '@/lib/context/portal'
 import { formatMAD, formatDate } from '@/lib/utils'
 import { Modal, Field, inputClass, Btn, PageHeader, EmptyState, SkeletonRow } from '@/components/shared'
-import { toast } from 'sonner'
+import { showSuccess, showError } from '@/lib/utils/toasts'
 import {
   Users, Plus, Search, X, Phone, Mail,
   MapPin, RefreshCw, Edit2, TrendingUp,
@@ -84,7 +84,7 @@ export default function ClientsModule({ storeId }: ClientsModuleProps) {
       if (!res.ok) throw new Error(json.error)
       setClients(json.data || [])
     } catch (err: unknown) {
-      toast.error((err as Error).message)
+      showError((err as Error).message)
     } finally {
       setLoading(false)
     }
@@ -121,7 +121,7 @@ export default function ClientsModule({ storeId }: ClientsModuleProps) {
 
   async function handleSubmit() {
     if (!form.nom || !form.telephone) {
-      toast.error(isAr ? 'الاسم والهاتف مطلوبان' : 'Nom et téléphone obligatoires')
+      showError(isAr ? 'الاسم والهاتف مطلوبان' : 'Nom et téléphone obligatoires')
       return
     }
     setSubmitting(true)
@@ -147,7 +147,7 @@ export default function ClientsModule({ storeId }: ClientsModuleProps) {
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
 
-      toast.success(isEdit
+      showSuccess(isEdit
         ? (isAr ? 'تم التعديل ✓' : 'Client modifié ✓')
         : (isAr ? 'تم الإضافة ✓' : 'Client ajouté ✓'))
       setFormOpen(false)
@@ -155,7 +155,7 @@ export default function ClientsModule({ storeId }: ClientsModuleProps) {
       setEditClient(null)
       await fetchClients()
     } catch (err: unknown) {
-      toast.error((err as Error).message)
+      showError((err as Error).message)
     } finally {
       setSubmitting(false)
     }

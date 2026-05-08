@@ -54,11 +54,12 @@ export default function EZDashboard() {
       const monthStart = today.slice(0, 7) + '-01'
 
       const [txnRes, repairRes, stockRes, creditRes] = await Promise.all([
-        // All transactions for this store
+        // All non-voided transactions for this store
         supabase
           .from('transactions')
           .select('txn_id, device_id, type_operation, prix_vente, date_vente, avance, valeur_echange, clients(nom)')
           .eq('store_id', STORE_ID)
+          .eq('voided', false)
           .order('created_at', { ascending: false })
           .limit(200),
 
@@ -76,12 +77,13 @@ export default function EZDashboard() {
           .eq('store_id', STORE_ID)
           .eq('is_deleted', false),
 
-        // Open credit transactions (fariq > 0)
+        // Open credit transactions (fariq > 0, non-voided only)
         supabase
           .from('transactions')
           .select('txn_id, prix_vente, avance, valeur_echange')
           .eq('store_id', STORE_ID)
-          .eq('type_operation', 'تسبيق'),
+          .eq('type_operation', 'تسبيق')
+          .eq('voided', false),
       ])
 
       const txns        = (txnRes.data || []) as Record<string, unknown>[]

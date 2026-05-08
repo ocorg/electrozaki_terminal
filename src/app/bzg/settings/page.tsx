@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useLanguageStore } from '@/lib/stores/language'
 import { PageHeader, Field, inputClass, Btn } from '@/components/shared'
-import { toast } from 'sonner'
+import { showSuccess, showError } from '@/lib/utils/toasts'
 import { Settings, Save, Store, Palette } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import StoreControlSection from '@/components/bzg/StoreControlSection'
@@ -49,8 +49,8 @@ export default function BZGSettingsPage() {
       value:      kvEdits[kvKey(storeId, key)],
       updated_at: new Date().toISOString(),
     }, { onConflict: 'key,store_id' })
-    if (error) toast.error(error.message)
-    else toast.success(`${key} — ${storeId} sauvegardé ✓`)
+    if (error) showError(error.message)
+    else showSuccess(`${key} — ${storeId} sauvegardé ✓`)
   }
 
   async function fetchStores() {
@@ -89,10 +89,10 @@ export default function BZGSettingsPage() {
         })
         .eq('store_id', storeId)
       if (error) throw error
-      toast.success(isAr ? 'تم الحفظ ✓' : 'Enregistré ✓')
+      showSuccess(isAr ? 'تم الحفظ ✓' : 'Enregistré ✓')
       await fetchStores()
     } catch (err: unknown) {
-      toast.error((err as Error).message)
+      showError((err as Error).message)
     } finally {
       setSaving(null)
     }

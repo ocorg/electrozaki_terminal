@@ -37,7 +37,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           richColors={false}
           expand={false}
           toastOptions={{
-            duration: 4000,
+            duration: 2500,
             style: {
               background: '#1A1A1A',
               color:      '#E5E5E5',

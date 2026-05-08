@@ -7,7 +7,7 @@ import { formatMAD, formatDate, getWarrantyFlag } from '@/lib/utils'
 import { StatusBadge, BatteryBar, EmptyState, SkeletonRow, PageHeader, Btn } from '@/components/shared'
 import PhoneForm from '@/components/phones/PhoneForm'
 import type { Phone } from '@/types/database'
-import { toast } from 'sonner'
+import { showSuccess, showError } from '@/lib/utils/toasts'
 import ScanButton from '@/components/scanner/ScanButton'
 import LabelGenerator, { type LabelProduct } from '@/components/print/LabelGenerator'
 import {
@@ -61,10 +61,10 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
-      toast.success('Modèle ajouté ✓')
+      showSuccess('Modèle ajouté ✓')
       setCatForm({ marque: '', serie: '', type: 'Normal', model: '', couleur: '' })
       fetchCatalog()
-    } catch (err: unknown) { toast.error((err as Error).message) }
+    } catch (err: unknown) { showError((err as Error).message) }
     finally { setCatSaving(false) }
   }
 
@@ -88,7 +88,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
       if (!res.ok) throw new Error(json.error)
       setPhones(json.data || [])
     } catch (err: unknown) {
-      toast.error((err as Error).message)
+      showError((err as Error).message)
     } finally {
       setLoading(false)
     }
@@ -106,11 +106,11 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
       const res = await fetch(`/api/phones?phone_id=${phone_id}`, { method: 'DELETE' })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
-      toast.success(isAr ? 'تم الحذف ✓' : 'Supprimé ✓')
+      showSuccess(isAr ? 'تم الحذف ✓' : 'Supprimé ✓')
       setConfirmDelete(null)
       fetchPhones()
     } catch (err: unknown) {
-      toast.error((err as Error).message)
+      showError((err as Error).message)
     } finally {
       setDeleting(false)
     }

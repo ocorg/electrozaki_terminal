@@ -4,7 +4,7 @@ import { useUser } from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
 import { formatDate } from '@/lib/utils'
 import { PageHeader, SkeletonRow, Modal, Field, inputClass, selectClass, Btn } from '@/components/shared'
-import { toast } from 'sonner'
+import { showSuccess, showError } from '@/lib/utils/toasts'
 import { Users, Shield, Edit2, CheckCircle, XCircle, RefreshCw, Plus, Eye, EyeOff } from 'lucide-react'
 
 interface UserProfile {
@@ -61,11 +61,11 @@ export default function BZGUsersPage() {
 
     // Client-side validation
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-      toast.error('Format non supporté. Utilisez JPEG, PNG ou WebP.')
+      showError('Format non supporté. Utilisez JPEG, PNG ou WebP.')
       return
     }
     if (file.size > 2 * 1024 * 1024) {
-      toast.error('Image trop volumineuse (max 2 Mo)')
+      showError('Image trop volumineuse (max 2 Mo)')
       return
     }
 
@@ -93,10 +93,10 @@ export default function BZGUsersPage() {
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
 
-      toast.success(isAr ? 'تم تحديث الصورة ✓' : 'Photo de profil mise à jour ✓')
+      showSuccess(isAr ? 'تم تحديث الصورة ✓' : 'Photo de profil mise à jour ✓')
       await fetchUsers()
     } catch (err: unknown) {
-      toast.error((err as Error).message)
+      showError((err as Error).message)
     } finally {
       setUploadingAvatarFor(null)
     }
@@ -132,15 +132,15 @@ export default function BZGUsersPage() {
 
   async function handleCreate() {
     if (!createForm.email || !createForm.full_name || !createForm.password || !createForm.role) {
-      toast.error(isAr ? 'يرجى ملء جميع الحقول المطلوبة' : 'Veuillez remplir tous les champs requis')
+      showError(isAr ? 'يرجى ملء جميع الحقول المطلوبة' : 'Veuillez remplir tous les champs requis')
       return
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(createForm.email)) {
-      toast.error(isAr ? 'تنسيق البريد الإلكتروني غير صالح' : 'Format email invalide')
+      showError(isAr ? 'تنسيق البريد الإلكتروني غير صالح' : 'Format email invalide')
       return
     }
     if (createForm.password.length < 8) {
-      toast.error(isAr ? 'كلمة المرور 8 أحرف على الأقل' : 'Mot de passe: 8 caractères minimum')
+      showError(isAr ? 'كلمة المرور 8 أحرف على الأقل' : 'Mot de passe: 8 caractères minimum')
       return
     }
     setCreating(true)
@@ -160,11 +160,11 @@ export default function BZGUsersPage() {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
-      toast.success(isAr ? 'تم إنشاء المستخدم ✓' : 'Utilisateur créé avec succès ✓')
+      showSuccess(isAr ? 'تم إنشاء المستخدم ✓' : 'Utilisateur créé avec succès ✓')
       setCreateOpen(false)
       await fetchUsers()
     } catch (err: unknown) {
-      toast.error((err as Error).message)
+      showError((err as Error).message)
     } finally {
       setCreating(false)
     }
@@ -199,11 +199,11 @@ export default function BZGUsersPage() {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
-      toast.success(isAr ? 'تم التعديل ✓' : 'Utilisateur modifié ✓')
+      showSuccess(isAr ? 'تم التعديل ✓' : 'Utilisateur modifié ✓')
       setEditUser(null)
       await fetchUsers()
     } catch (err: unknown) {
-      toast.error((err as Error).message)
+      showError((err as Error).message)
     } finally {
       setSubmitting(false)
     }

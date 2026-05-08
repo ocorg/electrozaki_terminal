@@ -5,7 +5,7 @@ import { useLanguageStore } from '@/lib/stores/language'
 import { usePortal } from '@/lib/context/portal'
 import { formatMAD, formatDate } from '@/lib/utils'
 import { Modal, Field, inputClass, selectClass, Btn, PageHeader, EmptyState, SkeletonRow } from '@/components/shared'
-import { toast } from 'sonner'
+import { showSuccess, showError } from '@/lib/utils/toasts'
 import type { ExpenseCategory } from '@/types/database'
 import {
   Receipt, Plus, Trash2, RefreshCw,
@@ -82,7 +82,7 @@ export default function ExpensesModule({ storeId }: ExpensesModuleProps) {
       const json = await res.json()
       setExpenses(json.data || [])
     } catch {
-      toast.error(isAr ? 'خطأ في التحميل' : 'Erreur chargement')
+      showError(isAr ? 'خطأ في التحميل' : 'Erreur chargement')
     } finally {
       setLoading(false)
     }
@@ -96,7 +96,7 @@ export default function ExpensesModule({ storeId }: ExpensesModuleProps) {
 
   async function handleSubmit() {
     if (!form.montant || parseFloat(form.montant) <= 0) {
-      toast.error(isAr ? 'أدخل مبلغاً صحيحاً' : 'Montant invalide')
+      showError(isAr ? 'أدخل مبلغاً صحيحاً' : 'Montant invalide')
       return
     }
     setSubmitting(true)
@@ -116,12 +116,12 @@ export default function ExpensesModule({ storeId }: ExpensesModuleProps) {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
-      toast.success(isAr ? 'تم تسجيل الدépense ✓' : 'Dépense enregistrée ✓')
+      showSuccess(isAr ? 'تم تسجيل الدépense ✓' : 'Dépense enregistrée ✓')
       setModalOpen(false)
       setForm({ ...EMPTY_FORM })
       await fetchExpenses()
     } catch (err: unknown) {
-      toast.error((err as Error).message)
+      showError((err as Error).message)
     } finally {
       setSubmitting(false)
     }
@@ -134,10 +134,10 @@ export default function ExpensesModule({ storeId }: ExpensesModuleProps) {
       const res = await fetch(`/api/expenses?exp_id=${expId}`, { method: 'DELETE' })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
-      toast.success(isAr ? 'تم الحذف' : 'Supprimée')
+      showSuccess(isAr ? 'تم الحذف' : 'Supprimée')
       await fetchExpenses()
     } catch (err: unknown) {
-      toast.error((err as Error).message)
+      showError((err as Error).message)
     } finally {
       setDeleting(null)
     }
@@ -390,9 +390,9 @@ export default function ExpensesModule({ storeId }: ExpensesModuleProps) {
                     if (upErr) throw upErr
                     const { data: { publicUrl } } = sb.storage.from('expenses').getPublicUrl(path)
                     setForm(p => ({ ...p, receipt_photo_url: publicUrl }))
-                    toast.success(isAr ? 'تم رفع الصورة ✓' : 'Photo téléversée ✓')
+                    showSuccess(isAr ? 'تم رفع الصورة ✓' : 'Photo téléversée ✓')
                   } catch (err: unknown) {
-                    toast.error((err as Error).message)
+                    showError((err as Error).message)
                   } finally {
                     setUploading(false)
                   }

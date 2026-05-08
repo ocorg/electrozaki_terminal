@@ -4,7 +4,7 @@ import { useLanguageStore } from '@/lib/stores/language'
 import { useUser } from '@/lib/hooks/useUser'
 import { formatMAD, formatDate } from '@/lib/utils'
 import { PageHeader, SkeletonRow, EmptyState, StatusBadge } from '@/components/shared'
-import { toast } from 'sonner'
+import { showSuccess, showError } from '@/lib/utils/toasts'
 import {
   ShoppingCart, RefreshCw, X,
   ChevronDown, ChevronUp, Ban, AlertTriangle
@@ -32,7 +32,7 @@ interface Transaction {
 }
 
 const OP_LABELS_FR: Record<string, string> = {
-  'بيع': 'Vente', 'إستبدال': 'Échange', 'تسبيق': 'Avance', 'Retour': 'Retour',
+  'بيع': 'Vente', 'إستبدال': 'Échange', 'Retour': 'Retour',
 }
 
 export default function HPTransactionsPage() {
@@ -82,10 +82,10 @@ export default function HPTransactionsPage() {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
-      toast.success('Transaction annulée ✓')
+      showSuccess('Transaction annulée ✓')
       setVoidTxnId(null); setVoidReason('')
       fetchTransactions()
-    } catch (err: unknown) { toast.error((err as Error).message) }
+    } catch (err: unknown) { showError((err as Error).message) }
     finally { setVoiding(false) }
   }
 

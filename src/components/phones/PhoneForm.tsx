@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { Modal, Field, inputClass, selectClass, Btn } from '@/components/shared'
 import { BatteryBar } from '@/components/shared'
-import { toast } from 'sonner'
+import { showSuccess, showError } from '@/lib/utils/toasts'
 import { usePortal } from '@/lib/context/portal'
 import { useLanguageStore } from '@/lib/stores/language'
 import type { Phone, DeviceCondition, DeviceSource, LocationType } from '@/types/database'
@@ -105,7 +105,7 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!form.marque || !form.model) {
-      toast.error(isAr ? 'الماركة والموديل مطلوبان' : 'Marque et modèle obligatoires')
+      showError(isAr ? 'الماركة والموديل مطلوبان' : 'Marque et modèle obligatoires')
       return
     }
     setLoading(true)
@@ -129,13 +129,13 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
-      toast.success(isEdit
+      showSuccess(isEdit
         ? (isAr ? 'تم التعديل ✓' : 'Modifié ✓')
         : (isAr ? 'تم الإضافة ✓' : 'Ajouté ✓'))
       onSaved()
       onClose()
     } catch (err: unknown) {
-      toast.error((err as Error).message)
+      showError((err as Error).message)
     } finally {
       setLoading(false)
     }

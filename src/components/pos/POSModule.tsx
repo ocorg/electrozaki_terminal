@@ -6,7 +6,7 @@ import { usePortal } from '@/lib/context/portal'
 import { formatMAD, computeFariq, computeStatutPaiement, isBelowMinimum } from '@/lib/utils'
 import { Modal, Field, inputClass, selectClass, Btn, PageHeader } from '@/components/shared'
 import { StatusBadge } from '@/components/shared'
-import { toast } from 'sonner'
+import { showSuccess, showError } from '@/lib/utils/toasts'
 import type { Phone, Laptop, PaymentMethod, OperationType } from '@/types/database'
 import ScanButton from '@/components/scanner/ScanButton'
 import ComboBox from '@/components/phones/ComboBox'
@@ -36,6 +36,7 @@ interface SaleForm {
   client_tel:               string
   type_operation:           OperationType
   payment_method:           PaymentMethod
+  avance_sub_method:        'نقد' | 'تحويل' | ''
   montant_especes:          number
   montant_carte:            number
   avance:                   number
@@ -57,8 +58,9 @@ interface SaleForm {
 
 const EMPTY_SALE: SaleForm = {
   client_nom: '', client_tel: '',
-  type_operation:  'بيع',
-  payment_method:  'نقد',
+  type_operation:   'بيع',
+  payment_method:   'نقد',
+  avance_sub_method: '',
   montant_especes: 0, montant_carte: 0,
   avance: 0, payment_ref: '',
   valeur_echange: 0, marque_echange: '', model_echange: '',
@@ -157,6 +159,20 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
   const [activeCategory, setActiveCategory] = useState('phones')
   const [gridItems,      setGridItems]      = useState<DeviceResult[]>([])
   const [gridLoading,    setGridLoading]    = useState(false)
+
+  // ── Client lookup ──────────────────────────────────────────
+  type ClientSuggestion = {
+    client_id: string
+    nom: string
+    telephone: string
+    telephone_2?: string | null
+    adresse?: string | null
+  }
+  const [clientSuggestions,    setClientSuggestions]    = useState<ClientSuggestion[]>([])
+  const [showClientDropdown,   setShowClientDropdown]   = useState(false)
+  const [clientSearching,      setClientSearching]      = useState(false)
+  const [selectedClientId,     setSelectedClientId]     = useState<string | null>(null)
+  const clientSearchRef = useRef<ReturnType<typeof setTimeout>>()
 
   // ── Device search ─────────────────────────────────────────
   useEffect(() => {
@@ -257,14 +273,14 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
   // ── Cart helpers ──────────────────────────────────────────
   function addToCart(device: DeviceResult) {
     if (cart.find(c => c._id === device._id)) {
-      toast.error(isAr ? 'موجود في السلة' : 'Déjà dans le panier')
+      showError(isAr ? 'موجود في السلة' : 'Déjà dans le panier')
       return
     }
     const prix = (device as Phone).prix_vente_recommande || 0
     setCart(prev => [...prev, { ...device, prix_vente_saisi: prix }])
     setSearch('')
     setResults([])
-    toast.success(isAr ? 'أضيف للسلة' : 'Ajouté au panier')
+    showSuccess(isAr ? 'أضيف للسلة' : 'Ajouté au panier')
   }
 
   function removeFromCart(id: string) {
@@ -286,7 +302,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
   // ── Override PIN ──────────────────────────────────────────
   async function verifyOverride() {
     if (!overridePin || overridePin.length !== 4) {
-      toast.error(isAr ? 'يلزم كود PIN من 4 أرقام' : 'Code PIN 4 chiffres requis')
+      showError(isAr ? 'يلزم كود PIN من 4 أرقام' : 'Code PIN 4 chiffres requis')
       return
     }
     setOverrideLoading(true)
@@ -307,15 +323,51 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
             : c
         ))
       }
-      toast.success(isAr ? 'تمت الموافقة ✓' : 'Dérogation autorisée ✓')
+      showSuccess(isAr ? 'تمت الموافقة ✓' : 'Dérogation autorisée ✓')
       setOverrideOpen(false)
       setOverridePin('')
       setOverrideItem(null)
     } catch (err: unknown) {
-      toast.error((err as Error).message)
+      showError((err as Error).message)
     } finally {
       setOverrideLoading(false)
     }
+  }
+
+  // ── Client name change with debounced lookup ───────────────
+  function handleClientNameChange(value: string) {
+    setSale('client_nom', value)
+    setSelectedClientId(null)
+    if (!value.trim() || value.length < 2) {
+      setClientSuggestions([])
+      setShowClientDropdown(false)
+      return
+    }
+    clearTimeout(clientSearchRef.current)
+    setClientSearching(true)
+    clientSearchRef.current = setTimeout(async () => {
+      try {
+        const res  = await fetch(`/api/clients?search=${encodeURIComponent(value)}&store_id=${storeId}`)
+        const json = await res.json()
+        setClientSuggestions(json.data || [])
+        setShowClientDropdown(true)
+      } catch {
+        setClientSuggestions([])
+      } finally {
+        setClientSearching(false)
+      }
+    }, 200)
+  }
+
+  function selectClientSuggestion(c: ClientSuggestion) {
+    setSaleForm(prev => ({
+      ...prev,
+      client_nom: c.nom,
+      client_tel: c.telephone,
+    }))
+    setSelectedClientId(c.client_id)
+    setClientSuggestions([])
+    setShowClientDropdown(false)
   }
 
   // ── Form helpers ──────────────────────────────────────────
@@ -338,27 +390,34 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
 
   // ── Submit sale ───────────────────────────────────────────
   async function handleSubmit() {
-    if (cart.length === 0) { toast.error(isAr ? 'السلة فارغة' : 'Panier vide'); return }
-    if (!saleForm.client_tel) { toast.error(isAr ? 'هاتف العميل مطلوب' : 'Téléphone client obligatoire'); return }
+    if (cart.length === 0) { showError(isAr ? 'السلة فارغة' : 'Panier vide'); return }
+    if (!saleForm.client_tel) { showError(isAr ? 'هاتف العميل مطلوب' : 'Téléphone client obligatoire'); return }
     if (saleForm.payment_method === 'تحويل' && !saleForm.payment_ref) {
-      toast.error(isAr ? 'مرجع التحويل مطلوب' : 'Référence virement obligatoire')
+      showError(isAr ? 'مرجع التحويل مطلوب' : 'Référence virement obligatoire')
+      return
+    }
+    if (saleForm.payment_method === 'تسبيق' && saleForm.avance > 0 && !saleForm.avance_sub_method) {
+      showError(isAr ? 'يرجى تحديد طريقة دفع التسبيق (نقد أو تحويل)' : 'Précisez le mode de paiement de l\'avance (espèces ou virement)')
       return
     }
 
     setSubmitting(true)
     try {
-      // Create / find client
-      const cRes  = await fetch('/api/clients', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({
-          nom:       saleForm.client_nom || saleForm.client_tel,
-          telephone: saleForm.client_tel,
-          store_id:  storeId,
-        }),
-      })
-      const cJson    = await cRes.json()
-      const clientId = cJson.data?.client_id
+      // Use existing client_id if auto-filled, otherwise create / find
+      let clientId: string | undefined = selectedClientId ?? undefined
+      if (!clientId) {
+        const cRes  = await fetch('/api/clients', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({
+            nom:       saleForm.client_nom || saleForm.client_tel,
+            telephone: saleForm.client_tel,
+            store_id:  storeId,
+          }),
+        })
+        const cJson = await cRes.json()
+        clientId    = cJson.data?.client_id
+      }
 
       let lastTxnId: string | null = null
 
@@ -370,7 +429,9 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
           client_id:      clientId,
           type_operation: saleForm.type_operation,
           prix_vente:     item.prix_vente_saisi,
-          payment_method: saleForm.payment_method,
+          payment_method: saleForm.payment_method === 'تسبيق'
+            ? (saleForm.avance_sub_method as PaymentMethod)
+            : saleForm.payment_method,
           avance:         saleForm.avance || 0,
           payment_ref:    saleForm.payment_ref   || undefined,
           montant_especes: saleForm.montant_especes || 0,
@@ -420,7 +481,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
         montant_carte:   saleForm.montant_carte   || undefined,
         montant_rendu:   montantRendu > 0 ? montantRendu : undefined,
       })
-      toast.success(isAr ? 'تمت عملية البيع ✓' : 'Vente enregistrée ✓')
+      showSuccess(isAr ? 'تمت عملية البيع ✓' : 'Vente enregistrée ✓')
 
       // Check if exchange device needs intake
       if (saleForm.valeur_echange > 0) {
@@ -453,8 +514,9 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
       setSaleForm({ ...EMPTY_SALE })
       setOverrideAuthorizedBy(null)
       setOverrideReason('')
+      setSelectedClientId(null)
     } catch (err: unknown) {
-      toast.error((err as Error).message)
+      showError((err as Error).message)
     } finally {
       setSubmitting(false)
     }
@@ -503,7 +565,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
 
     async function handleAddToStock() {
       if (!exchangeForm.modele || !exchangeForm.imei) {
-        toast.error(isAr ? 'الموديل والرقم التسلسلي مطلوبان' : 'Modèle et IMEI requis')
+        showError(isAr ? 'الموديل والرقم التسلسلي مطلوبان' : 'Modèle et IMEI requis')
         return
       }
       setAddingExchange(true)
@@ -533,10 +595,10 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
         const json = await res.json()
         if (!res.ok) throw new Error(json.error)
         setAddedPhoneId(json.data.phone_id)
-        toast.success(`${isAr ? 'أضيف إلى المخزون' : 'Ajouté au stock'}: ${json.data.phone_id}`)
+        showSuccess(`${isAr ? 'أضيف إلى المخزون' : 'Ajouté au stock'}: ${json.data.phone_id}`)
         setExchangePanel(p => p ? { ...p, open: false } : null)
       } catch (err: unknown) {
-        toast.error((err as Error).message)
+        showError((err as Error).message)
       } finally {
         setAddingExchange(false)
       }
@@ -870,19 +932,53 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
             <p className="text-xs font-bold text-[#6B6860] uppercase tracking-widest mb-3 flex items-center gap-2">
               <User className="w-3.5 h-3.5" />
               {isAr ? 'العميل' : 'Client'}
+              {selectedClientId && (
+                <span className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 normal-case tracking-normal">
+                  ✓ {isAr ? 'موجود' : 'Existant'}
+                </span>
+              )}
             </p>
             <div className="space-y-2">
-              <input
-                className={inputClass}
-                placeholder={isAr ? 'الاسم (اختياري)' : 'Nom (optionnel)'}
-                value={saleForm.client_nom}
-                onChange={e => setSale('client_nom', e.target.value)}
-              />
+              {/* Name field with live suggestion dropdown */}
+              <div className="relative">
+                <input
+                  className={inputClass}
+                  placeholder={isAr ? 'الاسم (اختياري)' : 'Nom (optionnel)'}
+                  value={saleForm.client_nom}
+                  onChange={e => handleClientNameChange(e.target.value)}
+                  onBlur={() => setTimeout(() => setShowClientDropdown(false), 150)}
+                  autoComplete="off"
+                />
+                {clientSearching && (
+                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#B0ADA6] animate-spin" />
+                )}
+                {showClientDropdown && clientSuggestions.length > 0 && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-[#E8E5DE] rounded-xl shadow-xl overflow-hidden max-h-48 overflow-y-auto">
+                    {clientSuggestions.map(c => (
+                      <button
+                        key={c.client_id}
+                        type="button"
+                        onMouseDown={() => selectClientSuggestion(c)}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-[#F8F7F4] transition-all text-left border-b border-[#F2F0EB] last:border-0"
+                      >
+                        <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                             style={{ backgroundColor: `${primary}15` }}>
+                          <User className="w-3.5 h-3.5" style={{ color: primary }} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-[#1A1A1A] truncate">{c.nom}</p>
+                          <p className="text-[10px] text-[#B0ADA6] font-mono">{c.telephone}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               <input
                 className={inputClass}
                 placeholder={isAr ? '06XXXXXXXX *' : '06XXXXXXXX *'}
                 value={saleForm.client_tel}
-                onChange={e => setSale('client_tel', e.target.value)}
+                onChange={e => { setSale('client_tel', e.target.value); setSelectedClientId(null) }}
                 type="tel"
               />
             </div>
@@ -1061,7 +1157,6 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
               <option value="نقد">{isAr ? 'نقداً' : 'Espèces (نقد)'}</option>
               <option value="تحويل">{isAr ? 'تحويل بنكي' : 'Virement (تحويل)'}</option>
               <option value="تسبيق">{isAr ? 'تسبيق' : 'Avance (تسبيق)'}</option>
-              <option value="إستبدال">{isAr ? 'استبدال' : 'Échange (إستبدال)'}</option>
               <option value="مختلط">{isAr ? 'مختلط' : 'Mixte (مختلط)'}</option>
             </select>
 
@@ -1072,10 +1167,41 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                 onChange={e => setSale('payment_ref', e.target.value)} />
             )}
             {saleForm.payment_method === 'تسبيق' && (
-              <input type="number" className={`${inputClass} mt-2`}
-                placeholder={isAr ? 'مبلغ التسبيق (درهم)' : 'Montant avance (MAD)'}
-                value={saleForm.avance || ''}
-                onChange={e => setSale('avance', Number(e.target.value))} />
+              <div className="mt-2 space-y-2">
+                <input type="number" className={inputClass}
+                  placeholder={isAr ? 'مبلغ التسبيق (درهم)' : 'Montant avance (MAD)'}
+                  value={saleForm.avance || ''}
+                  onChange={e => setSale('avance', Number(e.target.value))} />
+                <div>
+                  <p className="text-[10px] font-bold text-[#6B6860] uppercase tracking-widest mb-1.5">
+                    {isAr ? 'طريقة دفع التسبيق *' : 'Paiement de l\'avance *'}
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(['نقد', 'تحويل'] as const).map(method => (
+                      <button
+                        key={method}
+                        type="button"
+                        onClick={() => setSale('avance_sub_method', method)}
+                        className="py-2 rounded-xl text-xs font-bold border transition-all"
+                        style={{
+                          backgroundColor: saleForm.avance_sub_method === method ? primary : 'white',
+                          borderColor:     saleForm.avance_sub_method === method ? primary : '#E8E5DE',
+                          color:           saleForm.avance_sub_method === method ? 'white' : '#6B6860',
+                        }}
+                      >
+                        {method === 'نقد'
+                          ? (isAr ? 'نقداً' : 'Espèces')
+                          : (isAr ? 'تحويل بنكي' : 'Virement')}
+                      </button>
+                    ))}
+                  </div>
+                  {saleForm.avance > 0 && !saleForm.avance_sub_method && (
+                    <p className="text-[10px] text-amber-600 mt-1 font-medium">
+                      {isAr ? '⚠ يرجى تحديد كيفية دفع التسبيق' : '⚠ Précisez comment l\'avance a été réglée'}
+                    </p>
+                  )}
+                </div>
+              </div>
             )}
             {saleForm.payment_method === 'مختلط' && (
               <div className="grid grid-cols-2 gap-2 mt-2">

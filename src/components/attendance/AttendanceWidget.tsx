@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { useUser } from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
 import { usePortal } from '@/lib/context/portal'
-import { toast } from 'sonner'
+import { showSuccess, showError } from '@/lib/utils/toasts'
 import { Clock, LogIn, LogOut, Loader2 } from 'lucide-react'
 
 interface Punch {
@@ -58,14 +58,14 @@ export default function AttendanceWidget({ storeId }: AttendanceWidgetProps) {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
-      toast.success(
+      showSuccess(
         nextAction === 'in'
           ? (isAr ? 'تم تسجيل الحضور ✓' : 'Pointage entrée enregistré ✓')
           : (isAr ? 'تم تسجيل الخروج ✓' : 'Pointage sortie enregistré ✓')
       )
       await fetchToday()
     } catch (err: unknown) {
-      toast.error((err as Error).message)
+      showError((err as Error).message)
     } finally {
       setPunching(false)
     }

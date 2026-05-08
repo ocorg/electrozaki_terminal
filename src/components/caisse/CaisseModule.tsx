@@ -5,7 +5,7 @@ import { useLanguageStore } from '@/lib/stores/language'
 import { usePortal } from '@/lib/context/portal'
 import { formatMAD, formatDate } from '@/lib/utils'
 import { Btn, Field, inputClass, Modal } from '@/components/shared'
-import { toast } from 'sonner'
+import { showSuccess, showError } from '@/lib/utils/toasts'
 import {
   Vault, TrendingUp, Receipt, Wrench,
   CheckCircle, Clock, XCircle, RefreshCw,
@@ -63,7 +63,7 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
       const json = await res.json()
       setCaisse(json.data ?? null)
     } catch {
-      toast.error(isAr ? 'خطأ في تحميل صندوق الدفع' : 'Erreur chargement caisse')
+      showError(isAr ? 'خطأ في تحميل صندوق الدفع' : 'Erreur chargement caisse')
     } finally {
       setLoading(false)
     }
@@ -110,7 +110,7 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
   async function handleBOD() {
     const amount = parseFloat(bodAmount)
     if (isNaN(amount) || amount < 0) {
-      toast.error(isAr ? 'أدخل مبلغاً صحيحاً' : 'Montant invalide')
+      showError(isAr ? 'أدخل مبلغاً صحيحاً' : 'Montant invalide')
       return
     }
     setSubmitting(true)
@@ -122,12 +122,12 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
-      toast.success(isAr ? 'تم فتح صندوق الدفع ✓' : 'Caisse ouverte ✓')
+      showSuccess(isAr ? 'تم فتح صندوق الدفع ✓' : 'Caisse ouverte ✓')
       setBodOpen(false)
       setBodAmount('')
       await fetchCaisse()
     } catch (err: unknown) {
-      toast.error((err as Error).message)
+      showError((err as Error).message)
     } finally {
       setSubmitting(false)
     }
@@ -136,7 +136,7 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
   async function handleEOD() {
     const amount = parseFloat(eodAmount)
     if (isNaN(amount) || amount < 0) {
-      toast.error(isAr ? 'أدخل مبلغاً صحيحاً' : 'Montant invalide')
+      showError(isAr ? 'أدخل مبلغاً صحيحاً' : 'Montant invalide')
       return
     }
     if (!caisse?.caisse_id) return
@@ -153,13 +153,13 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
-      toast.success(isAr ? 'تم إرسال طلب الإغلاق ✓' : 'Clôture soumise pour approbation ✓')
+      showSuccess(isAr ? 'تم إرسال طلب الإغلاق ✓' : 'Clôture soumise pour approbation ✓')
       setEodOpen(false)
       setEodAmount('')
       setEodNotes('')
       await fetchCaisse()
     } catch (err: unknown) {
-      toast.error((err as Error).message)
+      showError((err as Error).message)
     } finally {
       setSubmitting(false)
     }

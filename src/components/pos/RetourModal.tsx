@@ -4,7 +4,7 @@ import { Modal, Btn } from '@/components/shared'
 import { useLanguageStore } from '@/lib/stores/language'
 import { formatMAD } from '@/lib/utils'
 import { Loader2, RotateCcw, AlertTriangle } from 'lucide-react'
-import { toast } from 'sonner'
+import { showSuccess, showError } from '@/lib/utils/toasts'
 
 interface Transaction {
   txn_id:         string
@@ -54,14 +54,14 @@ export default function RetourModal({
         const nonVoided = (j.data || []).filter((t: Transaction) => !t.voided)
         setTransactions(nonVoided)
       })
-      .catch(e => toast.error(e.message))
+      .catch(e => showError(e.message))
       .finally(() => setLoading(false))
   }, [open, storeId])
 
   async function handleVoid() {
     if (!selected) return
     if (!reason.trim()) {
-      toast.error(isAr ? 'سبب الإرجاع مطلوب' : 'Motif de retour obligatoire')
+      showError(isAr ? 'سبب الإرجاع مطلوب' : 'Motif de retour obligatoire')
       return
     }
     setSubmitting(true)
@@ -76,11 +76,11 @@ export default function RetourModal({
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
-      toast.success(isAr ? 'تم الإرجاع بنجاح ✓' : 'Retour enregistré ✓')
+      showSuccess(isAr ? 'تم الإرجاع بنجاح ✓' : 'Retour enregistré ✓')
       onClose()
       onRetourDone()
     } catch (err: unknown) {
-      toast.error((err as Error).message)
+      showError((err as Error).message)
     } finally {
       setSubmitting(false)
     }

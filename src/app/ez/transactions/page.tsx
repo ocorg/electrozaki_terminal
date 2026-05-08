@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
-import { toast } from 'react-hot-toast'
+import { showSuccess, showError } from '@/lib/utils/toasts'
 import { useLanguageStore } from '@/lib/stores/language'
 import { formatMAD, formatDate } from '@/lib/utils'
 import { PageHeader, SkeletonRow, EmptyState, StatusBadge } from '@/components/shared'
@@ -71,7 +71,7 @@ export default function EZTransactionsPage() {
 
   async function handleVoid() {
     if (!voidTxnId || voidReason.trim().length < 10) {
-      toast.error('Motif requis (10 caractères minimum)')
+      showError('Motif requis (10 caractères minimum)')
       return
     }
     setVoiding(true)
@@ -83,12 +83,12 @@ export default function EZTransactionsPage() {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
-      toast.success('Transaction annulée ✓')
+      showSuccess('Transaction annulée ✓')
       setVoidTxnId(null)
       setVoidReason('')
       fetchTransactions()
     } catch (err: unknown) {
-      toast.error((err as Error).message)
+      showError((err as Error).message)
     } finally {
       setVoiding(false)
     }
@@ -179,7 +179,6 @@ export default function EZTransactionsPage() {
             <option value="">{isAr ? 'كل الأنواع' : 'Tous types'}</option>
             <option value="بيع">{isAr ? 'بيع' : 'Vente'}</option>
             <option value="إستبدال">{isAr ? 'استبدال' : 'Échange'}</option>
-            <option value="تسبيق">{isAr ? 'تسبيق' : 'Avance'}</option>
             <option value="Retour">{isAr ? 'إرجاع' : 'Retour'}</option>
           </select>
 

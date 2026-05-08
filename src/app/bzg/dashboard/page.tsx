@@ -66,6 +66,7 @@ export default function BZGDashboard() {
         supabase
           .from('transactions')
           .select('store_id, prix_vente, date_vente')
+          .eq('voided', false)
           .gte('date_vente', monthStart),
 
         supabase

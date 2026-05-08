@@ -7,7 +7,7 @@ import { formatMAD } from '@/lib/utils'
 import { Modal, Field, inputClass, selectClass, Btn, PageHeader, EmptyState, SkeletonRow, StatusBadge } from '@/components/shared'
 import ScanButton from '@/components/scanner/ScanButton'
 import LabelGenerator, { type LabelProduct } from '@/components/print/LabelGenerator'
-import { toast } from 'sonner'
+import { showSuccess, showError } from '@/lib/utils/toasts'
 import type { AccCategory } from '@/types/database'
 import {
   Package, Plus, Search, X, RefreshCw,
@@ -90,7 +90,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
       const json = await res.json()
       setAccessories(json.data || [])
     } catch (err: unknown) {
-      toast.error((err as Error).message)
+      showError((err as Error).message)
     } finally {
       setLoading(false)
     }
@@ -111,11 +111,11 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
       const res  = await fetch(`/api/accessories?acc_id=${acc_id}`, { method: 'DELETE' })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
-      toast.success(isAr ? 'تم الحذف ✓' : 'Supprimé ✓')
+      showSuccess(isAr ? 'تم الحذف ✓' : 'Supprimé ✓')
       setConfirmDelete(null)
       fetchAccessories()
     } catch (err: unknown) {
-      toast.error((err as Error).message)
+      showError((err as Error).message)
     } finally {
       setDeleting(false)
     }
@@ -146,7 +146,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
 
   async function handleSubmit() {
     if (!form.nom) {
-      toast.error(isAr ? 'اسم الاكسسوار مطلوب' : 'Nom obligatoire')
+      showError(isAr ? 'اسم الاكسسوار مطلوب' : 'Nom obligatoire')
       return
     }
     setSubmitting(true)
@@ -173,13 +173,13 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
-      toast.success(isEdit
+      showSuccess(isEdit
         ? (isAr ? 'تم التعديل ✓' : 'Modifié ✓')
         : (isAr ? 'تم الإضافة ✓' : 'Ajouté ✓'))
       setFormOpen(false)
       await fetchAccessories()
     } catch (err: unknown) {
-      toast.error((err as Error).message)
+      showError((err as Error).message)
     } finally {
       setSubmitting(false)
     }
@@ -200,7 +200,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
         prev.map(a => a.acc_id === acc.acc_id ? { ...a, quantite: newQty } : a)
       )
     } catch (err: unknown) {
-      toast.error((err as Error).message)
+      showError((err as Error).message)
     } finally {
       setAdjusting(null)
     }
