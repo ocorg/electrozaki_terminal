@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 
 // ── Helpers ───────────────────────────────────────────────────
-type UClient = ReturnType<typeof createUntypedClient>
+type UClient = Awaited<ReturnType<typeof createUntypedClient>>
 
 async function setDeviceStatus(
   sb:         UClient,
