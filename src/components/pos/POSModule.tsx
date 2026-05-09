@@ -1003,9 +1003,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                     color:           saleForm.type_operation === op ? 'white' : '#6B6860',
                   }}
                 >
-                  {op === 'بيع'       ? (isAr ? 'بيع' : 'Vente')
-                  : op === 'إستبدال' ? (isAr ? 'إستبدال' : 'Échange')
-                  :                    (isAr ? 'تسبيق' : 'Avance')}
+                  {op === 'بيع' ? (isAr ? 'بيع' : 'Vente') : (isAr ? 'إستبدال' : 'Échange')}
                 </button>
               ))}
               <button

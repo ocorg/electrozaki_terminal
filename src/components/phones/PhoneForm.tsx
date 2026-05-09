@@ -248,7 +248,7 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
                 placeholder="356XXXXXXXXXXXXX"
                 value={form.imei || ''}
                 onChange={e => set('imei', e.target.value)}
-                maxLength={20}
+                maxLength={15}
               />
               <ScanButton
                 onScan={v => set('imei', v)}

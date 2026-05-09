@@ -495,12 +495,12 @@ export default function ClientsModule({ storeId }: ClientsModuleProps) {
             <Field label={isAr ? 'الهاتف' : 'Téléphone'} required>
               <input type="tel" className={inputClass}
                 placeholder="06XXXXXXXX"
-                value={form.telephone} onChange={e => setF('telephone', e.target.value)} />
+                value={form.telephone} onChange={e => setF('telephone', e.target.value.replace(/\D/g, '').slice(0, 10))} maxLength={10} />
             </Field>
             <Field label={isAr ? 'هاتف ثانوي' : 'Tél. secondaire'}>
               <input type="tel" className={inputClass}
                 placeholder="06XXXXXXXX"
-                value={form.telephone_2} onChange={e => setF('telephone_2', e.target.value)} />
+                value={form.telephone_2} onChange={e => setF('telephone_2', e.target.value.replace(/\D/g, '').slice(0, 10))} maxLength={10} />
             </Field>
           </div>
 
