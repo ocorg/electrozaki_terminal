@@ -71,12 +71,12 @@ function getNavItems(portalBase: string, portalType: string): NavItem[] {
     { href: `${portalBase}/stock/accessories`,icon: Package,         label: 'Accessoires',        roles: ['staff','manager','owner'] },
     { divider: true, label: 'OPÉRATIONS',                                                         roles: ['staff','manager','owner'] },
     { href: `${portalBase}/repairs`,          icon: Wrench,          label: 'Réparations',        roles: ['staff','manager','owner'] },
+    { href: `${portalBase}/deliveries`,       icon: PackageCheck,    label: 'Livraisons',         roles: ['manager','owner'] },
     { href: `${portalBase}/clients`,          icon: Users,           label: 'Clients',            roles: ['staff','manager','owner'] },
     { href: `${portalBase}/suppliers`,        icon: Truck,           label: 'Fournisseurs',       roles: ['manager','owner'] },
     { href: `${portalBase}/expenses`,         icon: Receipt,         label: 'Dépenses',           roles: ['manager','owner'] },
     { href: `${portalBase}/caisse`,           icon: Vault,           label: 'Caisse du jour',     roles: ['staff','manager','owner'] },
     { href: `${portalBase}/movements`,        icon: ArrowLeftRight,  label: 'Transferts stock',   roles: ['manager','owner'] },
-    { href: `${portalBase}/deliveries`,       icon: PackageCheck,    label: 'Livraisons',         roles: ['manager','owner'] },
   ]
 }
 

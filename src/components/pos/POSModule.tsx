@@ -338,7 +338,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
   function handleClientNameChange(value: string) {
     setSale('client_nom', value)
     setSelectedClientId(null)
-    if (!value.trim() || value.length < 2) {
+    if (!value.trim() || value.length < 1) {
       setClientSuggestions([])
       setShowClientDropdown(false)
       return
@@ -978,8 +978,9 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                 className={inputClass}
                 placeholder={isAr ? '06XXXXXXXX *' : '06XXXXXXXX *'}
                 value={saleForm.client_tel}
-                onChange={e => { setSale('client_tel', e.target.value); setSelectedClientId(null) }}
+                onChange={e => { setSale('client_tel', e.target.value.replace(/\D/g, '').slice(0, 10)); setSelectedClientId(null) }}
                 type="tel"
+                maxLength={10}
               />
             </div>
           </div>
@@ -991,7 +992,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
               {isAr ? 'نوع العملية' : "Type d'opération"}
             </p>
             <div className="grid grid-cols-4 gap-2">
-              {(['بيع', 'إستبدال', 'تسبيق'] as OperationType[]).map(op => (
+              {(['بيع', 'إستبدال'] as OperationType[]).map(op => (
                 <button
                   key={op}
                   onClick={() => setSale('type_operation', op)}
@@ -1149,16 +1150,28 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
               <CreditCard className="w-3.5 h-3.5" />
               {isAr ? 'طريقة الدفع' : 'Paiement'}
             </p>
-            <select
-              className={selectClass}
-              value={saleForm.payment_method}
-              onChange={e => setSale('payment_method', e.target.value as PaymentMethod)}
-            >
-              <option value="نقد">{isAr ? 'نقداً' : 'Espèces (نقد)'}</option>
-              <option value="تحويل">{isAr ? 'تحويل بنكي' : 'Virement (تحويل)'}</option>
-              <option value="تسبيق">{isAr ? 'تسبيق' : 'Avance (تسبيق)'}</option>
-              <option value="مختلط">{isAr ? 'مختلط' : 'Mixte (مختلط)'}</option>
-            </select>
+            <div className="grid grid-cols-2 gap-2">
+              {([
+                { v: 'نقد',    fr: 'Espèces',  ar: 'نقداً'        },
+                { v: 'تحويل', fr: 'Virement',  ar: 'تحويل بنكي'  },
+                { v: 'تسبيق', fr: 'Avance',    ar: 'تسبيق'       },
+                { v: 'مختلط', fr: 'Mixte',     ar: 'مختلط'       },
+              ] as { v: PaymentMethod; fr: string; ar: string }[]).map(({ v, fr, ar }) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setSale('payment_method', v)}
+                  className="py-2 rounded-xl text-xs font-bold border transition-all"
+                  style={{
+                    backgroundColor: saleForm.payment_method === v ? primary : 'white',
+                    borderColor:     saleForm.payment_method === v ? primary : '#E8E5DE',
+                    color:           saleForm.payment_method === v ? 'white' : '#6B6860',
+                  }}
+                >
+                  {isAr ? ar : fr}
+                </button>
+              ))}
+            </div>
 
             {saleForm.payment_method === 'تحويل' && (
               <input className={`${inputClass} mt-2`}
@@ -1269,17 +1282,26 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
           {/* Submit */}
           <button
             onClick={handleSubmit}
-            disabled={submitting || cart.length === 0}
-            className="w-full py-4 rounded-2xl font-display font-bold text-lg tracking-wider text-white transition-all active:scale-[0.98] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            style={{
-              backgroundColor: primary,
-              boxShadow: `0 4px 16px ${primary}40`,
-            }}
+            disabled={cart.length === 0 || submitting}
+            className="w-full py-3 rounded-2xl text-sm font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{ backgroundColor: primary, color: 'white' }}
           >
             {submitting
-              ? <><Loader2 className="w-5 h-5 animate-spin" /> {isAr ? 'جارٍ التسجيل...' : 'Traitement...'}</>
-              : (isAr ? 'إتمام البيع' : 'Finaliser la vente')
-            }
+              ? (isAr ? 'جارٍ الحفظ...' : 'Enregistrement...')
+              : (isAr ? 'تأكيد البيع' : 'Confirmer la vente')}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setCart([])
+              setSaleForm({ ...EMPTY_SALE })
+              setSelectedClientId(null)
+              setOverrideAuthorizedBy(null)
+              setOverrideReason('')
+            }}
+            className="w-full py-2.5 rounded-2xl text-xs font-bold border border-[#E8E5DE] text-[#B0ADA6] hover:border-red-300 hover:text-red-400 transition-all"
+          >
+            {isAr ? '× مسح الكل' : '× Réinitialiser'}
           </button>
         </div>
       </div>
