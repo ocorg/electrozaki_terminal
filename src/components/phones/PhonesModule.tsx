@@ -401,6 +401,8 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                         onClick={() => setLabelProduct({
                           id:            phone.phone_id,
                           name:          `${phone.marque} ${phone.model}`,
+                          marque:        phone.marque,
+                          model:         phone.model,
                           category:      'Téléphone',
                           type:          phone.condition === 'جديد' ? 'Neuf' : phone.condition === 'مستعمل' ? 'Occasion' : 'Défectueux',
                           imei:          phone.imei          ?? undefined,
