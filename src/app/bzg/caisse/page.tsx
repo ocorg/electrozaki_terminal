@@ -19,6 +19,7 @@ interface CaisseRecord {
   total_ventes:      number
   total_reparations: number
   total_depenses:    number
+  total_cash_drops:  number
   solde_theorique:   number
   solde_reel?:       number | null
   ecart?:            number | null
@@ -278,10 +279,11 @@ export default function BZGCaissePage() {
                       <div className="px-5 pb-5 animate-fade-in">
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-[#F8F7F4] rounded-xl">
                           {[
-                            { label: isAr ? 'الافتتاح' : 'Ouverture',    value: formatMAD(rec.ouverture) },
-                            { label: isAr ? 'المبيعات' : 'Ventes',       value: formatMAD(rec.total_ventes) },
-                            { label: isAr ? 'الإصلاحات' : 'Réparations', value: formatMAD(rec.total_reparations) },
-                            { label: isAr ? 'المصاريف' : 'Dépenses',     value: formatMAD(rec.total_depenses), negative: true },
+                            { label: isAr ? 'الافتتاح' : 'Ouverture',    value: formatMAD(rec.ouverture),           negative: false },
+                            { label: isAr ? 'المبيعات' : 'Ventes',              value: formatMAD(rec.total_ventes),      negative: false },
+                            { label: isAr ? 'الإصلاحات' : 'Réparations',        value: formatMAD(rec.total_reparations), negative: false },
+                            ...(rec.total_cash_drops > 0 ? [{ label: isAr ? 'إيداعات نقدية' : 'Encaissements', value: formatMAD(rec.total_cash_drops), negative: false }] : []),
+                            { label: isAr ? 'المصاريف' : 'Dépenses',            value: formatMAD(rec.total_depenses),     negative: true },
                           ].map(item => (
                             <div key={item.label} className="text-center">
                               <p className="text-xs text-[#B0ADA6] mb-1">{item.label}</p>

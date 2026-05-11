@@ -46,18 +46,24 @@ export async function GET(request: NextRequest) {
       .eq('store_id', store_id)
       .eq('date', date) as { data: Record<string, unknown>[] | null }
 
-    // For credit/advance sales, only count the amount actually collected (avance), not the full prix_vente.
-    // For exchange sales, the cash received is prix_vente - valeur_echange.
+    // Sum cash drops today
+    const { data: drops } = await supabase
+      .from('cash_drops')
+      .select('amount')
+      .eq('store_id', store_id)
+      .eq('date', date) as { data: Record<string, unknown>[] | null }
+
     const total_ventes = (txns || []).reduce((s, t) => {
       const pm = t.payment_method as string
       if (pm === 'تسبيق') return s + ((t.avance as number) || 0)
       if (pm === 'إستبدال') return s + (((t.prix_vente as number) || 0) - ((t.valeur_echange as number) || 0))
       return s + ((t.prix_vente as number) || 0)
     }, 0)
-    const total_reparations = (reps || []).reduce((s, r) => s + ((r.cout_reparation as number) || 0), 0)
-    const total_depenses   = (exps || []).reduce((s, e) => s + ((e.montant as number) || 0), 0)
-    const ouverture        = (caisse.ouverture as number) || 0
-    const solde_theorique  = ouverture + total_ventes + total_reparations - total_depenses
+    const total_reparations = (reps  || []).reduce((s, r) => s + ((r.cout_reparation as number) || 0), 0)
+    const total_depenses    = (exps  || []).reduce((s, e) => s + ((e.montant          as number) || 0), 0)
+    const total_cash_drops  = (drops || []).reduce((s, d) => s + ((d.amount           as number) || 0), 0)
+    const ouverture         = (caisse.ouverture as number) || 0
+    const solde_theorique   = ouverture + total_ventes + total_reparations + total_cash_drops - total_depenses
 
     // Payment breakdown — use actual amounts per method, including mixed payment split
     const payment_breakdown = {
@@ -66,7 +72,7 @@ export async function GET(request: NextRequest) {
         if (pm === 'نقد')    return s + ((t.prix_vente as number) || 0)
         if (pm === 'مختلط')  return s + ((t.montant_especes as number) || 0)
         return s
-      }, 0),
+      }, 0) + total_cash_drops,   // cash drops are always physical cash
       transfer: (txns || []).reduce((s, t) => {
         const pm = t.payment_method as string
         if (pm === 'تحويل')  return s + ((t.prix_vente as number) || 0)
@@ -82,9 +88,11 @@ export async function GET(request: NextRequest) {
         total_ventes,
         total_reparations,
         total_depenses,
+        total_cash_drops,
         solde_theorique,
         payment_breakdown,
         nb_transactions: (txns || []).length,
+        nb_cash_drops:   (drops || []).length,
       }
     })
   } catch (err: unknown) {
@@ -191,24 +199,27 @@ export async function PATCH(request: NextRequest) {
     const caisseDate = current.date as string
     const caisseStore = current.store_id as string
 
-    const [txnRes, repRes, expRes] = await Promise.all([
+    const [txnRes, repRes, expRes, dropRes] = await Promise.all([
       supabase.from('transactions').select('prix_vente, payment_method, avance, valeur_echange')
         .eq('store_id', caisseStore).eq('date_vente', caisseDate).eq('voided', false),
       supabase.from('reparations').select('cout_reparation')
         .eq('store_id', caisseStore).eq('date_livraison', caisseDate).eq('statut', 'تم الاستلام'),
       supabase.from('expenses').select('montant')
         .eq('store_id', caisseStore).eq('date', caisseDate),
+      supabase.from('cash_drops').select('amount')
+        .eq('store_id', caisseStore).eq('date', caisseDate),
     ])
 
-    const live_ventes = ((txnRes.data || []) as Record<string, unknown>[]).reduce((s, t) => {
+    const live_ventes = ((txnRes.data  || []) as Record<string, unknown>[]).reduce((s, t) => {
       const pm = t.payment_method as string
       if (pm === 'تسبيق')   return s + ((t.avance as number) || 0)
       if (pm === 'إستبدال') return s + (((t.prix_vente as number) || 0) - ((t.valeur_echange as number) || 0))
       return s + ((t.prix_vente as number) || 0)
     }, 0)
     const live_reps  = ((repRes.data  || []) as Record<string, unknown>[]).reduce((s, r) => s + ((r.cout_reparation as number) || 0), 0)
-    const live_exps  = ((expRes.data  || []) as Record<string, unknown>[]).reduce((s, e) => s + ((e.montant as number) || 0), 0)
-    const solde_theorique = ((current.ouverture as number) || 0) + live_ventes + live_reps - live_exps
+    const live_exps  = ((expRes.data  || []) as Record<string, unknown>[]).reduce((s, e) => s + ((e.montant          as number) || 0), 0)
+    const live_drops = ((dropRes.data || []) as Record<string, unknown>[]).reduce((s, d) => s + ((d.amount           as number) || 0), 0)
+    const solde_theorique = ((current.ouverture as number) || 0) + live_ventes + live_reps + live_drops - live_exps
     const ecart           = solde_reel - solde_theorique
 
     const { data, error } = await supabase

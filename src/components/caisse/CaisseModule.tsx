@@ -19,6 +19,7 @@ interface CaisseData {
   total_ventes:       number
   total_reparations:  number
   total_depenses:     number
+  total_cash_drops:   number
   solde_theorique:    number
   solde_reel:         number | null
   ecart:              number | null
@@ -285,9 +286,12 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
         {/* Summary */}
         <div className="bg-white border border-[#E8E5DE] rounded-2xl p-5 space-y-3">
           <SummaryRow label={isAr ? 'مبلغ الافتتاح' : 'Ouverture'}       value={formatMAD(caisse.ouverture)}          />
-          <SummaryRow label={isAr ? 'إجمالي المبيعات' : 'Total ventes'}    value={formatMAD(caisse.total_ventes)}       color="text-emerald-600" />
-          <SummaryRow label={isAr ? 'إجمالي الإصلاحات' : 'Total réparations'} value={formatMAD(caisse.total_reparations)} color="text-emerald-600" />
-          <SummaryRow label={isAr ? 'إجمالي المصاريف' : 'Total dépenses'}  value={formatMAD(caisse.total_depenses)}     color="text-red-500" />
+          <SummaryRow label={isAr ? 'إجمالي المبيعات' : 'Total ventes'}          value={formatMAD(caisse.total_ventes)}      color="text-emerald-600" />
+          <SummaryRow label={isAr ? 'إجمالي الإصلاحات' : 'Total réparations'}    value={formatMAD(caisse.total_reparations)} color="text-emerald-600" />
+          {caisse.total_cash_drops > 0 && (
+            <SummaryRow label={isAr ? 'إيداعات نقدية' : 'Encaissements manuels'} value={formatMAD(caisse.total_cash_drops)} color="text-emerald-600" />
+          )}
+          <SummaryRow label={isAr ? 'إجمالي المصاريف' : 'Total dépenses'}        value={formatMAD(caisse.total_depenses)}    color="text-red-500" />
           <div className="border-t border-[#E8E5DE] pt-3">
             <SummaryRow label={isAr ? 'الرصيد المتوقع' : 'Solde théorique'} value={formatMAD(caisse.solde_theorique)} bold />
             <SummaryRow label={isAr ? 'الرصيد الفعلي' : 'Solde réel'}       value={formatMAD(caisse.solde_reel ?? 0)} bold />
@@ -336,9 +340,12 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
 
         <div className="bg-white border border-[#E8E5DE] rounded-2xl p-5 space-y-3">
           <SummaryRow label={isAr ? 'مبلغ الافتتاح' : 'Ouverture'}          value={formatMAD(caisse.ouverture)} />
-          <SummaryRow label={isAr ? 'إجمالي المبيعات' : 'Total ventes'}       value={formatMAD(caisse.total_ventes)} color="text-emerald-600" />
-          <SummaryRow label={isAr ? 'إجمالي الإصلاحات' : 'Total réparations'} value={formatMAD(caisse.total_reparations)} color="text-emerald-600" />
-          <SummaryRow label={isAr ? 'إجمالي المصاريف' : 'Total dépenses'}     value={formatMAD(caisse.total_depenses)} color="text-red-500" />
+          <SummaryRow label={isAr ? 'إجمالي المبيعات' : 'Total ventes'}          value={formatMAD(caisse.total_ventes)}      color="text-emerald-600" />
+          <SummaryRow label={isAr ? 'إجمالي الإصلاحات' : 'Total réparations'}    value={formatMAD(caisse.total_reparations)} color="text-emerald-600" />
+          {caisse.total_cash_drops > 0 && (
+            <SummaryRow label={isAr ? 'إيداعات نقدية' : 'Encaissements manuels'} value={formatMAD(caisse.total_cash_drops)} color="text-emerald-600" />
+          )}
+          <SummaryRow label={isAr ? 'إجمالي المصاريف' : 'Total dépenses'}        value={formatMAD(caisse.total_depenses)}    color="text-red-500" />
           <div className="border-t border-[#E8E5DE] pt-3">
             <SummaryRow label={isAr ? 'الرصيد المتوقع' : 'Solde théorique'}   value={formatMAD(caisse.solde_theorique)} bold />
             <SummaryRow label={isAr ? 'الرصيد الفعلي' : 'Solde réel'}         value={formatMAD(caisse.solde_reel ?? 0)} bold />
@@ -478,7 +485,7 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
             </p>
             <p className="text-xs text-[#B0ADA6] mt-1">
               {isAr
-                ? `${formatMAD(caisse.ouverture)} + ${formatMAD(caisse.total_ventes)} + ${formatMAD(caisse.total_reparations)} - ${formatMAD(caisse.total_depenses)}`
+                ? `${formatMAD(caisse.ouverture)} + ${formatMAD(caisse.total_ventes)} + ${formatMAD(caisse.total_reparations)}${caisse.total_cash_drops > 0 ? ` + ${formatMAD(caisse.total_cash_drops)}` : ''} - ${formatMAD(caisse.total_depenses)}`
                 : `${formatMAD(caisse.ouverture)} + ventes + rép. - dépenses`}
             </p>
           </div>
