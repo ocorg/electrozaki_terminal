@@ -20,6 +20,20 @@ interface CatalogState {
   loading:     boolean
 }
 
+// Strip the brand family word(s) from the beginning of a model name.
+// "iPhone 13 Pro"  with serie "iPhone 13"  → "13 Pro"
+// "Galaxy S24 Ultra" with serie "Galaxy S24" → "S24 Ultra"
+// If no prefix is found, returns the model unchanged.
+function stripBrandPrefix(serie: string, model: string): string {
+  // Capture the leading all-letter word(s) up to the first digit in the serie
+  const match  = serie.match(/^([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ\s]*?)(?=\s*\d|\s*$)/i)
+  const prefix = match?.[1]?.trim()
+  if (!prefix || prefix.length < 2) return model
+  const escaped = prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const stripped = model.replace(new RegExp(`^${escaped}\\s+`, 'i'), '').trim()
+  return stripped || model
+}
+
 export function usePhoneCatalog(): CatalogState {
   const supabase = useRef(createClient()).current
   const [catalog, setCatalog] = useState<CatalogEntry[]>([])
@@ -48,11 +62,21 @@ export function usePhoneCatalog(): CatalogState {
   const modelsFor = useCallback((brand: string, serie?: string) => {
     let entries = catalog.filter(e => e.marque === brand)
     if (serie) entries = entries.filter(e => e.serie === serie)
-    return Array.from(new Set(entries.map(e => e.model))).sort()
+    const unique = Array.from(new Set(entries.map(e => e.model))).sort()
+    // Return stripped versions — "iPhone 13 Pro" → "13 Pro" when serie = "iPhone 13"
+    return serie
+      ? unique.map(m => stripBrandPrefix(serie, m))
+      : unique
   }, [catalog])
 
   const couleursFor = useCallback((model: string) =>
-    Array.from(new Set(catalog.filter(e => e.model === model).map(e => e.couleur))).sort()
+    // Match against both full catalog model (legacy) and stripped model (new entries)
+    Array.from(new Set(
+      catalog.filter(e =>
+        e.model === model ||
+        stripBrandPrefix(e.serie, e.model) === model
+      ).map(e => e.couleur)
+    )).sort()
   , [catalog])
 
   // Called when staff types a model/color not in the catalog
