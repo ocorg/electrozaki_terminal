@@ -1,22 +1,48 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
-import { BrowserMultiFormatReader, NotFoundException } from '@zxing/library'
+import {
+  BrowserMultiFormatReader,
+  BarcodeFormat,
+  DecodeHintType,
+  NotFoundException,
+} from '@zxing/library'
 import { X, Camera, SwitchCamera, Loader2 } from 'lucide-react'
 
 interface ScannerProps {
-  onResult:  (value: string) => void
-  onClose:   () => void
-  hint?:     string
+  onResult: (value: string) => void
+  onClose:  () => void
+  hint?:    string
+  mode?:    'barcode' | 'qr'   // barcode = wide 1D guide, qr = square guide
 }
 
-export default function Scanner({ onResult, onClose, hint }: ScannerProps) {
-  const videoRef       = useRef<HTMLVideoElement>(null)
-  const readerRef      = useRef<BrowserMultiFormatReader | null>(null)
-  const [devices, setDevices]     = useState<MediaDeviceInfo[]>([])
-  const [deviceIdx, setDeviceIdx] = useState(0)
-  const [error, setError]         = useState<string | null>(null)
-  const [loading, setLoading]     = useState(true)
-  const [scanned, setScanned]     = useState(false)
+// ZXing hints: try harder + all useful formats
+const HINTS = new Map<DecodeHintType, unknown>([
+  [DecodeHintType.TRY_HARDER, true],
+  [DecodeHintType.POSSIBLE_FORMATS, [
+    BarcodeFormat.CODE_128,
+    BarcodeFormat.CODE_39,
+    BarcodeFormat.EAN_13,
+    BarcodeFormat.EAN_8,
+    BarcodeFormat.QR_CODE,
+    BarcodeFormat.DATA_MATRIX,
+    BarcodeFormat.PDF_417,
+  ]],
+])
+
+function stopStream(video: HTMLVideoElement | null) {
+  if (!video?.srcObject) return
+  ;(video.srcObject as MediaStream).getTracks().forEach(t => t.stop())
+  video.srcObject = null
+}
+
+export default function Scanner({ onResult, onClose, hint, mode = 'qr' }: ScannerProps) {
+  const videoRef                    = useRef<HTMLVideoElement>(null)
+  const readerRef                   = useRef<BrowserMultiFormatReader | null>(null)
+  const [devices, setDevices]       = useState<MediaDeviceInfo[]>([])
+  const [deviceIdx, setDeviceIdx]   = useState(0)
+  const [error, setError]           = useState<string | null>(null)
+  const [loading, setLoading]       = useState(true)
+  const [scanned, setScanned]       = useState(false)
 
   useEffect(() => {
     let active = true
@@ -26,48 +52,37 @@ export default function Scanner({ onResult, onClose, hint }: ScannerProps) {
         setLoading(true)
         setError(null)
 
-        const reader = new BrowserMultiFormatReader()
+        const reader = new BrowserMultiFormatReader(HINTS)
         readerRef.current = reader
 
-        // Enumerate cameras via native browser API
         const allDevices = await navigator.mediaDevices.enumerateDevices()
-        const videoInputDevices = allDevices.filter(
-          (d): d is MediaDeviceInfo => d.kind === 'videoinput'
-        )
+        const cams = allDevices.filter((d): d is MediaDeviceInfo => d.kind === 'videoinput')
         if (!active) return
 
-        if (videoInputDevices.length === 0) {
-          setError('Aucune caméra détectée')
-          setLoading(false)
-          return
-        }
+        if (cams.length === 0) { setError('Aucune caméra détectée'); setLoading(false); return }
 
-        // Prefer back camera on mobile
-        const backCamera = videoInputDevices.find(d =>
-          d.label.toLowerCase().includes('back') ||
-          d.label.toLowerCase().includes('rear') ||
-          d.label.toLowerCase().includes('environment')
+        const backCamera = cams.find(d =>
+          /back|rear|environment/i.test(d.label)
         )
-        const preferredIdx = backCamera
-          ? videoInputDevices.indexOf(backCamera)
-          : 0
+        const preferred = backCamera ? cams.indexOf(backCamera) : 0
+        if (active) { setDevices(cams); setDeviceIdx(preferred) }
 
-        setDevices(videoInputDevices)
-        if (active) setDeviceIdx(preferredIdx)
-
-        const selectedDeviceId = videoInputDevices[preferredIdx]?.deviceId
-
-        await reader.decodeFromVideoDevice(
-          selectedDeviceId,
+        // Request HD resolution for reliable 1D barcode decode
+        await reader.decodeFromConstraints(
+          {
+            video: {
+              deviceId:   cams[preferred]?.deviceId ? { exact: cams[preferred].deviceId } : undefined,
+              facingMode: 'environment',
+              width:      { ideal: 1920 },
+              height:     { ideal: 1080 },
+            },
+          },
           videoRef.current!,
           (result, err) => {
             if (!active) return
             if (result && !scanned) {
               setScanned(true)
-              // Brief flash feedback then return result
-              setTimeout(() => {
-                onResult(result.getText())
-              }, 150)
+              setTimeout(() => { onResult(result.getText()) }, 150)
             }
             if (err && !(err instanceof NotFoundException)) {
               console.warn('[Scanner]', err)
@@ -78,11 +93,11 @@ export default function Scanner({ onResult, onClose, hint }: ScannerProps) {
       } catch (err: unknown) {
         if (!active) return
         const msg = (err as Error).message
-        if (msg.includes('Permission') || msg.includes('NotAllowed')) {
-          setError('Accès caméra refusé. Autorisez l\'accès dans les paramètres du navigateur.')
-        } else {
-          setError(`Erreur caméra: ${msg}`)
-        }
+        setError(
+          msg.includes('Permission') || msg.includes('NotAllowed')
+            ? "Accès caméra refusé. Autorisez l'accès dans les paramètres du navigateur."
+            : `Erreur caméra: ${msg}`
+        )
         setLoading(false)
       }
     }
@@ -92,18 +107,31 @@ export default function Scanner({ onResult, onClose, hint }: ScannerProps) {
     return () => {
       active = false
       readerRef.current?.reset()
+      stopStream(videoRef.current)   // ← releases camera indicator dot
     }
   }, [deviceIdx])
 
-  async function switchCamera() {
+  function switchCamera() {
     readerRef.current?.reset()
+    stopStream(videoRef.current)
     setScanned(false)
     setDeviceIdx(prev => (prev + 1) % devices.length)
   }
 
+  function handleClose() {
+    readerRef.current?.reset()
+    stopStream(videoRef.current)
+    onClose()
+  }
+
+  // Guide frame: wide rectangle for 1D barcodes, square for QR
+  const guideW = mode === 'barcode' ? 'w-72' : 'w-56'
+  const guideH = mode === 'barcode' ? 'h-24' : 'h-56'
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm">
-      <div className="relative w-full max-w-sm mx-4">
+      {/* wider container for tablet */}
+      <div className="relative w-full max-w-xl mx-4">
 
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
@@ -114,23 +142,17 @@ export default function Scanner({ onResult, onClose, hint }: ScannerProps) {
             </span>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-all"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Viewfinder */}
-        <div className="relative rounded-2xl overflow-hidden bg-black aspect-[4/3]">
-          <video
-            ref={videoRef}
-            className="w-full h-full object-cover"
-            muted
-            playsInline
-          />
+        {/* Viewfinder — taller on tablet */}
+        <div className="relative rounded-2xl overflow-hidden bg-black aspect-video">
+          <video ref={videoRef} className="w-full h-full object-cover" muted playsInline />
 
-          {/* Loading overlay */}
           {loading && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/60">
               <div className="text-center">
@@ -140,7 +162,6 @@ export default function Scanner({ onResult, onClose, hint }: ScannerProps) {
             </div>
           )}
 
-          {/* Error overlay */}
           {error && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/80 p-4">
               <div className="text-center">
@@ -150,7 +171,6 @@ export default function Scanner({ onResult, onClose, hint }: ScannerProps) {
             </div>
           )}
 
-          {/* Success flash */}
           {scanned && (
             <div className="absolute inset-0 bg-emerald-500/30 flex items-center justify-center">
               <div className="w-16 h-16 rounded-full bg-emerald-500 flex items-center justify-center">
@@ -161,11 +181,10 @@ export default function Scanner({ onResult, onClose, hint }: ScannerProps) {
             </div>
           )}
 
-          {/* Scan guide frame */}
+          {/* Adaptive guide frame */}
           {!loading && !error && !scanned && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="w-56 h-56 relative">
-                {/* Corner markers */}
+              <div className={`${guideW} ${guideH} relative`}>
                 {[
                   'top-0 left-0 border-t-2 border-l-2',
                   'top-0 right-0 border-t-2 border-r-2',
@@ -174,14 +193,17 @@ export default function Scanner({ onResult, onClose, hint }: ScannerProps) {
                 ].map((cls, i) => (
                   <div key={i} className={`absolute w-6 h-6 border-white rounded-sm ${cls}`} />
                 ))}
-                {/* Scan line animation */}
                 <div className="absolute left-1 right-1 top-1/2 h-0.5 bg-emerald-400/80 animate-pulse" />
+                {mode === 'barcode' && (
+                  <p className="absolute -bottom-6 left-0 right-0 text-center text-white/60 text-xs">
+                    Alignez le code-barres à l'intérieur du cadre
+                  </p>
+                )}
               </div>
             </div>
           )}
         </div>
 
-        {/* Switch camera button */}
         {devices.length > 1 && !loading && !error && (
           <button
             onClick={switchCamera}

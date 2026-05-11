@@ -253,6 +253,7 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
               <ScanButton
                 onScan={v => set('imei', v)}
                 hint="Scannez le code-barres IMEI"
+                mode="barcode"
                 color={primary}
               />
             </div>

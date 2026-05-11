@@ -9,11 +9,12 @@ const Scanner = dynamic(() => import('./Scanner'), { ssr: false })
 interface ScanButtonProps {
   onScan:  (value: string) => void
   hint?:   string
+  mode?:   'barcode' | 'qr'
   size?:   'sm' | 'md'
   color?:  string
 }
 
-export default function ScanButton({ onScan, hint, size = 'md', color = '#C9A440' }: ScanButtonProps) {
+export default function ScanButton({ onScan, hint, mode, size = 'md', color = '#C9A440' }: ScanButtonProps) {
   const [open, setOpen] = useState(false)
 
   function handleResult(value: string) {
@@ -46,6 +47,7 @@ export default function ScanButton({ onScan, hint, size = 'md', color = '#C9A440
           onResult={handleResult}
           onClose={() => setOpen(false)}
           hint={hint}
+          mode={mode}
         />
       )}
     </>

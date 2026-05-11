@@ -172,6 +172,10 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
   const [showClientDropdown,   setShowClientDropdown]   = useState(false)
   const [clientSearching,      setClientSearching]      = useState(false)
   const [selectedClientId,     setSelectedClientId]     = useState<string | null>(null)
+  const [cashDropOpen,         setCashDropOpen]         = useState(false)
+  const [cashDropAmount,       setCashDropAmount]       = useState('')
+  const [cashDropReason,       setCashDropReason]       = useState('')
+  const [cashDropSubmitting,   setCashDropSubmitting]   = useState(false)
   const clientSearchRef = useRef<ReturnType<typeof setTimeout>>()
 
   // ── Device search ─────────────────────────────────────────
@@ -712,6 +716,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
             <ScanButton
               onScan={v => setSearch(v)}
               hint="Scannez un IMEI pour trouver l'appareil"
+              mode="barcode"
               color={primary}
             />
           </div>
@@ -1080,7 +1085,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                   <input className={inputClass} placeholder="356XXXXXXXXXXXXX"
                     value={saleForm.imei_echange} onChange={e => setSale('imei_echange', e.target.value)} />
                   <ScanButton onScan={v => setSale('imei_echange', v)}
-                    hint="Scannez l'IMEI de l'appareil repris" color={primary} />
+                    hint="Scannez l'IMEI de l'appareil repris" color={primary} mode="barcode" />
                 </div>
               </div>
 
@@ -1301,6 +1306,95 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
           >
             {isAr ? '× مسح الكل' : '× Réinitialiser'}
           </button>
+
+          {/* Cash Drop */}
+          <button
+            type="button"
+            onClick={() => setCashDropOpen(true)}
+            className="w-full py-2.5 rounded-2xl text-xs font-bold border border-[#E8E5DE] text-[#6B6860] hover:border-emerald-400 hover:text-emerald-600 transition-all flex items-center justify-center gap-1.5"
+          >
+            <span>＋</span>
+            {isAr ? 'إيداع نقدي' : 'Encaissement manuel'}
+          </button>
+
+          {/* Cash Drop Modal */}
+          {cashDropOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+                <p className="text-sm font-bold text-[#1A1A1A]">
+                  {isAr ? 'إيداع نقدي' : 'Encaissement manuel'}
+                </p>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs font-bold text-[#6B6860] uppercase tracking-widest block mb-1">
+                      {isAr ? 'المبلغ (درهم) *' : 'Montant (MAD) *'}
+                    </label>
+                    <input
+                      type="number"
+                      className="w-full px-3 py-2.5 text-sm border border-[#E8E5DE] rounded-xl focus:outline-none focus:border-emerald-400"
+                      placeholder="0.00"
+                      value={cashDropAmount}
+                      onChange={e => setCashDropAmount(e.target.value)}
+                      autoFocus
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-[#6B6860] uppercase tracking-widest block mb-1">
+                      {isAr ? 'السبب *' : 'Motif *'}
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2.5 text-sm border border-[#E8E5DE] rounded-xl focus:outline-none focus:border-emerald-400"
+                      placeholder={isAr ? 'مثال: دفع دين قديم' : 'Ex: remboursement dette ancienne'}
+                      value={cashDropReason}
+                      onChange={e => setCashDropReason(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => { setCashDropOpen(false); setCashDropAmount(''); setCashDropReason('') }}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-bold border border-[#E8E5DE] text-[#6B6860] hover:bg-[#F8F7F4] transition-all"
+                  >
+                    {isAr ? 'إلغاء' : 'Annuler'}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={cashDropSubmitting || !cashDropAmount || !cashDropReason.trim()}
+                    onClick={async () => {
+                      if (!cashDropAmount || !cashDropReason.trim()) return
+                      setCashDropSubmitting(true)
+                      try {
+                        const res = await fetch('/api/cash-drops', {
+                          method:  'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body:    JSON.stringify({
+                            amount:   Number(cashDropAmount),
+                            reason:   cashDropReason.trim(),
+                            store_id: storeId,
+                          }),
+                        })
+                        if (!res.ok) throw new Error((await res.json()).error)
+                        showSuccess(isAr ? 'تم تسجيل الإيداع ✓' : 'Encaissement enregistré ✓')
+                        setCashDropOpen(false)
+                        setCashDropAmount('')
+                        setCashDropReason('')
+                      } catch (err: unknown) {
+                        showError((err as Error).message)
+                      } finally {
+                        setCashDropSubmitting(false)
+                      }
+                    }}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-40"
+                    style={{ backgroundColor: primary }}
+                  >
+                    {cashDropSubmitting ? '...' : (isAr ? 'تأكيد' : 'Confirmer')}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
