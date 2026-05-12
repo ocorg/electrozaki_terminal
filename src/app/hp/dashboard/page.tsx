@@ -52,12 +52,11 @@ export default function HPDashboard() {
       const [txnRes, repairRes, stockRes] = await Promise.all([
         supabase
           .from('transactions')
-          .select('prix_vente, date_vente')
+          .select('prix_vente, date_vente, avance, valeur_echange, type_operation')
           .eq('store_id', STORE_ID)
           .eq('voided', false)
           .order('created_at', { ascending: false })
           .limit(200),
-
         supabase
           .from('reparations')
           .select('rep_id, model, statut, date_depot, clients(nom)')

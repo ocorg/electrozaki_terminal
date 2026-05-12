@@ -106,12 +106,25 @@ export async function POST(request: NextRequest) {
     if (error) throw error
     if (!data) throw new Error('No data returned')
 
-    // Flip device status to مباع
+    // Flip device status to مباع (phones/laptops) or decrement quantity (accessories)
     if (deviceTable) {
       await supabase
         .from(deviceTable)
         .update({ status: 'مباع', updated_by: user.id })
         .eq(deviceIdCol, body.device_id)
+    } else if (body.device_type === 'إكسسوار') {
+      // Decrement accessory quantity — floor at 0
+      const { data: acc } = await supabase
+        .from('accessories')
+        .select('quantite')
+        .eq('acc_id', body.device_id)
+        .single() as { data: { quantite: number } | null }
+
+      const newQty = Math.max(0, (acc?.quantite ?? 1) - 1)
+      await supabase
+        .from('accessories')
+        .update({ quantite: newQty, updated_by: user.id })
+        .eq('acc_id', body.device_id)
     }
 
     await logActivity({

@@ -17,7 +17,7 @@ import {
   Search, ShoppingCart, User, CreditCard, ArrowLeftRight,
   X, Plus, AlertTriangle, Loader2, CheckCircle,
   Smartphone, Laptop as LaptopIcon, Package, Lock,
-  Printer, RotateCcw
+  Printer, RotateCcw, Wallet
 } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────
@@ -172,6 +172,10 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
   const [showClientDropdown,   setShowClientDropdown]   = useState(false)
   const [clientSearching,      setClientSearching]      = useState(false)
   const [selectedClientId,     setSelectedClientId]     = useState<string | null>(null)
+  const [clientCredit,         setClientCredit]         = useState<number>(0)
+  const [creditApplied,        setCreditApplied]        = useState<number>(0)
+  const [creditModalOpen,      setCreditModalOpen]      = useState(false)
+  const [creditInputValue,     setCreditInputValue]     = useState('')
   const [cashDropOpen,         setCashDropOpen]         = useState(false)
   const [cashDropAmount,       setCashDropAmount]       = useState('')
   const [cashDropReason,       setCashDropReason]       = useState('')
@@ -372,6 +376,15 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
     setSelectedClientId(c.client_id)
     setClientSuggestions([])
     setShowClientDropdown(false)
+    setCreditApplied(0)
+    // Fetch client's outstanding credit balance
+    fetch(`/api/clients?search=${encodeURIComponent(c.telephone)}&store_id=${storeId}`)
+      .then(r => r.json())
+      .then(json => {
+        const found = (json.data || []).find((cl: { client_id: string; solde_impaye?: number }) => cl.client_id === c.client_id)
+        setClientCredit(found?.solde_impaye ?? 0)
+      })
+      .catch(() => setClientCredit(0))
   }
 
   // ── Form helpers ──────────────────────────────────────────
@@ -514,11 +527,31 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
         })
         setAddedPhoneId(null)
       }
+      // If credit was applied, record the credit payment
+      if (creditApplied > 0 && selectedClientId) {
+        try {
+          await fetch('/api/credits', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({
+              client_id:      selectedClientId,
+              store_id:       storeId,
+              txn_id:         lastTxnId,
+              montant:        creditApplied,
+              payment_method: 'نقد',
+              notes:          `Crédit appliqué sur vente ${lastTxnId}`,
+            }),
+          })
+        } catch { /* non-blocking — sale is already recorded */ }
+      }
+
       setCart([])
       setSaleForm({ ...EMPTY_SALE })
       setOverrideAuthorizedBy(null)
       setOverrideReason('')
       setSelectedClientId(null)
+      setClientCredit(0)
+      setCreditApplied(0)
     } catch (err: unknown) {
       showError((err as Error).message)
     } finally {
@@ -894,6 +927,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                         type="number"
                         min={0}
                         step={0.01}
+                        inputMode="decimal"
                         className="w-24 border border-[#E8E5DE] rounded-lg px-2 py-1 text-xs font-bold text-right bg-white focus:outline-none"
                         value={item.prix_vente_saisi || ''}
                         onChange={e => updatePrice(item._id, Number(e.target.value))}
@@ -988,6 +1022,33 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                 maxLength={10}
               />
             </div>
+
+            {/* Credit notice */}
+            {clientCredit > 0 && (
+              <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between gap-3">
+                <div className="flex items-start gap-2 min-w-0">
+                  <Wallet className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-amber-800">
+                      {isAr ? 'لدى هذا العميل ذمة:' : 'Solde impayé :'}{' '}
+                      <span>{formatMAD(clientCredit)}</span>
+                    </p>
+                    {creditApplied > 0 && (
+                      <p className="text-[10px] text-amber-700 mt-0.5">
+                        {isAr ? `مُطبَّق على البيع: ${formatMAD(creditApplied)}` : `Crédit appliqué : ${formatMAD(creditApplied)}`}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <button
+                  onClick={() => { setCreditInputValue(String(Math.min(clientCredit, totalVente))); setCreditModalOpen(true) }}
+                  className="flex-shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200 transition-all">
+                  {creditApplied > 0
+                    ? (isAr ? 'تعديل' : 'Modifier')
+                    : (isAr ? 'تطبيق' : 'Appliquer')}
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Operation type */}
@@ -1083,7 +1144,9 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                 <label className="text-xs text-blue-700 font-medium">IMEI</label>
                 <div className="flex gap-2 mt-1">
                   <input className={inputClass} placeholder="356XXXXXXXXXXXXX"
-                    value={saleForm.imei_echange} onChange={e => setSale('imei_echange', e.target.value)} />
+                    type="text" inputMode="numeric" pattern="[0-9]*"
+                    value={saleForm.imei_echange}
+                    onChange={e => setSale('imei_echange', e.target.value.replace(/\D/g, '').slice(0, 15))} />
                   <ScanButton onScan={v => setSale('imei_echange', v)}
                     hint="Scannez l'IMEI de l'appareil repris" color={primary} mode="barcode" />
                 </div>
@@ -1184,7 +1247,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
             )}
             {saleForm.payment_method === 'تسبيق' && (
               <div className="mt-2 space-y-2">
-                <input type="number" className={inputClass}
+                <input type="number" min={0} step={0.01} inputMode="decimal" className={inputClass}
                   placeholder={isAr ? 'مبلغ التسبيق (درهم)' : 'Montant avance (MAD)'}
                   value={saleForm.avance || ''}
                   onChange={e => setSale('avance', Number(e.target.value))} />
@@ -1221,11 +1284,11 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
             )}
             {saleForm.payment_method === 'مختلط' && (
               <div className="grid grid-cols-2 gap-2 mt-2">
-                <input type="number" className={inputClass}
+                <input type="number" min={0} step={0.01} inputMode="decimal" className={inputClass}
                   placeholder={isAr ? 'نقد' : 'Espèces'}
                   value={saleForm.montant_especes || ''}
                   onChange={e => setSale('montant_especes', Number(e.target.value))} />
-                <input type="number" className={inputClass}
+                <input type="number" min={0} step={0.01} inputMode="decimal" className={inputClass}
                   placeholder={isAr ? 'تحويل' : 'Virement'}
                   value={saleForm.montant_carte || ''}
                   onChange={e => setSale('montant_carte', Number(e.target.value))} />
@@ -1397,6 +1460,8 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
           )}
         </div>
       </div>
+
+      
 
       {/* Exchange intake panel */}
       {exchangePanel?.open && (

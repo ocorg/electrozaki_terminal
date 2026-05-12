@@ -39,12 +39,13 @@ export async function GET(request: NextRequest) {
       .eq('date_livraison', date)
       .eq('statut', 'تم الاستلام') as { data: Record<string, unknown>[] | null }
 
-    // Sum expenses today
+    // Sum expenses today (exclude soft-deleted)
     const { data: exps } = await supabase
       .from('expenses')
       .select('montant')
       .eq('store_id', store_id)
-      .eq('date', date) as { data: Record<string, unknown>[] | null }
+      .eq('date', date)
+      .eq('is_deleted', false) as { data: Record<string, unknown>[] | null }
 
     // Sum cash drops today
     const { data: drops } = await supabase
@@ -227,6 +228,12 @@ export async function PATCH(request: NextRequest) {
       .update({
         solde_reel,
         ecart,
+        // Persist computed totals so BZG cross-store view reads real figures
+        total_ventes:      live_ventes,
+        total_reparations: live_reps,
+        total_depenses:    live_exps,
+        total_cash_drops:  live_drops,
+        solde_theorique,
         status:           'pending_eod',
         eod_submitted_at: new Date().toISOString(),
         closed_by:        user.id,

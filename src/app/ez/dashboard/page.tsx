@@ -91,14 +91,25 @@ export default function EZDashboard() {
       const accessories = (stockRes.data || []) as Record<string, unknown>[]
       const credits     = (creditRes.data || []) as Record<string, unknown>[]
 
+      // Compute actually-collected amount per transaction
+      function collectedAmount(t: Record<string, unknown>): number {
+        const pv  = (t.prix_vente     as number) || 0
+        const av  = (t.avance         as number) || 0
+        const ve  = (t.valeur_echange as number) || 0
+        const op  =  t.type_operation as string
+        if (op === 'إستبدال') return pv - ve          // exchange: net of trade-in
+        const fariq = pv - av - ve
+        return fariq > 0 ? av : pv                     // partial → avance only; full → full price
+      }
+
       // CA today
       const ca_today = txns
         .filter(t => t.date_vente === today)
-        .reduce((sum: number, t) => sum + ((t.prix_vente as number) || 0), 0)
+        .reduce((sum: number, t) => sum + collectedAmount(t), 0)
 
       // CA + count this month
       const monthTxns = txns.filter(t => (t.date_vente as string) >= monthStart)
-      const ca_month  = monthTxns.reduce((sum: number, t) => sum + ((t.prix_vente as number) || 0), 0)
+      const ca_month  = monthTxns.reduce((sum: number, t) => sum + collectedAmount(t), 0)
       const nb_ventes_month = monthTxns.length
 
       // Active repairs count

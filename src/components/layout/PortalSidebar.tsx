@@ -10,7 +10,7 @@ import {
   Wrench, Users, Truck, Receipt, Vault, ArrowLeftRight,
   Settings, LogOut, Globe, ChevronRight,
   PanelLeftClose, PanelLeftOpen, Store, FileText, Clock,
-  BarChart3, UserCheck, ScrollText, Shield, PackageCheck
+  BarChart3, UserCheck, ScrollText, Shield, PackageCheck, CreditCard
 } from 'lucide-react'
 import type { UserRole } from '@/types/database'
 import { useLanguageStore } from '@/lib/stores/language'
@@ -57,6 +57,7 @@ function getNavItems(portalBase: string, portalType: string): NavItem[] {
       { href: `${portalBase}/expenses`,         icon: Receipt,         label: 'Dépenses',          roles: ['manager','owner'] },
       { href: `${portalBase}/caisse`,           icon: Vault,           label: 'Caisse du jour',    roles: ['staff','manager','owner'] },
       { href: `${portalBase}/movements`,        icon: ArrowLeftRight,  label: 'Transferts stock',  roles: ['manager','owner'] },
+      { href: `${portalBase}/credits`,          icon: CreditCard,      label: 'Crédits clients',   roles: ['manager','owner'] },
       { href: `${portalBase}/suppliers`,        icon: Truck,           label: 'Fournisseurs',      roles: ['manager','owner'] },
   ]
 }
@@ -77,6 +78,7 @@ function getNavItems(portalBase: string, portalType: string): NavItem[] {
     { href: `${portalBase}/expenses`,         icon: Receipt,         label: 'Dépenses',           roles: ['manager','owner'] },
     { href: `${portalBase}/caisse`,           icon: Vault,           label: 'Caisse du jour',     roles: ['staff','manager','owner'] },
     { href: `${portalBase}/movements`,        icon: ArrowLeftRight,  label: 'Transferts stock',   roles: ['manager','owner'] },
+    { href: `${portalBase}/credits`,          icon: CreditCard,      label: 'Crédits clients',    roles: ['manager','owner'] },
   ]
 }
 

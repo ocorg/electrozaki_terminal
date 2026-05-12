@@ -244,10 +244,12 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
             <div className="flex gap-2">
               <input
                 type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 className={inputClass}
                 placeholder="356XXXXXXXXXXXXX"
                 value={form.imei || ''}
-                onChange={e => set('imei', e.target.value)}
+                onChange={e => set('imei', e.target.value.replace(/\D/g, '').slice(0, 15))}
                 maxLength={15}
               />
               <ScanButton
