@@ -74,7 +74,7 @@ export default function HPDashboard() {
       const repairs     = (repairRes.data || []) as Record<string, unknown>[]
       const accessories = (stockRes.data  || []) as Record<string, unknown>[]
 
-      function collectedAmount(t: Record<string, unknown>): number {
+      const collectedAmount = (t: Record<string, unknown>): number => {
         const pv  = (t.prix_vente     as number) || 0
         const av  = (t.avance         as number) || 0
         const ve  = (t.valeur_echange as number) || 0

@@ -92,14 +92,14 @@ export default function EZDashboard() {
       const credits     = (creditRes.data || []) as Record<string, unknown>[]
 
       // Compute actually-collected amount per transaction
-      function collectedAmount(t: Record<string, unknown>): number {
+      const collectedAmount = (t: Record<string, unknown>): number => {
         const pv  = (t.prix_vente     as number) || 0
         const av  = (t.avance         as number) || 0
         const ve  = (t.valeur_echange as number) || 0
         const op  =  t.type_operation as string
-        if (op === 'إستبدال') return pv - ve          // exchange: net of trade-in
+        if (op === 'إستبدال') return pv - ve
         const fariq = pv - av - ve
-        return fariq > 0 ? av : pv                     // partial → avance only; full → full price
+        return fariq > 0 ? av : pv
       }
 
       // CA today
