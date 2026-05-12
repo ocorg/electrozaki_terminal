@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
       .from('accessories_with_status')
       .select('*')
       .eq('store_id', store_id)
+      .eq('is_deleted', false)
       .order('created_at', { ascending: false })
 
     if (categorie)  query = query.eq('categorie', categorie)

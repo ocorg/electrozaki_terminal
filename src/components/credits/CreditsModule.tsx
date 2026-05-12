@@ -543,6 +543,7 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
       {/* ── Payment Modal ──────────────────────────────────── */}
       {payTarget && (
         <Modal
+          open={payTarget !== null}
           title={isAr ? `دفع ذمة — ${payTarget.nom}` : `Paiement crédit — ${payTarget.nom}`}
           onClose={() => setPayTarget(null)}
         >
@@ -603,6 +604,7 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
       {/* ── Link-to-client Modal ──────────────────────────── */}
       {linkTarget && (
         <Modal
+          open={linkTarget !== null}
           title={isAr ? 'ربط بعميل' : 'Lier à un client'}
           onClose={() => setLinkTarget(null)}
         >

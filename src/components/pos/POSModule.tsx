@@ -1486,6 +1486,72 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
         }}
       />
 
+      {/* Credit apply modal */}
+      <Modal
+        open={creditModalOpen}
+        onClose={() => { setCreditModalOpen(false); setCreditInputValue('') }}
+        title={isAr ? 'تطبيق رصيد الذمة على البيع' : 'Appliquer le crédit sur la vente'}
+        size="sm"
+      >
+        <div className="space-y-4">
+          <div className="p-3 bg-[#F8F7F4] rounded-xl space-y-1">
+            <p className="text-xs text-[#6B6860]">
+              {isAr ? 'الرصيد المتاح:' : 'Solde disponible :'}{' '}
+              <span className="font-bold text-[#1A1A1A]">{formatMAD(clientCredit)}</span>
+            </p>
+            <p className="text-xs text-[#6B6860]">
+              {isAr ? 'إجمالي البيع:' : 'Total vente :'}{' '}
+              <span className="font-bold text-[#1A1A1A]">{formatMAD(totalVente)}</span>
+            </p>
+          </div>
+          <Field label={isAr ? 'المبلغ المُطبَّق (درهم)' : 'Montant à appliquer (MAD)'}>
+            <input
+              type="number"
+              min={0}
+              max={Math.min(clientCredit, totalVente)}
+              step={0.01}
+              inputMode="decimal"
+              className={inputClass}
+              value={creditInputValue}
+              onChange={e => setCreditInputValue(e.target.value)}
+              autoFocus
+            />
+            <p className="text-[10px] text-[#B0ADA6] mt-1">
+              {isAr
+                ? `الحد الأقصى: ${formatMAD(Math.min(clientCredit, totalVente))}`
+                : `Maximum : ${formatMAD(Math.min(clientCredit, totalVente))}`}
+            </p>
+          </Field>
+          <div className="flex gap-2">
+            <button
+              onClick={() => { setCreditModalOpen(false); setCreditInputValue('') }}
+              className="flex-1 py-2.5 rounded-xl text-sm font-bold border border-[#E8E5DE] text-[#6B6860] hover:bg-[#F8F7F4] transition-all">
+              {isAr ? 'إلغاء' : 'Annuler'}
+            </button>
+            {creditApplied > 0 && (
+              <button
+                onClick={() => { setCreditApplied(0); setCreditInputValue(''); setCreditModalOpen(false) }}
+                className="px-4 py-2.5 rounded-xl text-sm font-bold border border-red-200 text-red-600 hover:bg-red-50 transition-all">
+                {isAr ? 'إلغاء التطبيق' : 'Retirer'}
+              </button>
+            )}
+            <button
+              onClick={() => {
+                const v = parseFloat(creditInputValue)
+                if (!v || v <= 0) { showError(isAr ? 'مبلغ غير صالح' : 'Montant invalide'); return }
+                const max = Math.min(clientCredit, totalVente)
+                if (v > max) { showError(`Maximum: ${formatMAD(max)}`); return }
+                setCreditApplied(v)
+                setCreditModalOpen(false)
+                setCreditInputValue('')
+              }}
+              className="flex-1 py-2.5 rounded-xl bg-amber-500 text-white text-sm font-bold hover:bg-amber-600 transition-all">
+              {isAr ? 'تطبيق' : 'Appliquer'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
       {/* Override PIN modal */}
       <Modal
         open={overrideOpen}

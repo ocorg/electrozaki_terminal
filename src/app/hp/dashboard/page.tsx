@@ -74,12 +74,22 @@ export default function HPDashboard() {
       const repairs     = (repairRes.data || []) as Record<string, unknown>[]
       const accessories = (stockRes.data  || []) as Record<string, unknown>[]
 
+      function collectedAmount(t: Record<string, unknown>): number {
+        const pv  = (t.prix_vente     as number) || 0
+        const av  = (t.avance         as number) || 0
+        const ve  = (t.valeur_echange as number) || 0
+        const op  =  t.type_operation as string
+        if (op === 'إستبدال') return pv - ve
+        const fariq = pv - av - ve
+        return fariq > 0 ? av : pv
+      }
+
       const ca_today = txns
         .filter(t => t.date_vente === today)
-        .reduce((s: number, t) => s + ((t.prix_vente as number) || 0), 0)
+        .reduce((s: number, t) => s + collectedAmount(t), 0)
 
       const monthTxns = txns.filter(t => (t.date_vente as string) >= monthStart)
-      const ca_month  = monthTxns.reduce((s: number, t) => s + ((t.prix_vente as number) || 0), 0)
+      const ca_month  = monthTxns.reduce((s: number, t) => s + collectedAmount(t), 0)
 
       const repair_counts: Record<string, number> = {}
       for (const r of repairs) {
