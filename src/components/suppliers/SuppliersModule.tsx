@@ -1,4 +1,5 @@
 'use client'
+import { useCategories } from '@/lib/hooks/useCategories'
 import { useState, useEffect, useCallback } from 'react'
 import { useUser } from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
@@ -38,12 +39,6 @@ interface Payment {
   notes?:         string | null
 }
 
-const CATEGORIES = [
-  { value: 'هواتف',     labelFr: 'Téléphones',   labelAr: 'هواتف' },
-  { value: 'لابتوبات',  labelFr: 'Laptops',      labelAr: 'لابتوبات' },
-  { value: 'إكسسوارات', labelFr: 'Accessoires',  labelAr: 'إكسسوارات' },
-  { value: 'كل شيء',   labelFr: 'Tout',          labelAr: 'كل شيء' },
-]
 
 const PAYMENT_METHODS = [
   { value: 'نقد',    labelFr: 'Espèces',  labelAr: 'نقد' },
@@ -223,10 +218,8 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
     }
   }
 
-  function getCatLabel(v: string) {
-    const cat = CATEGORIES.find(c => c.value === v)
-    return cat ? (isAr ? cat.labelAr : cat.labelFr) : v
-  }
+  const { suppliers: dynamicSupplierCats } = useCategories()
+  const getCatLabel = (v: string) => v
 
   const totalDue = suppliers.reduce((s, sup) => s + (sup.solde_du ?? 0), 0)
 
@@ -572,8 +565,8 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
             <select className={selectClass} value={form.categorie}
               onChange={e => setF('categorie', e.target.value)}>
               <option value="">{isAr ? 'اختر...' : 'Choisir...'}</option>
-              {CATEGORIES.map(c => (
-                <option key={c.value} value={c.value}>{isAr ? c.labelAr : c.labelFr}</option>
+              {dynamicSupplierCats.map(c => (
+                <option key={c} value={c}>{c}</option>
               ))}
             </select>
           </Field>

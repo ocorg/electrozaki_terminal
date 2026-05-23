@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useUser } from '@/lib/hooks/useUser'
+import { useCategories } from '@/lib/hooks/useCategories'
 import { useLanguageStore } from '@/lib/stores/language'
 import { usePortal } from '@/lib/context/portal'
 import { formatMAD, computeFariq, computeStatutPaiement, isBelowMinimum } from '@/lib/utils'
@@ -107,7 +108,8 @@ function LiveClock() {
 
 // ─── Component ───────────────────────────────────────────────
 export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps) {
-  const { user }     = useUser()
+  const { user }                      = useUser()
+  const { accessories: accCategories } = useCategories()
   const { language } = useLanguageStore()
   const portal       = usePortal()
   const isAr         = language === 'ar'
@@ -811,11 +813,11 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
               {[
                 { key: 'phones',    label: isAr ? 'هواتف'  : 'Téléphones', icon: <Smartphone className="w-3 h-3" /> },
                 ...(hasLaptops ? [{ key: 'laptops', label: isAr ? 'لابتوب' : 'Laptops', icon: <LaptopIcon className="w-3 h-3" /> }] : []),
-                { key: 'acc_كفر',   label: isAr ? 'كفر'    : 'Coques',     icon: <Package className="w-3 h-3" /> },
-                { key: 'acc_شاحن',  label: isAr ? 'شاحن'   : 'Chargeurs',  icon: <Package className="w-3 h-3" /> },
-                { key: 'acc_سماعة', label: isAr ? 'سماعة'  : 'Écouteurs',  icon: <Package className="w-3 h-3" /> },
-                { key: 'acc_واقي',  label: isAr ? 'واقي'   : 'Vitres',     icon: <Package className="w-3 h-3" /> },
-                { key: 'acc_أخرى',  label: isAr ? 'أخرى'   : 'Autres',     icon: <Package className="w-3 h-3" /> },
+                ...accCategories.map(cat => ({
+                  key:   `acc_${cat}`,
+                  label: cat,
+                  icon:  <Package className="w-3 h-3" />,
+                })),
               ].map(cat => (
                 <button
                   key={cat.key}

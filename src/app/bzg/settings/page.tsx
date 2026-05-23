@@ -3,9 +3,10 @@ import { useState, useEffect } from 'react'
 import { useLanguageStore } from '@/lib/stores/language'
 import { PageHeader, Field, inputClass, Btn } from '@/components/shared'
 import { showSuccess, showError } from '@/lib/utils/toasts'
-import { Settings, Save, Store, Palette } from 'lucide-react'
+import { Settings, Save, Store, Palette, Tag } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import StoreControlSection from '@/components/bzg/StoreControlSection'
+import CategoryManager from '@/components/bzg/CategoryManager'
 
 interface StoreSetting {
   store_id:    string
@@ -259,6 +260,26 @@ export default function BZGSettingsPage() {
             )
           })
         )}
+      </div>
+
+      {/* ── Category Manager ──────────────────────────────── */}
+      <div className="space-y-4 mt-8">
+        <div className="flex items-center gap-2">
+          <div className="p-2 rounded-xl bg-[#F2F0EB]">
+            <Tag className="w-4 h-4 text-[#C9A440]" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-[#1A1A1A]">
+              {isAr ? 'إدارة الفئات' : 'Gestion des catégories'}
+            </p>
+            <p className="text-xs text-[#6B6860]">
+              {isAr
+                ? 'أضف أو احذف فئات الإكسسوارات والمصاريف والموردين'
+                : 'Ajoutez ou supprimez des catégories pour les accessoires, dépenses et fournisseurs'}
+            </p>
+          </div>
+        </div>
+        <CategoryManager />
       </div>
     </div>
   )

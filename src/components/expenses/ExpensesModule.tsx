@@ -14,16 +14,19 @@ import {
   Calendar, AlertTriangle, Loader2
 } from 'lucide-react'
 
-const CATEGORIES: { value: ExpenseCategory; labelFr: string; labelAr: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { value: 'إيجار',    labelFr: 'Loyer',        labelAr: 'إيجار',    icon: ShoppingBag },
-  { value: 'فاتورة',   labelFr: 'Facture',       labelAr: 'فاتورة',   icon: Zap },
-  { value: 'نقل',      labelFr: 'Transport',     labelAr: 'نقل',      icon: Truck },
-  { value: 'صيانة',    labelFr: 'Maintenance',   labelAr: 'صيانة',    icon: Wrench },
-  { value: 'أجور',     labelFr: 'Salaires',      labelAr: 'أجور',     icon: Users },
-  { value: 'تسويق',    labelFr: 'Marketing',     labelAr: 'تسويق',    icon: Megaphone },
-  { value: 'معدات',    labelFr: 'Équipements',   labelAr: 'معدات',    icon: Monitor },
-  { value: 'أخرى',     labelFr: 'Autre',         labelAr: 'أخرى',     icon: MoreHorizontal },
-]
+import { useCategories } from '@/lib/hooks/useCategories'
+
+// Icon mapping for built-in categories — custom categories fall back to MoreHorizontal
+const CAT_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  'إيجار':  ShoppingBag,
+  'فاتورة': Zap,
+  'نقل':    Truck,
+  'صيانة':  Wrench,
+  'أجور':   Users,
+  'تسويق':  Megaphone,
+  'معدات':  Monitor,
+  'أخرى':   MoreHorizontal,
+}
 
 interface Expense {
   exp_id:            string
@@ -38,7 +41,7 @@ interface Expense {
 }
 
 const EMPTY_FORM = {
-  categorie:   'أخرى' as ExpenseCategory,
+  categorie:   '',
   montant:     '',
   date:        new Date().toISOString().split('T')[0],
   facture_ref: '',
@@ -149,15 +152,9 @@ export default function ExpensesModule({ storeId }: ExpensesModuleProps) {
     .filter(e => e.date === today)
     .reduce((s, e) => s + e.montant, 0)
 
-  function getCatLabel(value: ExpenseCategory) {
-    const cat = CATEGORIES.find(c => c.value === value)
-    return cat ? (isAr ? cat.labelAr : cat.labelFr) : value
-  }
-
-  function getCatIcon(value: ExpenseCategory) {
-    const cat = CATEGORIES.find(c => c.value === value)
-    return cat?.icon ?? MoreHorizontal
-  }
+  const { expenses: dynamicCategories } = useCategories()
+  const getCatIcon = (v: string) => CAT_ICONS[v] ?? MoreHorizontal
+  const getCatLabel = (v: string) => v
 
   return (
     <div className="p-6 space-y-5 animate-fade-in" dir={isAr ? 'rtl' : 'ltr'}>
@@ -212,9 +209,9 @@ export default function ExpensesModule({ storeId }: ExpensesModuleProps) {
           onChange={e => setFilterCat(e.target.value)}
         >
           <option value="">{isAr ? 'كل الفئات' : 'Toutes catégories'}</option>
-          {CATEGORIES.map(c => (
-            <option key={c.value} value={c.value}>
-              {isAr ? c.labelAr : c.labelFr}
+          {dynamicCategories.map(cat => (
+            <option key={cat} value={cat}>
+              {getCatLabel(cat)}
             </option>
           ))}
         </select>
@@ -294,25 +291,16 @@ export default function ExpensesModule({ storeId }: ExpensesModuleProps) {
         <div className="space-y-4">
           <Field label={isAr ? 'الفئة' : 'Catégorie'} required>
             <div className="grid grid-cols-4 gap-2">
-              {CATEGORIES.map(cat => {
-                const Icon = cat.icon
-                const active = form.categorie === cat.value
-                return (
-                  <button
-                    key={cat.value}
-                    type="button"
-                    onClick={() => setF('categorie', cat.value)}
+              {dynamicCategories.map(cat => {
+              const active = filterCat === cat
+              const Icon   = getCatIcon(cat)
+              return (
+                <button key={cat}
+                  onClick={() => setFilterCat(active ? '' : cat)}
                     className="flex flex-col items-center gap-1 p-2 rounded-xl border text-xs font-medium transition-all"
-                    style={{
-                      backgroundColor: active ? `${primary}15` : 'transparent',
-                      borderColor:     active ? primary : '#E8E5DE',
-                      color:           active ? primary : '#6B6860',
-                    }}
-                  >
-                    <Icon className="w-4 h-4" />
-                    <span className="truncate w-full text-center">
-                      {isAr ? cat.labelAr : cat.labelFr}
-                    </span>
+                    style={{ backgroundColor: active ? '#1A1A1A' : 'white', color: active ? 'white' : '#6B6860', borderColor: active ? '#1A1A1A' : '#E8E5DE' }}>
+                  <Icon className="w-3.5 h-3.5" />
+                  <span>{cat}</span>
                   </button>
                 )
               })}

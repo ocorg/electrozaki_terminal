@@ -1,4 +1,5 @@
 'use client'
+import { useCategories } from '@/lib/hooks/useCategories'
 import { useState, useEffect, useCallback } from 'react'
 import { useUser } from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
@@ -14,14 +15,7 @@ import {
   Edit2, AlertTriangle, Minus, TrendingUp, Trash2, Loader2
 } from 'lucide-react'
 
-const CATEGORIES: { value: AccCategory; labelFr: string; labelAr: string }[] = [
-  { value: 'كفر',    labelFr: 'Coque/Protection', labelAr: 'كفر' },
-  { value: 'شاحن',  labelFr: 'Chargeur',          labelAr: 'شاحن' },
-  { value: 'سماعة', labelFr: 'Écouteurs',          labelAr: 'سماعة' },
-  { value: 'واقي',  labelFr: 'Verre trempé',       labelAr: 'واقي' },
-  { value: 'سيم',   labelFr: 'Carte SIM',          labelAr: 'سيم' },
-  { value: 'أخرى',  labelFr: 'Autre',              labelAr: 'أخرى' },
-]
+
 
 interface Accessory {
   acc_id:                 string
@@ -40,9 +34,9 @@ interface Accessory {
   is_low_stock?:          boolean
 }
 
-const EMPTY_FORM = {
-  nom:                    '',
-  categorie:              'أخرى' as AccCategory,
+const EMPTY_FORM: AccessoryForm = {
+  nom:                   '',
+  categorie:             '',
   marque:                 '',
   barcode:                '',
   compatible_with:        '',
@@ -211,10 +205,8 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
     s + ((a.prix_achat ?? 0) * a.quantite), 0
   )
 
-  function getCatLabel(v: AccCategory) {
-    const cat = CATEGORIES.find(c => c.value === v)
-    return cat ? (isAr ? cat.labelAr : cat.labelFr) : v
-  }
+  const { accessories: dynamicCategories } = useCategories()
+  function getCatLabel(v: string) { return v }
 
   return (
     <div className="flex flex-col h-full overflow-hidden animate-fade-in" dir={isAr ? 'rtl' : 'ltr'}>
@@ -286,8 +278,8 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
             onChange={e => setFilterCat(e.target.value)}
           >
             <option value="">{isAr ? 'كل الفئات' : 'Toutes catégories'}</option>
-            {CATEGORIES.map(c => (
-              <option key={c.value} value={c.value}>{isAr ? c.labelAr : c.labelFr}</option>
+            {dynamicCategories.map(c => (
+                  <option key={c} value={c}>{c}</option>
             ))}
           </select>
           <button
@@ -526,10 +518,9 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
             <Field label={isAr ? 'الفئة' : 'Catégorie'} required>
               <select className={selectClass} value={form.categorie}
                 onChange={e => setF('categorie', e.target.value)}>
-                {CATEGORIES.map(c => (
-                  <option key={c.value} value={c.value}>
-                    {isAr ? c.labelAr : c.labelFr}
-                  </option>
+                <option value="">{isAr ? 'اختر الفئة...' : 'Choisir...'}</option>
+                {dynamicCategories.map(c => (
+                  <option key={c} value={c}>{c}</option>
                 ))}
               </select>
             </Field>

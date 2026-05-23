@@ -14,9 +14,10 @@ export type PaymentMethod    = 'نقد' | 'تحويل' | 'تسبيق' | 'إست�
 export type RepairStatus     = 'معلق' | 'قيد الإصلاح' | 'جاهز' | 'تم الاستلام'
 export type MovementReason   = 'Transfert' | 'Réparation Externe' | 'Retour' | 'Prêt'
 export type DeviceType       = 'هاتف' | 'لابتوب' | 'إكسسوار'
-export type AccCategory      = 'كفر' | 'شاحن' | 'سماعة' | 'واقي' | 'سيم' | 'أخرى'
-export type SupplierCategory = 'هواتف' | 'لابتوبات' | 'إكسسوارات' | 'كل شيء'
-export type ExpenseCategory  = 'إيجار' | 'فاتورة' | 'نقل' | 'صيانة' | 'أجور' | 'تسويق' | 'معدات' | 'أخرى'
+// These are now open strings — values are managed via BZG Settings → Catégories
+export type AccCategory      = string
+export type SupplierCategory = string
+export type ExpenseCategory  = string
 export type CaisseStatus     = 'open' | 'pending_eod' | 'closed'
 export type PunchType        = 'in' | 'out'
 export type ActionType       = 'INSERT' | 'UPDATE' | 'DELETE' | 'VOID' | 'LOGIN' | 'LOGOUT' | 'OVERRIDE' | 'EOD_SUBMIT' | 'EOD_APPROVE' | 'EOD_REJECT' | 'PUNCH_IN' | 'PUNCH_OUT'
