@@ -292,15 +292,15 @@ export default function ExpensesModule({ storeId }: ExpensesModuleProps) {
           <Field label={isAr ? 'الفئة' : 'Catégorie'} required>
             <div className="grid grid-cols-4 gap-2">
               {dynamicCategories.map(cat => {
-              const active = filterCat === cat
-              const Icon   = getCatIcon(cat)
-              return (
-                <button key={cat}
-                  onClick={() => setFilterCat(active ? '' : cat)}
+                const active = form.categorie === cat
+                const Icon   = getCatIcon(cat)
+                return (
+                  <button key={cat}
+                    onClick={() => setF('categorie', cat)}
                     className="flex flex-col items-center gap-1 p-2 rounded-xl border text-xs font-medium transition-all"
                     style={{ backgroundColor: active ? '#1A1A1A' : 'white', color: active ? 'white' : '#6B6860', borderColor: active ? '#1A1A1A' : '#E8E5DE' }}>
-                  <Icon className="w-3.5 h-3.5" />
-                  <span>{cat}</span>
+                    <Icon className="w-3.5 h-3.5" />
+                    <span>{cat}</span>
                   </button>
                 )
               })}

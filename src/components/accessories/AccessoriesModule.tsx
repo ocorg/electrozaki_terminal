@@ -34,6 +34,19 @@ interface Accessory {
   is_low_stock?:          boolean
 }
 
+interface AccessoryForm {
+  nom:                   string
+  categorie:             string
+  marque:                string
+  barcode:               string
+  compatible_with:       string
+  quantite:              string
+  seuil_alerte:          string
+  prix_achat:            string
+  prix_vente_recommande: string
+  prix_vente_minimum:    string
+}
+
 const EMPTY_FORM: AccessoryForm = {
   nom:                   '',
   categorie:             '',
@@ -95,8 +108,8 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
     return () => clearTimeout(t)
   }, [fetchAccessories, search])
 
-  function setF(k: keyof typeof EMPTY_FORM, v: string) {
-    setForm(prev => ({ ...prev, [k]: v }))
+  function setF(k: keyof AccessoryForm, v: string) {
+    setForm((prev: AccessoryForm) => ({ ...prev, [k]: v }))
   }
 
   async function handleDelete(acc_id: string) {
