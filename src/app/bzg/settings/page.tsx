@@ -113,18 +113,18 @@ export default function BZGSettingsPage() {
         {/* ── Store Control (owner only) ── */}
         <StoreControlSection />
 
-        {/* ── Key-Value Settings ── */}
+        {/* ── Key-Value Settings (category keys managed separately below) ── */}
         <div className="mt-8">
           <h2 className="font-display text-xl font-bold text-[#1A1A1A] tracking-wide mb-4">
             {isAr ? 'إعدادات متقدمة (مفتاح / قيمة)' : 'Paramètres avancés (clé / valeur)'}
           </h2>
-          {kvSettings.length === 0 ? (
+          {kvSettings.filter(s => !s.key.startsWith('categories_')).length === 0 ? (
             <p className="text-sm text-[#B0ADA6]">
               {isAr ? 'لا توجد إعدادات بعد' : 'Aucun paramètre configuré.'}
             </p>
           ) : (
             <div className="space-y-3">
-              {kvSettings.map(s => (
+              {kvSettings.filter(s => !s.key.startsWith('categories_')).map(s => (
                 <div
                   key={kvKey(s.store_id, s.key)}
                   className="bg-white border border-[#E8E5DE] rounded-xl p-4 flex items-center gap-4"
@@ -263,8 +263,8 @@ export default function BZGSettingsPage() {
       </div>
 
       {/* ── Category Manager ──────────────────────────────── */}
-      <div className="space-y-4 mt-8">
-        <div className="flex items-center gap-2">
+      <div className="px-6 pb-6 mt-4 space-y-4">
+        <div className="flex items-center gap-3">
           <div className="p-2 rounded-xl bg-[#F2F0EB]">
             <Tag className="w-4 h-4 text-[#C9A440]" />
           </div>
