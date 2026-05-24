@@ -219,7 +219,10 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
   }
 
   const { suppliers: dynamicSupplierCats } = useCategories()
-  const getCatLabel = (v: string) => v
+  const getCatLabel = (v: string) => {
+    const c = dynamicSupplierCats.find(x => x.ar === v)
+    return c ? (isAr ? c.ar : c.fr) : v
+  }
 
   const totalDue = suppliers.reduce((s, sup) => s + (sup.solde_du ?? 0), 0)
 
@@ -566,7 +569,7 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
               onChange={e => setF('categorie', e.target.value)}>
               <option value="">{isAr ? 'اختر...' : 'Choisir...'}</option>
               {dynamicSupplierCats.map(c => (
-                <option key={c} value={c}>{c}</option>
+                <option key={c.ar} value={c.ar}>{isAr ? c.ar : c.fr}</option>
               ))}
             </select>
           </Field>

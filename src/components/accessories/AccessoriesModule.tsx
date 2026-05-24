@@ -219,7 +219,10 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
   )
 
   const { accessories: dynamicCategories } = useCategories()
-  function getCatLabel(v: string) { return v }
+  const getCatLabel = (v: string) => {
+    const c = dynamicCategories.find(x => x.ar === v)
+    return c ? (isAr ? c.ar : c.fr) : v
+  }
 
   return (
     <div className="flex flex-col h-full overflow-hidden animate-fade-in" dir={isAr ? 'rtl' : 'ltr'}>
@@ -292,7 +295,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
           >
             <option value="">{isAr ? 'كل الفئات' : 'Toutes catégories'}</option>
             {dynamicCategories.map(c => (
-                  <option key={c} value={c}>{c}</option>
+              <option key={c.ar} value={c.ar}>{isAr ? c.ar : c.fr}</option>
             ))}
           </select>
           <button
@@ -533,7 +536,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
                 onChange={e => setF('categorie', e.target.value)}>
                 <option value="">{isAr ? 'اختر الفئة...' : 'Choisir...'}</option>
                 {dynamicCategories.map(c => (
-                  <option key={c} value={c}>{c}</option>
+                  <option key={c.ar} value={c.ar}>{isAr ? c.ar : c.fr}</option>
                 ))}
               </select>
             </Field>

@@ -1,49 +1,57 @@
 import { useState, useEffect } from 'react'
 
+// Single type definition used across the entire platform
+export interface CategoryItem {
+  fr: string  // French label shown in French mode
+  ar: string  // Arabic label shown in Arabic mode — also the value stored in DB columns
+}
+
 export interface Categories {
-  accessories: string[]
-  expenses:    string[]
-  suppliers:   string[]
+  accessories: CategoryItem[]
+  expenses:    CategoryItem[]
+  suppliers:   CategoryItem[]
 }
 
-const DEFAULTS: Categories = {
-  accessories: ['كفر', 'شاحن', 'سماعة', 'واقي', 'سيم', 'أخرى'],
-  expenses:    ['إيجار', 'فاتورة', 'نقل', 'صيانة', 'أجور', 'تسويق', 'معدات', 'أخرى'],
-  suppliers:   ['هواتف', 'لابتوبات', 'إكسسوارات', 'كل شيء'],
-}
+const EMPTY: Categories = { accessories: [], expenses: [], suppliers: [] }
 
-// Module-level cache so all components share one fetch per page load
-let _cache: Categories | null = null
+// Module-level cache: one fetch per page session shared across all components
+let _cache:   Categories | null       = null
 let _promise: Promise<Categories> | null = null
 
-async function fetchCategories(): Promise<Categories> {
-  if (_cache) return _cache
+function parse(raw: unknown): CategoryItem[] {
+  if (!Array.isArray(raw) || raw.length === 0) return []
+  // Handle legacy plain-string format from before bilingual support
+  if (typeof raw[0] === 'string') return (raw as string[]).map(s => ({ fr: s, ar: s }))
+  return raw as CategoryItem[]
+}
+
+async function load(): Promise<Categories> {
+  if (_cache)   return _cache
   if (_promise) return _promise
   _promise = fetch('/api/categories')
-    .then(r => r.json())
+    .then(r => { if (!r.ok) throw new Error('fetch failed'); return r.json() })
     .then(json => {
       _cache = {
-        accessories: json.accessories ?? DEFAULTS.accessories,
-        expenses:    json.expenses    ?? DEFAULTS.expenses,
-        suppliers:   json.suppliers   ?? DEFAULTS.suppliers,
+        accessories: parse(json.accessories),
+        expenses:    parse(json.expenses),
+        suppliers:   parse(json.suppliers),
       }
-      return _cache!
+      return _cache
     })
-    .catch(() => DEFAULTS)
+    .catch(() => EMPTY)
   return _promise
 }
 
 export function useCategories() {
-  const [categories, setCategories] = useState<Categories>(_cache ?? DEFAULTS)
-  const [loaded, setLoaded]         = useState(!!_cache)
+  const [cats,   setCats]   = useState<Categories>(_cache ?? EMPTY)
+  const [loaded, setLoaded] = useState(!!_cache)
 
   useEffect(() => {
-    if (_cache) { setCategories(_cache); setLoaded(true); return }
-    fetchCategories().then(cats => { setCategories(cats); setLoaded(true) })
+    if (_cache) { setCats(_cache); setLoaded(true); return }
+    load().then(c => { setCats(c); setLoaded(true) })
   }, [])
 
-  // Call this after saving changes to force a re-fetch next time
   function invalidate() { _cache = null; _promise = null }
 
-  return { ...categories, loaded, invalidate }
+  return { ...cats, loaded, invalidate }
 }

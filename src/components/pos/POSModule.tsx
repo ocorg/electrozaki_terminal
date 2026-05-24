@@ -814,8 +814,8 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                 { key: 'phones',    label: isAr ? 'هواتف'  : 'Téléphones', icon: <Smartphone className="w-3 h-3" /> },
                 ...(hasLaptops ? [{ key: 'laptops', label: isAr ? 'لابتوب' : 'Laptops', icon: <LaptopIcon className="w-3 h-3" /> }] : []),
                 ...accCategories.map(cat => ({
-                  key:   `acc_${cat}`,
-                  label: cat,
+                  key:   `acc_${cat.ar}`,
+                  label: isAr ? cat.ar : cat.fr,
                   icon:  <Package className="w-3 h-3" />,
                 })),
               ].map(cat => (

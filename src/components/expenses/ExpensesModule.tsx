@@ -153,8 +153,11 @@ export default function ExpensesModule({ storeId }: ExpensesModuleProps) {
     .reduce((s, e) => s + e.montant, 0)
 
   const { expenses: dynamicCategories } = useCategories()
-  const getCatIcon = (v: string) => CAT_ICONS[v] ?? MoreHorizontal
-  const getCatLabel = (v: string) => v
+  const getCatIcon  = (v: string) => CAT_ICONS[v] ?? MoreHorizontal
+  const getCatLabel = (v: string) => {
+    const c = dynamicCategories.find(x => x.ar === v)
+    return c ? (isAr ? c.ar : c.fr) : v
+  }
 
   return (
     <div className="p-6 space-y-5 animate-fade-in" dir={isAr ? 'rtl' : 'ltr'}>
@@ -210,8 +213,8 @@ export default function ExpensesModule({ storeId }: ExpensesModuleProps) {
         >
           <option value="">{isAr ? 'كل الفئات' : 'Toutes catégories'}</option>
           {dynamicCategories.map(cat => (
-            <option key={cat} value={cat}>
-              {getCatLabel(cat)}
+            <option key={cat.ar} value={cat.ar}>
+              {isAr ? cat.ar : cat.fr}
             </option>
           ))}
         </select>
@@ -292,15 +295,15 @@ export default function ExpensesModule({ storeId }: ExpensesModuleProps) {
           <Field label={isAr ? 'الفئة' : 'Catégorie'} required>
             <div className="grid grid-cols-4 gap-2">
               {dynamicCategories.map(cat => {
-                const active = form.categorie === cat
-                const Icon   = getCatIcon(cat)
-                return (
-                  <button key={cat}
-                    onClick={() => setF('categorie', cat)}
+              const active = filterCat === cat.ar
+              const Icon   = getCatIcon(cat.ar)
+              return (
+                <button key={cat.ar}
+                  onClick={() => setFilterCat(active ? '' : cat.ar)}
                     className="flex flex-col items-center gap-1 p-2 rounded-xl border text-xs font-medium transition-all"
                     style={{ backgroundColor: active ? '#1A1A1A' : 'white', color: active ? 'white' : '#6B6860', borderColor: active ? '#1A1A1A' : '#E8E5DE' }}>
                     <Icon className="w-3.5 h-3.5" />
-                    <span>{cat}</span>
+                    <span>{isAr ? cat.ar : cat.fr}</span>
                   </button>
                 )
               })}
