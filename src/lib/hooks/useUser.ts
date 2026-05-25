@@ -3,15 +3,8 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { UserProfile } from '@/types/database'
 
-// Extended profile type with new columns
-export interface ExtendedUserProfile extends UserProfile {
-  store_id:     string | null
-  avatar_url:   string | null
-  store_locked: boolean
-}
-
 export function useUser() {
-  const [user, setUser]       = useState<ExtendedUserProfile | null>(null)
+  const [user, setUser]       = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const supabase              = createClient()
 
@@ -26,7 +19,7 @@ export function useUser() {
         .eq('id', authUser.id)
         .single()
 
-      setUser(profile as ExtendedUserProfile | null)
+      setUser(profile as UserProfile | null)
       setLoading(false)
     }
 

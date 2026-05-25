@@ -10,7 +10,7 @@ import {
   Wrench, Users, Truck, Receipt, Vault, ArrowLeftRight,
   Settings, LogOut, Globe, ChevronRight,
   PanelLeftClose, PanelLeftOpen, Store, FileText, Clock,
-  BarChart3, UserCheck, ScrollText, Shield, PackageCheck, CreditCard
+  BarChart3, UserCheck, ScrollText, Shield, PackageCheck, CreditCard, List
 } from 'lucide-react'
 import type { UserRole } from '@/types/database'
 import { useLanguageStore } from '@/lib/stores/language'
@@ -55,6 +55,7 @@ function getNavItems(portalBase: string, portalType: string): NavItem[] {
       { href: `${portalBase}/repairs`,          icon: Wrench,          label: 'Réparations',       roles: ['staff','manager','owner'] },
       { href: `${portalBase}/clients`,          icon: Users,           label: 'Clients',           roles: ['staff','manager','owner'] },
       { href: `${portalBase}/expenses`,         icon: Receipt,         label: 'Dépenses',          roles: ['manager','owner'] },
+      { href: `${portalBase}/transactions`,     icon: List,            label: 'Transactions',      roles: ['manager','owner'] },
       { href: `${portalBase}/caisse`,           icon: Vault,           label: 'Caisse du jour',    roles: ['staff','manager','owner'] },
       { href: `${portalBase}/movements`,        icon: ArrowLeftRight,  label: 'Transferts stock',  roles: ['manager','owner'] },
       { href: `${portalBase}/credits`,          icon: CreditCard,      label: 'Crédits clients',   roles: ['manager','owner'] },

@@ -126,14 +126,12 @@ export default function EZDashboard() {
       const lowStockItems  = (stockRes.data || []).filter((a: any) => a.quantite <= a.seuil_alerte)
       const low_stock_count = lowStockItems.length
 
-      // Open credits
-      const pending_credits = credits.filter(c => {
-        const fariq = (c.prix_vente as number) - ((c.avance as number) || 0) - ((c.valeur_echange as number) || 0)
-        return fariq > 0
-      })
-          - ((c.avance as number) || 0)
-          - ((c.valeur_echange as number) || 0)
-        return fariq > 0
+      // Open credits — partial payments where fariq > 0
+      const pending_credits = credits.filter((c: Record<string, unknown>) => {
+        const pv = (c.prix_vente     as number) || 0
+        const av = (c.avance         as number) || 0
+        const ve = (c.valeur_echange as number) || 0
+        return (pv - av - ve) > 0
       }).length
 
       // Recent 8 transactions
