@@ -21,7 +21,7 @@ export type ExpenseCategory  = string
 export type CaisseStatus     = 'open' | 'pending_eod' | 'closed'
 export type PunchType        = 'in' | 'out'
 export type ActionType       = 'INSERT' | 'UPDATE' | 'DELETE' | 'VOID' | 'LOGIN' | 'LOGOUT' | 'OVERRIDE' | 'EOD_SUBMIT' | 'EOD_APPROVE' | 'EOD_REJECT' | 'PUNCH_IN' | 'PUNCH_OUT'
-export type LogModule        = 'phones' | 'laptops' | 'accessories' | 'transactions' | 'reparations' | 'clients' | 'suppliers' | 'supplier_payments' | 'expenses' | 'caisse' | 'stock_movements' | 'users' | 'settings' | 'auth' | 'attendance'
+export type LogModule        = 'phones' | 'laptops' | 'accessories' | 'transactions' | 'reparations' | 'clients' | 'suppliers' | 'supplier_payments' | 'expenses' | 'caisse' | 'stock_movements' | 'users' | 'settings' | 'auth' | 'attendance' | 'changelog' | 'repairs/parts' | 'cash_drops' | 'credits' | 'credit_imports'
 
 // ─── Interfaces ───────────────────────────────────────────────
 

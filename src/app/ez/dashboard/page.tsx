@@ -82,8 +82,8 @@ export default function EZDashboard() {
           .from('transactions')
           .select('txn_id, prix_vente, avance, valeur_echange')
           .eq('store_id', STORE_ID)
-          .eq('type_operation', 'تسبيق')
-          .eq('voided', false),
+          .eq('voided', false)
+          .gt('avance', 0),
       ])
 
       const txns        = (txnRes.data || []) as Record<string, unknown>[]
@@ -128,7 +128,9 @@ export default function EZDashboard() {
 
       // Open credits
       const pending_credits = credits.filter(c => {
-        const fariq = (c.prix_vente as number)
+        const fariq = (c.prix_vente as number) - ((c.avance as number) || 0) - ((c.valeur_echange as number) || 0)
+        return fariq > 0
+      })
           - ((c.avance as number) || 0)
           - ((c.valeur_echange as number) || 0)
         return fariq > 0

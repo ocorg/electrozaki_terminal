@@ -55,10 +55,13 @@ export async function GET(request: NextRequest) {
       .eq('date', date) as { data: Record<string, unknown>[] | null }
 
     const total_ventes = (txns || []).reduce((s, t) => {
-      const pm = t.payment_method as string
-      if (pm === 'تسبيق') return s + ((t.avance as number) || 0)
-      if (pm === 'إستبدال') return s + (((t.prix_vente as number) || 0) - ((t.valeur_echange as number) || 0))
-      return s + ((t.prix_vente as number) || 0)
+      const pv  = (t.prix_vente     as number) || 0
+      const av  = (t.avance         as number) || 0
+      const ve  = (t.valeur_echange as number) || 0
+      const pm  =  t.payment_method as string
+      if (pm === 'إستبدال') return s + (pv - ve)
+      const fariq = pv - av - ve
+      return s + (fariq > 0 ? av : pv)   // partial → avance only; fully paid → full price
     }, 0)
     const total_reparations = (reps  || []).reduce((s, r) => s + ((r.cout_reparation as number) || 0), 0)
     const total_depenses    = (exps  || []).reduce((s, e) => s + ((e.montant          as number) || 0), 0)
@@ -80,7 +83,13 @@ export async function GET(request: NextRequest) {
         if (pm === 'مختلط')  return s + ((t.montant_carte as number) || 0)
         return s
       }, 0),
-      credit: (txns || []).filter(t => t.payment_method === 'تسبيق').reduce((s, t) => s + ((t.avance as number) || 0), 0),
+      credit: (txns || []).reduce((s, t) => {
+        const pv = (t.prix_vente as number) || 0
+        const av = (t.avance as number) || 0
+        const ve = (t.valeur_echange as number) || 0
+        const fariq = pv - av - ve
+        return fariq > 0 ? s + av : s
+      }, 0),
     }
 
     return NextResponse.json({
@@ -211,11 +220,14 @@ export async function PATCH(request: NextRequest) {
         .eq('store_id', caisseStore).eq('date', caisseDate),
     ])
 
-    const live_ventes = ((txnRes.data  || []) as Record<string, unknown>[]).reduce((s, t) => {
-      const pm = t.payment_method as string
-      if (pm === 'تسبيق')   return s + ((t.avance as number) || 0)
-      if (pm === 'إستبدال') return s + (((t.prix_vente as number) || 0) - ((t.valeur_echange as number) || 0))
-      return s + ((t.prix_vente as number) || 0)
+    const live_ventes = ((txnRes.data || []) as Record<string, unknown>[]).reduce((s, t) => {
+      const pv  = (t.prix_vente     as number) || 0
+      const av  = (t.avance         as number) || 0
+      const ve  = (t.valeur_echange as number) || 0
+      const pm  =  t.payment_method as string
+      if (pm === 'إستبدال') return s + (pv - ve)
+      const fariq = pv - av - ve
+      return s + (fariq > 0 ? av : pv)
     }, 0)
     const live_reps  = ((repRes.data  || []) as Record<string, unknown>[]).reduce((s, r) => s + ((r.cout_reparation as number) || 0), 0)
     const live_exps  = ((expRes.data  || []) as Record<string, unknown>[]).reduce((s, e) => s + ((e.montant          as number) || 0), 0)
