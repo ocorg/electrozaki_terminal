@@ -95,13 +95,11 @@ export async function PATCH(request: NextRequest) {
   if (!catalog_id) return NextResponse.json({ error: 'catalog_id requis' }, { status: 400 })
   if (!marque || !model || !couleur) return NextResponse.json({ error: 'marque, model, couleur obligatoires' }, { status: 400 })
 
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from('phone_catalog')
     .update({ marque, serie: serie || '', type: type || 'Normal', model, couleur })
     .eq('catalog_id', catalog_id)
-    .select()
-    .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ data })
+  return NextResponse.json({ status: 'success' })
 }
