@@ -4,7 +4,7 @@ import { useUser } from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
 import { usePortal } from '@/lib/context/portal'
 import { formatMAD, formatDate, getWarrantyFlag } from '@/lib/utils'
-import { StatusBadge, BatteryBar, EmptyState, SkeletonRow, PageHeader, Btn } from '@/components/shared'
+import { StatusBadge, BatteryBar, EmptyState, SkeletonRow, PageHeader, Btn, Modal, Field, inputClass, selectClass } from '@/components/shared'
 import PhoneForm from '@/components/phones/PhoneForm'
 import type { Phone } from '@/types/database'
 import { showSuccess, showError } from '@/lib/utils/toasts'
@@ -13,7 +13,7 @@ import LabelGenerator, { type LabelProduct } from '@/components/print/LabelGener
 import {
   Plus, Search, Filter, RefreshCw,
   Smartphone, Edit2, MapPin, Shield,
-  ChevronDown, X, Eye, EyeOff, Trash2, Loader2
+  ChevronDown, X, Eye, EyeOff, Trash2, Loader2, BookOpen
 } from 'lucide-react'
 
 const STATUSES = ['متوفر', 'مباع', 'إستبدال', 'إصلاح']
@@ -43,7 +43,28 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
   const [catalogOpen, setCatalogOpen]   = useState(false)
   const [catalogItems, setCatalogItems] = useState<{ catalog_id: string; marque: string; serie: string; type: string; model: string; couleur: string }[]>([])
   const [catForm, setCatForm]           = useState({ marque: '', serie: '', type: 'Normal', model: '', couleur: '' })
-  const [catSaving, setCatSaving]       = useState(false)
+  const [catSaving,    setCatSaving]    = useState(false)
+  const [catDeleting,  setCatDeleting]  = useState<string | null>(null)
+  const [catSearch,    setCatSearch]    = useState('')
+
+  async function deleteCatalogEntry(catalog_id: string) {
+    setCatDeleting(catalog_id)
+    try {
+      const res  = await fetch('/api/phones/catalog', {
+        method:  'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ catalog_id }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error)
+      showSuccess(isAr ? 'تم الحذف ✓' : 'Supprimé ✓')
+      fetchCatalog()
+    } catch (err: unknown) {
+      showError((err as Error).message)
+    } finally {
+      setCatDeleting(null)
+    }
+  }
 
   async function fetchCatalog() {
     const res  = await fetch('/api/phones/catalog')
@@ -518,6 +539,163 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
         role={user?.role}
         storeId={storeId}
       />
+
+      {/* Catalogue modal */}
+      <Modal
+        open={catalogOpen}
+        onClose={() => { setCatalogOpen(false); setCatSearch('') }}
+        title={isAr ? 'إدارة كتالوج الهواتف' : 'Gestion du catalogue'}
+        size="lg"
+      >
+        <div className="space-y-5">
+
+          {/* Add entry form */}
+          <div className="bg-[#F8F7F4] border border-[#E8E5DE] rounded-xl p-4 space-y-3">
+            <p className="text-xs font-bold text-[#1A1A1A] flex items-center gap-2">
+              <Plus className="w-3.5 h-3.5 text-[#C9A440]" />
+              {isAr ? 'إضافة موديل جديد' : 'Ajouter un modèle'}
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label={isAr ? 'الماركة *' : 'Marque *'}>
+                <input
+                  list="catalog-brands"
+                  className={inputClass}
+                  placeholder="Apple, Samsung..."
+                  value={catForm.marque}
+                  onChange={e => setCatForm(f => ({ ...f, marque: e.target.value }))}
+                />
+                <datalist id="catalog-brands">
+                  {MARQUES.map(m => <option key={m} value={m} />)}
+                </datalist>
+              </Field>
+              <Field label={isAr ? 'السلسلة' : 'Série'}>
+                <input
+                  className={inputClass}
+                  placeholder="iPhone 15, Galaxy S24..."
+                  value={catForm.serie}
+                  onChange={e => setCatForm(f => ({ ...f, serie: e.target.value }))}
+                />
+              </Field>
+              <Field label={isAr ? 'الموديل *' : 'Modèle *'}>
+                <input
+                  className={inputClass}
+                  placeholder="iPhone 15 Pro, S24 Ultra..."
+                  value={catForm.model}
+                  onChange={e => setCatForm(f => ({ ...f, model: e.target.value }))}
+                />
+              </Field>
+              <Field label={isAr ? 'اللون *' : 'Couleur *'}>
+                <input
+                  className={inputClass}
+                  placeholder="Black, Blanc, Rose..."
+                  value={catForm.couleur}
+                  onChange={e => setCatForm(f => ({ ...f, couleur: e.target.value }))}
+                />
+              </Field>
+              <Field label="Type">
+                <select className={selectClass}
+                  value={catForm.type}
+                  onChange={e => setCatForm(f => ({ ...f, type: e.target.value }))}>
+                  <option value="Normal">Normal</option>
+                  <option value="Pro">Pro</option>
+                  <option value="Plus">Plus</option>
+                  <option value="Max">Max</option>
+                  <option value="Ultra">Ultra</option>
+                  <option value="Mini">Mini</option>
+                  <option value="Lite">Lite</option>
+                </select>
+              </Field>
+            </div>
+            <button
+              onClick={saveCatalogEntry}
+              disabled={catSaving || !catForm.marque || !catForm.model || !catForm.couleur}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#1A1A1A] text-white text-xs font-bold hover:bg-[#333] transition-all disabled:opacity-40">
+              {catSaving
+                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                : <Plus className="w-3.5 h-3.5" />}
+              {isAr ? 'إضافة' : 'Ajouter'}
+            </button>
+          </div>
+
+          {/* Search existing entries */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#B0ADA6]" />
+            <input
+              className={`${inputClass} pl-9`}
+              placeholder={isAr ? 'بحث في الكتالوج...' : 'Rechercher dans le catalogue...'}
+              value={catSearch}
+              onChange={e => setCatSearch(e.target.value)}
+            />
+          </div>
+
+          {/* Entries list */}
+          <div className="border border-[#E8E5DE] rounded-xl overflow-hidden max-h-72 overflow-y-auto">
+            {catalogItems.length === 0 ? (
+              <div className="flex items-center justify-center py-10 text-sm text-[#B0ADA6] gap-2">
+                <BookOpen className="w-4 h-4" />
+                {isAr ? 'الكتالوج فارغ' : 'Catalogue vide'}
+              </div>
+            ) : (() => {
+              const filtered = catalogItems.filter(item =>
+                !catSearch ||
+                [item.marque, item.serie, item.model, item.couleur]
+                  .some(v => v?.toLowerCase().includes(catSearch.toLowerCase()))
+              )
+              if (filtered.length === 0) return (
+                <p className="text-center text-xs text-[#B0ADA6] py-6">
+                  {isAr ? 'لا توجد نتائج' : 'Aucun résultat'}
+                </p>
+              )
+              // Group by marque
+              const grouped: Record<string, typeof filtered> = {}
+              filtered.forEach(item => {
+                if (!grouped[item.marque]) grouped[item.marque] = []
+                grouped[item.marque].push(item)
+              })
+              return Object.entries(grouped).map(([brand, items]) => (
+                <div key={brand}>
+                  <div className="px-4 py-2 bg-[#F8F7F4] border-b border-[#E8E5DE]">
+                    <p className="text-xs font-bold text-[#6B6860] uppercase tracking-wider">{brand}</p>
+                  </div>
+                  {items.map(item => (
+                    <div key={item.catalog_id}
+                      className="flex items-center justify-between px-4 py-2.5 border-b border-[#F2F0EB] last:border-0 hover:bg-[#F8F7F4] transition-all">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-[#1A1A1A] truncate">
+                            {item.model}
+                          </p>
+                          <p className="text-[10px] text-[#B0ADA6]">
+                            {[item.serie, item.type !== 'Normal' && item.type, item.couleur]
+                              .filter(Boolean).join(' · ')}
+                          </p>
+                        </div>
+                      </div>
+                      {user?.role === 'owner' && (
+                        <button
+                          onClick={() => deleteCatalogEntry(item.catalog_id)}
+                          disabled={catDeleting === item.catalog_id}
+                          className="p-1.5 rounded-lg text-[#B0ADA6] hover:text-red-500 hover:bg-red-50 transition-all flex-shrink-0">
+                          {catDeleting === item.catalog_id
+                            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            : <Trash2 className="w-3.5 h-3.5" />}
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ))
+            })()}
+          </div>
+
+          {catalogItems.length > 0 && (
+            <p className="text-[10px] text-[#B0ADA6] text-center">
+              {catalogItems.length} {isAr ? 'إدخال في الكتالوج' : 'entrée(s) dans le catalogue'}
+              {user?.role !== 'owner' && ` · ${isAr ? 'الحذف متاح للمالك فقط' : 'Suppression réservée au propriétaire'}`}
+            </p>
+          )}
+        </div>
+      </Modal>
     </div>
   )
 }
