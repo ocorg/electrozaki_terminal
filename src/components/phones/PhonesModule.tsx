@@ -13,7 +13,7 @@ import LabelGenerator, { type LabelProduct } from '@/components/print/LabelGener
 import {
   Plus, Search, Filter, RefreshCw,
   Smartphone, Edit2, MapPin, Shield,
-  ChevronDown, X, Eye, EyeOff, Trash2, Loader2, BookOpen
+  ChevronDown, X, Eye, EyeOff, Trash2, Loader2, BookOpen, Check
 } from 'lucide-react'
 
 const STATUSES = ['متوفر', 'مباع', 'إستبدال', 'إصلاح']
@@ -46,6 +46,29 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
   const [catSaving,    setCatSaving]    = useState(false)
   const [catDeleting,  setCatDeleting]  = useState<string | null>(null)
   const [catSearch,    setCatSearch]    = useState('')
+  const [editingId,    setEditingId]    = useState<string | null>(null)
+  const [editForm,     setEditForm]     = useState({ marque: '', serie: '', type: 'Normal', model: '', couleur: '' })
+
+  async function updateCatalogEntry() {
+    if (!editingId || !editForm.marque || !editForm.model || !editForm.couleur) return
+    setCatSaving(true)
+    try {
+      const res  = await fetch('/api/phones/catalog', {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ catalog_id: editingId, ...editForm }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error)
+      showSuccess(isAr ? 'تم التعديل ✓' : 'Modifié ✓')
+      setEditingId(null)
+      fetchCatalog()
+    } catch (err: unknown) {
+      showError((err as Error).message)
+    } finally {
+      setCatSaving(false)
+    }
+  }
 
   async function deleteCatalogEntry(catalog_id: string) {
     setCatDeleting(catalog_id)
@@ -543,158 +566,175 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
       {/* Catalogue modal */}
       <Modal
         open={catalogOpen}
-        onClose={() => { setCatalogOpen(false); setCatSearch('') }}
+        onClose={() => { setCatalogOpen(false); setCatSearch(''); setEditingId(null) }}
         title={isAr ? 'إدارة كتالوج الهواتف' : 'Gestion du catalogue'}
         size="lg"
       >
-        <div className="space-y-5">
+        {(() => {
+          // Build suggestion lists from live catalog data — no hardcoding
+          const suggestions = {
+            marques:  Array.from(new Set(catalogItems.map(i => i.marque))).sort(),
+            series:   Array.from(new Set(catalogItems.map(i => i.serie).filter(Boolean))).sort(),
+            models:   Array.from(new Set(catalogItems.map(i => i.model))).sort(),
+            couleurs: Array.from(new Set(catalogItems.map(i => i.couleur))).sort(),
+            types:    Array.from(new Set(['Normal', ...catalogItems.map(i => i.type).filter(Boolean)])).sort(),
+          }
 
-          {/* Add entry form */}
-          <div className="bg-[#F8F7F4] border border-[#E8E5DE] rounded-xl p-4 space-y-3">
-            <p className="text-xs font-bold text-[#1A1A1A] flex items-center gap-2">
-              <Plus className="w-3.5 h-3.5 text-[#C9A440]" />
-              {isAr ? 'إضافة موديل جديد' : 'Ajouter un modèle'}
-            </p>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label={isAr ? 'الماركة *' : 'Marque *'}>
-                <input
-                  list="catalog-brands"
-                  className={inputClass}
-                  placeholder="Apple, Samsung..."
-                  value={catForm.marque}
-                  onChange={e => setCatForm(f => ({ ...f, marque: e.target.value }))}
-                />
-                <datalist id="catalog-brands">
-                  {MARQUES.map(m => <option key={m} value={m} />)}
-                </datalist>
-              </Field>
-              <Field label={isAr ? 'السلسلة' : 'Série'}>
-                <input
-                  className={inputClass}
-                  placeholder="iPhone 15, Galaxy S24..."
-                  value={catForm.serie}
-                  onChange={e => setCatForm(f => ({ ...f, serie: e.target.value }))}
-                />
-              </Field>
-              <Field label={isAr ? 'الموديل *' : 'Modèle *'}>
-                <input
-                  className={inputClass}
-                  placeholder="iPhone 15 Pro, S24 Ultra..."
-                  value={catForm.model}
-                  onChange={e => setCatForm(f => ({ ...f, model: e.target.value }))}
-                />
-              </Field>
-              <Field label={isAr ? 'اللون *' : 'Couleur *'}>
-                <input
-                  className={inputClass}
-                  placeholder="Black, Blanc, Rose..."
-                  value={catForm.couleur}
-                  onChange={e => setCatForm(f => ({ ...f, couleur: e.target.value }))}
-                />
-              </Field>
-              <Field label="Type">
-                <select className={selectClass}
-                  value={catForm.type}
-                  onChange={e => setCatForm(f => ({ ...f, type: e.target.value }))}>
-                  <option value="Normal">Normal</option>
-                  <option value="Pro">Pro</option>
-                  <option value="Plus">Plus</option>
-                  <option value="Max">Max</option>
-                  <option value="Ultra">Ultra</option>
-                  <option value="Mini">Mini</option>
-                  <option value="Lite">Lite</option>
-                </select>
-              </Field>
-            </div>
-            <button
-              onClick={saveCatalogEntry}
-              disabled={catSaving || !catForm.marque || !catForm.model || !catForm.couleur}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#1A1A1A] text-white text-xs font-bold hover:bg-[#333] transition-all disabled:opacity-40">
-              {catSaving
-                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                : <Plus className="w-3.5 h-3.5" />}
-              {isAr ? 'إضافة' : 'Ajouter'}
-            </button>
-          </div>
+          const filtered = catalogItems
+            .filter(item => !catSearch || [item.marque, item.serie, item.model, item.couleur, item.type]
+              .some(v => v?.toLowerCase().includes(catSearch.toLowerCase())))
+            .sort((a, b) => a.marque.localeCompare(b.marque) || a.model.localeCompare(b.model))
 
-          {/* Search existing entries */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#B0ADA6]" />
-            <input
-              className={`${inputClass} pl-9`}
-              placeholder={isAr ? 'بحث في الكتالوج...' : 'Rechercher dans le catalogue...'}
-              value={catSearch}
-              onChange={e => setCatSearch(e.target.value)}
-            />
-          </div>
+          const grouped: Record<string, typeof filtered> = {}
+          filtered.forEach(item => {
+            if (!grouped[item.marque]) grouped[item.marque] = []
+            grouped[item.marque].push(item)
+          })
 
-          {/* Entries list */}
-          <div className="border border-[#E8E5DE] rounded-xl overflow-hidden max-h-72 overflow-y-auto">
-            {catalogItems.length === 0 ? (
-              <div className="flex items-center justify-center py-10 text-sm text-[#B0ADA6] gap-2">
-                <BookOpen className="w-4 h-4" />
-                {isAr ? 'الكتالوج فارغ' : 'Catalogue vide'}
-              </div>
-            ) : (() => {
-              const filtered = catalogItems.filter(item =>
-                !catSearch ||
-                [item.marque, item.serie, item.model, item.couleur]
-                  .some(v => v?.toLowerCase().includes(catSearch.toLowerCase()))
-              )
-              if (filtered.length === 0) return (
-                <p className="text-center text-xs text-[#B0ADA6] py-6">
-                  {isAr ? 'لا توجد نتائج' : 'Aucun résultat'}
+          const sharedInput = 'w-full border border-[#E8E5DE] rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#C9A440] transition-all bg-white'
+
+          return (
+            <div className="space-y-4">
+
+              {/* Datalists — populated from live catalog */}
+              <datalist id="dl-marque">{suggestions.marques.map(v => <option key={v} value={v} />)}</datalist>
+              <datalist id="dl-serie">{suggestions.series.map(v => <option key={v} value={v} />)}</datalist>
+              <datalist id="dl-model">{suggestions.models.map(v => <option key={v} value={v} />)}</datalist>
+              <datalist id="dl-couleur">{suggestions.couleurs.map(v => <option key={v} value={v} />)}</datalist>
+              <datalist id="dl-type">{suggestions.types.map(v => <option key={v} value={v} />)}</datalist>
+
+              {/* Add form */}
+              <div className="bg-[#F8F7F4] border border-[#E8E5DE] rounded-xl p-4 space-y-3">
+                <p className="text-xs font-bold text-[#1A1A1A] flex items-center gap-2">
+                  <Plus className="w-3.5 h-3.5 text-[#C9A440]" />
+                  {isAr ? 'إضافة موديل' : 'Ajouter un modèle'}
                 </p>
-              )
-              // Group by marque
-              const grouped: Record<string, typeof filtered> = {}
-              filtered.forEach(item => {
-                if (!grouped[item.marque]) grouped[item.marque] = []
-                grouped[item.marque].push(item)
-              })
-              return Object.entries(grouped).map(([brand, items]) => (
-                <div key={brand}>
-                  <div className="px-4 py-2 bg-[#F8F7F4] border-b border-[#E8E5DE]">
-                    <p className="text-xs font-bold text-[#6B6860] uppercase tracking-wider">{brand}</p>
-                  </div>
-                  {items.map(item => (
-                    <div key={item.catalog_id}
-                      className="flex items-center justify-between px-4 py-2.5 border-b border-[#F2F0EB] last:border-0 hover:bg-[#F8F7F4] transition-all">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="min-w-0">
-                          <p className="text-xs font-semibold text-[#1A1A1A] truncate">
-                            {item.model}
-                          </p>
-                          <p className="text-[10px] text-[#B0ADA6]">
-                            {[item.serie, item.type !== 'Normal' && item.type, item.couleur]
-                              .filter(Boolean).join(' · ')}
-                          </p>
-                        </div>
-                      </div>
-                      {user?.role === 'owner' && (
-                        <button
-                          onClick={() => deleteCatalogEntry(item.catalog_id)}
-                          disabled={catDeleting === item.catalog_id}
-                          className="p-1.5 rounded-lg text-[#B0ADA6] hover:text-red-500 hover:bg-red-50 transition-all flex-shrink-0">
-                          {catDeleting === item.catalog_id
-                            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            : <Trash2 className="w-3.5 h-3.5" />}
-                        </button>
-                      )}
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { key: 'marque',  label: isAr ? 'الماركة *' : 'Marque *',  list: 'dl-marque',  ph: 'Apple, Samsung...' },
+                    { key: 'serie',   label: isAr ? 'السلسلة'   : 'Série',      list: 'dl-serie',   ph: 'iPhone 15...' },
+                    { key: 'model',   label: isAr ? 'الموديل *' : 'Modèle *',   list: 'dl-model',   ph: 'iPhone 15 Pro...' },
+                    { key: 'couleur', label: isAr ? 'اللون *'   : 'Couleur *',  list: 'dl-couleur', ph: 'Black, Blanc...' },
+                    { key: 'type',    label: 'Type',                             list: 'dl-type',    ph: 'Normal, Pro...' },
+                  ].map(({ key, label, list, ph }) => (
+                    <div key={key}>
+                      <p className="text-[10px] font-bold text-[#B0ADA6] uppercase tracking-wider mb-1">{label}</p>
+                      <input
+                        list={list}
+                        className={sharedInput}
+                        placeholder={ph}
+                        value={(catForm as Record<string, string>)[key]}
+                        onChange={e => setCatForm(f => ({ ...f, [key]: e.target.value }))}
+                      />
                     </div>
                   ))}
                 </div>
-              ))
-            })()}
-          </div>
+                <button onClick={saveCatalogEntry}
+                  disabled={catSaving || !catForm.marque || !catForm.model || !catForm.couleur}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#1A1A1A] text-white text-xs font-bold hover:bg-[#333] transition-all disabled:opacity-40">
+                  {catSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+                  {isAr ? 'إضافة' : 'Ajouter'}
+                </button>
+              </div>
 
-          {catalogItems.length > 0 && (
-            <p className="text-[10px] text-[#B0ADA6] text-center">
-              {catalogItems.length} {isAr ? 'إدخال في الكتالوج' : 'entrée(s) dans le catalogue'}
-              {user?.role !== 'owner' && ` · ${isAr ? 'الحذف متاح للمالك فقط' : 'Suppression réservée au propriétaire'}`}
-            </p>
-          )}
-        </div>
+              {/* Search */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#B0ADA6]" />
+                <input className={`${sharedInput} pl-9`}
+                  placeholder={isAr ? 'بحث...' : 'Rechercher...'}
+                  value={catSearch}
+                  onChange={e => setCatSearch(e.target.value)} />
+              </div>
+
+              {/* List */}
+              <div className="border border-[#E8E5DE] rounded-xl overflow-hidden max-h-72 overflow-y-auto">
+                {catalogItems.length === 0 ? (
+                  <div className="flex items-center justify-center py-10 text-sm text-[#B0ADA6] gap-2">
+                    <BookOpen className="w-4 h-4" />
+                    {isAr ? 'الكتالوج فارغ' : 'Catalogue vide'}
+                  </div>
+                ) : filtered.length === 0 ? (
+                  <p className="text-center text-xs text-[#B0ADA6] py-6">
+                    {isAr ? 'لا توجد نتائج' : 'Aucun résultat'}
+                  </p>
+                ) : Object.entries(grouped).map(([brand, items]) => (
+                  <div key={brand}>
+                    <div className="px-4 py-2 bg-[#F8F7F4] border-b border-[#E8E5DE] sticky top-0">
+                      <p className="text-[10px] font-bold text-[#6B6860] uppercase tracking-wider">{brand}</p>
+                    </div>
+                    {items.map(item => (
+                      <div key={item.catalog_id}
+                        className="border-b border-[#F2F0EB] last:border-0">
+
+                        {editingId === item.catalog_id ? (
+                          /* ── Inline edit row ── */
+                          <div className="px-4 py-3 bg-amber-50 space-y-2">
+                            <div className="grid grid-cols-2 gap-2">
+                              {[
+                                { k: 'marque',  list: 'dl-marque',  ph: 'Marque' },
+                                { k: 'serie',   list: 'dl-serie',   ph: 'Série' },
+                                { k: 'model',   list: 'dl-model',   ph: 'Modèle' },
+                                { k: 'couleur', list: 'dl-couleur', ph: 'Couleur' },
+                                { k: 'type',    list: 'dl-type',    ph: 'Type' },
+                              ].map(({ k, list, ph }) => (
+                                <input key={k} list={list}
+                                  className="border border-amber-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-[#C9A440] bg-white"
+                                  placeholder={ph}
+                                  value={(editForm as Record<string, string>)[k]}
+                                  onChange={e => setEditForm(f => ({ ...f, [k]: e.target.value }))} />
+                              ))}
+                            </div>
+                            <div className="flex gap-2">
+                              <button onClick={updateCatalogEntry} disabled={catSaving}
+                                className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#1A1A1A] text-white text-xs font-bold disabled:opacity-40">
+                                {catSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                                {isAr ? 'حفظ' : 'Sauver'}
+                              </button>
+                              <button onClick={() => setEditingId(null)}
+                                className="px-3 py-1.5 rounded-lg border border-[#E8E5DE] text-xs text-[#6B6860] hover:bg-white transition-all">
+                                {isAr ? 'إلغاء' : 'Annuler'}
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          /* ── Normal row ── */
+                          <div className="flex items-center justify-between px-4 py-2.5 hover:bg-[#F8F7F4] transition-all group">
+                            <div className="min-w-0">
+                              <p className="text-xs font-semibold text-[#1A1A1A] truncate">{item.model}</p>
+                              <p className="text-[10px] text-[#B0ADA6]">
+                                {[item.serie, item.type !== 'Normal' && item.type, item.couleur].filter(Boolean).join(' · ')}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0">
+                              <button onClick={() => { setEditingId(item.catalog_id); setEditForm({ marque: item.marque, serie: item.serie, type: item.type, model: item.model, couleur: item.couleur }) }}
+                                className="p-1.5 rounded-lg text-[#B0ADA6] hover:text-[#C9A440] hover:bg-amber-50 transition-all">
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
+                              {user?.role === 'owner' && (
+                                <button onClick={() => deleteCatalogEntry(item.catalog_id)}
+                                  disabled={catDeleting === item.catalog_id}
+                                  className="p-1.5 rounded-lg text-[#B0ADA6] hover:text-red-500 hover:bg-red-50 transition-all">
+                                  {catDeleting === item.catalog_id
+                                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                    : <Trash2 className="w-3.5 h-3.5" />}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+
+              <p className="text-[10px] text-[#B0ADA6] text-center">
+                {catalogItems.length} {isAr ? 'إدخال' : 'entrée(s)'}
+                {' · '}{isAr ? 'النوع والحقول الأخرى: أدخل قيمة جديدة لإضافتها تلقائياً' : 'Tapez une nouvelle valeur dans n\'importe quel champ pour l\'ajouter aux suggestions'}
+              </p>
+            </div>
+          )
+        })()}
       </Modal>
     </div>
   )
