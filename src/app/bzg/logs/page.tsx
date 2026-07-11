@@ -41,7 +41,6 @@ const ACTION_COLORS: Record<string, string> = {
 
 const STORE_NAMES: Record<string, string> = {
   'EZ-001': 'Electro Zaki',
-  'HP-001': 'Hamid Phone',
 }
 
 const MODULES = [
@@ -59,7 +58,6 @@ const ACTIONS = [
 
 const STORES = [
   { id: 'EZ-001', name: 'Electro Zaki' },
-  { id: 'HP-001', name: 'Hamid Phone' },
 ]
 
 export default function BZGLogsPage() {

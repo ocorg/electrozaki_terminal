@@ -80,10 +80,14 @@ export interface Phone {
   created_by?:            string | null
   updated_at:             string
   updated_by?:            string | null
-  has_replaced_component?: boolean | null
-  component_condition?:    'original' | 'standard' | null
+  replaced_components?:    ReplacedComponent[] | null
   is_damaged?:             boolean | null
   damage_notes?:           string | null
+}
+
+export interface ReplacedComponent {
+  name:      string
+  condition: 'original' | 'standard'
 }
 
 export interface Laptop {

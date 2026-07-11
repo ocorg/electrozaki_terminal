@@ -417,16 +417,17 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                           {phone.couleur ? ` · ${phone.couleur}` : ''}
                           {warrantyFlag && <span className="ml-1">{warrantyFlag}</span>}
                         </p>
-                        {(phone.has_replaced_component || phone.is_damaged) && (
+                        {((phone.replaced_components || []).length > 0 || phone.is_damaged) && (
                           <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                            {phone.has_replaced_component && (
+                            {(phone.replaced_components || []).map((comp, idx) => (
                               <span
+                                key={idx}
                                 className="text-[10px] font-bold tracking-wide uppercase px-1.5 py-0.5 border-l-2"
                                 style={{ backgroundColor: '#FFFBEB', color: '#92400E', borderColor: '#F59E0B' }}
                               >
-                                COMP. REMPLACÉ — {phone.component_condition === 'original' ? 'ORIGINAL' : 'STANDARD'}
+                                {comp.name.toUpperCase()} — {comp.condition === 'original' ? 'ORIGINAL' : 'STANDARD'}
                               </span>
-                            )}
+                            ))}
                             {phone.is_damaged && (
                               <span
                                 className="text-[10px] font-bold tracking-wide uppercase px-1.5 py-0.5 border-l-2"
@@ -551,14 +552,14 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                           }`}>{phone.battery_level}%</span>
                         )}
                       </div>
-                      {(phone.has_replaced_component || phone.is_damaged) && (
+                      {((phone.replaced_components || []).length > 0 || phone.is_damaged) && (
                         <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                          {phone.has_replaced_component && (
+                          {(phone.replaced_components || []).length > 0 && (
                             <span
                               className="text-[10px] font-bold tracking-wide uppercase px-1.5 py-0.5 border-l-2"
                               style={{ backgroundColor: '#FFFBEB', color: '#92400E', borderColor: '#F59E0B' }}
                             >
-                              COMP. REMPLACÉ
+                              {(phone.replaced_components || []).length} COMP. REMPLACÉ{(phone.replaced_components || []).length > 1 ? 'S' : ''}
                             </span>
                           )}
                           {phone.is_damaged && (

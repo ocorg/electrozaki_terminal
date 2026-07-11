@@ -8,7 +8,6 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, Cart
 
 const STORES = [
   { id: 'EZ-001', name: 'Electro Zaki', color: '#C9A440' },
-  { id: 'HP-001', name: 'Hamid Phone',  color: '#0EA5E9' },
 ]
 
 interface StoreStats {
@@ -24,9 +23,8 @@ interface StoreStats {
 }
 
 interface DailyData {
-  date:   string
-  EZ:     number
-  HP:     number
+  date: string
+  EZ:   number
 }
 
 export default function BZGReportsPage() {
@@ -85,14 +83,11 @@ export default function BZGReportsPage() {
       const daily: Record<string, DailyData> = {}
       for (let i = days - 1; i >= 0; i--) {
         const d = new Date(Date.now() - i * 86400000).toISOString().split('T')[0]
-        daily[d] = { date: d.slice(5), EZ: 0, HP: 0 }
+        daily[d] = { date: d.slice(5), EZ: 0 }
       }
       txns.forEach(t => {
         const d = t.date_vente as string
-        if (daily[d]) {
-          if (t.store_id === 'EZ-001') daily[d].EZ += (t.prix_vente as number) || 0
-          if (t.store_id === 'HP-001') daily[d].HP += (t.prix_vente as number) || 0
-        }
+        if (daily[d] && t.store_id === 'EZ-001') daily[d].EZ += (t.prix_vente as number) || 0
       })
       setChartData(Object.values(daily))
     } finally {
@@ -109,7 +104,7 @@ export default function BZGReportsPage() {
       <div className="px-6 pt-6 pb-4 flex-shrink-0 space-y-4">
         <PageHeader
           title={isAr ? 'التقارير' : 'Rapports'}
-          subtitle={isAr ? 'تحليل أداء المتجرين' : 'Analyse comparative des deux magasins'}
+          subtitle={isAr ? 'تحليل أداء Electro Zaki' : 'Analyse des performances — Electro Zaki'}
           actions={
             <div className="flex items-center gap-2">
               <select
@@ -197,7 +192,6 @@ export default function BZGReportsPage() {
                 />
                 <Legend />
                 <Bar dataKey="EZ" name="Electro Zaki" fill="#C9A440" radius={[3,3,0,0]} />
-                <Bar dataKey="HP" name="Hamid Phone"  fill="#0EA5E9" radius={[3,3,0,0]} />
               </BarChart>
             </ResponsiveContainer>
           )}

@@ -400,7 +400,8 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
     saleForm.avance,
     saleForm.type_operation === 'إستبدال' ? saleForm.valeur_echange : 0
   )
-  const statutPaiement = computeStatutPaiement(fariq)
+  const displayFariq   = saleForm.payment_method === 'تسبيق' ? fariq : 0
+  const statutPaiement = computeStatutPaiement(displayFariq)
   const montantRendu   = saleForm.payment_method === 'نقد' && saleForm.montant_especes > totalVente
     ? saleForm.montant_especes - totalVente
     : saleForm.payment_method === 'مختلط' && (saleForm.montant_especes + saleForm.montant_carte) > totalVente
@@ -1335,7 +1336,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
               <span className="font-bold text-[#1A1A1A]">{isAr ? 'المتبقي للدفع' : 'Reste à payer'}</span>
               <div className="text-right">
                 <p className="font-display font-bold text-xl" style={{ color: primary }}>
-                  {formatMAD(fariq)}
+                  {formatMAD(displayFariq)}
                 </p>
                 <StatusBadge status={statutPaiement} />
                 {montantRendu > 0 && (

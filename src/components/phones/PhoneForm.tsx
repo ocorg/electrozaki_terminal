@@ -40,11 +40,10 @@ const EMPTY: Partial<Phone> = {
   warranty_months:       3,
   status:                'متوفر',
   location:              'Magasin Principal',
-  description:           '',
-  has_replaced_component: false,
-  component_condition:    null,
-  is_damaged:             false,
-  damage_notes:           null,
+  description:          '',
+  replaced_components:  [],
+  is_damaged:           false,
+  damage_notes:         null,
 }
 
 export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId }: PhoneFormProps) {
@@ -57,8 +56,10 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
 
   const { brands, seriesFor, modelsFor, couleursFor, addEntry, loading: catalogLoading } = usePhoneCatalog()
 
-  const [form, setForm]       = useState<Partial<Phone>>({ ...EMPTY })
-  const [loading, setLoading] = useState(false)
+  const [form, setForm]           = useState<Partial<Phone>>({ ...EMPTY })
+  const [loading, setLoading]     = useState(false)
+  const [newCompName, setNewCompName]           = useState('')
+  const [newCompCondition, setNewCompCondition] = useState<'original' | 'standard'>('original')
 
   // ── Derived state ────────────────────────────────────────
   const isApple = form.marque === 'Apple'
@@ -324,61 +325,101 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
           />
         </Field>
 
-        {/* Component replacement + Damage */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                className="w-4 h-4 rounded"
-                checked={!!form.has_replaced_component}
-                onChange={e => {
-                  set('has_replaced_component', e.target.checked)
-                  if (!e.target.checked) set('component_condition', null)
-                }}
-              />
-              <span className="text-xs text-ez-subtle uppercase tracking-widest font-medium">
-                {isAr ? 'قطعة مستبدلة' : 'Composant remplacé'}
-              </span>
-            </label>
-            {form.has_replaced_component && (
-              <select
-                className={selectClass}
-                value={form.component_condition || ''}
-                onChange={e => set('component_condition', e.target.value as 'original' | 'standard')}
-              >
-                <option value="">{isAr ? 'اختر النوع' : 'Choisir le type'}</option>
-                <option value="original">{isAr ? 'أصلي' : 'Original'}</option>
-                <option value="standard">{isAr ? 'عادي (جنريك)' : 'Standard (Générique)'}</option>
-              </select>
-            )}
-          </div>
+        {/* Replaced components */}
+        <div className="space-y-3">
+          <p className="text-xs text-ez-subtle uppercase tracking-widest font-medium">
+            {isAr ? 'القطع المستبدلة' : 'Composants remplacés'}
+          </p>
 
-          <div className="space-y-2">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                className="w-4 h-4 rounded"
-                checked={!!form.is_damaged}
-                onChange={e => {
-                  set('is_damaged', e.target.checked)
-                  if (!e.target.checked) set('damage_notes', null)
-                }}
-              />
-              <span className="text-xs text-ez-subtle uppercase tracking-widest font-medium">
-                {isAr ? 'جهاز تالف' : 'Endommagé'}
-              </span>
-            </label>
-            {form.is_damaged && (
-              <input
-                type="text"
-                className={inputClass}
-                placeholder={isAr ? 'وصف العطل...' : 'Description du dommage...'}
-                value={form.damage_notes || ''}
-                onChange={e => set('damage_notes', e.target.value)}
-              />
-            )}
+          {/* Existing component list */}
+          {(form.replaced_components || []).length > 0 && (
+            <div className="space-y-1.5">
+              {(form.replaced_components || []).map((comp, idx) => (
+                <div key={idx} className="flex items-center gap-2 px-3 py-2 bg-[#F8F7F4] rounded-xl">
+                  <span className="flex-1 text-sm text-[#1A1A1A] font-medium truncate">{comp.name}</span>
+                  <span className="text-xs text-[#6B6860] flex-shrink-0">
+                    {comp.condition === 'original' ? 'Original' : 'Standard (Générique)'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const updated = (form.replaced_components || []).filter((_, i) => i !== idx)
+                      set('replaced_components', updated)
+                    }}
+                    className="text-xs text-[#B0ADA6] hover:text-red-500 transition-colors flex-shrink-0 ml-1"
+                  >✕</button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Add component row */}
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              list="comp-suggestions"
+              className={inputClass}
+              placeholder={isAr ? 'اسم القطعة...' : 'Nom du composant...'}
+              value={newCompName}
+              onChange={e => setNewCompName(e.target.value)}
+            />
+            <datalist id="comp-suggestions">
+              <option value="Écran" />
+              <option value="Batterie" />
+              <option value="Caméra arrière" />
+              <option value="Caméra avant" />
+              <option value="Vitre arrière" />
+              <option value="Châssis" />
+              <option value="Haut-parleur" />
+              <option value="Connecteur de charge" />
+            </datalist>
+            <select
+              className={`${selectClass} flex-shrink-0 w-36`}
+              value={newCompCondition}
+              onChange={e => setNewCompCondition(e.target.value as 'original' | 'standard')}
+            >
+              <option value="original">Original</option>
+              <option value="standard">Standard</option>
+            </select>
+            <button
+              type="button"
+              onClick={() => {
+                if (!newCompName.trim()) return
+                const updated = [...(form.replaced_components || []), { name: newCompName.trim(), condition: newCompCondition }]
+                set('replaced_components', updated)
+                setNewCompName('')
+                setNewCompCondition('original')
+              }}
+              className="flex-shrink-0 px-3 py-2 rounded-xl text-sm font-bold border border-[#E8E5DE] text-[#6B6860] hover:border-[#C9A440] hover:text-[#C9A440] transition-all"
+            >+</button>
           </div>
+        </div>
+
+        {/* Damage */}
+        <div className="space-y-2">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              className="w-4 h-4 rounded"
+              checked={!!form.is_damaged}
+              onChange={e => {
+                set('is_damaged', e.target.checked)
+                if (!e.target.checked) set('damage_notes', null)
+              }}
+            />
+            <span className="text-xs text-ez-subtle uppercase tracking-widest font-medium">
+              {isAr ? 'جهاز تالف' : 'Endommagé'}
+            </span>
+          </label>
+          {form.is_damaged && (
+            <input
+              type="text"
+              className={inputClass}
+              placeholder={isAr ? 'وصف العطل...' : 'Description du dommage...'}
+              value={form.damage_notes || ''}
+              onChange={e => set('damage_notes', e.target.value)}
+            />
+          )}
         </div>
 
         {/* Financial fields */}

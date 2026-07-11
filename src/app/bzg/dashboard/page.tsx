@@ -12,7 +12,6 @@ import {
 
 const STORES = [
   { id: 'EZ-001', name: 'Electro Zaki', color: '#C9A440', bg: '#FAF5E8' },
-  { id: 'HP-001', name: 'Hamid Phone',  color: '#0EA5E9', bg: '#F0F9FF' },
 ]
 
 interface StoreSnapshot {
@@ -255,7 +254,7 @@ export default function BZGDashboard() {
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center"
                      style={{ backgroundColor: store.bg }}>
                   <span className="text-xs font-bold" style={{ color: store.color }}>
-                    {store.id === 'EZ-001' ? 'EZ' : 'HP'}
+                    {store.id.split('-')[0]}
                   </span>
                 </div>
                 <h3 className="font-display font-bold text-[#1A1A1A] tracking-wide">{store.name}</h3>

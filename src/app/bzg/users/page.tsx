@@ -20,7 +20,6 @@ interface UserProfile {
 
 const STORES = [
   { id: 'EZ-001', name: 'Electro Zaki', color: '#C9A440' },
-  { id: 'HP-001', name: 'Hamid Phone',  color: '#0EA5E9' },
 ]
 
 const ROLE_STYLES: Record<string, string> = {
