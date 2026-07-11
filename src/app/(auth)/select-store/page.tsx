@@ -16,15 +16,6 @@ const PORTALS = [
     abbr:     'EZ',
   },
   {
-    path:     '/hp/dashboard',
-    name:     'Hamid Phone',
-    subtitle: 'Réparations · Accessoires · Ventes',
-    color:    '#0EA5E9',
-    bg:       '#F0F9FF',
-    border:   '#BAE6FD',
-    abbr:     'HP',
-  },
-  {
     path:     '/bzg/dashboard',
     name:     'BZG Group',
     subtitle: 'Vue globale · Rapports · Caisse · Logs',
@@ -46,7 +37,7 @@ export default function SelectStorePage() {
   useEffect(() => {
     if (!loading && user) {
       if (user.store_locked && user.store_id) {
-        const dest = user.store_id === 'EZ-001' ? '/ez/dashboard' : '/hp/dashboard'
+        const dest = user.store_id === 'EZ-001' ? '/ez/dashboard' : '/select-store'
         router.replace(dest)
       }
     }

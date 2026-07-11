@@ -37,10 +37,14 @@ const EMPTY: Partial<Phone> = {
   prix_achat:            undefined,
   prix_vente_recommande: undefined,
   prix_vente_minimum:    undefined,
-  warranty_months:       6,
+  warranty_months:       3,
   status:                'متوفر',
   location:              'Magasin Principal',
   description:           '',
+  has_replaced_component: false,
+  component_condition:    null,
+  is_damaged:             false,
+  damage_notes:           null,
 }
 
 export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId }: PhoneFormProps) {
@@ -319,6 +323,63 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
             onChange={e => set('description', e.target.value)}
           />
         </Field>
+
+        {/* Component replacement + Damage */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                className="w-4 h-4 rounded"
+                checked={!!form.has_replaced_component}
+                onChange={e => {
+                  set('has_replaced_component', e.target.checked)
+                  if (!e.target.checked) set('component_condition', null)
+                }}
+              />
+              <span className="text-xs text-ez-subtle uppercase tracking-widest font-medium">
+                {isAr ? 'قطعة مستبدلة' : 'Composant remplacé'}
+              </span>
+            </label>
+            {form.has_replaced_component && (
+              <select
+                className={selectClass}
+                value={form.component_condition || ''}
+                onChange={e => set('component_condition', e.target.value as 'original' | 'standard')}
+              >
+                <option value="">{isAr ? 'اختر النوع' : 'Choisir le type'}</option>
+                <option value="original">{isAr ? 'أصلي' : 'Original'}</option>
+                <option value="standard">{isAr ? 'عادي (جنريك)' : 'Standard (Générique)'}</option>
+              </select>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                className="w-4 h-4 rounded"
+                checked={!!form.is_damaged}
+                onChange={e => {
+                  set('is_damaged', e.target.checked)
+                  if (!e.target.checked) set('damage_notes', null)
+                }}
+              />
+              <span className="text-xs text-ez-subtle uppercase tracking-widest font-medium">
+                {isAr ? 'جهاز تالف' : 'Endommagé'}
+              </span>
+            </label>
+            {form.is_damaged && (
+              <input
+                type="text"
+                className={inputClass}
+                placeholder={isAr ? 'وصف العطل...' : 'Description du dommage...'}
+                value={form.damage_notes || ''}
+                onChange={e => set('damage_notes', e.target.value)}
+              />
+            )}
+          </div>
+        </div>
 
         {/* Financial fields */}
         {canSeeFinancials && (

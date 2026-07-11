@@ -63,9 +63,12 @@ export function StatusBadge({ status, lang = 'fr', size = 'sm' }: StatusBadgePro
 }
 
 // ── Battery Bar ───────────────────────────────────────────────
-export function BatteryBar({ level }: { level: number | null | undefined }) {
+export function BatteryBar({ level, marque }: { level: number | null | undefined; marque?: string }) {
   if (level == null) return <span className="text-ez-placeholder text-xs">—</span>
-  const color = level >= 70 ? 'bg-emerald-500' : level >= 40 ? 'bg-amber-500' : 'bg-red-500'
+  const isApple = marque?.toLowerCase() === 'apple'
+  const color   = isApple
+    ? (level > 79 ? 'bg-emerald-500' : level >= 60 ? 'bg-amber-500' : 'bg-red-500')
+    : (level >= 70 ? 'bg-emerald-500' : level >= 40 ? 'bg-amber-500' : 'bg-red-500')
   return (
     <div className="flex items-center gap-2">
       <div className="w-16 h-1.5 bg-ez-muted rounded-full overflow-hidden">

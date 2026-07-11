@@ -36,9 +36,14 @@ export async function GET(request: NextRequest) {
     if (error) throw error
 
     const enriched = (data || []).map((t: Record<string, unknown>) => {
-      const fariq = (t.prix_vente as number)
-        - ((t.avance as number) || 0)
-        - ((t.valeur_echange as number) || 0)
+      const avance        = (t.avance as number) || 0
+      const paymentMethod = t.payment_method as string
+      const fariq =
+        paymentMethod === 'إستبدال'
+          ? 0
+          : avance > 0
+            ? Math.max(0, (t.prix_vente as number) - avance - ((t.valeur_echange as number) || 0))
+            : 0
       return {
         ...t,
         fariq,

@@ -43,26 +43,6 @@ function getNavItems(portalBase: string, portalType: string): NavItem[] {
     ]
   }
 
-  if (portalType === 'hp') {
-    return [
-      { href: `${portalBase}/dashboard`,        icon: LayoutDashboard, label: 'Tableau de bord',  roles: ['staff','manager','owner'] },
-      { href: `${portalBase}/pos`,              icon: ShoppingCart,    label: 'Point de vente',    roles: ['staff','manager','owner'] },
-      { divider: true, label: 'STOCK',                                                             roles: ['staff','manager','owner'] },
-      { href: `${portalBase}/stock/phones`,     icon: Smartphone,      label: 'Téléphones',        roles: ['staff','manager','owner'] },
-      { href: `${portalBase}/stock/accessories`,icon: Package,         label: 'Accessoires',       roles: ['staff','manager','owner'] },
-      { divider: true, label: 'OPÉRATIONS',                                                        roles: ['staff','manager','owner'] },
-      { href: `${portalBase}/deliveries`,       icon: PackageCheck,    label: 'Livraisons',        roles: ['manager','owner'] },
-      { href: `${portalBase}/repairs`,          icon: Wrench,          label: 'Réparations',       roles: ['staff','manager','owner'] },
-      { href: `${portalBase}/clients`,          icon: Users,           label: 'Clients',           roles: ['staff','manager','owner'] },
-      { href: `${portalBase}/expenses`,         icon: Receipt,         label: 'Dépenses',          roles: ['manager','owner'] },
-      { href: `${portalBase}/transactions`,     icon: List,            label: 'Transactions',      roles: ['manager','owner'] },
-      { href: `${portalBase}/caisse`,           icon: Vault,           label: 'Caisse du jour',    roles: ['staff','manager','owner'] },
-      { href: `${portalBase}/movements`,        icon: ArrowLeftRight,  label: 'Transferts stock',  roles: ['manager','owner'] },
-      { href: `${portalBase}/credits`,          icon: CreditCard,      label: 'Crédits clients',   roles: ['manager','owner'] },
-      { href: `${portalBase}/suppliers`,        icon: Truck,           label: 'Fournisseurs',      roles: ['manager','owner'] },
-  ]
-}
-
   // Default: EZ portal
   return [
     { href: `${portalBase}/dashboard`,        icon: LayoutDashboard, label: 'Tableau de bord',   roles: ['staff','manager','owner'] },

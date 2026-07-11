@@ -117,6 +117,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
   const [filterStatus, setFilterStatus]   = useState('')
   const [filterMarque, setFilterMarque]   = useState('')
   const [filterLocation, setFilterLocation] = useState('')
+  const [filterStorage, setFilterStorage] = useState('')
 
   const fetchPhones = useCallback(async () => {
     setLoading(true)
@@ -125,6 +126,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
       if (filterStatus)   params.set('status', filterStatus)
       if (filterMarque)   params.set('marque', filterMarque)
       if (filterLocation) params.set('location', filterLocation)
+      if (filterStorage)  params.set('stockage', filterStorage)
       if (search.length >= 2) params.set('search', search)
 
       const res  = await fetch(`/api/phones?${params}`)
@@ -136,7 +138,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
     } finally {
       setLoading(false)
     }
-  }, [storeId, filterStatus, filterMarque, filterLocation, search])
+  }, [storeId, filterStatus, filterMarque, filterLocation, filterStorage, search])
 
   useEffect(() => {
     const t = setTimeout(() => fetchPhones(), search ? 300 : 0)
@@ -165,10 +167,11 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
     setFilterStatus('')
     setFilterMarque('')
     setFilterLocation('')
+    setFilterStorage('')
     setSearch('')
   }
 
-  const hasFilters = filterStatus || filterMarque || filterLocation || search
+  const hasFilters = filterStatus || filterMarque || filterLocation || filterStorage || search
 
   // Counts by status
   const counts = STATUSES.reduce((acc, s) => {
@@ -211,7 +214,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                 {hasFilters && (
                   <span className="w-4 h-4 rounded-full text-white text-[10px] font-bold flex items-center justify-center"
                         style={{ backgroundColor: primary }}>
-                    {[filterStatus, filterMarque, filterLocation, search].filter(Boolean).length}
+                    {[filterStatus, filterMarque, filterLocation, filterStorage, search].filter(Boolean).length}
                   </span>
                 )}
               </button>
@@ -312,6 +315,18 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
               {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
             </select>
 
+            {/* Storage */}
+            <select
+              className="text-sm border border-[#E8E5DE] rounded-xl px-3 py-1.5 bg-white text-[#6B6860] focus:outline-none"
+              value={filterStorage}
+              onChange={e => setFilterStorage(e.target.value)}
+            >
+              <option value="">{isAr ? 'كل السعات' : 'Tous stockages'}</option>
+              {Array.from(new Set(phones.map(p => p.stockage).filter((s): s is string => !!s)))
+                .sort((a, b) => parseInt(a) - parseInt(b))
+                .map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+
             {hasFilters && (
               <button onClick={clearFilters}
                 className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 transition-colors ml-auto">
@@ -375,7 +390,10 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                 const warrantyFlag = getWarrantyFlag(phone.date_entree
                   ? new Date(new Date(phone.date_entree).getTime() + (phone.warranty_months ?? 6) * 30 * 86400000).toISOString()
                   : null)
-                const deviceName = `${phone.marque} ${phone.model}${phone.stockage ? ` ${phone.stockage}` : ''}`
+                const baseName   = phone.model.toLowerCase().startsWith(phone.marque.toLowerCase())
+                  ? phone.model
+                  : `${phone.marque} ${phone.model}`
+                const deviceName = baseName + (phone.stockage ? ` ${phone.stockage}` : '')
 
                 return (
                   <div
@@ -399,6 +417,27 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                           {phone.couleur ? ` · ${phone.couleur}` : ''}
                           {warrantyFlag && <span className="ml-1">{warrantyFlag}</span>}
                         </p>
+                        {(phone.has_replaced_component || phone.is_damaged) && (
+                          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                            {phone.has_replaced_component && (
+                              <span
+                                className="text-[10px] font-bold tracking-wide uppercase px-1.5 py-0.5 border-l-2"
+                                style={{ backgroundColor: '#FFFBEB', color: '#92400E', borderColor: '#F59E0B' }}
+                              >
+                                COMP. REMPLACÉ — {phone.component_condition === 'original' ? 'ORIGINAL' : 'STANDARD'}
+                              </span>
+                            )}
+                            {phone.is_damaged && (
+                              <span
+                                className="text-[10px] font-bold tracking-wide uppercase px-1.5 py-0.5 border-l-2"
+                                style={{ backgroundColor: '#FFF1F2', color: '#991B1B', borderColor: '#F87171' }}
+                                title={phone.damage_notes || undefined}
+                              >
+                                ENDOMMAGÉ
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -408,7 +447,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                     </p>
 
                     {/* Battery */}
-                    <BatteryBar level={phone.battery_level} />
+                    <BatteryBar level={phone.battery_level} marque={phone.marque} />
 
                     {/* Location */}
                     <div className="flex items-center gap-1.5">
@@ -444,7 +483,9 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                       <button
                         onClick={() => setLabelProduct({
                           id:            phone.phone_id,
-                          name:          `${phone.marque} ${phone.model}`,
+                          name:          phone.model.toLowerCase().startsWith(phone.marque.toLowerCase())
+                            ? phone.model
+                            : `${phone.marque} ${phone.model}`,
                           marque:        phone.marque,
                           model:         phone.model,
                           category:      'Téléphone',
@@ -484,7 +525,10 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
 
               {/* Mobile cards */}
               {phones.map(phone => {
-                const deviceName = `${phone.marque} ${phone.model}${phone.stockage ? ` ${phone.stockage}` : ''}`
+                const baseName   = phone.model.toLowerCase().startsWith(phone.marque.toLowerCase())
+                  ? phone.model
+                  : `${phone.marque} ${phone.model}`
+                const deviceName = baseName + (phone.stockage ? ` ${phone.stockage}` : '')
                 return (
                   <div key={`mob-${phone.phone_id}`}
                        onClick={() => openEdit(phone)}
@@ -498,9 +542,35 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                       <div className="flex items-center gap-2 mt-0.5">
                         <StatusBadge status={phone.status} lang={isAr ? 'ar' : 'fr'} size="sm" />
                         {phone.battery_level != null && (
-                          <span className="text-xs text-[#B0ADA6]">{phone.battery_level}%</span>
+                          <span className={`text-xs ${
+                            phone.marque.toLowerCase() === 'apple'
+                              ? phone.battery_level > 79  ? 'text-emerald-600'
+                              : phone.battery_level >= 60 ? 'text-amber-600'
+                              : 'text-red-600'
+                              : 'text-[#B0ADA6]'
+                          }`}>{phone.battery_level}%</span>
                         )}
                       </div>
+                      {(phone.has_replaced_component || phone.is_damaged) && (
+                        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                          {phone.has_replaced_component && (
+                            <span
+                              className="text-[10px] font-bold tracking-wide uppercase px-1.5 py-0.5 border-l-2"
+                              style={{ backgroundColor: '#FFFBEB', color: '#92400E', borderColor: '#F59E0B' }}
+                            >
+                              COMP. REMPLACÉ
+                            </span>
+                          )}
+                          {phone.is_damaged && (
+                            <span
+                              className="text-[10px] font-bold tracking-wide uppercase px-1.5 py-0.5 border-l-2"
+                              style={{ backgroundColor: '#FFF1F2', color: '#991B1B', borderColor: '#F87171' }}
+                            >
+                              ENDOMMAGÉ
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
                     {canSeeFinancials && phone.prix_vente_recommande && (
                       <p className="text-sm font-bold flex-shrink-0" style={{ color: primary }}>

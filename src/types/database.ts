@@ -80,6 +80,10 @@ export interface Phone {
   created_by?:            string | null
   updated_at:             string
   updated_by?:            string | null
+  has_replaced_component?: boolean | null
+  component_condition?:    'original' | 'standard' | null
+  is_damaged?:             boolean | null
+  damage_notes?:           string | null
 }
 
 export interface Laptop {

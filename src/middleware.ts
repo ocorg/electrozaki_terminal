@@ -5,7 +5,7 @@ import { createServerClient } from '@supabase/ssr'
 const PUBLIC_PATHS = ['/login', '/select-store']
 
 // Paths that are portal roots — require auth + correct store access
-const PORTAL_PATHS = ['/ez', '/hp', '/bzg']
+const PORTAL_PATHS = ['/ez', '/bzg']
 
 async function handleMiddleware(request: NextRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl
@@ -74,7 +74,6 @@ async function handleMiddleware(request: NextRequest): Promise<NextResponse> {
       if (profile.store_locked && profile.store_id) {
         const STORE_PORTAL_MAP: Record<string, string> = {
           'EZ-001': '/ez',
-          'HP-001': '/hp',
         }
         const storePortal = STORE_PORTAL_MAP[profile.store_id]
         if (!storePortal) {
@@ -95,7 +94,6 @@ async function handleMiddleware(request: NextRequest): Promise<NextResponse> {
       // Store is_active guard — /ez and /hp only, /bzg is always exempt
       const PORTAL_STORE_MAP: Record<string, string> = {
         '/ez': 'EZ-001',
-        '/hp': 'HP-001',
       }
 
       const matchedPortal = Object.keys(PORTAL_STORE_MAP).find(p =>
