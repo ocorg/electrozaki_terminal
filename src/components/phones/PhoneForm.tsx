@@ -355,26 +355,23 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
 
           {/* Add component row */}
           <div className="flex items-center gap-2">
-            <input
-              type="text"
-              list="comp-suggestions"
-              className={inputClass}
-              placeholder={isAr ? 'اسم القطعة...' : 'Nom du composant...'}
+            <select
+              className={`${selectClass} flex-1 min-w-0`}
               value={newCompName}
               onChange={e => setNewCompName(e.target.value)}
-            />
-            <datalist id="comp-suggestions">
-              <option value="Écran" />
-              <option value="Batterie" />
-              <option value="Caméra arrière" />
-              <option value="Caméra avant" />
-              <option value="Vitre arrière" />
-              <option value="Châssis" />
-              <option value="Haut-parleur" />
-              <option value="Connecteur de charge" />
-            </datalist>
+            >
+              <option value="">{isAr ? 'اختر القطعة...' : 'Choisir le composant...'}</option>
+              <option value="Écran">Écran</option>
+              <option value="Batterie">Batterie</option>
+              <option value="Caméra arrière">Caméra arrière</option>
+              <option value="Caméra avant">Caméra avant</option>
+              <option value="Vitre arrière">Vitre arrière</option>
+              <option value="Châssis">Châssis</option>
+              <option value="Haut-parleur">Haut-parleur</option>
+              <option value="Connecteur de charge">Connecteur de charge</option>
+            </select>
             <select
-              className={`${selectClass} flex-shrink-0 w-36`}
+              className={`${selectClass} flex-shrink-0`}
               value={newCompCondition}
               onChange={e => setNewCompCondition(e.target.value as 'original' | 'standard')}
             >
@@ -384,8 +381,8 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
             <button
               type="button"
               onClick={() => {
-                if (!newCompName.trim()) return
-                const updated = [...(form.replaced_components || []), { name: newCompName.trim(), condition: newCompCondition }]
+                if (!newCompName) return
+                const updated = [...(form.replaced_components || []), { name: newCompName, condition: newCompCondition }]
                 set('replaced_components', updated)
                 setNewCompName('')
                 setNewCompCondition('original')
