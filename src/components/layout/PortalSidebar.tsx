@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useUser } from '@/lib/hooks/useUser'
 import { usePortal } from '@/lib/context/portal'
 import {
-  LayoutDashboard, ShoppingCart, Smartphone, Laptop, Package,
+  LayoutDashboard, ShoppingCart, Smartphone, ClipboardList, Laptop, Package,
   Wrench, Users, Truck, Receipt, Vault, ArrowLeftRight,
   Settings, LogOut, Globe, ChevronRight,
   PanelLeftClose, PanelLeftOpen, Store, FileText, Clock,
@@ -56,6 +56,7 @@ function getNavItems(portalBase: string, portalType: string): NavItem[] {
     { href: `${portalBase}/repairs`,          icon: Wrench,          label: 'Réparations',        roles: ['staff','manager','owner'] },
     { href: `${portalBase}/clients`,          icon: Users,           label: 'Clients',            roles: ['staff','manager','owner'] },
     { href: `${portalBase}/suppliers`,        icon: Truck,           label: 'Fournisseurs',       roles: ['manager','owner'] },
+    { href: `${portalBase}/prospects`,        icon: ClipboardList,   label: 'Prospects',          roles: ['staff','manager','owner'] },
     { href: `${portalBase}/expenses`,         icon: Receipt,         label: 'Dépenses',           roles: ['manager','owner'] },
     { href: `${portalBase}/caisse`,           icon: Vault,           label: 'Caisse du jour',     roles: ['staff','manager','owner'] },
     { href: `${portalBase}/movements`,        icon: ArrowLeftRight,  label: 'Transferts stock',   roles: ['manager','owner'] },

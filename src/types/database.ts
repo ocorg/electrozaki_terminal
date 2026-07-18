@@ -21,7 +21,7 @@ export type ExpenseCategory  = string
 export type CaisseStatus     = 'open' | 'pending_eod' | 'closed'
 export type PunchType        = 'in' | 'out'
 export type ActionType       = 'INSERT' | 'UPDATE' | 'DELETE' | 'VOID' | 'LOGIN' | 'LOGOUT' | 'OVERRIDE' | 'EOD_SUBMIT' | 'EOD_APPROVE' | 'EOD_REJECT' | 'PUNCH_IN' | 'PUNCH_OUT'
-export type LogModule        = 'phones' | 'laptops' | 'accessories' | 'transactions' | 'reparations' | 'clients' | 'suppliers' | 'supplier_payments' | 'expenses' | 'caisse' | 'stock_movements' | 'users' | 'settings' | 'auth' | 'attendance' | 'changelog' | 'repairs/parts' | 'cash_drops' | 'credits' | 'credit_imports'
+export type LogModule        = 'phones' | 'laptops' | 'accessories' | 'transactions' | 'reparations' | 'clients' | 'suppliers' | 'supplier_payments' | 'expenses' | 'caisse' | 'stock_movements' | 'users' | 'settings' | 'auth' | 'attendance' | 'changelog' | 'repairs/parts' | 'cash_drops' | 'credits' | 'credit_imports' | 'prospects'
 
 // ─── Interfaces ───────────────────────────────────────────────
 
@@ -88,6 +88,30 @@ export interface Phone {
 export interface ReplacedComponent {
   name:      string
   condition: 'original' | 'standard'
+}
+
+export type ProspectStatus   = 'Nouveau' | 'Contacté' | 'Converti' | 'Perdu'
+export type ProspectDemand   = 'modele' | 'budget'
+export type ProspectSource   = 'TikTok' | 'Instagram' | 'WhatsApp' | 'En magasin' | 'Autre'
+
+export interface Prospect {
+  prospect_id:  string
+  store_id:     string
+  nom:          string
+  telephone?:   string | null
+  source:       ProspectSource
+  demand_type:  ProspectDemand
+  marque?:      string | null
+  model?:       string | null
+  stockage?:    string | null
+  budget_max?:  number | null
+  notes?:       string | null
+  statut:       ProspectStatus
+  created_at:   string
+  created_by?:  string | null
+  updated_at:   string
+  updated_by?:  string | null
+  is_deleted:   boolean
 }
 
 export interface Laptop {

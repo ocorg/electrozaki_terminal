@@ -6,7 +6,7 @@ import { usePortal } from '@/lib/context/portal'
 import { formatMAD, formatDate, getWarrantyFlag } from '@/lib/utils'
 import { StatusBadge, BatteryBar, EmptyState, SkeletonRow, PageHeader, Btn, Modal, Field, inputClass, selectClass } from '@/components/shared'
 import PhoneForm from '@/components/phones/PhoneForm'
-import type { Phone } from '@/types/database'
+import type { Phone, Prospect } from '@/types/database'
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import ScanButton from '@/components/scanner/ScanButton'
 import LabelGenerator, { type LabelProduct } from '@/components/print/LabelGenerator'
@@ -38,8 +38,9 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
   const [editPhone, setEditPhone]     = useState<Phone | null>(null)
   const [showFilters, setShowFilters] = useState(false)
   const [labelProduct,  setLabelProduct]  = useState<LabelProduct | null>(null)
-  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)  // holds phone_id
-  const [deleting,      setDeleting]      = useState(false)
+  const [confirmDelete,  setConfirmDelete]  = useState<string | null>(null)  // holds phone_id
+  const [deleting,       setDeleting]       = useState(false)
+  const [openProspects,  setOpenProspects]  = useState<Prospect[]>([])
   const [catalogOpen, setCatalogOpen]   = useState(false)
   const [catalogItems, setCatalogItems] = useState<{ catalog_id: string; marque: string; serie: string; type: string; model: string; couleur: string }[]>([])
   const [catForm, setCatForm]           = useState({ marque: '', serie: '', type: 'Normal', model: '', couleur: '' })
@@ -118,6 +119,25 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
   const [filterMarque, setFilterMarque]   = useState('')
   const [filterLocation, setFilterLocation] = useState('')
   const [filterStorage, setFilterStorage] = useState('')
+
+  // Fetch open prospects for stock-match badges
+  useEffect(() => {
+    fetch(`/api/prospects?store_id=${storeId}&open=1`)
+      .then(r => r.json())
+      .then(json => setOpenProspects(json.data || []))
+      .catch(() => {})
+  }, [storeId])
+
+  const getProspectMatchCount = (phone: Phone): number =>
+    openProspects.filter(p => {
+      if (p.demand_type === 'modele') {
+        const marqueOk   = !p.marque   || p.marque.toLowerCase() === phone.marque.toLowerCase()
+        const modelOk    = !p.model    || phone.model.toLowerCase().includes(p.model.toLowerCase())
+        const stockageOk = !p.stockage || p.stockage             === phone.stockage
+        return marqueOk && modelOk && stockageOk
+      }
+      return !!(p.budget_max && phone.prix_vente_recommande && phone.prix_vente_recommande <= p.budget_max)
+    }).length
 
   const fetchPhones = useCallback(async () => {
     setLoading(true)
@@ -417,6 +437,13 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                           {phone.couleur ? ` · ${phone.couleur}` : ''}
                           {warrantyFlag && <span className="ml-1">{warrantyFlag}</span>}
                         </p>
+                        {getProspectMatchCount(phone) > 0 && (
+                          <div className="flex items-center gap-1 mt-1">
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700">
+                              {getProspectMatchCount(phone)} prospect{getProspectMatchCount(phone) > 1 ? 's' : ''}
+                            </span>
+                          </div>
+                        )}
                         {((phone.replaced_components || []).length > 0 || phone.is_damaged) && (
                           <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                             {(phone.replaced_components || []).map((comp, idx) => (
@@ -552,6 +579,13 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                           }`}>{phone.battery_level}%</span>
                         )}
                       </div>
+                      {getProspectMatchCount(phone) > 0 && (
+                        <div className="flex items-center gap-1 mt-1">
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700">
+                            {getProspectMatchCount(phone)} prospect{getProspectMatchCount(phone) > 1 ? 's' : ''}
+                          </span>
+                        </div>
+                      )}
                       {((phone.replaced_components || []).length > 0 || phone.is_damaged) && (
                         <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                           {(phone.replaced_components || []).length > 0 && (
