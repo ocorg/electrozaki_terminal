@@ -155,7 +155,7 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
         : (isAr ? 'إضافة هاتف جديد' : 'Ajouter un téléphone')}
       size="lg"
     >
-      <form onSubmit={handleSubmit} className="space-y-5" dir={isAr ? 'rtl' : 'ltr'}>
+      <form onSubmit={handleSubmit} className="space-y-5" style={{ touchAction: 'pan-y' }} dir={isAr ? 'rtl' : 'ltr'}>
 
         {/* Row 1 — Source + Condition */}
         <div className="grid grid-cols-2 gap-4">
@@ -356,22 +356,22 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
           {/* Add component row */}
           <div className="flex items-center gap-2">
             <select
-              className={`${selectClass} flex-1 min-w-0`}
+              className={`${selectClass} w-44`}
               value={newCompName}
               onChange={e => setNewCompName(e.target.value)}
             >
-              <option value="">{isAr ? 'اختر القطعة...' : 'Choisir le composant...'}</option>
+              <option value="">{isAr ? 'اختر القطعة...' : 'Choisir...'}</option>
               <option value="Écran">Écran</option>
               <option value="Batterie">Batterie</option>
-              <option value="Caméra arrière">Caméra arrière</option>
-              <option value="Caméra avant">Caméra avant</option>
+              <option value="Caméra arrière">Cam. arrière</option>
+              <option value="Caméra avant">Cam. avant</option>
               <option value="Vitre arrière">Vitre arrière</option>
               <option value="Châssis">Châssis</option>
               <option value="Haut-parleur">Haut-parleur</option>
-              <option value="Connecteur de charge">Connecteur de charge</option>
+              <option value="Connecteur de charge">Connecteur</option>
             </select>
             <select
-              className={`${selectClass} flex-shrink-0`}
+              className={`${selectClass} w-28`}
               value={newCompCondition}
               onChange={e => setNewCompCondition(e.target.value as 'original' | 'standard')}
             >
