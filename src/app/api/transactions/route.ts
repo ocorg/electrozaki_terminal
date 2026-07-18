@@ -41,9 +41,11 @@ export async function GET(request: NextRequest) {
       const fariq =
         paymentMethod === 'إستبدال'
           ? 0
-          : avance > 0
-            ? Math.max(0, (t.prix_vente as number) - avance - ((t.valeur_echange as number) || 0))
-            : 0
+          : paymentMethod === 'آجل'
+            ? Math.max(0, (t.prix_vente as number) - ((t.valeur_echange as number) || 0))
+            : avance > 0
+              ? Math.max(0, (t.prix_vente as number) - avance - ((t.valeur_echange as number) || 0))
+              : 0
       return {
         ...t,
         fariq,

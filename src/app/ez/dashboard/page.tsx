@@ -57,7 +57,7 @@ export default function EZDashboard() {
         // All non-voided transactions for this store
         supabase
           .from('transactions')
-          .select('txn_id, device_id, type_operation, prix_vente, date_vente, avance, valeur_echange, clients(nom)')
+          .select('txn_id, device_id, type_operation, prix_vente, date_vente, avance, valeur_echange, payment_method, clients(nom)')
           .eq('store_id', STORE_ID)
           .eq('voided', false)
           .order('created_at', { ascending: false })
@@ -77,13 +77,13 @@ export default function EZDashboard() {
           .eq('store_id', STORE_ID)
           .eq('is_deleted', false),
 
-        // Open credit transactions (fariq > 0, non-voided only)
+        // Open credit transactions: partial payments (avance > 0) + deferred sales (آجل)
         supabase
           .from('transactions')
-          .select('txn_id, prix_vente, avance, valeur_echange')
+          .select('txn_id, prix_vente, avance, valeur_echange, payment_method')
           .eq('store_id', STORE_ID)
           .eq('voided', false)
-          .gt('avance', 0),
+          .or('avance.gt.0,payment_method.eq.آجل'),
       ])
 
       const txns        = (txnRes.data || []) as Record<string, unknown>[]
@@ -97,6 +97,8 @@ export default function EZDashboard() {
         const av  = (t.avance         as number) || 0
         const ve  = (t.valeur_echange as number) || 0
         const op  =  t.type_operation as string
+        const pm  =  t.payment_method as string
+        if (pm === 'آجل')      return 0
         if (op === 'إستبدال') return pv - ve
         const fariq = pv - av - ve
         return fariq > 0 ? av : pv
@@ -131,6 +133,8 @@ export default function EZDashboard() {
         const pv = (c.prix_vente     as number) || 0
         const av = (c.avance         as number) || 0
         const ve = (c.valeur_echange as number) || 0
+        const pm = c.payment_method  as string
+        if (pm === 'آجل') return true
         return (pv - av - ve) > 0
       }).length
 
@@ -376,13 +380,13 @@ export default function EZDashboard() {
                   </Link>
                 )}
                 {data.pending_credits > 0 && (
-                  <Link href="/ez/transactions"
+                  <Link href="/ez/credits"
                     className="flex items-center gap-3 p-3 bg-amber-50 border border-amber-100 rounded-xl hover:bg-amber-100 transition-all">
                     <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0" />
                     <p className="text-sm text-amber-700">
                       {isAr
-                        ? `${data.pending_credits} تسبيق مفتوح`
-                        : `${data.pending_credits} avance${data.pending_credits > 1 ? 's' : ''} ouverte${data.pending_credits > 1 ? 's' : ''}`}
+                        ? `${data.pending_credits} ذمة مفتوحة`
+                        : `${data.pending_credits} créance${data.pending_credits > 1 ? 's' : ''} ouverte${data.pending_credits > 1 ? 's' : ''}`}
                     </p>
                   </Link>
                 )}

@@ -400,7 +400,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
     saleForm.avance,
     saleForm.type_operation === 'إستبدال' ? saleForm.valeur_echange : 0
   )
-  const displayFariq   = saleForm.payment_method === 'تسبيق' ? fariq : 0
+  const displayFariq   = (saleForm.payment_method === 'تسبيق' || saleForm.payment_method === 'آجل') ? fariq : 0
   const statutPaiement = computeStatutPaiement(displayFariq)
   const montantRendu   = saleForm.payment_method === 'نقد' && saleForm.montant_especes > totalVente
     ? saleForm.montant_especes - totalVente
@@ -418,6 +418,10 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
     }
     if (saleForm.payment_method === 'تسبيق' && saleForm.avance > 0 && !saleForm.avance_sub_method) {
       showError(isAr ? 'يرجى تحديد طريقة دفع التسبيق (نقد أو تحويل)' : 'Précisez le mode de paiement de l\'avance (espèces ou virement)')
+      return
+    }
+    if (saleForm.payment_method === 'آجل' && !saleForm.client_nom.trim()) {
+      showError(isAr ? 'اسم العميل مطلوب للبيع الآجل' : 'Nom du client obligatoire pour une vente à crédit')
       return
     }
 
@@ -1225,6 +1229,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                 { v: 'تحويل', fr: 'Virement',  ar: 'تحويل بنكي'  },
                 { v: 'تسبيق', fr: 'Avance',    ar: 'تسبيق'       },
                 { v: 'مختلط', fr: 'Mixte',     ar: 'مختلط'       },
+                { v: 'آجل',   fr: 'À crédit',  ar: 'آجل'         },
               ] as { v: PaymentMethod; fr: string; ar: string }[]).map(({ v, fr, ar }) => (
                 <button
                   key={v}
@@ -1241,6 +1246,16 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                 </button>
               ))}
             </div>
+
+            {saleForm.payment_method === 'آجل' && (
+              <div className="mt-2 p-3 bg-purple-50 border border-purple-200 rounded-xl">
+                <p className="text-xs font-medium text-purple-700">
+                  {isAr
+                    ? 'سيُسجَّل المبلغ كاملاً كذمة على العميل — لا شيء يُحصَّل الآن'
+                    : 'La totalité sera enregistrée comme créance client — rien n\'est encaissé maintenant'}
+                </p>
+              </div>
+            )}
 
             {saleForm.payment_method === 'تحويل' && (
               <input className={`${inputClass} mt-2`}
