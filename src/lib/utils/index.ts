@@ -52,6 +52,18 @@ export function getWarrantyFlag(expiryDate: string | null | undefined): '🟢' |
   return '🟢'
 }
 
+/** Compute the effective price after applying a promo. Returns null when no promo is set. */
+export function computePromoPrice(
+  prixBase:     number,
+  promoType?:   string | null,
+  promoMontant?: number | null
+): number | null {
+  if (!promoType || !promoMontant || promoMontant <= 0) return null
+  if (promoType === 'pourcentage') return Math.max(0, prixBase * (1 - promoMontant / 100))
+  if (promoType === 'valeur')      return Math.max(0, prixBase - promoMontant)
+  return null
+}
+
 /** Check if price is below minimum (requires override) */
 export function isBelowMinimum(price: number, minimum: number | null | undefined): boolean {
   if (!minimum) return false

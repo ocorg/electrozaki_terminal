@@ -4,7 +4,7 @@ import { useUser } from '@/lib/hooks/useUser'
 import { useCategories } from '@/lib/hooks/useCategories'
 import { useLanguageStore } from '@/lib/stores/language'
 import { usePortal } from '@/lib/context/portal'
-import { formatMAD, computeFariq, computeStatutPaiement, isBelowMinimum } from '@/lib/utils'
+import { formatMAD, computeFariq, computeStatutPaiement, isBelowMinimum, computePromoPrice } from '@/lib/utils'
 import { Modal, Field, inputClass, selectClass, Btn, PageHeader } from '@/components/shared'
 import { StatusBadge } from '@/components/shared'
 import { showSuccess, showError } from '@/lib/utils/toasts'
@@ -920,12 +920,34 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                       {idx + 1}
                     </span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-bold text-[#1A1A1A] truncate">
-                        {item._displayName}
-                      </p>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <p className="text-xs font-bold text-[#1A1A1A] truncate">
+                          {item._displayName}
+                        </p>
+                        {(item as Phone).promo_type && (item as Phone).promo_montant && (
+                          <span className="flex-shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                            style={{ backgroundColor: '#FAF5E8', color: '#C9A440', border: '1px solid #E8D494' }}>
+                            {(item as Phone).promo_type === 'pourcentage'
+                              ? `PROMO -${(item as Phone).promo_montant}%`
+                              : `PROMO -${(item as Phone).promo_montant} MAD`}
+                          </span>
+                        )}
+                      </div>
                       {(item as Phone).imei && (
                         <p className="text-[10px] text-[#B0ADA6] font-mono truncate">
                           {(item as Phone).imei}
+                        </p>
+                      )}
+                      {canSeePrices && (item as Phone).promo_type && (item as Phone).promo_montant && (item as Phone).prix_vente_recommande && (
+                        <p className="text-[9px] font-bold mt-0.5" style={{ color: '#C9A440' }}>
+                          {isAr ? 'السعر المقترح بعد الخصم:' : 'Prix suggéré après promo :'}{' '}
+                          {formatMAD(
+                            computePromoPrice(
+                              (item as Phone).prix_vente_recommande ?? 0,
+                              (item as Phone).promo_type,
+                              (item as Phone).promo_montant
+                            ) ?? 0
+                          )}
                         </p>
                       )}
                     </div>

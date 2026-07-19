@@ -83,6 +83,8 @@ export interface Phone {
   replaced_components?:    ReplacedComponent[] | null
   is_damaged?:             boolean | null
   damage_notes?:           string | null
+  promo_type?:             'valeur' | 'pourcentage' | null
+  promo_montant?:          number | null
 }
 
 export interface ReplacedComponent {

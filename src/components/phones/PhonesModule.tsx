@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useUser } from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
 import { usePortal } from '@/lib/context/portal'
-import { formatMAD, formatDate, getWarrantyFlag } from '@/lib/utils'
+import { formatMAD, formatDate, getWarrantyFlag, computePromoPrice } from '@/lib/utils'
 import { StatusBadge, BatteryBar, EmptyState, SkeletonRow, PageHeader, Btn, Modal, Field, inputClass, selectClass } from '@/components/shared'
 import PhoneForm from '@/components/phones/PhoneForm'
 import type { Phone, Prospect } from '@/types/database'
@@ -119,6 +119,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
   const [filterMarque, setFilterMarque]   = useState('')
   const [filterLocation, setFilterLocation] = useState('')
   const [filterStorage, setFilterStorage] = useState('')
+  const [filterPromo,   setFilterPromo]   = useState('')
 
   // Fetch open prospects for stock-match badges
   useEffect(() => {
@@ -147,6 +148,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
       if (filterMarque)   params.set('marque', filterMarque)
       if (filterLocation) params.set('location', filterLocation)
       if (filterStorage)  params.set('stockage', filterStorage)
+      if (filterPromo)    params.set('promo', filterPromo)
       if (search.length >= 2) params.set('search', search)
 
       const res  = await fetch(`/api/phones?${params}`)
@@ -158,7 +160,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
     } finally {
       setLoading(false)
     }
-  }, [storeId, filterStatus, filterMarque, filterLocation, filterStorage, search])
+  }, [storeId, filterStatus, filterMarque, filterLocation, filterStorage, filterPromo, search])
 
   useEffect(() => {
     const t = setTimeout(() => fetchPhones(), search ? 300 : 0)
@@ -188,10 +190,11 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
     setFilterMarque('')
     setFilterLocation('')
     setFilterStorage('')
+    setFilterPromo('')
     setSearch('')
   }
 
-  const hasFilters = filterStatus || filterMarque || filterLocation || filterStorage || search
+  const hasFilters = filterStatus || filterMarque || filterLocation || filterStorage || filterPromo || search
 
   // Counts by status
   const counts = STATUSES.reduce((acc, s) => {
@@ -234,7 +237,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                 {hasFilters && (
                   <span className="w-4 h-4 rounded-full text-white text-[10px] font-bold flex items-center justify-center"
                         style={{ backgroundColor: primary }}>
-                    {[filterStatus, filterMarque, filterLocation, filterStorage, search].filter(Boolean).length}
+                    {[filterStatus, filterMarque, filterLocation, filterStorage, filterPromo, search].filter(Boolean).length}
                   </span>
                 )}
               </button>
@@ -347,6 +350,19 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                 .map(s => <option key={s} value={s}>{s}</option>)}
             </select>
 
+            {/* Promo toggle */}
+            <button
+              onClick={() => setFilterPromo(filterPromo === '1' ? '' : '1')}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all"
+              style={{
+                backgroundColor: filterPromo === '1' ? '#FAF5E8' : 'transparent',
+                borderColor:     filterPromo === '1' ? '#C9A440' : '#E8E5DE',
+                color:           filterPromo === '1' ? '#C9A440' : '#6B6860',
+              }}
+            >
+              🏷️ {isAr ? 'عروض خاصة' : 'En promotion'}
+            </button>
+
             {hasFilters && (
               <button onClick={clearFilters}
                 className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 transition-colors ml-auto">
@@ -430,13 +446,21 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                       </div>
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-[#1A1A1A] truncate">{deviceName}</p>
-                        <p className="text-xs text-[#B0ADA6]">
-                          {phone.condition === 'جديد' ? (isAr ? 'جديد' : 'Neuf')
-                            : phone.condition === 'مستعمل' ? (isAr ? 'مستعمل' : 'Occasion')
-                            : (isAr ? 'معطوب' : 'Défectueux')}
-                          {phone.couleur ? ` · ${phone.couleur}` : ''}
-                          {warrantyFlag && <span className="ml-1">{warrantyFlag}</span>}
-                        </p>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="text-xs text-[#B0ADA6]">
+                            {phone.condition === 'جديد' ? (isAr ? 'جديد' : 'Neuf')
+                              : phone.condition === 'مستعمل' ? (isAr ? 'مستعمل' : 'Occasion')
+                              : (isAr ? 'معطوب' : 'Défectueux')}
+                            {phone.couleur ? ` · ${phone.couleur}` : ''}
+                            {warrantyFlag && <span className="ml-1">{warrantyFlag}</span>}
+                          </p>
+                          {phone.promo_type && (
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                              style={{ backgroundColor: '#FAF5E8', color: '#C9A440', border: '1px solid #E8D494' }}>
+                              PROMO
+                            </span>
+                          )}
+                        </div>
                         {getProspectMatchCount(phone) > 0 && (
                           <div className="flex items-center gap-1 mt-1">
                             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700">
@@ -495,13 +519,34 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                     {/* Price — manager/owner only */}
                     {canSeeFinancials && (
                       <div>
-                        <p className="text-sm font-bold text-[#1A1A1A]">
-                          {phone.prix_vente_recommande ? formatMAD(phone.prix_vente_recommande) : '—'}
-                        </p>
-                        {phone.prix_achat && phone.prix_vente_recommande && (
-                          <p className="text-xs text-emerald-600">
-                            +{formatMAD(phone.prix_vente_recommande - phone.prix_achat)}
-                          </p>
+                        {phone.promo_type && phone.promo_montant ? (
+                          <>
+                            <p className="text-xs text-[#B0ADA6] line-through">
+                              {phone.prix_vente_recommande ? formatMAD(phone.prix_vente_recommande) : '—'}
+                            </p>
+                            <p className="text-sm font-bold" style={{ color: '#C9A440' }}>
+                              {formatMAD(
+                                computePromoPrice(phone.prix_vente_recommande ?? 0, phone.promo_type, phone.promo_montant) ?? 0
+                              )}
+                            </p>
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                              style={{ backgroundColor: '#FAF5E8', color: '#C9A440' }}>
+                              {phone.promo_type === 'pourcentage'
+                                ? `-${phone.promo_montant}%`
+                                : `-${formatMAD(phone.promo_montant)}`}
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-sm font-bold text-[#1A1A1A]">
+                              {phone.prix_vente_recommande ? formatMAD(phone.prix_vente_recommande) : '—'}
+                            </p>
+                            {phone.prix_achat && phone.prix_vente_recommande && (
+                              <p className="text-xs text-emerald-600">
+                                +{formatMAD(phone.prix_vente_recommande - phone.prix_achat)}
+                              </p>
+                            )}
+                          </>
                         )}
                       </div>
                     )}
@@ -567,8 +612,14 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-[#1A1A1A] truncate">{deviceName}</p>
-                      <div className="flex items-center gap-2 mt-0.5">
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                         <StatusBadge status={phone.status} lang={isAr ? 'ar' : 'fr'} size="sm" />
+                        {phone.promo_type && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                            style={{ backgroundColor: '#FAF5E8', color: '#C9A440', border: '1px solid #E8D494' }}>
+                            PROMO
+                          </span>
+                        )}
                         {phone.battery_level != null && (
                           <span className={`text-xs ${
                             phone.marque.toLowerCase() === 'apple'

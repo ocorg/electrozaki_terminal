@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { Modal, Field, inputClass, selectClass, Btn } from '@/components/shared'
 import { BatteryBar } from '@/components/shared'
 import { showSuccess, showError } from '@/lib/utils/toasts'
+import { formatMAD, computePromoPrice } from '@/lib/utils'
 import { usePortal } from '@/lib/context/portal'
 import { useLanguageStore } from '@/lib/stores/language'
 import type { Phone, DeviceCondition, DeviceSource, LocationType } from '@/types/database'
@@ -44,6 +45,8 @@ const EMPTY: Partial<Phone> = {
   replaced_components:  [],
   is_damaged:           false,
   damage_notes:         null,
+  promo_type:           null,
+  promo_montant:        null,
 }
 
 export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId }: PhoneFormProps) {
@@ -441,6 +444,58 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
                 </Field>
               </div>
             </div>
+
+            {/* Promo */}
+            <div className="grid grid-cols-2 gap-4 pt-3 border-t border-[#E8E5DE]">
+              <Field label={isAr ? 'نوع التخفيض' : 'Type de promo'}>
+                <select
+                  className={selectClass}
+                  value={form.promo_type || ''}
+                  onChange={e => {
+                    set('promo_type', e.target.value || null)
+                    if (!e.target.value) set('promo_montant', null)
+                  }}
+                >
+                  <option value="">{isAr ? 'بدون عرض' : 'Aucune promo'}</option>
+                  <option value="valeur">{isAr ? 'قيمة (درهم)' : 'Valeur (MAD)'}</option>
+                  <option value="pourcentage">{isAr ? 'نسبة مئوية (%)' : 'Pourcentage (%)'}</option>
+                </select>
+              </Field>
+
+              {form.promo_type && (
+                <Field label={
+                  form.promo_type === 'pourcentage'
+                    ? (isAr ? 'النسبة (%)' : 'Réduction (%)')
+                    : (isAr ? 'المبلغ (درهم)' : 'Réduction (MAD)')
+                }>
+                  <input
+                    type="number"
+                    min={0}
+                    step={form.promo_type === 'pourcentage' ? 1 : 50}
+                    max={form.promo_type === 'pourcentage' ? 100 : undefined}
+                    className={inputClass}
+                    placeholder={form.promo_type === 'pourcentage' ? '10' : '200'}
+                    value={form.promo_montant ?? ''}
+                    onChange={e => set('promo_montant', e.target.value ? Number(e.target.value) : null)}
+                  />
+                </Field>
+              )}
+            </div>
+
+            {/* Effective price preview */}
+            {form.promo_type && form.promo_montant && form.prix_vente_recommande && (
+              <div className="flex items-center justify-between px-3 py-2 rounded-xl border"
+                style={{ backgroundColor: '#FAF5E8', borderColor: '#E8D494' }}>
+                <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#C9A440' }}>
+                  {isAr ? 'السعر بعد التخفيض' : 'Prix après promo'}
+                </span>
+                <span className="text-sm font-bold" style={{ color: '#C9A440' }}>
+                  {formatMAD(
+                    computePromoPrice(form.prix_vente_recommande, form.promo_type, form.promo_montant) ?? 0
+                  )}
+                </span>
+              </div>
+            )}
 
             {isApple && canSeeFinancials && (
               <div className="grid grid-cols-2 gap-4 p-4 bg-[#F8F7F4] rounded-xl border border-[#E8E5DE]">
