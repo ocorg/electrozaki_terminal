@@ -390,9 +390,10 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
 
           {/* Table header */}
           <div className="hidden lg:grid border-b border-[#F2F0EB] px-5 py-3 text-[10px] font-bold text-[#B0ADA6] uppercase tracking-widest"
-               style={{ gridTemplateColumns: canSeeFinancials ? '2fr 1fr 1fr 1fr 1fr 1fr 80px' : '2fr 1fr 1fr 1fr 1fr 80px' }}>
+               style={{ gridTemplateColumns: canSeeFinancials ? '2fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 1fr 72px' : '2fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 72px' }}>
             <span>{isAr ? 'الجهاز' : 'Appareil'}</span>
             <span>IMEI</span>
+            <span>{isAr ? 'الذاكرة / RAM' : 'Stockage / RAM'}</span>
             <span>{isAr ? 'البطارية' : 'Batterie'}</span>
             <span>{isAr ? 'الموقع' : 'Emplacement'}</span>
             <span>{isAr ? 'الحالة' : 'Statut'}</span>
@@ -426,17 +427,18 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                 const warrantyFlag = getWarrantyFlag(phone.date_entree
                   ? new Date(new Date(phone.date_entree).getTime() + (phone.warranty_months ?? 6) * 30 * 86400000).toISOString()
                   : null)
-                const baseName   = phone.model.toLowerCase().startsWith(phone.marque.toLowerCase())
-                  ? phone.model
-                  : `${phone.marque} ${phone.model}`
-                const deviceName = baseName + (phone.stockage ? ` ${phone.stockage}` : '')
+                const cleanModel = phone.model.replace(/\s*\d+(GB|TB)\s*$/i, '').trim()
+                const baseName   = cleanModel.toLowerCase().startsWith(phone.marque.toLowerCase())
+                  ? cleanModel
+                  : `${phone.marque} ${cleanModel}`
+                const deviceName = baseName
 
                 return (
                   <div
                     key={phone.phone_id}
                     onClick={() => openEdit(phone)}
                     className="hidden lg:grid items-center px-5 py-3.5 hover:bg-[#F8F7F4] transition-all cursor-pointer"
-                    style={{ gridTemplateColumns: canSeeFinancials ? '2fr 1fr 1fr 1fr 1fr 1fr 80px' : '2fr 1fr 1fr 1fr 1fr 80px' }}
+                    style={{ gridTemplateColumns: canSeeFinancials ? '2fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 1fr 72px' : '2fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 72px' }}
                   >
                     {/* Device name */}
                     <div className="flex items-center gap-3 min-w-0">
@@ -498,6 +500,18 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                       {phone.imei || '—'}
                     </p>
 
+                    {/* Specs — Stockage + RAM */}
+                    <div>
+                      <p className="text-xs text-[#6B6860]">
+                        {phone.stockage || '—'}
+                      </p>
+                      {phone.marque.toLowerCase() !== 'apple' && (
+                        <p className="text-[10px] text-[#B0ADA6] mt-0.5">
+                          {phone.ram ? `${phone.ram} RAM` : 'N/A'}
+                        </p>
+                      )}
+                    </div>
+
                     {/* Battery */}
                     <BatteryBar level={phone.battery_level} marque={phone.marque} />
 
@@ -556,9 +570,12 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                       <button
                         onClick={() => setLabelProduct({
                           id:            phone.phone_id,
-                          name:          phone.model.toLowerCase().startsWith(phone.marque.toLowerCase())
-                            ? phone.model
-                            : `${phone.marque} ${phone.model}`,
+                          name:          (() => {
+                            const cm = phone.model.replace(/\s*\d+(GB|TB)\s*$/i, '').trim()
+                            return cm.toLowerCase().startsWith(phone.marque.toLowerCase())
+                              ? cm
+                              : `${phone.marque} ${cm}`
+                          })(),
                           marque:        phone.marque,
                           model:         phone.model,
                           category:      'Téléphone',
@@ -598,10 +615,11 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
 
               {/* Mobile cards */}
               {phones.map(phone => {
-                const baseName   = phone.model.toLowerCase().startsWith(phone.marque.toLowerCase())
-                  ? phone.model
-                  : `${phone.marque} ${phone.model}`
-                const deviceName = baseName + (phone.stockage ? ` ${phone.stockage}` : '')
+                const cleanModel = phone.model.replace(/\s*\d+(GB|TB)\s*$/i, '').trim()
+                const baseName   = cleanModel.toLowerCase().startsWith(phone.marque.toLowerCase())
+                  ? cleanModel
+                  : `${phone.marque} ${cleanModel}`
+                const deviceName = baseName
                 return (
                   <div key={`mob-${phone.phone_id}`}
                        onClick={() => openEdit(phone)}
@@ -614,6 +632,12 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                       <p className="text-sm font-medium text-[#1A1A1A] truncate">{deviceName}</p>
                       <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                         <StatusBadge status={phone.status} lang={isAr ? 'ar' : 'fr'} size="sm" />
+                        {phone.stockage && (
+                          <span className="text-[10px] font-mono text-[#6B6860]">{phone.stockage}</span>
+                        )}
+                        {phone.marque.toLowerCase() !== 'apple' && phone.ram && (
+                          <span className="text-[10px] text-[#B0ADA6]">{phone.ram}</span>
+                        )}
                         {phone.promo_type && (
                           <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
                             style={{ backgroundColor: '#FAF5E8', color: '#C9A440', border: '1px solid #E8D494' }}>

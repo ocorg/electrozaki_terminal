@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
     if (stockage)     query = query.eq('stockage', stockage)
     if (promo === '1') query = query.not('promo_type', 'is', null)
     if (search)   query = query.or(
-      `imei.ilike.%${search}%,model.ilike.%${search}%,marque.ilike.%${search}%`
+      `imei.ilike.%${search}%,model.ilike.%${search},marque.ilike.%${search}%`
     )
 
     const { data, error } = await query
