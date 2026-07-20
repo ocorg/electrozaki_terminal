@@ -41,9 +41,14 @@ export async function GET(request: NextRequest) {
     if (location) query = query.eq('location', location)
     if (stockage)     query = query.eq('stockage', stockage)
     if (promo === '1') query = query.not('promo_type', 'is', null)
-    if (search)   query = query.or(
-      `imei.ilike.%${search}%,model.ilike.%${search},marque.ilike.%${search}%`
-    )
+    if (search) {
+      const looksLikeImei = /^\d{6,}$/.test(search)
+      if (looksLikeImei) {
+        query = query.ilike('imei', `%${search}%`)
+      } else {
+        query = query.or(`model.ilike.%${search},marque.ilike.%${search}%`)
+      }
+    }
 
     const { data, error } = await query
     if (error) throw error

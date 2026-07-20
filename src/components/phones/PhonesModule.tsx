@@ -390,7 +390,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
 
           {/* Table header */}
           <div className="hidden lg:grid border-b border-[#F2F0EB] px-5 py-3 text-[10px] font-bold text-[#B0ADA6] uppercase tracking-widest"
-               style={{ gridTemplateColumns: canSeeFinancials ? '2fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 1fr 72px' : '2fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 72px' }}>
+               style={{ gridTemplateColumns: canSeeFinancials ? '2fr 1fr 0.7fr 0.7fr 0.7fr 0.6fr 1fr 68px' : '2fr 1fr 0.7fr 0.7fr 0.7fr 0.6fr 68px' }}>
             <span>{isAr ? 'الجهاز' : 'Appareil'}</span>
             <span>IMEI</span>
             <span>{isAr ? 'الذاكرة / RAM' : 'Stockage / RAM'}</span>
@@ -438,7 +438,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                     key={phone.phone_id}
                     onClick={() => openEdit(phone)}
                     className="hidden lg:grid items-center px-5 py-3.5 hover:bg-[#F8F7F4] transition-all cursor-pointer"
-                    style={{ gridTemplateColumns: canSeeFinancials ? '2fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 1fr 72px' : '2fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 72px' }}
+                    style={{ gridTemplateColumns: canSeeFinancials ? '2fr 1fr 0.7fr 0.7fr 0.7fr 0.6fr 1fr 68px' : '2fr 1fr 0.7fr 0.7fr 0.7fr 0.6fr 68px' }}
                   >
                     {/* Device name */}
                     <div className="flex items-center gap-3 min-w-0">
