@@ -81,11 +81,14 @@ export async function POST() {
     .select('phone_id, imei, marque, model, status')
     .eq('store_id', profile.store_id)
     .eq('is_deleted', false)
-    .in('status', ['disponible', 'réservé', 'en réparation'])
 
   if (phonesError) return NextResponse.json({ error: phonesError.message }, { status: 500 })
 
-  const phoneList = (phones ?? []) as any[]
+  // Filtrage JS — valeurs réelles de l'enum device_status (stockées en arabe)
+  const IN_SCOPE_STATUSES = ['متوفر', 'إصلاح', 'إستبدال']
+  const phoneList = ((phones ?? []) as any[]).filter(p =>
+    IN_SCOPE_STATUSES.includes(p.status)
+  )
 
   // Créer la session
   const { data: session, error: sessionError } = await supabase
