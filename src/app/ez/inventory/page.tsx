@@ -1,14 +1,13 @@
-import { redirect }         from 'next/navigation'
-import type { Metadata }    from 'next'
-import { createClient, createUntypedClient } from '@/lib/supabase/server'
-import InventoryModule      from '@/components/inventory/InventoryModule'
+import { redirect }       from 'next/navigation'
+import type { Metadata }  from 'next'
+import { createClient }   from '@/lib/supabase/server'
+import InventoryModule    from '@/components/inventory/InventoryModule'
 
 export const metadata: Metadata = { title: 'Inventaire — BZG Terminal' }
 
 export default async function InventoryPage() {
-  const supabase      = await createUntypedClient()
-  const typedSupabase = await createClient()
-  const { data: { user } } = await typedSupabase.auth.getUser()
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
   const { data: profileRaw } = await supabase
