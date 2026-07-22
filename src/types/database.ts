@@ -21,7 +21,7 @@ export type ExpenseCategory  = string
 export type CaisseStatus     = 'open' | 'pending_eod' | 'closed'
 export type PunchType        = 'in' | 'out'
 export type ActionType       = 'INSERT' | 'UPDATE' | 'DELETE' | 'VOID' | 'LOGIN' | 'LOGOUT' | 'OVERRIDE' | 'EOD_SUBMIT' | 'EOD_APPROVE' | 'EOD_REJECT' | 'PUNCH_IN' | 'PUNCH_OUT'
-export type LogModule        = 'phones' | 'laptops' | 'accessories' | 'transactions' | 'reparations' | 'clients' | 'suppliers' | 'supplier_payments' | 'expenses' | 'caisse' | 'stock_movements' | 'users' | 'settings' | 'auth' | 'attendance' | 'changelog' | 'repairs/parts' | 'cash_drops' | 'credits' | 'credit_imports' | 'prospects'
+export type LogModule        = 'phones' | 'laptops' | 'accessories' | 'transactions' | 'reparations' | 'clients' | 'suppliers' | 'supplier_payments' | 'expenses' | 'caisse' | 'stock_movements' | 'users' | 'settings' | 'auth' | 'attendance' | 'changelog' | 'repairs/parts' | 'cash_drops' | 'credits' | 'credit_imports' | 'prospects' | 'inventaire'
 
 // ─── Interfaces ───────────────────────────────────────────────
 
@@ -407,6 +407,35 @@ export interface PlatformChangelog {
   changed_at:      string
   created_at:      string
   created_by?:     string | null
+}
+
+// ── Inventory ──────────────────────────────────────────────
+export type InventoryResultat =
+  | 'en_attente'
+  | 'trouvé'
+  | 'manquant'
+  | 'non_enregistré'
+  | 'hors_périmètre'
+
+export interface InventorySession {
+  session_id:     string
+  store_id:       string
+  created_by:     string
+  started_at:     string
+  completed_at:   string | null
+  statut:         'en_cours' | 'terminée'
+  snapshot_count: number
+}
+
+export interface InventorySessionItem {
+  item_id:      string
+  session_id:   string
+  phone_id:     string | null
+  imei:         string
+  phone_label:  string | null
+  phone_status: string | null
+  resultat:     InventoryResultat
+  scanned_at:   string | null
 }
 
 // ─── Database shape for typed Supabase client ─────────────────
