@@ -14,7 +14,7 @@ export async function PATCH(
   const { data: profileRaw } = await supabase
     .from('user_profiles')
     .select('role, store_id, display_name')
-    .eq('user_id', user.id)
+    .eq('id', user.id)
     .maybeSingle()
   const profile = profileRaw as { role: string; store_id: string; display_name: string } | null
 
