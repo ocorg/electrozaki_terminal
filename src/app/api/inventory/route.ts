@@ -1,9 +1,9 @@
-import { NextResponse }              from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createUntypedClient } from '@/lib/supabase/server'
 import { logActivity }               from '@/lib/utils/logger'
 
 // ── GET /api/inventory — liste des sessions avec compteurs ──
-export async function GET() {
+export async function GET(req: NextRequest) {
   const supabase      = await createUntypedClient()
   const typedSupabase = await createClient()
   const { data: { user } } = await typedSupabase.auth.getUser()
@@ -20,10 +20,13 @@ export async function GET() {
     return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
   }
 
+  const storeId = profile.store_id ?? new URL(req.url).searchParams.get('store_id')
+  if (!storeId) return NextResponse.json({ error: 'store_id introuvable' }, { status: 400 })
+
   const { data: sessions, error } = await supabase
     .from('inventory_sessions')
     .select('*, inventory_session_items(resultat)')
-    .eq('store_id', profile.store_id)
+    .eq('store_id', storeId)
     .order('started_at', { ascending: false })
     .limit(30)
 
@@ -43,7 +46,7 @@ export async function GET() {
 }
 
 // ── POST /api/inventory — démarrer une nouvelle session ──
-export async function POST() {
+export async function POST(req: NextRequest) {
   const supabase      = await createUntypedClient()
   const typedSupabase = await createClient()
   const { data: { user } } = await typedSupabase.auth.getUser()
@@ -60,11 +63,15 @@ export async function POST() {
     return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
   }
 
+  const body = await req.json().catch(() => ({}))
+  const storeId = profile.store_id ?? body.store_id ?? null
+  if (!storeId) return NextResponse.json({ error: 'store_id introuvable' }, { status: 400 })
+
   // Bloquer si une session est déjà en cours
   const { data: existing } = await supabase
     .from('inventory_sessions')
     .select('session_id')
-    .eq('store_id', profile.store_id)
+    .eq('store_id', storeId)
     .eq('statut', 'en_cours')
     .maybeSingle()
 
@@ -94,7 +101,7 @@ export async function POST() {
   const { data: session, error: sessionError } = await supabase
     .from('inventory_sessions')
     .insert({
-      store_id:       profile.store_id,
+      store_id:       storeId,
       created_by:     user.id,
       snapshot_count: phoneList.length,
       statut:         'en_cours',
@@ -133,7 +140,7 @@ export async function POST() {
 
   await logActivity({
     user_id:     user.id,
-    store_id:    profile.store_id,
+    store_id:    storeId,
     user_name:   profile.display_name,
     module:      'inventaire' as any,
     action_type: 'INSERT',

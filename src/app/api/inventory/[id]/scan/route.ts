@@ -26,12 +26,12 @@ export async function POST(
   }
 
   // Valider la session
-  const { data: session } = await supabase
+  let sessionQuery = supabase
     .from('inventory_sessions')
     .select('session_id, statut')
     .eq('session_id', params.id)
-    .eq('store_id', profile.store_id)
-    .maybeSingle()
+  if (profile.store_id) sessionQuery = sessionQuery.eq('store_id', profile.store_id)
+  const { data: session } = await sessionQuery.maybeSingle()
 
   if (!session)             return NextResponse.json({ error: 'Session introuvable' }, { status: 404 })
   if (session.statut !== 'en_cours') return NextResponse.json({ error: 'Session déjà terminée' }, { status: 409 })

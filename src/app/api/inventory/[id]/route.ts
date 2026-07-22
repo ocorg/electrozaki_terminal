@@ -21,12 +21,12 @@ export async function GET(
     return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
   }
 
-  const { data: session, error: sessionError } = await supabase
+  let sessionQuery = supabase
     .from('inventory_sessions')
     .select('*')
     .eq('session_id', params.id)
-    .eq('store_id', profile.store_id)
-    .maybeSingle()
+  if (profile.store_id) sessionQuery = sessionQuery.eq('store_id', profile.store_id)
+  const { data: session, error: sessionError } = await sessionQuery.maybeSingle()
 
   if (sessionError || !session) {
     return NextResponse.json({ error: 'Session introuvable' }, { status: 404 })

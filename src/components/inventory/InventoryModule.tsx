@@ -6,6 +6,7 @@ import {
   Loader2, Keyboard, ScanLine, Eye,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { usePortal } from '@/lib/context/portal'
 import type { InventorySession, InventorySessionItem, InventoryResultat } from '@/types/database'
 
 // ── Types internes ─────────────────────────────────────────
@@ -40,6 +41,8 @@ const formatDate = (iso: string) =>
 // ── Composant principal ────────────────────────────────────
 export default function InventoryModule({ role }: { role: string }) {
   type ViewMode = 'list' | 'scan' | 'report'
+
+  const portal = usePortal()
 
   // State
   const [viewMode,        setViewMode]        = useState<ViewMode>('list')
@@ -89,7 +92,7 @@ export default function InventoryModule({ role }: { role: string }) {
   const fetchSessions = useCallback(async () => {
     setIsLoading(true)
     try {
-      const res  = await fetch('/api/inventory')
+      const res  = await fetch(`/api/inventory?store_id=${portal.storeId}`)
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
       const list: SessionWithCounts[] = data.sessions ?? []
@@ -227,7 +230,11 @@ export default function InventoryModule({ role }: { role: string }) {
   const handleStart = async () => {
     setIsStarting(true)
     try {
-      const res  = await fetch('/api/inventory', { method: 'POST' })
+      const res  = await fetch('/api/inventory', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ store_id: portal.storeId }),
+      })
       const data = await res.json()
       if (!res.ok) { toast.error(data.error ?? 'Erreur'); return }
       const detail = await fetchSessionDetail(data.session.session_id)
