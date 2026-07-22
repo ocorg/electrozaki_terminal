@@ -430,7 +430,7 @@ export interface InventorySession {
 export interface InventorySessionItem {
   item_id:      string
   session_id:   string
-  phone_id:     string | null
+  phone_id:     string | null   // TEXT — peut contenir PHO-XXX ou UUID selon l'origine   // TEXT — peut contenir PHO-XXX ou UUID selon l'origine
   imei:         string
   phone_label:  string | null
   phone_status: string | null

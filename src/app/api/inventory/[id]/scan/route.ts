@@ -36,6 +36,20 @@ export async function POST(
   if (!session)             return NextResponse.json({ error: 'Session introuvable' }, { status: 404 })
   if (session.statut !== 'en_cours') return NextResponse.json({ error: 'Session déjà terminée' }, { status: 409 })
 
+  // Résoudre un code de référence PHO-XXX vers l'IMEI réel
+  let resolvedImei = rawImei
+  if (/^PHO-\d+$/i.test(rawImei)) {
+    const { data: phoneByRef } = await supabase
+      .from('phones')
+      .select('imei')
+      .eq('phone_id', rawImei)
+      .eq('is_deleted', false)
+      .maybeSingle()
+    if ((phoneByRef as any)?.imei) {
+      resolvedImei = (phoneByRef as any).imei
+    }
+  }
+
   const now = new Date().toISOString()
 
   // Chercher l'IMEI dans les articles de session
@@ -43,7 +57,7 @@ export async function POST(
     .from('inventory_session_items')
     .select('*')
     .eq('session_id', params.id)
-    .eq('imei', rawImei)
+    .eq('imei', resolvedImei)
     .maybeSingle()
 
   if (existingItem) {
@@ -68,7 +82,7 @@ export async function POST(
   const { data: phone } = await supabase
     .from('phones')
     .select('phone_id, marque, model, status')
-    .eq('imei', rawImei)
+    .eq('imei', resolvedImei)
     .eq('is_deleted', false)
     .maybeSingle()
 
@@ -86,7 +100,7 @@ export async function POST(
       .insert({
         session_id:   params.id,
         phone_id:     (phone as any).phone_id,
-        imei:         rawImei,
+        imei:         resolvedImei,
         phone_label,
         phone_status: (phone as any).status,
         resultat:     'hors_périmètre',
@@ -105,7 +119,7 @@ export async function POST(
     .insert({
       session_id:   params.id,
       phone_id:     null,
-      imei:         rawImei,
+      imei:         resolvedImei,
       phone_label:  null,
       phone_status: null,
       resultat:     'non_enregistré',
