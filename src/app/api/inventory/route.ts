@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
   const { data: phones, error: phonesError } = await supabase
     .from('phones')
     .select('phone_id, imei, marque, model, status')
-    .eq('store_id', profile.store_id)
+    .eq('store_id', storeId)
     .eq('is_deleted', false)
 
   if (phonesError) return NextResponse.json({ error: phonesError.message }, { status: 500 })
