@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
   // Filtrage JS — valeurs réelles de l'enum device_status (stockées en arabe)
   const IN_SCOPE_STATUSES = ['متوفر', 'إصلاح', 'إستبدال']
   const phoneList = ((phones ?? []) as any[]).filter(p =>
-    IN_SCOPE_STATUSES.includes(p.status)
+    IN_SCOPE_STATUSES.includes(p.status) && p.imei
   )
 
   // Créer la session
