@@ -91,10 +91,10 @@ export async function POST(req: NextRequest) {
 
   if (phonesError) return NextResponse.json({ error: phonesError.message }, { status: 500 })
 
-  // Filtrage JS — valeurs réelles de l'enum device_status (stockées en arabe)
-  const IN_SCOPE_STATUSES = ['متوفر', 'إصلاح', 'إستبدال']
+  // Inclure tous les téléphones sauf ceux en livraison (pas encore en magasin)
+  // Ne pas comparer de chaînes arabes en JS — risque de mismatch Unicode silencieux
   const phoneList = ((phones ?? []) as any[]).filter(p =>
-    IN_SCOPE_STATUSES.includes(p.status) && p.imei
+    p.imei && p.status !== 'en_livraison'
   )
 
   // Créer la session
