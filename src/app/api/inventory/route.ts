@@ -82,20 +82,18 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // Snapshot des téléphones en périmètre
+  // Snapshot des téléphones en périmètre — filtrage côté PostgREST (enum cast fiable)
   const { data: phones, error: phonesError } = await supabase
     .from('phones')
     .select('phone_id, imei, marque, model, status')
     .eq('store_id', storeId)
     .eq('is_deleted', false)
+    .neq('status', 'مباع')
+    .neq('status', 'en_livraison')
 
   if (phonesError) return NextResponse.json({ error: phonesError.message }, { status: 500 })
 
-  // Inclure tous les téléphones sauf ceux en livraison (pas encore en magasin)
-  // Ne pas comparer de chaînes arabes en JS — risque de mismatch Unicode silencieux
-  const phoneList = ((phones ?? []) as any[]).filter(p =>
-    p.imei && p.status !== 'en_livraison'
-  )
+  const phoneList = ((phones ?? []) as any[]).filter(p => p.imei)
 
   // Créer la session
   const { data: session, error: sessionError } = await supabase
