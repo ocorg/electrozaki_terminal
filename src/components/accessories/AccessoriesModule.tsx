@@ -224,6 +224,10 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
     return c ? (isAr ? c.ar : c.fr) : v
   }
 
+  const sortedCategories = [...dynamicCategories].sort((a, b) =>
+    (isAr ? a.ar : a.fr).localeCompare(isAr ? b.ar : b.fr, isAr ? 'ar' : 'fr')
+  )
+
   return (
     <div className="flex flex-col h-full overflow-hidden animate-fade-in" dir={isAr ? 'rtl' : 'ltr'}>
 
@@ -294,7 +298,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
             onChange={e => setFilterCat(e.target.value)}
           >
             <option value="">{isAr ? 'كل الفئات' : 'Toutes catégories'}</option>
-            {dynamicCategories.map(c => (
+            {sortedCategories.map(c => (
               <option key={c.ar} value={c.ar}>{isAr ? c.ar : c.fr}</option>
             ))}
           </select>
@@ -535,7 +539,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
               <select className={selectClass} value={form.categorie}
                 onChange={e => setF('categorie', e.target.value)}>
                 <option value="">{isAr ? 'اختر الفئة...' : 'Choisir...'}</option>
-                {dynamicCategories.map(c => (
+                {sortedCategories.map(c => (
                   <option key={c.ar} value={c.ar}>{isAr ? c.ar : c.fr}</option>
                 ))}
               </select>
