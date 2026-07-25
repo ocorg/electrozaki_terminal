@@ -113,6 +113,10 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
   const { language } = useLanguageStore()
   const portal       = usePortal()
   const isAr         = language === 'ar'
+
+  const sortedAccCategories = [...accCategories].sort((a, b) =>
+    (isAr ? a.ar : a.fr).localeCompare(isAr ? b.ar : b.fr, isAr ? 'ar' : 'fr')
+  )
   const primary      = portal.primaryColor
   const canSeePrices = user?.role !== 'staff'
 
@@ -818,7 +822,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
               {[
                 { key: 'phones',    label: isAr ? 'هواتف'  : 'Téléphones', icon: <Smartphone className="w-3 h-3" /> },
                 ...(hasLaptops ? [{ key: 'laptops', label: isAr ? 'لابتوب' : 'Laptops', icon: <LaptopIcon className="w-3 h-3" /> }] : []),
-                ...accCategories.map(cat => ({
+                ...sortedAccCategories.map(cat => ({
                   key:   `acc_${cat.ar}`,
                   label: isAr ? cat.ar : cat.fr,
                   icon:  <Package className="w-3 h-3" />,
