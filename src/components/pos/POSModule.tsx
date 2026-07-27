@@ -78,6 +78,11 @@ interface POSModuleProps {
   hasLaptops?: boolean
 }
 
+function getAccPrice(item: DeviceResult): number {
+  const raw = (item as unknown as Record<string, unknown>)
+  return (raw.prix_vente_recommande as number) ?? 0
+}
+
 function LiveClock() {
   const [time, setTime] = useState(() =>
     new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
@@ -112,19 +117,18 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
   const [saleForm,  setSaleForm]  = useState<SaleForm>({ ...EMPTY_SALE })
   const { brands, seriesFor, modelsFor, couleursFor } = usePhoneCatalog()
 
-  const [overrideOpen,        setOverrideOpen]        = useState(false)
-  const [overridePin,         setOverridePin]         = useState('')
-  const [overrideItem,        setOverrideItem]        = useState<CartItem | null>(null)
-  const [overrideLoading,     setOverrideLoading]     = useState(false)
-  const [overrideReason,      setOverrideReason]      = useState('')
-  const [overrideAuthorizedBy,setOverrideAuthorizedBy]= useState<string | null>(null)
+  const [overrideOpen,         setOverrideOpen]         = useState(false)
+  const [overridePin,          setOverridePin]          = useState('')
+  const [overrideItem,         setOverrideItem]         = useState<CartItem | null>(null)
+  const [overrideLoading,      setOverrideLoading]      = useState(false)
+  const [overrideReason,       setOverrideReason]       = useState('')
+  const [overrideAuthorizedBy, setOverrideAuthorizedBy] = useState<string | null>(null)
 
   const [submitting,  setSubmitting]  = useState(false)
   const [retourOpen,  setRetourOpen]  = useState(false)
   const [receiptOpen, setReceiptOpen] = useState(false)
   const [receiptData, setReceiptData] = useState<ReceiptData | null>(null)
 
-  // ── Quantity picker for accessories ───────────────────────
   const [qtyPicker, setQtyPicker] = useState<{ device: DeviceResult; qty: number } | null>(null)
 
   const [exchangePanel, setExchangePanel] = useState<{
@@ -157,7 +161,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
   const [cashDropReason,     setCashDropReason]     = useState('')
   const [cashDropSubmitting, setCashDropSubmitting] = useState(false)
 
-  // ── Device search — phones + accessories + laptops ─────────
+  // ── Search: phones + accessories + laptops ─────────────────
   useEffect(() => {
     if (!search.trim() || search.length < 2) { setResults([]); return }
     clearTimeout(searchRef.current)
@@ -182,14 +186,12 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
           _displayName: `${p.marque} ${p.model}${p.stockage ? ' ' + p.stockage : ''}${p.couleur ? ' · ' + p.couleur : ''}`,
           _id:          p.phone_id,
         }))
-
         const accessories: DeviceResult[] = (aJson.data || []).map((a: Record<string, unknown>) => ({
           ...a,
           _type:        'accessory' as const,
           _id:          a.acc_id as string,
           _displayName: [a.nom, a.marque ? `· ${a.marque}` : ''].filter(Boolean).join(' '),
         }))
-
         const laptops: DeviceResult[] = hasLaptops
           ? (lJson?.data || []).map((l: Laptop) => ({
               ...l,
@@ -216,18 +218,14 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
           const res  = await fetch(`/api/phones?status=متوفر&store_id=${storeId}&limit=24`)
           const json = await res.json()
           setGridItems((json.data || []).map((p: Phone) => ({
-            ...p,
-            _type:        'phone' as const,
-            _id:          p.phone_id,
+            ...p, _type: 'phone' as const, _id: p.phone_id,
             _displayName: [p.marque, p.model, p.stockage, p.couleur ? `· ${p.couleur}` : ''].filter(Boolean).join(' '),
           })))
         } else if (activeCategory === 'laptops') {
           const res  = await fetch(`/api/laptops?status=متوفر&store_id=${storeId}&limit=24`)
           const json = await res.json()
           setGridItems((json.data || []).map((l: Laptop) => ({
-            ...l,
-            _type:        'laptop' as const,
-            _id:          l.laptop_id,
+            ...l, _type: 'laptop' as const, _id: l.laptop_id,
             _displayName: [l.marque, l.model, l.stockage].filter(Boolean).join(' '),
           })))
         } else if (activeCategory.startsWith('acc_')) {
@@ -235,9 +233,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
           const res  = await fetch(`/api/accessories?store_id=${storeId}&categorie=${encodeURIComponent(cat)}`)
           const json = await res.json()
           setGridItems((json.data || []).map((a: Record<string, unknown>) => ({
-            ...a,
-            _type:        'accessory' as const,
-            _id:          a.acc_id as string,
+            ...a, _type: 'accessory' as const, _id: a.acc_id as string,
             _displayName: [a.nom, a.marque ? `· ${a.marque}` : ''].filter(Boolean).join(' '),
           })))
         }
@@ -249,29 +245,24 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
   // ── Cart helpers ──────────────────────────────────────────
   function addToCart(device: DeviceResult) {
     if (device._type !== 'accessory') {
-      // Phones & laptops: unique physical units — no duplicates
       if (cart.find(c => c._id === device._id)) {
-        showError(isAr ? 'موجود في السلة' : 'Déjà dans le panier')
-        return
+        showError(isAr ? 'موجود في السلة' : 'Déjà dans le panier'); return
       }
       const prix = (device as Phone).prix_vente_recommande ?? 0
       setCart(prev => [...prev, { ...device, prix_vente_saisi: prix, qty: 1 }])
-      setSearch('')
-      setResults([])
+      setSearch(''); setResults([])
       showSuccess(isAr ? 'أضيف للسلة' : 'Ajouté au panier')
       return
     }
-    // Accessories — open qty picker (pre-fill existing qty if already in cart)
     const existingQty = cart.find(c => c._id === device._id)?.qty ?? 1
     setQtyPicker({ device, qty: existingQty })
-    setSearch('')
-    setResults([])
+    setSearch(''); setResults([])
   }
 
   function confirmQtyPicker() {
     if (!qtyPicker) return
     const { device, qty } = qtyPicker
-    const prix   = (device as unknown as Record<string, unknown>).prix_vente as number ?? 0
+    const prix   = getAccPrice(device)
     const inCart = cart.find(c => c._id === device._id)
     if (inCart) {
       setCart(prev => prev.map(c => c._id === device._id ? { ...c, qty } : c))
@@ -291,9 +282,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
     if (!item) return
     const min = (item as Phone).prix_vente_minimum
     if (isBelowMinimum(prix, min) && user?.role === 'staff') {
-      setOverrideItem({ ...item, prix_vente_saisi: prix })
-      setOverrideOpen(true)
-      return
+      setOverrideItem({ ...item, prix_vente_saisi: prix }); setOverrideOpen(true); return
     }
     setCart(prev => prev.map(c => c._id === id ? { ...c, prix_vente_saisi: prix } : c))
   }
@@ -301,8 +290,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
   // ── Override PIN ──────────────────────────────────────────
   async function verifyOverride() {
     if (!overridePin || overridePin.length !== 4) {
-      showError(isAr ? 'يلزم كود PIN من 4 أرقام' : 'Code PIN 4 chiffres requis')
-      return
+      showError(isAr ? 'يلزم كود PIN من 4 أرقام' : 'Code PIN 4 chiffres requis'); return
     }
     setOverrideLoading(true)
     try {
@@ -326,7 +314,6 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
     } finally { setOverrideLoading(false) }
   }
 
-  // ── Form helpers ──────────────────────────────────────────
   function setSale(k: keyof SaleForm, v: unknown) {
     setSaleForm(prev => ({ ...prev, [k]: v }))
   }
@@ -342,14 +329,14 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
       ? (saleForm.montant_especes + saleForm.montant_carte) - totalVente
       : 0
 
-  // ── Submit sale ───────────────────────────────────────────
+  // ── Submit ────────────────────────────────────────────────
   async function handleSubmit() {
     if (cart.length === 0) { showError(isAr ? 'السلة فارغة' : 'Panier vide'); return }
     if (saleForm.payment_method === 'تحويل' && !saleForm.payment_ref) {
       showError(isAr ? 'مرجع التحويل مطلوب' : 'Référence virement obligatoire'); return
     }
     if (saleForm.payment_method === 'تسبيق' && saleForm.avance > 0 && !saleForm.avance_sub_method) {
-      showError(isAr ? 'يرجى تحديد طريقة دفع التسبيق (نقد أو تحويل)' : "Précisez le mode de paiement de l'avance (espèces ou virement)"); return
+      showError(isAr ? 'يرجى تحديد طريقة دفع التسبيق' : "Précisez le mode de paiement de l'avance"); return
     }
     if (saleForm.payment_method === 'آجل' && !saleForm.client_nom.trim()) {
       showError(isAr ? 'اسم العميل مطلوب للبيع الآجل' : 'Nom du client obligatoire pour une vente à crédit'); return
@@ -357,53 +344,43 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
 
     setSubmitting(true)
     try {
-      // Client — optional: only create/look-up if name or phone provided
       let clientId: string | undefined = undefined
       if (saleForm.client_nom.trim() || saleForm.client_tel.trim()) {
         const cRes  = await fetch('/api/clients', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            nom:       saleForm.client_nom || saleForm.client_tel,
-            telephone: saleForm.client_tel,
-            store_id:  storeId,
-          }),
+          body: JSON.stringify({ nom: saleForm.client_nom || saleForm.client_tel, telephone: saleForm.client_tel, store_id: storeId }),
         })
-        const cJson = await cRes.json()
-        clientId = cJson.data?.client_id
+        clientId = (await cRes.json()).data?.client_id
       }
 
       let lastTxnId: string | null = null
-
       for (const item of cart) {
-        const txnData = {
-          store_id:        storeId,
-          device_type:     item._type === 'phone' ? 'هاتف' : item._type === 'laptop' ? 'لابتوب' : 'إكسسوار',
-          device_id:       item._id,
-          client_id:       clientId,
-          type_operation:  saleForm.type_operation,
-          prix_vente:      item.prix_vente_saisi * (item.qty ?? 1),
-          payment_method:  saleForm.payment_method === 'تسبيق'
-            ? (saleForm.avance_sub_method as PaymentMethod)
-            : saleForm.payment_method,
-          avance:          saleForm.avance          || 0,
-          payment_ref:     saleForm.payment_ref     || undefined,
-          montant_especes: saleForm.montant_especes || 0,
-          montant_carte:   saleForm.montant_carte   || 0,
-          valeur_echange:  saleForm.type_operation === 'إستبدال' ? saleForm.valeur_echange : 0,
-          marque_echange:  saleForm.marque_echange  || undefined,
-          model_echange:   saleForm.model_echange   || undefined,
-          imei_echange:    saleForm.imei_echange    || undefined,
-          description_echange: saleForm.description_echange || undefined,
-          warranty_start:  new Date().toISOString().split('T')[0],
-          notes:           saleForm.notes           || undefined,
-          montant_rendu:   montantRendu > 0 ? montantRendu : 0,
-          override_required: overrideAuthorizedBy != null ? true : undefined,
-          override_by:       overrideAuthorizedBy ?? undefined,
-          override_reason:   overrideAuthorizedBy != null ? overrideReason : undefined,
-        }
         const res  = await fetch('/api/transactions', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(txnData),
+          body: JSON.stringify({
+            store_id:        storeId,
+            device_type:     item._type === 'phone' ? 'هاتف' : item._type === 'laptop' ? 'لابتوب' : 'إكسسوار',
+            device_id:       item._id,
+            client_id:       clientId,
+            type_operation:  saleForm.type_operation,
+            prix_vente:      item.prix_vente_saisi * (item.qty ?? 1),
+            payment_method:  saleForm.payment_method === 'تسبيق' ? (saleForm.avance_sub_method as PaymentMethod) : saleForm.payment_method,
+            avance:          saleForm.avance          || 0,
+            payment_ref:     saleForm.payment_ref     || undefined,
+            montant_especes: saleForm.montant_especes || 0,
+            montant_carte:   saleForm.montant_carte   || 0,
+            valeur_echange:  saleForm.type_operation === 'إستبدال' ? saleForm.valeur_echange : 0,
+            marque_echange:  saleForm.marque_echange  || undefined,
+            model_echange:   saleForm.model_echange   || undefined,
+            imei_echange:    saleForm.imei_echange    || undefined,
+            description_echange: saleForm.description_echange || undefined,
+            warranty_start:  new Date().toISOString().split('T')[0],
+            notes:           saleForm.notes           || undefined,
+            montant_rendu:   montantRendu > 0 ? montantRendu : 0,
+            override_required: overrideAuthorizedBy != null ? true : undefined,
+            override_by:       overrideAuthorizedBy ?? undefined,
+            override_reason:   overrideAuthorizedBy != null ? overrideReason : undefined,
+          }),
         })
         const json = await res.json()
         if (!res.ok) throw new Error(json.error)
@@ -412,22 +389,17 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
 
       setSuccessTxn(lastTxnId)
       setReceiptData({
-        store_name:   portal.storeName,
-        txn_id:       lastTxnId ?? '—',
-        date_vente:   new Date().toISOString(),
-        cashier_name: user?.display_name ?? '—',
+        store_name: portal.storeName, txn_id: lastTxnId ?? '—',
+        date_vente: new Date().toISOString(), cashier_name: user?.display_name ?? '—',
         items: cart.map(item => ({
-          name:       item._displayName,
-          qty:        item.qty ?? 1,
-          unit_price: item.prix_vente_saisi,
-          line_total: item.prix_vente_saisi * (item.qty ?? 1),
-          imei:       (item as Phone).imei ?? undefined,
+          name: item._displayName, qty: item.qty ?? 1,
+          unit_price: item.prix_vente_saisi, line_total: item.prix_vente_saisi * (item.qty ?? 1),
+          imei: (item as Phone).imei ?? undefined,
         })),
-        total:           totalVente,
-        avance:          saleForm.avance        > 0 ? saleForm.avance        : undefined,
-        valeur_echange:  saleForm.valeur_echange > 0 ? saleForm.valeur_echange : undefined,
-        fariq,
-        payment_method:  saleForm.payment_method,
+        total: totalVente,
+        avance:         saleForm.avance        > 0 ? saleForm.avance        : undefined,
+        valeur_echange: saleForm.valeur_echange > 0 ? saleForm.valeur_echange : undefined,
+        fariq, payment_method: saleForm.payment_method,
         montant_especes: saleForm.montant_especes || undefined,
         montant_carte:   saleForm.montant_carte   || undefined,
         montant_rendu:   montantRendu > 0 ? montantRendu : undefined,
@@ -437,32 +409,18 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
       if (saleForm.valeur_echange > 0) {
         setExchangePanel({
           open: true, txn_id: lastTxnId || '',
-          valeur_echange:          saleForm.valeur_echange,
-          marque_echange:          saleForm.marque_echange          ?? '',
-          model_echange:           saleForm.model_echange           ?? '',
-          imei_echange:            saleForm.imei_echange            ?? '',
-          couleur_echange:         saleForm.couleur_echange         ?? '',
-          stockage_echange:        saleForm.stockage_echange        ?? '',
-          battery_echange:         saleForm.battery_echange,
-          ram_echange:             saleForm.ram_echange             ?? '',
-          prix_vente_echange:      saleForm.prix_vente_echange,
-          prix_min_echange:        saleForm.prix_min_echange,
+          valeur_echange: saleForm.valeur_echange, marque_echange: saleForm.marque_echange ?? '',
+          model_echange: saleForm.model_echange ?? '', imei_echange: saleForm.imei_echange ?? '',
+          couleur_echange: saleForm.couleur_echange ?? '', stockage_echange: saleForm.stockage_echange ?? '',
+          battery_echange: saleForm.battery_echange, ram_echange: saleForm.ram_echange ?? '',
+          prix_vente_echange: saleForm.prix_vente_echange, prix_min_echange: saleForm.prix_min_echange,
           echange_vers_reparation: saleForm.echange_vers_reparation ?? false,
         })
-        setExchangeForm({
-          modele:     saleForm.model_echange  ?? '',
-          imei:       saleForm.imei_echange   ?? '',
-          marque:     saleForm.marque_echange ?? '',
-          prix_achat: saleForm.valeur_echange,
-          couleur: '', capacite: '',
-        })
+        setExchangeForm({ modele: saleForm.model_echange ?? '', imei: saleForm.imei_echange ?? '',
+          marque: saleForm.marque_echange ?? '', prix_achat: saleForm.valeur_echange, couleur: '', capacite: '' })
         setAddedPhoneId(null)
       }
-
-      setCart([])
-      setSaleForm({ ...EMPTY_SALE })
-      setOverrideAuthorizedBy(null)
-      setOverrideReason('')
+      setCart([]); setSaleForm({ ...EMPTY_SALE }); setOverrideAuthorizedBy(null); setOverrideReason('')
     } catch (err: unknown) {
       showError((err as Error).message)
     } finally { setSubmitting(false) }
@@ -488,9 +446,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
             <Printer className="w-4 h-4" />
             {isAr ? 'طباعة الفاتورة' : 'Imprimer reçu'}
           </Btn>
-          {receiptOpen && receiptData && (
-            <ReceiptPrint data={receiptData} onClose={() => setReceiptOpen(false)} />
-          )}
+          {receiptOpen && receiptData && <ReceiptPrint data={receiptData} onClose={() => setReceiptOpen(false)} />}
         </div>
       </div>
     </div>
@@ -508,22 +464,17 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
         const res = await fetch('/api/phones', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            store_id:              storeId,
-            marque:                exchangeForm.marque     || 'Inconnu',
-            model:                 exchangeForm.modele,
-            imei:                  exchangeForm.imei,
-            prix_achat:            exchangeForm.prix_achat,
-            prix_vente_recommande: exchangePanel?.prix_vente_echange  ?? null,
-            prix_vente_minimum:    exchangePanel?.prix_min_echange     ?? null,
-            couleur:               exchangePanel?.couleur_echange      || exchangeForm.couleur   || null,
-            stockage:              exchangePanel?.stockage_echange     || exchangeForm.capacite  || null,
-            battery_level:         exchangePanel?.battery_echange      ?? null,
-            ram:                   exchangePanel?.ram_echange          || null,
-            condition:             'مستعمل',
-            source:                'Échange',
-            status:                exchangePanel?.echange_vers_reparation ? 'إصلاح' : 'متوفر',
-            location:              'Magasin Principal',
-            txn_ref_id:            exchangePanel?.txn_id,
+            store_id: storeId, marque: exchangeForm.marque || 'Inconnu',
+            model: exchangeForm.modele, imei: exchangeForm.imei, prix_achat: exchangeForm.prix_achat,
+            prix_vente_recommande: exchangePanel?.prix_vente_echange ?? null,
+            prix_vente_minimum:    exchangePanel?.prix_min_echange   ?? null,
+            couleur:   exchangePanel?.couleur_echange  || exchangeForm.couleur  || null,
+            stockage:  exchangePanel?.stockage_echange || exchangeForm.capacite || null,
+            battery_level: exchangePanel?.battery_echange ?? null,
+            ram:       exchangePanel?.ram_echange || null,
+            condition: 'مستعمل', source: 'Échange',
+            status:    exchangePanel?.echange_vers_reparation ? 'إصلاح' : 'متوفر',
+            location:  'Magasin Principal', txn_ref_id: exchangePanel?.txn_id,
           }),
         })
         const json = await res.json()
@@ -557,15 +508,15 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
               value={exchangeForm.imei} onChange={e => setExchangeForm(p => ({ ...p, imei: e.target.value }))} />
           </div>
           <div>
-            <label className="text-xs text-amber-700 font-medium">{isAr ? 'سعر الشراء (درهم)' : 'Prix achat (MAD)'}</label>
+            <label className="text-xs text-amber-700 font-medium">{isAr ? 'سعر الشراء' : 'Prix achat (MAD)'}</label>
             <input type="number" className="w-full mt-1 border border-amber-200 rounded-lg px-3 py-2 text-sm bg-white"
               value={exchangeForm.prix_achat} onChange={e => setExchangeForm(p => ({ ...p, prix_achat: Number(e.target.value) }))} />
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex gap-2">
           <button onClick={handleAddToStock} disabled={addingExchange}
             className="px-4 py-2 rounded-xl bg-amber-600 text-white text-sm font-medium hover:bg-amber-700 transition-all disabled:opacity-50">
-            {addingExchange ? (isAr ? 'جارٍ الإضافة...' : 'Ajout en cours...') : (isAr ? 'إضافة إلى المخزون' : 'Ajouter au stock')}
+            {addingExchange ? (isAr ? 'جارٍ...' : 'En cours...') : (isAr ? 'إضافة إلى المخزون' : 'Ajouter au stock')}
           </button>
           <button onClick={() => setExchangePanel(p => p ? { ...p, open: false } : null)}
             className="px-4 py-2 rounded-xl border border-amber-200 text-amber-700 text-sm font-medium hover:bg-amber-100 transition-all">
@@ -576,23 +527,26 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
     )
   }
 
-  // ── Category list (shared by sidebar and mobile pills) ─────
+  // ── Category list ──────────────────────────────────────────
   const categoryList = [
     { key: 'phones',  label: isAr ? 'هواتف'  : 'Téléphones', icon: <Smartphone className="w-3.5 h-3.5" /> },
     ...(hasLaptops ? [{ key: 'laptops', label: isAr ? 'لابتوب' : 'Laptops', icon: <LaptopIcon className="w-3.5 h-3.5" /> }] : []),
     ...sortedAccCategories.map(cat => ({
-      key:   `acc_${cat.ar}`,
-      label: isAr ? cat.ar : cat.fr,
-      icon:  <Package className="w-3.5 h-3.5" />,
+      key: `acc_${cat.ar}`, label: isAr ? cat.ar : cat.fr, icon: <Package className="w-3.5 h-3.5" />,
     })),
   ]
 
-  // ── Main POS layout ───────────────────────────────────────
+  // ── Unified display source ─────────────────────────────────
+  const isSearching   = search.length >= 2
+  const displayItems  = isSearching ? results   : gridItems
+  const displayLoading = isSearching ? searching : gridLoading
+
+  // ── Main layout ───────────────────────────────────────────
   return (
     <div className="h-full flex flex-col lg:flex-row overflow-hidden animate-fade-in" dir={isAr ? 'rtl' : 'ltr'}>
 
-      {/* ── CATEGORY SIDEBAR — vertical, lg+ only, hidden while searching ── */}
-      {!search && (
+      {/* ── CATEGORY SIDEBAR — vertical, lg+ only ────────── */}
+      {!isSearching && (
         <div className="hidden lg:flex flex-col w-32 flex-shrink-0 border-r border-[#E8E5DE] bg-white overflow-hidden">
           <div className="px-3 py-3 border-b border-[#E8E5DE] flex-shrink-0">
             <p className="text-[9px] font-bold text-[#B0ADA6] uppercase tracking-widest text-center">
@@ -601,17 +555,14 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
           </div>
           <div className="flex-1 overflow-y-auto py-1 px-1.5">
             {categoryList.map(cat => (
-              <button
-                key={cat.key}
-                onClick={() => setActiveCategory(cat.key)}
+              <button key={cat.key} onClick={() => setActiveCategory(cat.key)}
                 className="w-full flex flex-col items-center gap-1 px-1 py-3 rounded-xl text-[10px] font-bold transition-all text-center leading-tight mb-0.5"
                 style={{
                   backgroundColor: activeCategory === cat.key ? `${primary}15` : 'transparent',
                   color:           activeCategory === cat.key ? primary : '#6B6860',
                   borderLeft:  !isAr ? (activeCategory === cat.key ? `3px solid ${primary}` : '3px solid transparent') : undefined,
                   borderRight:  isAr ? (activeCategory === cat.key ? `3px solid ${primary}` : '3px solid transparent') : undefined,
-                }}
-              >
+                }}>
                 {cat.icon}
                 <span>{cat.label}</span>
               </button>
@@ -620,10 +571,10 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
         </div>
       )}
 
-      {/* ── LEFT: Zones A–E ─────────────────────────────── */}
+      {/* ── LEFT panel ───────────────────────────────────── */}
       <div className="flex-1 flex flex-col overflow-hidden border-r border-[#E8E5DE]">
 
-        {/* Zone A — Slim top bar */}
+        {/* Zone A */}
         <div className="flex items-center justify-between px-5 py-3 border-b border-[#E8E5DE] flex-shrink-0 bg-white">
           <p className="font-bold text-sm tracking-widest" style={{ color: primary, fontFamily: "'Barlow Condensed', sans-serif" }}>
             {portal.storeName.toUpperCase()}
@@ -631,7 +582,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
           <LiveClock />
         </div>
 
-        {/* Zone B — Search bar */}
+        {/* Zone B — Search */}
         <div className="px-5 pt-4 pb-2 flex-shrink-0">
           <div className="flex gap-2">
             <div className="relative flex-1">
@@ -653,52 +604,12 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                 </button>
               ) : null}
             </div>
-            <ScanButton onScan={v => setSearch(v)} hint="Scannez un IMEI pour trouver l'appareil" mode="barcode" color={primary} />
+            <ScanButton onScan={v => setSearch(v)} hint="Scannez un IMEI ou code-barres" mode="barcode" color={primary} />
           </div>
-
-          {/* Inline search results */}
-          {search && results.length > 0 && (
-            <div className="mt-2 bg-white border border-[#E8E5DE] rounded-xl shadow-lg overflow-hidden max-h-56 overflow-y-auto">
-              {results.map(device => (
-                <button key={device._id} onClick={() => addToCart(device)}
-                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#F8F7F4] transition-all text-left border-b border-[#F2F0EB] last:border-0">
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${primary}15` }}>
-                    {device._type === 'phone'   ? <Smartphone className="w-4 h-4" style={{ color: primary }} />
-                    : device._type === 'laptop' ? <LaptopIcon  className="w-4 h-4" style={{ color: primary }} />
-                    :                             <Package     className="w-4 h-4" style={{ color: primary }} />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-[#1A1A1A] truncate">{device._displayName}</p>
-                    <p className="text-xs text-[#B0ADA6]">
-                      {(device as Phone).imei ? `${(device as Phone).imei} · ` : ''}
-                      <span className="text-emerald-600">
-                        {device._type === 'accessory' ? (isAr ? 'إكسسوار' : 'Accessoire') : (isAr ? 'متوفر' : 'Disponible')}
-                      </span>
-                    </p>
-                  </div>
-                  {canSeePrices && (
-                    <span className="text-sm font-bold flex-shrink-0" style={{ color: primary }}>
-                      {formatMAD(
-                        device._type === 'accessory'
-                          ? (device as unknown as Record<string, unknown>).prix_vente as number ?? 0
-                          : (device as Phone).prix_vente_recommande ?? 0
-                      )}
-                    </span>
-                  )}
-                  {device._type === 'accessory'
-                    ? <Package className="w-4 h-4 text-[#B0ADA6] flex-shrink-0" />
-                    : <Plus    className="w-4 h-4 text-[#B0ADA6] flex-shrink-0" />}
-                </button>
-              ))}
-            </div>
-          )}
-          {search.length >= 2 && !searching && results.length === 0 && (
-            <p className="text-xs text-[#B0ADA6] mt-2 text-center">{isAr ? 'لا توجد نتائج' : 'Aucun résultat'}</p>
-          )}
         </div>
 
-        {/* Zone C — Category pills (mobile only — lg+ uses the sidebar) */}
-        {!search && (
+        {/* Zone C — Mobile-only category pills */}
+        {!isSearching && (
           <div className="lg:hidden px-5 py-2 flex-shrink-0">
             <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
               {categoryList.map(cat => (
@@ -716,49 +627,50 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
           </div>
         )}
 
-        {/* Zone D — Product grid */}
-        {!search && (
-          <div className="flex-1 overflow-y-auto px-5 pb-2">
-            {gridLoading ? (
-              <div className="flex items-center justify-center h-32">
-                <Loader2 className="w-6 h-6 text-[#B0ADA6]" style={{ animation: 'spin 1s linear infinite' }} />
-              </div>
-            ) : gridItems.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-32 text-center">
-                <Package className="w-8 h-8 text-[#B0ADA6] mb-2 opacity-40" />
-                <p className="text-sm text-[#B0ADA6]">{isAr ? 'لا توجد منتجات متاحة' : 'Aucun produit disponible'}</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-1">
-                {gridItems.map(item => (
-                  <button key={item._id} onClick={() => addToCart(item)}
-                    className="bg-white border border-[#E8E5DE] rounded-2xl p-3 text-left hover:shadow-md transition-all active:scale-[0.98]"
-                    onMouseEnter={e => (e.currentTarget.style.borderColor = primary)}
-                    onMouseLeave={e => (e.currentTarget.style.borderColor = '#E8E5DE')}>
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-2" style={{ backgroundColor: `${primary}12` }}>
-                      {item._type === 'phone'   ? <Smartphone className="w-5 h-5" style={{ color: primary }} />
-                      : item._type === 'laptop' ? <LaptopIcon  className="w-5 h-5" style={{ color: primary }} />
-                      :                           <Package     className="w-5 h-5" style={{ color: primary }} />}
-                    </div>
-                    <p className="text-xs font-bold text-[#1A1A1A] leading-tight truncate">{item._displayName}</p>
-                    <p className="text-[10px] text-[#B0ADA6] mt-0.5 truncate">
-                      {(item as Phone).imei ? (item as Phone).imei?.slice(-6) : (isAr ? 'متوفر' : 'Disponible')}
+        {/* Zone D — Unified product grid (search results OR category browse) */}
+        <div className="flex-1 overflow-y-auto px-5 pb-2">
+          {displayLoading ? (
+            <div className="flex items-center justify-center h-32">
+              <Loader2 className="w-6 h-6 text-[#B0ADA6]" style={{ animation: 'spin 1s linear infinite' }} />
+            </div>
+          ) : isSearching && results.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-32 text-center">
+              <Search className="w-8 h-8 text-[#B0ADA6] mb-2 opacity-40" />
+              <p className="text-sm text-[#B0ADA6]">{isAr ? 'لا توجد نتائج' : 'Aucun résultat'}</p>
+            </div>
+          ) : !isSearching && gridItems.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-32 text-center">
+              <Package className="w-8 h-8 text-[#B0ADA6] mb-2 opacity-40" />
+              <p className="text-sm text-[#B0ADA6]">{isAr ? 'لا توجد منتجات متاحة' : 'Aucun produit disponible'}</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-1">
+              {displayItems.map(item => (
+                <button key={item._id} onClick={() => addToCart(item)}
+                  className="bg-white border border-[#E8E5DE] rounded-2xl p-3 text-left hover:shadow-md transition-all active:scale-[0.98]"
+                  onMouseEnter={e => (e.currentTarget.style.borderColor = primary)}
+                  onMouseLeave={e => (e.currentTarget.style.borderColor = '#E8E5DE')}>
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-2" style={{ backgroundColor: `${primary}12` }}>
+                    {item._type === 'phone'   ? <Smartphone className="w-5 h-5" style={{ color: primary }} />
+                    : item._type === 'laptop' ? <LaptopIcon  className="w-5 h-5" style={{ color: primary }} />
+                    :                           <Package     className="w-5 h-5" style={{ color: primary }} />}
+                  </div>
+                  <p className="text-xs font-bold text-[#1A1A1A] leading-tight truncate">{item._displayName}</p>
+                  <p className="text-[10px] text-[#B0ADA6] mt-0.5 truncate">
+                    {item._type === 'accessory'
+                      ? (isAr ? 'إكسسوار' : 'Accessoire')
+                      : ((item as Phone).imei ? (item as Phone).imei?.slice(-6) : (isAr ? 'متوفر' : 'Disponible'))}
+                  </p>
+                  {canSeePrices && (
+                    <p className="text-sm font-bold mt-2" style={{ color: primary }}>
+                      {formatMAD(item._type === 'accessory' ? getAccPrice(item) : (item as Phone).prix_vente_recommande ?? 0)}
                     </p>
-                    {canSeePrices && (
-                      <p className="text-sm font-bold mt-2" style={{ color: primary }}>
-                        {formatMAD(
-                          item._type === 'accessory'
-                            ? (item as unknown as Record<string, unknown>).prix_vente as number ?? 0
-                            : (item as Phone).prix_vente_recommande ?? 0
-                        )}
-                      </p>
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Zone E — Cart strip */}
         <div className="flex-shrink-0 border-t border-[#E8E5DE] bg-white">
@@ -796,7 +708,6 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                       )}
                     </div>
                     <div className="flex items-center gap-1.5 flex-shrink-0">
-                      {/* Qty controls — accessories only */}
                       {item._type === 'accessory' && (
                         <div className="flex items-center gap-0.5">
                           <button type="button"
@@ -900,7 +811,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
               <div>
                 <label className="text-xs text-blue-700 font-medium">IMEI</label>
                 <div className="flex gap-2 mt-1">
-                  <input className={inputClass} placeholder="356XXXXXXXXXXXXX" type="text" inputMode="numeric" pattern="[0-9]*"
+                  <input className={inputClass} placeholder="356XXXXXXXXXXXXX" type="text" inputMode="numeric"
                     value={saleForm.imei_echange}
                     onChange={e => setSale('imei_echange', e.target.value.replace(/\D/g, '').slice(0, 15))} />
                   <ScanButton onScan={v => setSale('imei_echange', v)} hint="Scannez l'IMEI de l'appareil repris" color={primary} mode="barcode" />
@@ -926,7 +837,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
               <div>
                 <label className="text-xs text-blue-700 font-medium block mb-1">{isAr ? 'ملاحظات عن الجهاز' : "Notes sur l'appareil repris"}</label>
                 <textarea className={`${inputClass} resize-none text-xs`} rows={2}
-                  placeholder={isAr ? 'حالة الجهاز، الخدوش، المشاكل...' : 'État, rayures, problèmes connus...'}
+                  placeholder={isAr ? 'حالة الجهاز، الخدوش...' : 'État, rayures, problèmes connus...'}
                   value={saleForm.description_echange} onChange={e => setSale('description_echange', e.target.value)} />
               </div>
               <label className="flex items-center gap-3 cursor-pointer select-none">
@@ -974,13 +885,10 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                 </p>
               </div>
             )}
-
             {saleForm.payment_method === 'تحويل' && (
-              <input className={`${inputClass} mt-2`}
-                placeholder={isAr ? 'مرجع التحويل *' : 'Référence virement *'}
+              <input className={`${inputClass} mt-2`} placeholder={isAr ? 'مرجع التحويل *' : 'Référence virement *'}
                 value={saleForm.payment_ref} onChange={e => setSale('payment_ref', e.target.value)} />
             )}
-
             {saleForm.payment_method === 'تسبيق' && (
               <div className="mt-2 space-y-2">
                 <input type="number" min={0} step={0.01} inputMode="decimal" className={inputClass}
@@ -1011,7 +919,6 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                 </div>
               </div>
             )}
-
             {saleForm.payment_method === 'مختلط' && (
               <div className="grid grid-cols-2 gap-2 mt-2">
                 <input type="number" min={0} step={0.01} inputMode="decimal" className={inputClass}
@@ -1023,7 +930,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
               </div>
             )}
 
-            {/* Inline client fields — visible only for آجل and تسبيق */}
+            {/* Inline client — آجل or تسبيق only */}
             {(saleForm.payment_method === 'آجل' || saleForm.payment_method === 'تسبيق') && (
               <div className="mt-3 p-3 bg-white border border-[#E8E5DE] rounded-xl space-y-2 animate-fade-in">
                 <p className="text-[10px] font-bold text-[#6B6860] uppercase tracking-widest flex items-center gap-1.5">
@@ -1037,11 +944,8 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                 </p>
                 <input className={inputClass}
                   placeholder={saleForm.payment_method === 'آجل' ? (isAr ? 'الاسم *' : 'Nom *') : (isAr ? 'الاسم (اختياري)' : 'Nom (optionnel)')}
-                  value={saleForm.client_nom}
-                  onChange={e => setSale('client_nom', e.target.value)}
-                  autoComplete="off" />
-                <input className={inputClass}
-                  placeholder="06XXXXXXXX"
+                  value={saleForm.client_nom} onChange={e => setSale('client_nom', e.target.value)} autoComplete="off" />
+                <input className={inputClass} placeholder="06XXXXXXXX"
                   value={saleForm.client_tel}
                   onChange={e => setSale('client_tel', e.target.value.replace(/\D/g, '').slice(0, 10))}
                   type="tel" maxLength={10} />
@@ -1101,12 +1005,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
 
           {/* Reset */}
           <button type="button"
-            onClick={() => {
-              setCart([])
-              setSaleForm({ ...EMPTY_SALE })
-              setOverrideAuthorizedBy(null)
-              setOverrideReason('')
-            }}
+            onClick={() => { setCart([]); setSaleForm({ ...EMPTY_SALE }); setOverrideAuthorizedBy(null); setOverrideReason('') }}
             className="w-full py-2.5 rounded-2xl text-xs font-bold border border-[#E8E5DE] text-[#B0ADA6] hover:border-red-300 hover:text-red-400 transition-all">
             {isAr ? '× مسح الكل' : '× Réinitialiser'}
           </button>
@@ -1199,7 +1098,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
           </Field>
           <Field label={isAr ? 'سبب التجاوز *' : 'Motif de dérogation *'}>
             <input type="text" className={inputClass} value={overrideReason} onChange={e => setOverrideReason(e.target.value)}
-              placeholder={isAr ? 'مثال: موافقة العميل، مبيع بالجملة...' : 'Ex: Accord client, vente en gros...'} />
+              placeholder={isAr ? 'مثال: موافقة العميل...' : 'Ex: Accord client, vente en gros...'} />
           </Field>
           <div className="flex gap-3 justify-end">
             <Btn variant="secondary" onClick={() => { setOverrideOpen(false); setOverridePin('') }}>{isAr ? 'إلغاء' : 'Annuler'}</Btn>
@@ -1211,7 +1110,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
         </div>
       </Modal>
 
-      {/* Quantity picker modal — accessories */}
+      {/* Quantity picker modal */}
       {qtyPicker && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs p-6 text-center">
@@ -1221,8 +1120,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
             </p>
             {canSeePrices && (
               <p className="text-xs text-[#B0ADA6] mb-5">
-                {formatMAD((qtyPicker.device as unknown as Record<string, unknown>).prix_vente as number ?? 0)}
-                {' / '}{isAr ? 'وحدة' : 'unité'}
+                {formatMAD(getAccPrice(qtyPicker.device))} / {isAr ? 'وحدة' : 'unité'}
               </p>
             )}
             <div className="flex items-center justify-center gap-6 mb-6">
@@ -1231,9 +1129,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                 className="w-11 h-11 rounded-xl border-2 border-[#E8E5DE] flex items-center justify-center text-[#6B6860] hover:border-red-300 hover:text-red-500 hover:bg-red-50 transition-all">
                 <Minus className="w-4 h-4" />
               </button>
-              <span className="text-3xl font-bold text-[#1A1A1A] tabular-nums w-12 text-center">
-                {qtyPicker.qty}
-              </span>
+              <span className="text-3xl font-bold text-[#1A1A1A] tabular-nums w-12 text-center">{qtyPicker.qty}</span>
               <button type="button"
                 onClick={() => setQtyPicker(p => p ? { ...p, qty: p.qty + 1 } : p)}
                 className="w-11 h-11 rounded-xl border-2 border-[#E8E5DE] flex items-center justify-center text-[#6B6860] transition-all"
