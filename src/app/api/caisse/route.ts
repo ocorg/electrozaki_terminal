@@ -55,13 +55,14 @@ export async function GET(request: NextRequest) {
       .eq('date', date) as { data: Record<string, unknown>[] | null }
 
     const total_ventes = (txns || []).reduce((s, t) => {
-      const pv  = (t.prix_vente     as number) || 0
-      const av  = (t.avance         as number) || 0
-      const ve  = (t.valeur_echange as number) || 0
-      const pm  =  t.payment_method as string
+      const pv = (t.prix_vente     as number) || 0
+      const av = (t.avance         as number) || 0
+      const ve = (t.valeur_echange as number) || 0
+      const pm =  t.payment_method as string
       if (pm === 'إستبدال') return s + (pv - ve)
-      const fariq = pv - av - ve
-      return s + (fariq > 0 ? av : pv)   // partial → avance only; fully paid → full price
+      if (pm === 'آجل')    return s + av            // credit sale: add avance only (usually 0)
+      const isPartial = av > 0 && (pv - av - ve) > 0
+      return s + (isPartial ? av : pv - ve)          // partial تسبيق → avance; fully paid → full
     }, 0)
     const total_reparations = (reps  || []).reduce((s, r) => s + ((r.cout_reparation as number) || 0), 0)
     const total_depenses    = (exps  || []).reduce((s, e) => s + ((e.montant          as number) || 0), 0)
@@ -221,13 +222,14 @@ export async function PATCH(request: NextRequest) {
     ])
 
     const live_ventes = ((txnRes.data || []) as Record<string, unknown>[]).reduce((s, t) => {
-      const pv  = (t.prix_vente     as number) || 0
-      const av  = (t.avance         as number) || 0
-      const ve  = (t.valeur_echange as number) || 0
-      const pm  =  t.payment_method as string
+      const pv = (t.prix_vente     as number) || 0
+      const av = (t.avance         as number) || 0
+      const ve = (t.valeur_echange as number) || 0
+      const pm =  t.payment_method as string
       if (pm === 'إستبدال') return s + (pv - ve)
-      const fariq = pv - av - ve
-      return s + (fariq > 0 ? av : pv)
+      if (pm === 'آجل')    return s + av
+      const isPartial = av > 0 && (pv - av - ve) > 0
+      return s + (isPartial ? av : pv - ve)
     }, 0)
     const live_reps  = ((repRes.data  || []) as Record<string, unknown>[]).reduce((s, r) => s + ((r.cout_reparation as number) || 0), 0)
     const live_exps  = ((expRes.data  || []) as Record<string, unknown>[]).reduce((s, e) => s + ((e.montant          as number) || 0), 0)
