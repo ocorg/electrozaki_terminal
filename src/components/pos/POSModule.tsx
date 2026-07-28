@@ -406,6 +406,10 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
       })
       showSuccess(isAr ? 'تمت عملية البيع ✓' : 'Vente enregistrée ✓')
 
+      // Remove sold phones/laptops from grid instantly — no re-fetch needed
+      const soldIds = new Set(cart.filter(i => i._type !== 'accessory').map(i => i._id))
+      if (soldIds.size > 0) setGridItems(prev => prev.filter(i => !soldIds.has(i._id)))
+
       if (saleForm.valeur_echange > 0) {
         setExchangePanel({
           open: true, txn_id: lastTxnId || '',
@@ -425,32 +429,6 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
       showError((err as Error).message)
     } finally { setSubmitting(false) }
   }
-
-  // ── Success screen ─────────────────────────────────────────
-  if (successTxn) return (
-    <div className="flex items-center justify-center h-full p-6">
-      <div className="text-center bg-white border border-[#E8E5DE] rounded-2xl p-10 max-w-sm shadow-lg">
-        <CheckCircle className="w-14 h-14 text-emerald-500 mx-auto mb-4" />
-        <h2 className="font-display text-2xl font-bold text-[#1A1A1A] mb-1">
-          {isAr ? 'تم تسجيل البيع' : 'Vente enregistrée'}
-        </h2>
-        <p className="text-[#6B6860] text-sm mb-6">
-          {isAr ? `معاملة رقم ${successTxn}` : `Transaction ${successTxn}`}
-        </p>
-        <div className="flex gap-3 justify-center">
-          <Btn variant="secondary" onClick={() => setSuccessTxn(null)}>
-            <RotateCcw className="w-4 h-4" />
-            {isAr ? 'بيع جديد' : 'Nouvelle vente'}
-          </Btn>
-          <Btn variant="primary" onClick={() => setReceiptOpen(true)} style={{ backgroundColor: primary } as React.CSSProperties}>
-            <Printer className="w-4 h-4" />
-            {isAr ? 'طباعة الفاتورة' : 'Imprimer reçu'}
-          </Btn>
-          {receiptOpen && receiptData && <ReceiptPrint data={receiptData} onClose={() => setReceiptOpen(false)} />}
-        </div>
-      </div>
-    </div>
-  )
 
   // ── Exchange intake panel ──────────────────────────────────
   function ExchangeIntakePanel() {
@@ -543,7 +521,33 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
 
   // ── Main layout ───────────────────────────────────────────
   return (
-    <div className="h-full flex flex-col lg:flex-row overflow-hidden animate-fade-in" dir={isAr ? 'rtl' : 'ltr'}>
+    <div className="h-full flex flex-col lg:flex-row overflow-hidden animate-fade-in relative" dir={isAr ? 'rtl' : 'ltr'}>
+
+      {/* ── SUCCESS OVERLAY — grid stays mounted, no re-fetch on dismiss ── */}
+      {successTxn && (
+        <div className="absolute inset-0 z-30 flex items-center justify-center bg-white/90 backdrop-blur-sm">
+          <div className="text-center bg-white border border-[#E8E5DE] rounded-2xl p-10 max-w-sm shadow-lg">
+            <CheckCircle className="w-14 h-14 text-emerald-500 mx-auto mb-4" />
+            <h2 className="font-display text-2xl font-bold text-[#1A1A1A] mb-1">
+              {isAr ? 'تم تسجيل البيع' : 'Vente enregistrée'}
+            </h2>
+            <p className="text-[#6B6860] text-sm mb-6">
+              {isAr ? `معاملة رقم ${successTxn}` : `Transaction ${successTxn}`}
+            </p>
+            <div className="flex gap-3 justify-center">
+              <Btn variant="secondary" onClick={() => setSuccessTxn(null)}>
+                <RotateCcw className="w-4 h-4" />
+                {isAr ? 'بيع جديد' : 'Nouvelle vente'}
+              </Btn>
+              <Btn variant="primary" onClick={() => setReceiptOpen(true)} style={{ backgroundColor: primary } as React.CSSProperties}>
+                <Printer className="w-4 h-4" />
+                {isAr ? 'طباعة الفاتورة' : 'Imprimer reçu'}
+              </Btn>
+              {receiptOpen && receiptData && <ReceiptPrint data={receiptData} onClose={() => setReceiptOpen(false)} />}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── CATEGORY SIDEBAR — vertical, lg+ only ────────── */}
       {!isSearching && (

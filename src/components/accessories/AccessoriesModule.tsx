@@ -118,9 +118,9 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
       const res  = await fetch(`/api/accessories?acc_id=${acc_id}`, { method: 'DELETE' })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
+      setAccessories(prev => prev.filter(a => a.acc_id !== acc_id))
       showSuccess(isAr ? 'تم الحذف ✓' : 'Supprimé ✓')
       setConfirmDelete(null)
-      fetchAccessories()
     } catch (err: unknown) {
       showError((err as Error).message)
     } finally {
@@ -184,7 +184,14 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
         ? (isAr ? 'تم التعديل ✓' : 'Modifié ✓')
         : (isAr ? 'تم الإضافة ✓' : 'Ajouté ✓'))
       setFormOpen(false)
-      await fetchAccessories()
+      setEditAcc(null)
+      // Silent background sync — no loading state, list stays visible
+      const sp = new URLSearchParams({ store_id: storeId })
+      if (filterCat)        sp.set('categorie', filterCat)
+      if (onlyLowStock)     sp.set('low_stock', 'true')
+      if (search.length >= 2) sp.set('search', search)
+      fetch(`/api/accessories?${sp}`).then(r => r.json())
+        .then(j => { if (j.data) setAccessories(j.data) }).catch(() => {})
     } catch (err: unknown) {
       showError((err as Error).message)
     } finally {

@@ -140,8 +140,8 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
       return !!(p.budget_max && phone.prix_vente_recommande && phone.prix_vente_recommande <= p.budget_max)
     }).length
 
-  const fetchPhones = useCallback(async () => {
-    setLoading(true)
+  const fetchPhones = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       const params = new URLSearchParams({ store_id: storeId })
       if (filterStatus)   params.set('status', filterStatus)
@@ -158,7 +158,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
     } catch (err: unknown) {
       showError((err as Error).message)
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [storeId, filterStatus, filterMarque, filterLocation, filterStorage, filterPromo, search])
 
@@ -174,9 +174,9 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
       const res = await fetch(`/api/phones?phone_id=${phone_id}`, { method: 'DELETE' })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
+      setPhones(prev => prev.filter(p => p.phone_id !== phone_id))
       showSuccess(isAr ? 'تم الحذف ✓' : 'Supprimé ✓')
       setConfirmDelete(null)
-      fetchPhones()
     } catch (err: unknown) {
       showError((err as Error).message)
     } finally {
@@ -242,7 +242,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                 )}
               </button>
               <button
-                onClick={fetchPhones}
+                onClick={() => fetchPhones()}
                 disabled={loading}
                 className="p-2 rounded-xl border border-[#E8E5DE] bg-white text-[#6B6860] hover:bg-[#F8F7F4] transition-all disabled:opacity-50"
               >
@@ -737,7 +737,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
       <PhoneForm
         open={formOpen}
         onClose={() => setFormOpen(false)}
-        onSaved={fetchPhones}
+        onSaved={() => fetchPhones(true)}
         phone={editPhone}
         role={user?.role}
         storeId={storeId}
