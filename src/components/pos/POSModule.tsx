@@ -506,6 +506,14 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
   }
 
   // ── Category list ──────────────────────────────────────────
+
+  function getCategoryColor(idx: number, total: number): string {
+    const hue        = Math.round((idx / total) * 360)
+    const saturation = 65
+    const lightness  = idx % 2 === 0 ? 38 : 44   // slight alternation keeps adjacent hues visually distinct
+    return `hsl(${hue}, ${saturation}%, ${lightness}%)`
+  }
+
   const categoryList = [
     { key: 'phones',  label: isAr ? 'هواتف'  : 'Téléphones', icon: <Smartphone className="w-3.5 h-3.5" /> },
     ...(hasLaptops ? [{ key: 'laptops', label: isAr ? 'لابتوب' : 'Laptops', icon: <LaptopIcon className="w-3.5 h-3.5" /> }] : []),
@@ -558,19 +566,23 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
             </p>
           </div>
           <div className="flex-1 overflow-y-auto py-1 px-1.5">
-            {categoryList.map(cat => (
-              <button key={cat.key} onClick={() => setActiveCategory(cat.key)}
-                className="w-full flex flex-col items-center gap-1 px-1 py-3 rounded-xl text-[10px] font-bold transition-all text-center leading-tight mb-0.5"
-                style={{
-                  backgroundColor: activeCategory === cat.key ? `${primary}15` : 'transparent',
-                  color:           activeCategory === cat.key ? primary : '#6B6860',
-                  borderLeft:  !isAr ? (activeCategory === cat.key ? `3px solid ${primary}` : '3px solid transparent') : undefined,
-                  borderRight:  isAr ? (activeCategory === cat.key ? `3px solid ${primary}` : '3px solid transparent') : undefined,
-                }}>
-                {cat.icon}
-                <span>{cat.label}</span>
-              </button>
-            ))}
+            {categoryList.map((cat, idx) => {
+              const cc       = getCategoryColor(idx, categoryList.length)
+              const isActive = activeCategory === cat.key
+              return (
+                <button key={cat.key} onClick={() => setActiveCategory(cat.key)}
+                  className="w-full flex flex-col items-center gap-1 px-1 py-3 rounded-xl text-[10px] font-bold transition-all text-center leading-tight mb-0.5"
+                  style={{
+                    backgroundColor: isActive ? `${cc}18` : 'transparent',
+                    color:           isActive ? cc : '#9CA3AF',
+                    borderLeft:  !isAr ? (isActive ? `3px solid ${cc}` : '3px solid transparent') : undefined,
+                    borderRight:  isAr ? (isActive ? `3px solid ${cc}` : '3px solid transparent') : undefined,
+                  }}>
+                  <span style={{ color: cc, opacity: isActive ? 1 : 0.5 }}>{cat.icon}</span>
+                  <span>{cat.label}</span>
+                </button>
+              )
+            })}
           </div>
         </div>
       )}
@@ -616,17 +628,21 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
         {!isSearching && (
           <div className="lg:hidden px-5 py-2 flex-shrink-0">
             <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
-              {categoryList.map(cat => (
-                <button key={cat.key} onClick={() => setActiveCategory(cat.key)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap border transition-all flex-shrink-0"
-                  style={{
-                    backgroundColor: activeCategory === cat.key ? primary : 'white',
-                    borderColor:     activeCategory === cat.key ? primary : '#E8E5DE',
-                    color:           activeCategory === cat.key ? 'white' : '#6B6860',
-                  }}>
-                  {cat.icon}{cat.label}
-                </button>
-              ))}
+              {categoryList.map((cat, idx) => {
+                const cc       = getCategoryColor(idx, categoryList.length)
+                const isActive = activeCategory === cat.key
+                return (
+                  <button key={cat.key} onClick={() => setActiveCategory(cat.key)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap border transition-all flex-shrink-0"
+                    style={{
+                      backgroundColor: isActive ? cc : 'white',
+                      borderColor:     cc,
+                      color:           isActive ? 'white' : cc,
+                    }}>
+                    {cat.icon}{cat.label}
+                  </button>
+                )
+              })}
             </div>
           </div>
         )}
