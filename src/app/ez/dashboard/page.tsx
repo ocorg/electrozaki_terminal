@@ -212,9 +212,9 @@ export default function EZDashboard() {
       // ── Cost map for gross/net profit (owner/manager only) ──
       let costMap: Record<string, number> = {}
       if (canFin && periodTxns.length > 0) {
-        const pIds = [...new Set(periodTxns.filter(t => t.device_type === 'هاتف').map(t => t.device_id))]
-        const aIds = [...new Set(periodTxns.filter(t => t.device_type === 'إكسسوار').map(t => t.device_id))]
-        const lIds = [...new Set(periodTxns.filter(t => t.device_type === 'لابتوب').map(t => t.device_id))]
+        const pIds = Array.from(new Set(periodTxns.filter(t => t.device_type === 'هاتف').map(t => t.device_id)))
+        const aIds = Array.from(new Set(periodTxns.filter(t => t.device_type === 'إكسسوار').map(t => t.device_id)))
+        const lIds = Array.from(new Set(periodTxns.filter(t => t.device_type === 'لابتوب').map(t => t.device_id)))
 
         const [pr, ar, lr] = await Promise.all([
           pIds.length > 0 ? supabase.from('phones').select('phone_id, prix_achat').in('phone_id', pIds) : { data: [] },
