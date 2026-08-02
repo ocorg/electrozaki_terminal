@@ -14,6 +14,7 @@ import ComboBox from '@/components/phones/ComboBox'
 import RetourModal from '@/components/pos/RetourModal'
 import { ReceiptPrint, type ReceiptData } from '@/components/print/ReceiptGenerator'
 import { usePhoneCatalog } from '@/lib/hooks/usePhoneCatalog'
+import { BrandLogo } from '@/components/shared/BrandLogo'
 import {
   Search, ShoppingCart, User, CreditCard, ArrowLeftRight,
   X, Plus, Minus, AlertTriangle, Loader2, CheckCircle,
@@ -670,10 +671,13 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                   className="bg-white border border-[#E8E5DE] rounded-2xl p-3 text-left hover:shadow-md transition-all active:scale-[0.98]"
                   onMouseEnter={e => (e.currentTarget.style.borderColor = primary)}
                   onMouseLeave={e => (e.currentTarget.style.borderColor = '#E8E5DE')}>
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-2" style={{ backgroundColor: `${primary}12` }}>
-                    {item._type === 'phone'   ? <Smartphone className="w-5 h-5" style={{ color: primary }} />
-                    : item._type === 'laptop' ? <LaptopIcon  className="w-5 h-5" style={{ color: primary }} />
-                    :                           <Package     className="w-5 h-5" style={{ color: primary }} />}
+                  <div className="mb-2">
+                    {item._type === 'accessory'
+                      ? <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${primary}12` }}>
+                          <Package className="w-5 h-5" style={{ color: primary }} />
+                        </div>
+                      : <BrandLogo marque={(item as Phone).marque ?? ''} size="md" />
+                    }
                   </div>
                   <p className="text-xs font-bold text-[#1A1A1A] leading-tight truncate">{item._displayName}</p>
                   <p className="text-[10px] text-[#B0ADA6] mt-0.5 truncate">
@@ -705,6 +709,12 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                 {cart.map((item, idx) => (
                   <div key={item._id} className="flex items-center gap-3 bg-[#F8F7F4] border border-[#E8E5DE] rounded-xl px-3 py-2">
                     <span className="text-xs font-bold text-[#B0ADA6] w-5 text-center flex-shrink-0">{idx + 1}</span>
+                    {item._type !== 'accessory'
+                      ? <BrandLogo marque={(item as Phone).marque ?? ''} size="sm" />
+                      : <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${primary}12` }}>
+                          <Package className="w-3.5 h-3.5" style={{ color: primary }} />
+                        </div>
+                    }
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <p className="text-xs font-bold text-[#1A1A1A] truncate">{item._displayName}</p>
