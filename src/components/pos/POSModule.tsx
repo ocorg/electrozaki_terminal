@@ -672,11 +672,11 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                   onMouseEnter={e => (e.currentTarget.style.borderColor = primary)}
                   onMouseLeave={e => (e.currentTarget.style.borderColor = '#E8E5DE')}>
                   <div className="mb-2">
-                    {item._type === 'accessory'
-                      ? <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${primary}12` }}>
+                    {(item as unknown as { marque?: string }).marque
+                      ? <BrandLogo marque={(item as unknown as { marque?: string }).marque!} size="md" />
+                      : <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${primary}12` }}>
                           <Package className="w-5 h-5" style={{ color: primary }} />
                         </div>
-                      : <BrandLogo marque={(item as Phone).marque ?? ''} size="md" />
                     }
                   </div>
                   <p className="text-xs font-bold text-[#1A1A1A] leading-tight truncate">{item._displayName}</p>
@@ -709,8 +709,8 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                 {cart.map((item, idx) => (
                   <div key={item._id} className="flex items-center gap-3 bg-[#F8F7F4] border border-[#E8E5DE] rounded-xl px-3 py-2">
                     <span className="text-xs font-bold text-[#B0ADA6] w-5 text-center flex-shrink-0">{idx + 1}</span>
-                    {item._type !== 'accessory'
-                      ? <BrandLogo marque={(item as Phone).marque ?? ''} size="sm" />
+                    {(item as unknown as { marque?: string }).marque
+                      ? <BrandLogo marque={(item as unknown as { marque?: string }).marque!} size="sm" />
                       : <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${primary}12` }}>
                           <Package className="w-3.5 h-3.5" style={{ color: primary }} />
                         </div>
