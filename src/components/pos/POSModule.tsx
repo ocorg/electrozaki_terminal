@@ -407,6 +407,27 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
       })
       showSuccess(isAr ? 'تمت عملية البيع ✓' : 'Vente enregistrée ✓')
 
+      // Register debt in Credits module for آجل and تسبيق sales with remaining balance
+      const debtAmount = Math.max(0, totalVente - (saleForm.avance || 0))
+      if (
+        clientId &&
+        debtAmount > 0 &&
+        (saleForm.payment_method === 'آجل' || saleForm.payment_method === 'تسبيق')
+      ) {
+        fetch('/api/credit-imports', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            client_id:    clientId,
+            store_id:     storeId,
+            montant_du:   debtAmount,
+            description:  cart.map(i => i._displayName).join(' + ').slice(0, 200),
+            date_origine: new Date().toISOString().split('T')[0],
+            notes:        `POS — ${saleForm.payment_method === 'آجل' ? 'Vente à crédit' : 'Avance partielle'} — Réf: ${lastTxnId}`,
+          }),
+        }).catch(() => { /* non-blocking — sale already recorded */ })
+      }
+
       // Remove sold phones/laptops from grid instantly — no re-fetch needed
       const soldIds = new Set(cart.filter(i => i._type !== 'accessory').map(i => i._id))
       if (soldIds.size > 0) setGridItems(prev => prev.filter(i => !soldIds.has(i._id)))
