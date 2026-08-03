@@ -35,6 +35,13 @@ interface CaisseModuleProps {
   storeId: string
 }
 
+// Business day doesn't roll over until 4AM — covers late-night closing shifts
+function getBusinessDate(): string {
+  const d = new Date()
+  if (d.getHours() < 4) d.setDate(d.getDate() - 1)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 export default function CaisseModule({ storeId }: CaisseModuleProps) {
   const { user }     = useUser()
   const { language } = useLanguageStore()
@@ -55,20 +62,32 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
   const [eodAmount, setEodAmount]   = useState('')
   const [eodNotes, setEodNotes]     = useState('')
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = getBusinessDate()
 
   const fetchCaisse = useCallback(async () => {
     setLoading(true)
     try {
-      const res  = await fetch(`/api/caisse?store_id=${storeId}&date=${today}`)
-      const json = await res.json()
+      const bizDate = getBusinessDate()
+      let res  = await fetch(`/api/caisse?store_id=${storeId}&date=${bizDate}`)
+      let json = await res.json()
+
+      // No caisse for today → check if yesterday's is still open (overnight shift)
+      if (!json.data) {
+        const prev = new Date()
+        prev.setDate(prev.getDate() - 1)
+        const prevDate = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}-${String(prev.getDate()).padStart(2, '0')}`
+        const res2  = await fetch(`/api/caisse?store_id=${storeId}&date=${prevDate}`)
+        const json2 = await res2.json()
+        if (json2.data?.status === 'open') json = json2
+      }
+
       setCaisse(json.data ?? null)
     } catch {
       showError(isAr ? 'خطأ في تحميل صندوق الدفع' : 'Erreur chargement caisse')
     } finally {
       setLoading(false)
     }
-  }, [storeId, today])
+  }, [storeId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { fetchCaisse() }, [fetchCaisse])
 
