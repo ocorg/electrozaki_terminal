@@ -47,6 +47,7 @@ function getNavItems(portalBase: string, portalType: string): NavItem[] {
   return [
     { href: `${portalBase}/dashboard`,        icon: LayoutDashboard, label: 'Tableau de bord',   roles: ['staff','manager','owner'] },
     { href: `${portalBase}/pos`,              icon: ShoppingCart,    label: 'Point de vente',     roles: ['staff','manager','owner'] },
+    { href: `${portalBase}/documents`,        icon: FileText,        label: 'Documents',          roles: ['staff','manager','owner'] },
     { divider: true, label: 'STOCK',                                                              roles: ['staff','manager','owner'] },
     { href: `${portalBase}/stock/phones`,     icon: Smartphone,      label: 'Téléphones',         roles: ['staff','manager','owner'] },
     { href: `${portalBase}/stock/laptops`,    icon: Laptop,          label: 'Laptops',            roles: ['staff','manager','owner'] },
