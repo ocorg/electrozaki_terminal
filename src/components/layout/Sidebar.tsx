@@ -9,13 +9,14 @@ import {
   LayoutDashboard, ShoppingCart, Smartphone, Laptop, Package,
   Wrench, Users, Truck, Receipt, Vault, ArrowLeftRight,
   Settings, LogOut, Globe, ChevronRight, ChevronLeft,
-  PanelLeftClose, PanelLeftOpen
+  PanelLeftClose, PanelLeftOpen, FileText
 } from 'lucide-react'
 import type { UserRole } from '@/types/database'
 
 const NAV_ITEMS = [
   { href: '/',                  icon: LayoutDashboard, labelFr: 'Dashboard',      labelAr: 'لوحة التحكم',  roles: ['staff','manager','owner'] as UserRole[] },
   { href: '/pos',               icon: ShoppingCart,    labelFr: 'Point de vente', labelAr: 'نقطة البيع',   roles: ['staff','manager','owner'] as UserRole[] },
+  { href: '/documents',         icon: FileText,        labelFr: 'Documents',      labelAr: 'الوثائق',      roles: ['staff','manager','owner'] as UserRole[] },
   { divider: true,              labelFr: 'STOCK',      labelAr: 'المخزون',        roles: ['staff','manager','owner'] as UserRole[] },
   { href: '/stock/phones',      icon: Smartphone,      labelFr: 'Téléphones',     labelAr: 'الهواتف',      roles: ['staff','manager','owner'] as UserRole[] },
   { href: '/stock/laptops',     icon: Laptop,          labelFr: 'Laptops',        labelAr: 'اللابتوبات',   roles: ['staff','manager','owner'] as UserRole[] },
