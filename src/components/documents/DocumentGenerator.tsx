@@ -10,6 +10,8 @@ import { toast } from 'sonner'
 import QRCode from 'qrcode'
 import { ConfirmSaleModal } from './ConfirmSaleModal'
 import { ArchiveTable }     from './ArchiveTable'
+import { AcquisitionTab }   from './AcquisitionTab'
+import { SavTab }           from './SavTab'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -209,10 +211,10 @@ export function DocumentGenerator() {
       `}</style>
 
       {/* ── SCREEN UI ──────────────────────────────────────────────────────── */}
-      <div className="print:hidden space-y-6">
+      <div className="space-y-6">
 
         {/* Tab bar */}
-        <div className="flex gap-1 p-1 bg-white/5 rounded-xl border border-white/10 w-fit">
+        <div className="print:hidden flex gap-1 p-1 bg-white/5 rounded-xl border border-white/10 w-fit">
           {tabs.map(({ id, label, labelAr, Icon }) => (
             <button
               key={id}
@@ -233,7 +235,7 @@ export function DocumentGenerator() {
 
         {/* ── FACTURE TAB ────────────────────────────────────────────────── */}
         {activeTab === 'fac' && (
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <div className="print:hidden grid grid-cols-1 xl:grid-cols-2 gap-6">
 
             {/* LEFT — Form */}
             <div className="space-y-4">
@@ -530,22 +532,10 @@ export function DocumentGenerator() {
         )}
 
         {/* ── REPRISE TAB ────────────────────────────────────────────────── */}
-        {activeTab === 'reprise' && (
-          <div className="flex flex-col items-center justify-center py-24 text-center gap-3">
-            <Package className="w-10 h-10 text-white/15" />
-            <p className="text-white/40 text-sm">Module Acquisition / Reprise</p>
-            <p className="text-white/20 text-xs">À venir — Livraison 5</p>
-          </div>
-        )}
+        {activeTab === 'reprise' && <AcquisitionTab />}
 
         {/* ── SAV TAB ────────────────────────────────────────────────────── */}
-        {activeTab === 'sav' && (
-          <div className="flex flex-col items-center justify-center py-24 text-center gap-3">
-            <Wrench className="w-10 h-10 text-white/15" />
-            <p className="text-white/40 text-sm">Module SAV Garantie</p>
-            <p className="text-white/20 text-xs">À venir — Livraison 5</p>
-          </div>
-        )}
+        {activeTab === 'sav' && <SavTab />}
 
         {/* ── ARCHIVE TAB ────────────────────────────────────────────────── */}
         {activeTab === 'archive' && <ArchiveTable />}
