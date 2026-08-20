@@ -7,6 +7,7 @@ export const metadata: Metadata = {
 
 export default function DocumentsPage() {
   return (
+    <div className="min-h-screen bg-[#0a0a0a]">
     <div className="p-6 max-w-[1400px] mx-auto">
 
       {/* Page header */}
@@ -23,6 +24,7 @@ export default function DocumentsPage() {
       </div>
 
       <DocumentGenerator />
+    </div>
     </div>
   )
 }
