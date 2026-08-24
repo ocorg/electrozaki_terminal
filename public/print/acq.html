@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="fr" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bon de Reprise / Acquisition — ELECTRO ZAKI EZ</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Arabic:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{height:100%;}
+body{font-family:'Inter',sans-serif;background:#ffffff;color:#0f172a;display:flex;flex-direction:column;height:100vh;overflow:hidden;}
+.logo-wrap{display:inline-flex;align-items:center;font-family:'Inter',sans-serif;user-select:none;}
+.logo-ez-mark{background:#0f172a;color:#d97706;padding:2px 6px;border-radius:3px;font-style:italic;font-weight:900;font-size:1em;letter-spacing:-0.05em;border:1px solid #d97706;margin-right:5px;display:inline-block;line-height:1.15;}
+.logo-text-electro{color:#0f172a;font-weight:900;letter-spacing:-0.02em;}
+.logo-text-zaki{color:#d97706;font-weight:900;letter-spacing:0.02em;}
+.tab-header{padding:12px 20px;border-bottom:1px solid #e5e5e5;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;flex-shrink:0;}
+.tab-header h2{font-size:14px;font-weight:600;color:#0f172a;}
+.tab-header p{font-size:11px;color:#6b7280;margin-top:1px;}
+.tab-body{display:flex;flex:1;overflow:hidden;min-height:0;}
+.form-panel{width:320px;flex-shrink:0;border-right:1px solid #e5e5e5;padding:12px;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;gap:10px;min-height:0;}
+.preview-panel{flex:1;padding:20px;background:#f0f0f0;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0;}
+.form-card{background:#ffffff;border:1px solid #e5e5e5;border-radius:4px;padding:10px;}
+.form-card-title{font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#6b7280;font-weight:400;padding-bottom:8px;border-bottom:1px solid #e5e5e5;margin-bottom:8px;}
+.form-group{margin-bottom:8px;}
+.form-group:last-child{margin-bottom:0;}
+.form-group label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#6b7280;font-weight:400;margin-bottom:4px;}
+.form-row-2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+input[type="text"],input[type="number"],input[type="date"],select,textarea{border:1px solid #d1d5db;border-radius:4px;padding:7px 9px;font-family:'Inter',sans-serif;font-size:12px;width:100%;background:#ffffff;color:#0f172a;outline:none;display:block;}
+input[type="text"]:focus,input[type="number"]:focus,input[type="date"]:focus,select:focus,textarea:focus{outline:2px solid #d97706;outline-offset:-1px;}
+input.mono,.mono{font-family:monospace;}
+textarea{resize:vertical;min-height:54px;}
+.ref-readonly{background:#f9f9f8!important;color:#374151;}
+.override-input{margin-top:3px;font-size:11px!important;padding:5px 8px!important;color:#6b7280;}
+.btn-primary{background:#0f172a;color:white;border-radius:4px;padding:8px 16px;border:none;cursor:pointer;font-family:'Inter',sans-serif;font-size:13px;font-weight:500;white-space:nowrap;}
+.btn-primary:hover{background:#1e293b;}
+.btn-secondary{background:transparent;border:1px solid #d1d5db;border-radius:4px;padding:7px 14px;cursor:pointer;font-family:'Inter',sans-serif;font-size:12px;color:#374151;}
+.btn-secondary:hover{background:#f9fafb;}
+.btn-group{display:flex;border:1px solid #d1d5db;border-radius:4px;overflow:hidden;}
+.btn-group-item{flex:1;padding:6px 8px;font-size:11px;font-family:'Inter',sans-serif;background:transparent;border:none;border-right:1px solid #d1d5db;cursor:pointer;color:#374151;white-space:nowrap;}
+.btn-group-item:last-child{border-right:none;}
+.btn-group-item.active{background:#0f172a;color:white;font-weight:500;}
+.btn-group-item:hover:not(.active){background:#f9fafb;}
+.a4-paper{background:#ffffff;width:210mm;max-width:210mm;min-height:297mm;height:297mm;max-height:297mm;padding:12mm 15mm;margin:0 auto 16px auto;border:1px solid #d1d5db;border-radius:2px;box-sizing:border-box;position:relative;font-size:9pt;line-height:1.35;overflow:hidden;font-family:'Inter',sans-serif;}
+.dh{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1pt solid #000;padding-bottom:4pt;margin-bottom:5pt;}
+.dh-right{text-align:right;}
+.dtitle{font-size:11pt;font-weight:700;text-transform:uppercase;line-height:1.2;}
+.drule{border:none;border-top:0.5pt solid #d97706;margin:3pt 0;}
+.dtbl{width:100%;border-collapse:collapse;font-size:8.5pt;}
+.dtbl th{background:#f9f9f8;font-size:7.5pt;text-transform:uppercase;letter-spacing:0.03em;padding:2.5pt 3.5pt;border:0.5pt solid #000;font-weight:600;text-align:left;}
+.dtbl td{padding:2.5pt 3.5pt;border:0.5pt solid #000;vertical-align:top;}
+.dblk{border:0.5pt solid #000;padding:3.5pt 4pt;margin-bottom:3.5pt;}
+.dsrow{display:grid;gap:6pt;margin-top:5pt;}
+.dsig{border:0.5pt solid #000;padding:3.5pt 4pt;min-height:18mm;}
+.dqr{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;border:0.5pt solid #000;padding:3.5pt 4pt;}
+.qrh{font-family:monospace;font-size:6.5pt;text-align:center;margin-top:1.5pt;}
+.dref{font-family:monospace;font-weight:700;}
+.ar{font-family:'Noto Sans Arabic',sans-serif;line-height:1.65;}
+.hidden{display:none!important;}
+.ref-bar{font-family:monospace;font-size:12px;color:#6b7280;}
+@media print{
+  @page{size:A4 portrait;margin:0;}
+  html,body{background:white!important;color:black!important;margin:0!important;padding:0!important;width:210mm!important;height:auto!important;display:block!important;overflow:visible!important;}
+  ::-webkit-scrollbar{display:none!important;width:0!important;}
+  .no-print,.tab-header{display:none!important;}
+  .tab-body{display:block!important;overflow:visible!important;height:auto!important;}
+  .form-panel{display:none!important;}
+  .preview-panel{display:block!important;width:100%!important;padding:0!important;margin:0!important;background:white!important;overflow:visible!important;height:auto!important;}
+  .hidden{display:none!important;}
+  .a4-paper{box-shadow:none!important;border:none!important;width:210mm!important;max-width:210mm!important;height:297mm!important;min-height:297mm!important;max-height:297mm!important;padding:12mm 15mm!important;margin:0!important;border-radius:0!important;overflow:hidden!important;page-break-inside:avoid!important;background:white!important;display:block!important;}
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color:black!important;background-color:transparent!important;box-shadow:none!important;}
+  .logo-ez-mark{background:#0f172a!important;background-color:#0f172a!important;color:#d97706!important;border:1pt solid #d97706!important;}
+  .logo-text-zaki{color:#d97706!important;}
+  .dtbl th,.dtbl td,.dblk,.dsig,.dqr{border:0.5pt solid #000!important;}
+  .dtbl th{background:#f9f9f8!important;background-color:#f9f9f8!important;}
+  table,tr,th,td{background-color:transparent!important;}
+}
+</style>
+</head>
+<body>
+<div class="tab-header no-print">
+  <div><h2>Bon de Reprise / Acquisition</h2><p>Acquisition directe ou échange dans le cadre d'une vente</p></div>
+  <div style="display:flex;gap:8px;align-items:center;">
+    <span class="ref-bar" id="rep-ref-bar">N° auto</span>
+    <button class="btn-secondary" onclick="clearTab('rep')">Effacer</button>
+    <button class="btn-primary" onclick="printRep()">Imprimer</button>
+  </div>
+</div>
+<div class="no-print" style="padding:10px 16px;border-bottom:1px solid #e5e5e5;display:flex;align-items:center;gap:10px;flex-shrink:0;">
+  <span style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#6b7280;">Mode:</span>
+  <div class="btn-group" style="width:420px;">
+    <button class="btn-group-item active" id="btn-rch" onclick="setRepMode('RCH')">Acquisition directe</button>
+    <button class="btn-group-item" id="btn-ech" onclick="setRepMode('ECH')">Reprise dans le cadre d'une vente</button>
+  </div>
+</div>
+<div class="tab-body">
+  <div class="form-panel no-print">
+    <div class="form-card">
+      <div class="form-card-title" id="rep-form-title">Acquisition Directe</div>
+      <div class="form-group"><label>Référence</label><input type="text" id="rep_ref" class="mono ref-readonly" readonly><input type="text" id="rep_ref_ov" class="override-input" placeholder="Modifier N°" oninput="overrideRef('rep')"></div>
+      <div class="form-group"><label>Date</label><input type="date" id="rep_date" onchange="upRep()"></div>
+      <div class="form-group" id="rep-emp-row"><label>Reçu par:</label><input type="text" id="rch_employee" oninput="upRep()"></div>
+      <div class="form-group hidden" id="rep-fac-row"><label>Lié à la facture de vente N°</label><input type="text" id="ech_facture_liee" class="mono" oninput="upRep()"></div>
+    </div>
+    <div class="form-card">
+      <div class="form-card-title" id="rep-vendor-title">Vendeur (Particulier)</div>
+      <div id="rep-rch-v">
+        <div class="form-group"><label>Nom complet</label><input type="text" id="rch_vendeur_nom" oninput="upRep()"></div>
+        <div class="form-group"><label>N° CIN ou référence pièce - ne pas photocopier</label><input type="text" id="rch_vendeur_cin_ref" class="mono" oninput="upRep()" placeholder="Ex: AB123456"></div>
+        <div class="form-group"><label>Téléphone</label><input type="text" id="rch_vendeur_tel" oninput="upRep()"></div>
+        <div class="form-group"><label>Adresse</label><input type="text" id="rch_vendeur_adresse" oninput="upRep()"></div>
+      </div>
+      <div id="rep-ech-c" class="hidden">
+        <div class="form-group"><label>Nom du client</label><input type="text" id="ech_client_nom" oninput="upRep()"></div>
+        <div class="form-group"><label>Téléphone</label><input type="text" id="ech_client_tel" oninput="upRep()"></div>
+      </div>
+    </div>
+    <div class="form-card">
+      <div class="form-card-title">Appareil</div>
+      <div class="form-row-2"><div class="form-group"><label>Marque</label><input type="text" id="rep_marque" oninput="upRep()"></div><div class="form-group"><label>Modèle</label><input type="text" id="rep_modele" oninput="upRep()"></div></div>
+      <div class="form-row-2">
+        <div class="form-group"><label>Stockage</label><select id="rep_stockage" onchange="upRep()"><option>N/A</option><option>16GB</option><option>32GB</option><option>64GB</option><option>128GB</option><option>256GB</option><option>512GB</option><option>1TB</option></select></div>
+        <div class="form-group"><label>Couleur</label><input type="text" id="rep_couleur" oninput="upRep()"></div>
+      </div>
+      <div class="form-group"><label>État</label><select id="rep_etat" onchange="upRep()"><option value="NEUF_SCELLE">Neuf – Scellé</option><option value="NEUF_DEBALLE">Neuf – Ouvert</option><option value="OCC_EXCELLENT">Occasion – Excellent</option><option value="OCC_TRES_BON">Occasion – Très bon</option><option value="OCC_BON">Occasion – Bon</option><option value="OCC_ACCEPTABLE">Occasion – Acceptable</option></select></div>
+      <div class="form-group"><label>IMEI 1</label><input type="text" id="rep_imei1" class="mono" oninput="upRep()"></div>
+      <div class="form-group"><label>IMEI 2 / optionnel</label><input type="text" id="rep_imei2" class="mono" oninput="upRep()"></div>
+      <div class="form-group"><label>N° de Série</label><input type="text" id="rep_serial" class="mono" oninput="upRep()"></div>
+      <div class="form-group"><label>Défauts constatés à l'acquisition</label><textarea id="rep_defauts" oninput="upRep()" placeholder="Décrire les défauts constatés…"></textarea></div>
+    </div>
+    <div class="form-card">
+      <div class="form-card-title">Vérification des Comptes</div>
+      <div class="form-group"><label style="display:flex;gap:7px;align-items:center;text-transform:none;font-size:12px;letter-spacing:0;"><input type="checkbox" id="rep_ck_apple" onchange="upRep()" style="width:auto;display:inline;"> Apple ID supprimé / iCloud désactivé</label></div>
+      <div class="form-group"><label style="display:flex;gap:7px;align-items:center;text-transform:none;font-size:12px;letter-spacing:0;"><input type="checkbox" id="rep_ck_google" onchange="upRep()" style="width:auto;display:inline;"> Compte Google supprimé / FRP vérifié</label></div>
+      <div class="form-group"><label style="display:flex;gap:7px;align-items:center;text-transform:none;font-size:12px;letter-spacing:0;"><input type="checkbox" id="rep_ck_samsung" onchange="upRep()" style="width:auto;display:inline;"> Compte Samsung supprimé</label></div>
+      <div class="form-group"><label style="display:flex;gap:7px;align-items:center;text-transform:none;font-size:12px;letter-spacing:0;"><input type="checkbox" id="rep_ck_xiaomi" onchange="upRep()" style="width:auto;display:inline;"> Compte Xiaomi/Mi supprimé</label></div>
+      <div class="form-group"><label style="display:flex;gap:7px;align-items:center;text-transform:none;font-size:12px;letter-spacing:0;"><input type="checkbox" id="rep_ck_reset" onchange="upRep()" style="width:auto;display:inline;"> Réinitialisation usine effectuée</label></div>
+    </div>
+    <div class="form-card">
+      <div class="form-card-title" id="rep-prix-title">Prix d'Achat</div>
+      <div class="form-group"><label id="rep-prix-lbl">Prix d'achat (MAD)</label><input type="number" id="rep_prix" oninput="upRep()"></div>
+    </div>
+    <div class="form-card">
+      <div class="form-card-title">Signature</div>
+      <div style="position:relative;">
+        <canvas id="rep-sig-canvas" width="276" height="140" style="border:1px solid #d1d5db;border-radius:4px;cursor:crosshair;touch-action:none;width:100%;display:block;background:#fff;"></canvas>
+        <button onclick="clearSig('rep')" style="position:absolute;top:4px;right:4px;font-size:10px;padding:2px 7px;background:#fff;border:1px solid #d1d5db;border-radius:3px;cursor:pointer;color:#6b7280;">Effacer</button>
+      </div>
+      <div style="font-size:10px;color:#9ca3af;margin-top:4px;">Signez avec le doigt ou la souris</div>
+    </div>
+  </div><!-- /form-panel -->
+  <div class="preview-panel">
+    <div class="a4-paper" id="rep-p1">
+      <div class="dh">
+        <div><div class="logo-wrap" style="font-size:13pt;"><span class="logo-ez-mark" style="font-size:9.5pt;">EZ</span><span><span class="logo-text-electro">ELECTRO</span><span class="logo-text-zaki">ZAKI</span></span></div><div style="font-size:7.5pt;color:#374151;margin-top:2pt;">Téléphones &amp; Accessoires · Meknès</div><div style="font-size:6.5pt;font-family:monospace;">ICE: 002533374000004 · IF: 45725467 · TP: 17202369 · RC: 102816 (Meknès)</div><div style="font-size:6.5pt;color:#374151;">Hotline SAV: +212 6 67 65 44 30</div></div>
+        <div class="dh-right"><div class="dtitle" id="rep-p1-title">BON D'ACQUISITION</div><div dir="rtl" lang="ar" class="ar" style="font-size:8pt;font-weight:700;" id="rep-p1-title-ar">وصل الشراء</div><div style="margin-top:4pt;"><div style="font-size:8pt;">N° <span class="dref" id="rep-p1-ref">-</span></div><div style="font-size:7.5pt;color:#374151;">Date: <span id="rep-p1-date">-</span></div><div style="font-size:7pt;color:#374151;" id="rep-p1-emp-line">Reçu par: <span id="rep-p1-emp">-</span></div></div></div>
+      </div>
+      <div class="hidden dblk" id="rep-p1-liee" style="margin-bottom:3.5pt;font-size:8.5pt;">Lié à la Facture N° : <span class="dref" id="rep-p1-liee-val">-</span></div>
+      <div class="dblk" style="margin-bottom:3.5pt;font-size:8.5pt;">
+        <div id="rep-p1-v-rch"><div style="font-size:7pt;font-weight:700;text-transform:uppercase;color:#374151;margin-bottom:2pt;">VENDEUR / البائع:</div><div>Nom: <strong id="rep-p1-nom">-</strong> &nbsp;&nbsp; Réf. ID: <span class="mono" id="rep-p1-cin">-</span></div><div>Tél: <span class="mono" id="rep-p1-tel">-</span> &nbsp;&nbsp; Adresse: <span id="rep-p1-adr">-</span></div></div>
+        <div class="hidden" id="rep-p1-v-ech"><div style="font-size:7pt;font-weight:700;text-transform:uppercase;color:#374151;margin-bottom:2pt;">CLIENT / الزبون:</div><div>Nom: <strong id="rep-p1-ech-nom">-</strong> &nbsp;&nbsp; Tél: <span class="mono" id="rep-p1-ech-tel">-</span></div></div>
+      </div>
+      <div class="dblk" style="margin-bottom:3.5pt;font-size:8.5pt;">
+        <div style="font-size:7pt;font-weight:700;text-transform:uppercase;color:#374151;margin-bottom:2pt;">APPAREIL / الجهاز:</div>
+        <div><strong id="rep-p1-mm">-</strong> &nbsp;|&nbsp; IMEI 1: <span class="mono" style="font-weight:700;" id="rep-p1-im1">-</span></div>
+        <div style="font-size:7.5pt;margin-top:2pt;">Stockage: <span id="rep-p1-stk">-</span> &nbsp;·&nbsp; Couleur: <span id="rep-p1-coul">-</span> &nbsp;·&nbsp; IMEI 2: <span class="mono" id="rep-p1-im2">-</span> &nbsp;·&nbsp; Série: <span class="mono" id="rep-p1-ser">-</span></div>
+        <div style="margin-top:2pt;">État: <span id="rep-p1-etat">-</span></div>
+        <div style="margin-top:2pt;font-size:7.5pt;">Défauts constatés à l'acquisition: <span id="rep-p1-def">Aucun signalé</span></div>
+      </div>
+      <div style="margin-bottom:3.5pt;"><table class="dtbl" style="width:100%;"><thead><tr><th style="width:80%;">Vérification / التحقق</th><th style="text-align:center;width:20%;">Statut</th></tr></thead><tbody style="font-size:8pt;"><tr><td>Apple ID supprimé / iCloud désactivé</td><td style="text-align:center;" id="rep-ck-apple">&#9744;</td></tr><tr><td>Google FRP vérifié (Non verrouillé)</td><td style="text-align:center;" id="rep-ck-google">&#9744;</td></tr><tr><td>Samsung Account supprimé</td><td style="text-align:center;" id="rep-ck-samsung">&#9744;</td></tr><tr><td>Xiaomi / Mi Account supprimé</td><td style="text-align:center;" id="rep-ck-xiaomi">&#9744;</td></tr><tr><td>Réinitialisation usine effectuée</td><td style="text-align:center;" id="rep-ck-reset">&#9744;</td></tr></tbody></table></div>
+      <div style="display:flex;justify-content:flex-end;margin-bottom:3.5pt;"><div style="border:0.5pt solid #000;padding:3pt 6pt;font-size:8.5pt;"><span id="rep-p1-prix-lbl">Prix d'achat: </span><span class="mono" style="font-weight:700;font-size:10pt;" id="rep-p1-prix">-</span></div></div>
+      <div class="dblk" style="margin-bottom:3.5pt;font-size:7.5pt;background:#f9f9f8;">
+        <div id="rep-decl-rch"><strong>Je soussigné(e),</strong> <span id="rep-decl-nom">_________</span>, déclare sur l'honneur être le propriétaire légitime de l'appareil désigné ci-dessus et que cet appareil ne provient d'aucun vol, recel, fraude ou litige. Je confirme avoir supprimé tous les comptes personnels liés à cet appareil avant la remise. Je cède la pleine propriété dudit appareil à ELECTRO ZAKI EZ pour le prix convenu.<div dir="rtl" lang="ar" class="ar" style="font-size:7pt;margin-top:3pt;">أنا الموقع أدناه، <span id="rep-decl-nom-ar">_________</span>، أُقرّ بشرفي بأنني المالك الشرعي للجهاز المحدد أعلاه وأن هذا الجهاز لم يُكتسب بسرقة أو إخفاء أو احتيال أو نزاع. أؤكد حذف جميع الحسابات الشخصية المرتبطة بالجهاز قبل تسليمه. أُنقل ملكية الجهاز كاملةً إلى ELECTRO ZAKI EZ مقابل الثمن المتفق عليه.</div></div>
+        <div class="hidden" id="rep-decl-ech"><strong>Le soussigné(e)</strong> <span id="rep-decl-ech-nom">_________</span> confirme céder l'appareil décrit ci-dessus à ELECTRO ZAKI EZ dans le cadre de l'échange effectué ce jour. Il/Elle confirme avoir supprimé ses comptes personnels liés à cet appareil et accepte la valeur de reprise indiquée, imputée sur la facture de vente N° <span id="rep-decl-fac">-</span>.<div dir="rtl" lang="ar" class="ar" style="font-size:7pt;margin-top:3pt;">يُقرّ الزبون/ة <span id="rep-decl-ech-nom-ar">_________</span> بالتنازل عن الجهاز الموصوف أعلاه إلى ELECTRO ZAKI EZ في إطار المبادلة المُجراة اليوم، ويؤكد/تؤكد حذف حساباته/ها الشخصية المرتبطة بهذا الجهاز، ويقبل/تقبل قيمة الاسترداد والمحسومة من فاتورة البيع رقم <span id="rep-decl-fac-ar">-</span>.</div></div>
+      </div>
+      <div class="dsrow" style="grid-template-columns:2fr 1.2fr;">
+        <div class="dsig"><div style="font-size:8pt;font-weight:700;" id="rep-sig-lbl">Signature du Vendeur / توقيع البائع</div><img id="rep-sig-img" src="" alt="" style="display:none;max-height:16mm;max-width:100%;object-fit:contain;margin-top:2pt;"><div style="border-top:0.5pt solid #000;margin-top:2pt;"></div></div>
+        <div class="dqr" style="text-align:center;"><div id="rep-qr" style="width:64px;height:64px;margin:0 auto;"></div><div class="qrh">VISA ÉLECTRONIQUE / التوقيع الإلكتروني</div><div class="qrh" id="rep-qr-hash">-</div><div style="font-size:7pt;font-weight:700;margin-top:3pt;">SIGNATURE ELECTRO ZAKI EZ</div><div dir="rtl" lang="ar" class="ar" style="font-size:6.5pt;">توقيع وختم المتجر</div></div>
+      </div>
+    </div><!-- /rep-p1 -->
+  </div><!-- /preview-panel -->
+</div><!-- /tab-body -->
+<script>
+var $=function(id){return document.getElementById(id);};
+var v=function(id){var e=$(id);return e?(e.value||''):''};
+var t=function(id,val){var e=$(id);if(e)e.textContent=(val===''||val===null||val===undefined)?'-':val;};
+var sh=function(id){var e=$(id);if(e)e.classList.remove('hidden');};
+var hi=function(id){var e=$(id);if(e)e.classList.add('hidden');};
+function fmt(n){return Number(n||0).toLocaleString('fr-MA',{minimumFractionDigits:2,maximumFractionDigits:2})+' MAD';}
+function fmtDate(d){if(!d)return '-';var p=d.split('-');return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:d;}
+function today(){return new Date().toISOString().split('T')[0];}
+function etatLbl(code){var m={NEUF_SCELLE:'Neuf – Scellé',NEUF_DEBALLE:'Neuf – Ouvert',OCC_EXCELLENT:'Occasion – Excellent',OCC_TRES_BON:'Occasion – Très bon',OCC_BON:'Occasion – Bon',OCC_ACCEPTABLE:'Occasion – Acceptable'};return m[code]||code;}
+
+function overrideRef(tab){
+  if(tab==='rep'){var ov=v('rep_ref_ov');if(ov){$('rep_ref').value=ov;$('rep-ref-bar').textContent=ov;}upRep();}
+}
+
+function initSigPad(canvasId,imgIds){
+  var canvas=$(canvasId);if(!canvas)return;
+  var ctx=canvas.getContext('2d');
+  var drawing=false,lx=0,ly=0;
+  function getPos(e){var r=canvas.getBoundingClientRect();var src=e.touches?e.touches[0]:e;return{x:(src.clientX-r.left)*(canvas.width/r.width),y:(src.clientY-r.top)*(canvas.height/r.height)};}
+  function onStart(e){e.preventDefault();drawing=true;var p=getPos(e);lx=p.x;ly=p.y;}
+  function onDraw(e){
+    if(!drawing)return;e.preventDefault();
+    var p=getPos(e);
+    ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(p.x,p.y);
+    ctx.strokeStyle='#0f172a';ctx.lineWidth=2;ctx.lineCap='round';ctx.lineJoin='round';ctx.stroke();
+    lx=p.x;ly=p.y;
+    var data=canvas.toDataURL();
+    imgIds.forEach(function(id){var img=$(id);if(img){img.src=data;img.style.display='block';}});
+  }
+  function onEnd(){drawing=false;}
+  canvas.addEventListener('mousedown',onStart);canvas.addEventListener('mousemove',onDraw);
+  canvas.addEventListener('mouseup',onEnd);canvas.addEventListener('mouseleave',onEnd);
+  canvas.addEventListener('touchstart',onStart,{passive:false});
+  canvas.addEventListener('touchmove',onDraw,{passive:false});
+  canvas.addEventListener('touchend',onEnd);
+}
+function clearSig(tab){
+  var map={rep:['rep-sig-canvas',['rep-sig-img']]};
+  var entry=map[tab];if(!entry)return;
+  var canvas=$(entry[0]);if(!canvas)return;
+  canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height);
+  entry[1].forEach(function(id){var img=$(id);if(img){img.src='';img.style.display='none';}});
+}
+
+async function genQR(containerId,docData){
+  var raw=[docData.ref||'',docData.date||'',docData.clientNom||'',docData.clientTel||'',docData.imei||'',String(docData.montant||'0')].join('|');
+  var hashHex='000000000000';
+  try{var buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(raw));hashHex=Array.from(new Uint8Array(buf)).map(function(b){return b.toString(16).padStart(2,'0');}).join('').substring(0,12).toUpperCase();}catch(e){console.warn(e);}
+  var qrText=['ELECTRO ZAKI EZ · Meknes','ICE:002533374000004','REF:'+(docData.ref||'N/A'),'DATE:'+(docData.date||'N/A'),'IMEI:'+(docData.imei||'N/A'),'HASH:'+hashHex].join('\n');
+  var c=$(containerId);if(!c)return hashHex;c.innerHTML='';
+  if(typeof QRCode!=='undefined'){new QRCode(c,{text:qrText,width:64,height:64,colorDark:'#000000',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});}
+  var hEl=$(containerId.replace('-qr','-qr-hash'));if(hEl)hEl.textContent='Code: '+hashHex;
+  return hashHex;
+}
+
+/* ===== REP LOGIC ===== */
+var repMode='RCH';
+function setRepMode(m){
+  repMode=m;var isR=m==='RCH';
+  $('btn-rch').classList.toggle('active',isR);$('btn-ech').classList.toggle('active',!isR);
+  $('rep-form-title').textContent=isR?'Acquisition Directe':'Reprise';
+  $('rep-vendor-title').textContent=isR?'Vendeur (Particulier)':'Client';
+  $('rep-emp-row').classList.toggle('hidden',!isR);$('rep-fac-row').classList.toggle('hidden',isR);
+  $('rep-rch-v').classList.toggle('hidden',!isR);$('rep-ech-c').classList.toggle('hidden',isR);
+  $('rep-prix-title').textContent=isR?"Prix d'Achat":"Valeur de Reprise";
+  $('rep-prix-lbl').textContent=isR?"Prix d'achat (MAD)":"Valeur de reprise (MAD)";
+  t('rep-p1-title',isR?"BON D'ACQUISITION":"BON DE REPRISE");
+  t('rep-p1-title-ar',isR?'وصل الشراء':'وصل المبادلة');
+  $('rep-p1-emp-line').classList.toggle('hidden',!isR);
+  $('rep-p1-liee').classList.toggle('hidden',isR);
+  $('rep-p1-v-rch').classList.toggle('hidden',!isR);$('rep-p1-v-ech').classList.toggle('hidden',isR);
+  $('rep-decl-rch').classList.toggle('hidden',!isR);$('rep-decl-ech').classList.toggle('hidden',isR);
+  t('rep-sig-lbl',isR?'Signature du Vendeur / توقيع البائع':'Signature du Client / توقيع الزبون');
+  $('rep_ref').value='';$('rep-ref-bar').textContent='N° auto';
+  upRep();
+}
+function upRep(){
+  var isR=repMode==='RCH';
+  t('rep-p1-ref',v('rep_ref'));t('rep-p1-date',fmtDate(v('rep_date')));t('rep-p1-emp',v('rch_employee')||'-');t('rep-p1-liee-val',v('ech_facture_liee')||'-');
+  if(isR){var nom=v('rch_vendeur_nom');t('rep-p1-nom',nom||'-');t('rep-p1-cin',v('rch_vendeur_cin_ref')||'-');t('rep-p1-tel',v('rch_vendeur_tel')||'-');t('rep-p1-adr',v('rch_vendeur_adresse')||'-');t('rep-decl-nom',nom||'_________');t('rep-decl-nom-ar',nom||'_________');}
+  else{var nom2=v('ech_client_nom');t('rep-p1-ech-nom',nom2||'-');t('rep-p1-ech-tel',v('ech_client_tel')||'-');t('rep-decl-ech-nom',nom2||'_________');t('rep-decl-ech-nom-ar',nom2||'_________');var fac=v('ech_facture_liee');t('rep-decl-fac',fac||'-');t('rep-decl-fac-ar',fac||'-');}
+  var mm=[v('rep_marque'),v('rep_modele')].filter(Boolean).join(' ');
+  t('rep-p1-mm',mm||'-');t('rep-p1-im1',v('rep_imei1')||'-');t('rep-p1-im2',v('rep_imei2')||'-');t('rep-p1-stk',v('rep_stockage'));t('rep-p1-coul',v('rep_couleur')||'-');t('rep-p1-ser',v('rep_serial')||'-');t('rep-p1-etat',etatLbl(v('rep_etat')));t('rep-p1-def',v('rep_defauts')||'Aucun signalé');
+  ['apple','google','samsung','xiaomi','reset'].forEach(function(k){var el=$('rep-ck-'+k);var ck=$('rep_ck_'+k);if(el)el.textContent=(ck&&ck.checked)?'☑':'☐';});
+  t('rep-p1-prix',fmt(parseFloat(v('rep_prix'))||0));
+  t('rep-p1-prix-lbl',isR?"Prix d'achat: ":"Valeur de reprise: ");
+}
+
+/* ===== PRINT (postMessage to parent React) ===== */
+async function printRep(){
+  var isR=repMode==='RCH';
+  var nom=isR?v('rch_vendeur_nom'):v('ech_client_nom');
+  var tel=isR?v('rch_vendeur_tel'):v('ech_client_tel');
+  window.parent.postMessage({
+    type:'ACQ_PRINT_REQUEST',
+    data:{
+      mode:repMode,
+      date:v('rep_date'),
+      employee:v('rch_employee'),
+      facture_liee:v('ech_facture_liee'),
+      client_nom:nom,client_tel:tel,
+      cin_ref:v('rch_vendeur_cin_ref'),
+      adresse:v('rch_vendeur_adresse'),
+      marque:v('rep_marque'),modele:v('rep_modele'),
+      imei1:v('rep_imei1'),imei2:v('rep_imei2'),serial:v('rep_serial'),
+      stockage:v('rep_stockage'),couleur:v('rep_couleur'),etat:v('rep_etat'),
+      defauts:v('rep_defauts'),
+      ck_apple:!!($('rep_ck_apple')&&$('rep_ck_apple').checked),
+      ck_google:!!($('rep_ck_google')&&$('rep_ck_google').checked),
+      ck_samsung:!!($('rep_ck_samsung')&&$('rep_ck_samsung').checked),
+      ck_xiaomi:!!($('rep_ck_xiaomi')&&$('rep_ck_xiaomi').checked),
+      ck_reset:!!($('rep_ck_reset')&&$('rep_ck_reset').checked),
+      montant:parseFloat(v('rep_prix'))||0
+    }
+  },'*');
+}
+
+async function executeRepPrint(ref){
+  $('rep_ref').value=ref;$('rep-ref-bar').textContent=ref;$('rep_ref_ov').value='';upRep();
+  var isR=repMode==='RCH';
+  var nom=isR?v('rch_vendeur_nom'):v('ech_client_nom');
+  var tel=isR?v('rch_vendeur_tel'):v('ech_client_tel');
+  await genQR('rep-qr',{ref:ref,date:v('rep_date'),clientNom:nom,clientTel:tel,imei:v('rep_imei1'),montant:parseFloat(v('rep_prix'))||0});
+  window.print();
+}
+
+window.addEventListener('message',function(e){
+  if(!e.data)return;
+  if(e.data.type==='ACQ_REF_READY')executeRepPrint(e.data.ref);
+});
+
+function clearTab(tab){
+  if(!confirm('Effacer tous les champs ?'))return;
+  ['rep_ref_ov','rch_employee','rch_vendeur_nom','rch_vendeur_cin_ref','rch_vendeur_tel','rch_vendeur_adresse','ech_facture_liee','ech_client_nom','ech_client_tel','rep_marque','rep_modele','rep_couleur','rep_imei1','rep_imei2','rep_serial','rep_defauts','rep_prix'].forEach(function(id){var e=$(id);if(e)e.value='';});
+  $('rep_stockage').value='N/A';$('rep_etat').value='NEUF_SCELLE';
+  ['rep_ck_apple','rep_ck_google','rep_ck_samsung','rep_ck_xiaomi','rep_ck_reset'].forEach(function(id){var e=$(id);if(e)e.checked=false;});
+  $('rep_ref').value='';$('rep-ref-bar').textContent='N° auto';
+  clearSig('rep');upRep();
+}
+
+window.addEventListener('beforeprint',function(){
+  document.querySelectorAll('.no-print,.form-panel').forEach(function(el){el._pd=el.style.display;el.style.display='none';});
+});
+window.addEventListener('afterprint',function(){
+  document.querySelectorAll('.no-print,.form-panel').forEach(function(el){el.style.display=el._pd||'';});
+});
+
+document.addEventListener('DOMContentLoaded',function(){
+  $('rep_date').value=today();
+  $('rep_ref').value='';$('rep-ref-bar').textContent='N° auto';
+  setRepMode('RCH');upRep();
+  initSigPad('rep-sig-canvas',['rep-sig-img']);
+});
+</script>
+</body>
+</html>

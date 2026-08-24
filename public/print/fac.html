@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="fr" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Facture de Vente — ELECTRO ZAKI EZ</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Arabic:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{height:100%;}
+body{font-family:'Inter',sans-serif;background:#ffffff;color:#0f172a;display:flex;flex-direction:column;height:100vh;overflow:hidden;}
+.logo-wrap{display:inline-flex;align-items:center;font-family:'Inter',sans-serif;user-select:none;}
+.logo-ez-mark{background:#0f172a;color:#d97706;padding:2px 6px;border-radius:3px;font-style:italic;font-weight:900;font-size:1em;letter-spacing:-0.05em;border:1px solid #d97706;margin-right:5px;display:inline-block;line-height:1.15;}
+.logo-text-electro{color:#0f172a;font-weight:900;letter-spacing:-0.02em;}
+.logo-text-zaki{color:#d97706;font-weight:900;letter-spacing:0.02em;}
+.tab-header{padding:12px 20px;border-bottom:1px solid #e5e5e5;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;flex-shrink:0;}
+.tab-header h2{font-size:14px;font-weight:600;color:#0f172a;}
+.tab-header p{font-size:11px;color:#6b7280;margin-top:1px;}
+.tab-body{display:flex;flex:1;overflow:hidden;min-height:0;}
+.form-panel{width:320px;flex-shrink:0;border-right:1px solid #e5e5e5;padding:12px;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;gap:10px;min-height:0;}
+.preview-panel{flex:1;padding:20px;background:#f0f0f0;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0;}
+.form-card{background:#ffffff;border:1px solid #e5e5e5;border-radius:4px;padding:10px;}
+.form-card-title{font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#6b7280;font-weight:400;padding-bottom:8px;border-bottom:1px solid #e5e5e5;margin-bottom:8px;}
+.form-group{margin-bottom:8px;}
+.form-group:last-child{margin-bottom:0;}
+.form-group label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#6b7280;font-weight:400;margin-bottom:4px;}
+.form-row-2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+input[type="text"],input[type="number"],input[type="date"],select,textarea{border:1px solid #d1d5db;border-radius:4px;padding:7px 9px;font-family:'Inter',sans-serif;font-size:12px;width:100%;background:#ffffff;color:#0f172a;outline:none;display:block;}
+input[type="text"]:focus,input[type="number"]:focus,input[type="date"]:focus,select:focus,textarea:focus{outline:2px solid #d97706;outline-offset:-1px;}
+input.mono,.mono{font-family:monospace;}
+textarea{resize:vertical;min-height:54px;}
+.ref-readonly{background:#f9f9f8!important;color:#374151;}
+.override-input{margin-top:3px;font-size:11px!important;padding:5px 8px!important;color:#6b7280;}
+.btn-primary{background:#0f172a;color:white;border-radius:4px;padding:8px 16px;border:none;cursor:pointer;font-family:'Inter',sans-serif;font-size:13px;font-weight:500;white-space:nowrap;}
+.btn-primary:hover{background:#1e293b;}
+.btn-secondary{background:transparent;border:1px solid #d1d5db;border-radius:4px;padding:7px 14px;cursor:pointer;font-family:'Inter',sans-serif;font-size:12px;color:#374151;}
+.btn-secondary:hover{background:#f9fafb;}
+.btn-xs{padding:3px 8px;font-size:10px;border-radius:3px;border:1px solid #e5e5e5;background:transparent;cursor:pointer;color:#6b7280;font-family:'Inter',sans-serif;}
+.btn-xs:hover{background:#fef2f2;border-color:#fca5a5;color:#dc2626;}
+.btn-group{display:flex;border:1px solid #d1d5db;border-radius:4px;overflow:hidden;}
+.btn-group-item{flex:1;padding:6px 8px;font-size:11px;font-family:'Inter',sans-serif;background:transparent;border:none;border-right:1px solid #d1d5db;cursor:pointer;color:#374151;white-space:nowrap;}
+.btn-group-item:last-child{border-right:none;}
+.btn-group-item.active{background:#0f172a;color:white;font-weight:500;}
+.btn-group-item:hover:not(.active){background:#f9fafb;}
+.art-tbl{width:100%;border-collapse:collapse;font-size:11px;}
+.art-tbl th{font-size:10px;text-transform:uppercase;letter-spacing:0.04em;color:#6b7280;padding:4px 5px;border-bottom:1px solid #e5e5e5;text-align:left;font-weight:400;}
+.art-tbl td{padding:3px 2px;border-bottom:1px solid #f3f4f6;vertical-align:middle;}
+.art-tbl input,.art-tbl select{font-size:11px;padding:4px 5px;}
+.a4-paper{background:#ffffff;width:210mm;max-width:210mm;min-height:297mm;height:297mm;max-height:297mm;padding:12mm 15mm;margin:0 auto 16px auto;border:1px solid #d1d5db;border-radius:2px;box-sizing:border-box;position:relative;font-size:9pt;line-height:1.35;overflow:hidden;font-family:'Inter',sans-serif;}
+.dh{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1pt solid #000;padding-bottom:4pt;margin-bottom:5pt;}
+.dh-right{text-align:right;}
+.dtitle{font-size:11pt;font-weight:700;text-transform:uppercase;line-height:1.2;}
+.drule{border:none;border-top:0.5pt solid #d97706;margin:3pt 0;}
+.dbi{display:grid;grid-template-columns:1fr 1fr;gap:6pt;margin-bottom:3pt;}
+.dfr{text-align:left;}
+.dar{text-align:right;font-family:'Noto Sans Arabic',sans-serif;line-height:1.6;}
+.dtbl{width:100%;border-collapse:collapse;font-size:8.5pt;}
+.dtbl th{background:#f9f9f8;font-size:7.5pt;text-transform:uppercase;letter-spacing:0.03em;padding:2.5pt 3.5pt;border:0.5pt solid #000;font-weight:600;text-align:left;}
+.dtbl td{padding:2.5pt 3.5pt;border:0.5pt solid #000;vertical-align:top;}
+.dblk{border:0.5pt solid #000;padding:3.5pt 4pt;margin-bottom:3.5pt;}
+.dsrow{display:grid;gap:6pt;margin-top:5pt;}
+.dsig{border:0.5pt solid #000;padding:3.5pt 4pt;min-height:18mm;}
+.dqr{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;border:0.5pt solid #000;padding:3.5pt 4pt;}
+.qrh{font-family:monospace;font-size:6.5pt;text-align:center;margin-top:1.5pt;}
+.dref{font-family:monospace;font-weight:700;}
+.dsub{font-size:7.5pt;padding:2pt 3.5pt;border:0.5pt solid #e0e0e0;margin-bottom:2.5pt;background:#f9f9f8;}
+.ar{font-family:'Noto Sans Arabic',sans-serif;line-height:1.65;}
+.lp{font-size:5.9pt;line-height:1.16;padding-bottom:15mm;}
+.lart{margin-bottom:1.2pt;}
+.lart-title{font-size:6.8pt;font-weight:700;text-transform:uppercase;letter-spacing:0.02em;margin-bottom:0.8pt;border-bottom:0.5pt solid #d97706;padding-bottom:0.5pt;}
+.lbi{display:grid;grid-template-columns:1fr 1fr;gap:4pt;margin-bottom:0.8pt;}
+.lfr{font-size:5.9pt;line-height:1.16;}
+.lar-l{text-align:right;font-family:'Noto Sans Arabic',sans-serif;font-size:5.9pt;line-height:1.26;}
+.hidden{display:none!important;}
+.ref-bar{font-family:monospace;font-size:12px;color:#6b7280;}
+@media print{
+  @page{size:A4 portrait;margin:0;}
+  html,body{background:white!important;color:black!important;margin:0!important;padding:0!important;width:210mm!important;height:auto!important;display:block!important;overflow:visible!important;}
+  ::-webkit-scrollbar{display:none!important;width:0!important;}
+  .no-print,.tab-header{display:none!important;}
+  .tab-body{display:block!important;overflow:visible!important;height:auto!important;}
+  .form-panel{display:none!important;}
+  .preview-panel{display:block!important;width:100%!important;padding:0!important;margin:0!important;background:white!important;overflow:visible!important;height:auto!important;}
+  .hidden{display:none!important;}
+  .a4-paper{box-shadow:none!important;border:none!important;width:210mm!important;max-width:210mm!important;height:297mm!important;min-height:297mm!important;max-height:297mm!important;padding:12mm 15mm!important;margin:0!important;border-radius:0!important;overflow:hidden!important;page-break-inside:avoid!important;background:white!important;display:block!important;}
+  .a4-p1{page-break-after:always!important;}
+  .a4-p2{page-break-before:always!important;page-break-after:avoid!important;}
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color:black!important;background-color:transparent!important;box-shadow:none!important;}
+  .logo-ez-mark{background:#0f172a!important;background-color:#0f172a!important;color:#d97706!important;border:1pt solid #d97706!important;}
+  .logo-text-zaki{color:#d97706!important;}
+  .dtbl th,.dtbl td,.dblk,.dsig,.dqr{border:0.5pt solid #000!important;}
+  .dtbl th{background:#f9f9f8!important;background-color:#f9f9f8!important;}
+  .dsub{background:#f9f9f8!important;background-color:#f9f9f8!important;border:0.5pt solid #ccc!important;}
+  .drule{border-top:0.5pt solid #d97706!important;}
+  .lart-title{border-bottom:0.5pt solid #d97706!important;}
+  table,tr,th,td{background-color:transparent!important;}
+}
+</style>
+</head>
+<body>
+<div class="tab-header no-print">
+  <div><h2>Facture de Vente</h2><p>Facture bilingue A4 + Conditions de garantie</p></div>
+  <div style="display:flex;gap:8px;align-items:center;">
+    <span class="ref-bar" id="fac-ref-bar">N° auto</span>
+    <button class="btn-secondary" onclick="clearTab('fac')">Effacer</button>
+    <button class="btn-primary" onclick="printFac()">Imprimer</button>
+  </div>
+</div>
+<div class="tab-body">
+  <div class="form-panel no-print">
+    <div class="form-card">
+      <div class="form-card-title">Informations de la Vente</div>
+      <div class="form-group"><label>N° Facture</label>
+        <input type="text" id="fac_ref" class="mono ref-readonly" readonly>
+        <input type="text" id="fac_ref_ov" class="override-input" placeholder="Modifier N°" oninput="overrideRef('fac')">
+      </div>
+      <div class="form-group"><label>Date</label><input type="date" id="fac_date" onchange="upFac()"></div>
+      <div class="form-group"><label>Nature</label>
+        <select id="fac_nature" onchange="toggleNature();upFac()">
+          <option value="VENTE">Vente directe</option>
+          <option value="ECHANGE">Reprise d'appareil</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Type client</label>
+        <div class="btn-group">
+          <button class="btn-group-item active" id="btn-part" onclick="setClientType('PART')">Particulier</button>
+          <button class="btn-group-item" id="btn-pro" onclick="setClientType('PRO')">Professionnel</button>
+        </div>
+      </div>
+    </div>
+    <div class="form-card" id="fc-part">
+      <div class="form-card-title">Client - Particulier</div>
+      <div class="form-group"><label>Nom / Prénom</label><input type="text" id="fac_client_nom" oninput="upFac()"></div>
+      <div class="form-group"><label>N° CIN</label><input type="text" id="fac_client_cin" class="mono" oninput="upFac()" placeholder="Ex: AB123456"></div>
+      <div class="form-group"><label>Téléphone</label><input type="text" id="fac_client_tel" oninput="upFac()"></div>
+    </div>
+    <div class="form-card hidden" id="fc-pro">
+      <div class="form-card-title">Client - Professionnel</div>
+      <div class="form-group"><label>Raison Sociale</label><input type="text" id="fac_client_rs" oninput="upFac()"></div>
+      <div class="form-group"><label>Adresse complète</label><input type="text" id="fac_client_adresse" oninput="upFac()"></div>
+      <div class="form-row-2">
+        <div class="form-group"><label>ICE client</label><input type="text" id="fac_client_ice" oninput="upFac()"></div>
+        <div class="form-group"><label>IF</label><input type="text" id="fac_client_if" oninput="upFac()"></div>
+      </div>
+      <div class="form-group"><label>Téléphone</label><input type="text" id="fac_client_tel_pro" oninput="upFac()"></div>
+    </div>
+    <div class="form-card">
+      <div class="form-card-title">Produit - Mode</div>
+      <div class="btn-group" style="margin-bottom:8px;">
+        <button class="btn-group-item active" id="btn-mprinc" onclick="setProdMode('PRINC')">Appareil principal</button>
+        <button class="btn-group-item" id="btn-mmulti" onclick="setProdMode('MULTI')">Multi-articles</button>
+      </div>
+      <div id="fac-princ">
+        <div class="form-row-2">
+          <div class="form-group"><label>Marque</label><input type="text" id="fac_marque" oninput="upFac()"></div>
+          <div class="form-group"><label>Modèle</label><input type="text" id="fac_modele" oninput="upFac()"></div>
+        </div>
+        <div class="form-row-2">
+          <div class="form-group"><label>Stockage</label>
+            <select id="fac_stockage" onchange="upFac()"><option>N/A</option><option>16GB</option><option>32GB</option><option>64GB</option><option>128GB</option><option>256GB</option><option>512GB</option><option>1TB</option></select>
+          </div>
+          <div class="form-group"><label>Couleur</label><input type="text" id="fac_couleur" oninput="upFac()"></div>
+        </div>
+        <div class="form-group"><label>État</label>
+          <select id="fac_etat" onchange="updateEtat()">
+            <option value="NEUF_SCELLE">Neuf – Scellé</option>
+            <option value="NEUF_DEBALLE">Neuf – Ouvert</option>
+            <option value="OCC_EXCELLENT">Occasion – Excellent</option>
+            <option value="OCC_TRES_BON">Occasion – Très bon</option>
+            <option value="OCC_BON">Occasion – Bon</option>
+            <option value="OCC_ACCEPTABLE">Occasion – Acceptable</option>
+          </select>
+        </div>
+        <div class="form-group"><label>IMEI 1</label><input type="text" id="fac_imei1" class="mono" oninput="upFac()"></div>
+        <div class="form-group"><label>IMEI 2 / optionnel</label><input type="text" id="fac_imei2" class="mono" oninput="upFac()"></div>
+        <div class="form-group"><label>N° de Série</label><input type="text" id="fac_serial" class="mono" oninput="upFac()"></div>
+        <div class="form-group hidden" id="fac-bat-row"><label>État batterie (%)</label><input type="number" id="fac_batterie" min="1" max="100" oninput="upFac()"></div>
+        <div class="form-group hidden" id="fac-part-row"><label>Particularités / Défauts connus</label><textarea id="fac_particularites" oninput="upFac()" placeholder="Ex: micro-rayure cadre gauche, écran remplacé…"></textarea></div>
+        <div class="form-group"><label>Garantie</label><div id="fac_gar_display" style="font-size:12px;font-weight:600;padding:7px 9px;border:1px solid #e5e5e5;border-radius:4px;background:#f9f9f8;">12 Mois</div></div>
+        <div class="form-group"><label>Prix de vente (MAD)</label><input type="number" id="fac_prix_ht" oninput="calcFacTotals()"></div>
+      </div>
+      <div id="fac-multi" class="hidden">
+        <table class="art-tbl"><thead><tr><th style="width:35%;">Description</th><th style="width:10%;">Qté</th><th style="width:18%;">P.U.</th><th style="width:17%;">Total</th><th style="width:15%;">Garantie</th><th style="width:20px;"></th></tr></thead><tbody id="fac-art-body"></tbody></table>
+        <button class="btn-secondary" style="width:100%;margin-top:6px;font-size:11px;" onclick="addArtRow()">+ Ajouter un article</button>
+        <div style="text-align:right;font-size:11px;margin-top:6px;">Sous-total: <strong class="mono" id="fac-multi-sub">0,00 MAD</strong></div>
+      </div>
+    </div>
+    <div class="form-card">
+      <div class="form-card-title">Totaux &amp; Règlement</div>
+      <div class="form-group"><label>Remise (MAD)</label><input type="number" id="fac_remise" value="0" oninput="calcFacTotals()"></div>
+      <div class="form-group hidden" id="fac-reprise-row"><label>Valeur de l'appareil repris (MAD)</label><input type="number" id="fac_reprise_val" value="0" oninput="calcFacTotals()"></div>
+      <div class="form-group"><label>Mode de règlement</label>
+        <div class="btn-group">
+          <button class="btn-group-item active" id="btn-esp" onclick="setReg('ESP')">Espèces</button>
+          <button class="btn-group-item" id="btn-vir" onclick="setReg('VIR')">Virement</button>
+        </div>
+      </div>
+      <div style="padding:8px;background:#f9f9f8;border:1px solid #e5e5e5;border-radius:4px;margin-top:4px;">
+        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px;"><span>Sous-total</span><span class="mono" id="fac-sub-disp">0,00 MAD</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px;"><span>Remise</span><span class="mono" id="fac-rem-disp">– 0,00 MAD</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:5px;" id="fac-rep-disp-row" class="hidden"><span>Reprise</span><span class="mono" id="fac-rep-disp">– 0,00 MAD</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;border-top:1px solid #e5e5e5;padding-top:4px;"><span>NET À PAYER</span><span class="mono" id="fac-net-disp">0,00 MAD</span></div>
+      </div>
+    </div>
+    <div class="form-card">
+      <div class="form-card-title">Signature Client</div>
+      <div style="position:relative;">
+        <canvas id="fac-sig-canvas" width="276" height="140" style="border:1px solid #d1d5db;border-radius:4px;cursor:crosshair;touch-action:none;width:100%;display:block;background:#fff;"></canvas>
+        <button onclick="clearSig('fac')" style="position:absolute;top:4px;right:4px;font-size:10px;padding:2px 7px;background:#fff;border:1px solid #d1d5db;border-radius:3px;cursor:pointer;color:#6b7280;">Effacer</button>
+      </div>
+      <div style="font-size:10px;color:#9ca3af;margin-top:4px;">Signez avec le doigt ou la souris</div>
+    </div>
+  </div><!-- /form-panel -->
+  <div class="preview-panel">
+    <!-- A4 PAGE 1: RECTO -->
+    <div class="a4-paper a4-p1" id="fac-p1">
+      <div class="dh">
+        <div>
+          <div class="logo-wrap" style="font-size:13pt;"><span class="logo-ez-mark" style="font-size:9.5pt;">EZ</span><span><span class="logo-text-electro">ELECTRO</span><span class="logo-text-zaki">ZAKI</span></span></div>
+          <div style="font-size:7.5pt;color:#374151;margin-top:2pt;">Téléphones &amp; Accessoires · Meknès</div>
+          <div style="font-size:6.5pt;font-family:monospace;">ICE: 002533374000004 · IF: 45725467 · TP: 17202369 · RC: 102816 (Meknès)</div>
+          <div style="font-size:6.5pt;color:#374151;">Hotline SAV: +212 6 67 65 44 30</div>
+        </div>
+        <div class="dh-right">
+          <div dir="rtl" lang="ar" class="ar" style="font-size:8pt;font-weight:700;">ELECTRO ZAKI EZ · مكناس</div>
+          <div dir="rtl" lang="ar" class="ar" style="font-size:7pt;">هواتف وإكسسوارات</div>
+          <div style="margin-top:4pt;">
+            <div style="font-size:8pt;">N° <span class="dref" id="p1-ref">-</span></div>
+            <div dir="rtl" lang="ar" class="ar" style="font-size:7pt;">رقم: <span class="dref" id="p1-ref-ar">-</span></div>
+            <div style="font-size:7.5pt;margin-top:2pt;">Date: <span id="p1-date">-</span></div>
+            <div dir="rtl" lang="ar" class="ar" style="font-size:6.5pt;">التاريخ: <span id="p1-date-ar">-</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="dbi" style="margin-bottom:3pt;"><div class="dfr dtitle">FACTURE DE VENTE</div><div class="dar dtitle" dir="rtl" lang="ar">فاتورة البيع</div></div>
+      <hr class="drule">
+      <div class="dblk" style="margin-bottom:3.5pt;font-size:8.5pt;">
+        <div id="p1-cp">
+          <div><span style="font-weight:700;">VENDU À / بيع إلى:</span> <span id="p1-cn">-</span> &nbsp;&nbsp; <span style="font-size:7.5pt;">CIN: <span class="mono" id="p1-cin-val">-</span></span></div>
+          <div style="font-size:7.5pt;margin-top:1pt;">Tél / هاتف: <span class="mono" id="p1-ct">-</span></div>
+        </div>
+        <div class="hidden" id="p1-cpro">
+          <div><span style="font-weight:700;">VENDU À / بيع إلى:</span> <span id="p1-rs">-</span></div>
+          <div style="font-size:7.5pt;">Adresse / العنوان: <span id="p1-adr">-</span></div>
+          <div style="font-size:7.5pt;">ICE: <span id="p1-ice">-</span> &nbsp; IF: <span id="p1-if">-</span> &nbsp; Tél: <span class="mono" id="p1-tpro">-</span></div>
+        </div>
+      </div>
+      <div id="p1-mode-princ">
+        <table class="dtbl" style="margin-bottom:2pt;"><thead><tr><th>Description / Modèle</th><th>IMEI 1</th><th>État</th><th style="text-align:right;">P.U. (MAD)</th><th style="text-align:right;">Total (MAD)</th></tr></thead>
+        <tbody><tr><td id="p1-mmm">-</td><td class="mono" id="p1-im1">-</td><td id="p1-etat">-</td><td style="text-align:right;" class="mono" id="p1-pu">-</td><td style="text-align:right;" class="mono" id="p1-tot">-</td></tr></tbody></table>
+        <div class="dsub" style="margin-bottom:2pt;">Stockage: <span id="p1-stk">-</span> &nbsp;·&nbsp; Couleur: <span id="p1-coul">-</span> &nbsp;·&nbsp; IMEI 2: <span class="mono" id="p1-im2">-</span> &nbsp;·&nbsp; Batterie: <span id="p1-bat">-</span> &nbsp;·&nbsp; Série: <span class="mono" id="p1-ser">-</span></div>
+        <div class="dblk hidden" id="p1-partrow" style="font-size:7.5pt;margin-bottom:2.5pt;"><span style="font-weight:600;">Particularités acceptées:</span> <span id="p1-part"></span></div>
+      </div>
+      <div id="p1-mode-multi" class="hidden">
+        <table class="dtbl" style="margin-bottom:2pt;"><thead><tr><th>#</th><th>Description</th><th style="text-align:center;">Qté</th><th style="text-align:right;">P.U. (MAD)</th><th style="text-align:right;">Total (MAD)</th><th>Garantie</th></tr></thead><tbody id="p1-multi-body"></tbody></table>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-bottom:3pt;">
+        <table style="font-size:8.5pt;border-collapse:collapse;min-width:190pt;">
+          <tr><td style="padding:1.5pt 4pt;">Sous-total:</td><td class="mono" style="text-align:right;padding:1.5pt 4pt;" id="p1-sub">-</td></tr>
+          <tr class="hidden" id="p1-rem-tr"><td style="padding:1.5pt 4pt;">Remise / خصم:</td><td class="mono" style="text-align:right;padding:1.5pt 4pt;" id="p1-rem">-</td></tr>
+          <tr class="hidden" id="p1-rep-tr"><td style="padding:1.5pt 4pt;">Reprise / استرداد:</td><td class="mono" style="text-align:right;padding:1.5pt 4pt;" id="p1-rep">-</td></tr>
+          <tr><td colspan="2" style="border-top:1pt solid #000;padding:0;"></td></tr>
+          <tr><td style="padding:2pt 4pt;font-weight:700;font-size:9pt;">NET À PAYER / المبلغ المستحق:</td><td class="mono" style="text-align:right;padding:2pt 4pt;font-weight:700;font-size:9pt;" id="p1-net">-</td></tr>
+        </table>
+      </div>
+      <div style="font-size:7pt;color:#374151;margin-bottom:3pt;">TVA non applicable — Article 89-I-2-b CGI</div>
+      <div style="font-size:8pt;margin-bottom:3pt;"><strong>MODE DE RÈGLEMENT / طريقة الدفع:</strong> &nbsp; <span id="p1-esp">&#9745;</span> Espèces / نقداً &nbsp;&nbsp; <span id="p1-vir">&#9744;</span> Virement / تحويل</div>
+      <div class="dblk" style="margin-bottom:3pt;font-size:7.5pt;">
+        <div>Garantie commerciale: <strong id="p1-gar-sum">-</strong> - sans préjudice de la garantie légale applicable (Loi 31-08, Art. 549–575 COC)</div>
+        <div dir="rtl" lang="ar" class="ar" style="font-size:7pt;margin-top:2pt;">الضمان التجاري: <strong id="p1-gar-sum-ar">-</strong> - دون الإخلال بالضمان القانوني الساري (ق.31-08، المواد 549–575 ق.ل.ع)</div>
+      </div>
+      <div class="dsrow" style="grid-template-columns:2fr 1.2fr;">
+        <div class="dsig">
+          <div style="font-size:8pt;font-weight:700;margin-bottom:2pt;">SIGNATURE CLIENT / توقيع الزبون</div>
+          <div style="font-size:7pt;color:#374151;margin-bottom:2pt;">Lu et approuvé / قرأ وموافق</div>
+          <img id="fac-sig-img" src="" alt="" style="display:none;max-height:16mm;max-width:100%;object-fit:contain;">
+          <div style="border-top:0.5pt solid #000;margin-top:2pt;"></div>
+        </div>
+        <div class="dqr" style="text-align:center;">
+          <div id="fac-qr" style="width:64px;height:64px;margin:0 auto;"></div>
+          <div class="qrh">VISA ÉLECTRONIQUE / التوقيع الإلكتروني</div>
+          <div class="qrh" id="fac-qr-hash">-</div>
+          <div style="font-size:7pt;font-weight:700;margin-top:3pt;">SIGNATURE VENDEUR</div>
+          <div dir="rtl" lang="ar" class="ar" style="font-size:6.5pt;">توقيع البائع</div>
+        </div>
+      </div>
+      <div style="font-size:6.5pt;color:#374151;margin-top:4pt;border-top:0.5pt solid #e0e0e0;padding-top:2pt;">
+        <div>Marchandise vérifiée et acceptée par le client au moment de la vente. Tout recours en garantie est soumis aux conditions figurant sur la Page 2 ci-jointe. Les échanges et remboursements pour simple changement d'avis ne sont pas proposés pour les achats effectués en magasin; les droits légaux du consommateur restent intégralement applicables.</div>
+        <div dir="rtl" lang="ar" class="ar" style="font-size:6pt;margin-top:1.5pt;">فُحصت البضاعة وقُبلت من قِبل الزبون لحظة البيع. يخضع أي رجوع في إطار الضمان للشروط الواردة في الصفحة 2 المرفقة. لا يُقبل الاستبدال أو الاسترداد لمجرد تغيير الرأي في مشتريات المتجر؛ تبقى الحقوق القانونية للمستهلك سارية كاملةً.</div>
+      </div>
+    </div><!-- /fac-p1 -->
+    <!-- A4 PAGE 2: CONDITIONS DE GARANTIE (VERSO) -->
+    <div class="a4-paper a4-p2 lp" id="fac-p2">
+      <div style="border-bottom:1pt solid #000;padding-bottom:3pt;margin-bottom:3pt;display:flex;justify-content:space-between;align-items:flex-start;">
+        <div class="logo-wrap" style="font-size:9pt;"><span class="logo-ez-mark" style="font-size:7pt;">EZ</span><span><span class="logo-text-electro">ELECTRO</span><span class="logo-text-zaki">ZAKI</span></span></div>
+        <div style="text-align:right;"><div style="font-size:8.5pt;font-weight:700;text-transform:uppercase;">CONDITIONS DE GARANTIE / شروط الضمان</div><div style="font-size:5.5pt;font-family:monospace;color:#374151;">ELECTRO ZAKI EZ · Téléphones &amp; Accessoires · Meknès · ICE: 002533374000004</div></div>
+      </div>
+      <div class="lart"><div class="lart-title">Art. 1 - Champ d'Application / نطاق التطبيق</div><div class="lbi"><div class="lfr">Les présentes conditions de garantie s'appliquent à toute vente de téléphones neufs ou d'occasion et d'accessoires réalisée par ELECTRO ZAKI EZ (ICE: 002533374000004). Elles sont remises au client lors de la vente à titre de document contractuel.</div><div class="lar" dir="rtl" lang="ar">تسري هذه الشروط على كل عملية بيع تُجريها ELECTRO ZAKI EZ (ICE: 002533374000004) من هواتف جديدة أو مستعملة وإكسسوارات، وتُسلَّم للزبون وقت البيع بوصفها وثيقة تعاقدية.</div></div></div>
+      <div class="lart"><div class="lart-title">Art. 2 - Garantie Légale / الضمان القانوني</div><div class="lbi"><div class="lfr">Conformément à la loi 31-08 et aux articles 549 à 575 du Code des Obligations et Contrats marocain, le vendeur est tenu à la garantie légale pour les défauts cachés. L'action en garantie peut être exercée dans un délai d'un an à compter de la date de livraison pour les biens meubles. Cette garantie légale s'applique de plein droit et ne peut être réduite par accord contractuel dans les contrats conclus avec des consommateurs.</div><div class="lar" dir="rtl" lang="ar">وفقاً للقانون رقم 31-08 والمواد 549 إلى 575 من قانون الالتزامات والعقود المغربي، يلتزم البائع بالضمان القانوني في مواجهة العيوب الخفية. يمكن رفع دعوى الضمان خلال أجل سنة من تاريخ التسليم للمنقولات. يسري هذا الضمان بقوة القانون ولا يجوز تقليصه باتفاق تعاقدي في العقود المبرمة مع المستهلكين.</div></div></div>
+      <div class="lart"><div class="lart-title">Art. 3 - Garantie Commerciale ELECTRO ZAKI EZ / الضمان التجاري</div><div class="lbi"><div class="lfr">En complément de la garantie légale, ELECTRO ZAKI EZ accorde :<br>• Téléphones neufs : <strong id="p2-gn">12 Mois</strong> - défauts matériels de fabrication en conditions normales d'utilisation.<br>• Téléphones d'occasion : <strong id="p2-go">30 Jours</strong> - pannes fonctionnelles en utilisation normale, hors défauts cosmétiques signalés à la vente.<br>• Accessoires : <strong>7 Jours</strong> - remplacement à l'identique sur présentation de la facture originale; aucune réparation.<br>La garantie est nominative, liée à l'IMEI ou N° de série figurant sur la facture, et non cessible à un tiers.</div><div class="lar" dir="rtl" lang="ar">إضافةً إلى الضمان القانوني، تمنح ELECTRO ZAKI EZ ضمانات تجارية خاصة:<br>• الهواتف الجديدة: <strong id="p2-gn-ar">12 شهراً</strong> - عيوب التصنيع المادية في ظروف الاستخدام العادي.<br>• الهواتف المستعملة: <strong id="p2-go-ar">30 يوماً</strong> - أعطال وظيفية في الاستخدام العادي، باستثناء العيوب التجميلية المُشار إليها عند البيع.<br>• الإكسسوارات: <strong>7 أيام</strong> - استبدال بالمثيل عند تقديم الفاتورة الأصلية؛ لا إصلاح.<br>الضمان شخصي، مرتبط برقم IMEI أو الرقم التسلسلي في الفاتورة، وغير قابل للتنازل لطرف ثالث.</div></div></div>
+      <div class="lart"><div class="lart-title">Art. 4 - Appareils d'Occasion : Conditions Particulières / شروط خاصة بالهواتف المستعملة</div><div class="lbi"><div class="lfr">(a) État à la vente : L'état esthétique et fonctionnel apparent est documenté sur la facture. Les défauts connus sont portés à la connaissance du client avant la vente. Le client reconnaît avoir examiné l'appareil et testé ses fonctions principales, sans préjudice de ses droits légaux relatifs aux vices cachés.<br>(b) Batterie : L'état de la batterie est communiqué à titre informatif par lecture logicielle à la date de la vente. La dégradation naturelle liée aux cycles de charge constitue une usure normale exclue de la garantie. Seul un défaut matériel anormal - gonflement ou coupure aléatoire à un niveau de charge supérieur à 30 % - peut faire l'objet d'une prise en charge SAV dans les délais de la garantie et sous réserve des conditions de l'Article 6.</div><div class="lar" dir="rtl" lang="ar">(أ) الحال عند البيع: يُوثَّق الحال الجمالي والوظيفي الظاهر في الفاتورة؛ وتُبلَّغ العيوب المعروفة للزبون قبل إتمام البيع. يُقرّ الزبون بفحص الجهاز واختبار وظائفه، دون إخلال بحقوقه القانونية في العيوب الخفية.<br>(ب) البطارية: يُبلَّغ بحالة البطارية على سبيل الإعلام عبر القراءة البرمجية يوم البيع. يُعدّ التدهور الطبيعي في السعة استهلاكاً عادياً مستثنى من الضمان. لا يُقبل إلا العيب المادي غير الطبيعي - الإنتفاخ أو الإنطفاء العشوائي عند مستوى شحن يتجاوز 30% - في إطار الضمان وبشرط استيفاء شروط المادة 6.</div></div></div>
+      <div class="lart"><div class="lart-title">Art. 5 - Vérification des Comptes et Verrouillages / التحقق من الحسابات والأقفال</div><div class="lbi"><div class="lfr">Avant toute remise d'un appareil d'occasion, ELECTRO ZAKI EZ vérifie et documente la suppression des comptes liés :<br>• Apple : Apple ID supprimé, iCloud / Activation Lock désactivé, Find My désactivé.<br>• Android : Compte Google supprimé, FRP vérifié (Non verrouillé).<br>• Samsung : Compte Samsung supprimé.<br>• Xiaomi : Compte Xiaomi / Mi supprimé.<br>Le client vérifie l'absence de tout verrouillage actif avant la finalisation de la vente. Les difficultés résultant de comptes ou actions effectués par le client après la vente ne relèvent pas de la garantie commerciale et restent à sa charge.</div><div class="lar" dir="rtl" lang="ar">قبل تسليم أي جهاز مستعمل، تتحقق ELECTRO ZAKI EZ من حذف الحسابات المرتبطة وتوثّق ذلك:<br>• Apple: حذف Apple ID وتعطيل iCloud / Activation Lock ووظيفة Find My.<br>• Android: حذف حساب Google والتحقق من حالة FRP (غير مقفل).<br>• Samsung: حذف حساب Samsung.<br>• Xiaomi: حذف حساب Xiaomi / Mi.<br>يتحقق الزبون من غياب أي قفل نشط قبل إتمام البيع. تظل الصعوبات الناجمة عن حسابات أو تصرفات الزبون بعد البيع خارج نطاق الضمان التجاري وعلى مسؤوليته.</div></div></div>
+      <div class="lart"><div class="lart-title">Art. 6 - Exclusions de Garantie / استثناءات الضمان</div><div class="lbi"><div class="lfr"><strong>A - Dommages accidentels:</strong> Chute, choc, écran fissuré ou brisé, déformation physique du châssis, dégâts des liquides (eau, humidité, transpiration), oxydation ou corrosion.<br><strong>B - Interventions non autorisées:</strong> Ouverture par un tiers non agréé, remplacement de composants hors atelier agréé, modification matérielle, déverrouillage du bootloader, rootage ou jailbreak.<br><strong>C - Mauvais usage:</strong> Accessoires incompatibles ou non certifiés (chargeurs, câbles, adaptateurs), utilisation contraire aux recommandations du fabricant, logiciels malveillants introduits par le client.<br><strong>D - Usure normale:</strong> Dégradation naturelle de la batterie liée aux cycles de charge, usure cosmétique normale des boutons, ports et matériaux, rayures d'usage, perte ou vol.</div><div class="lar" dir="rtl" lang="ar"><strong>أ - التلف العرضي:</strong> السقوط، الصدمة، الشاشة المتصدعة أو المكسورة، تشوه الهيكل، تلف السوائل (ماء، رطوبة، عرق)، الأكسدة أو التآكل.<br><strong>ب - التدخلات غير المرخصة:</strong> فتح الجهاز من قِبل طرف ثالث غير معتمد، استبدال المكونات خارج الورشة المعتمدة، التعديل المادي، إلغاء قفل bootloader، عمل Root أو Jailbreak.<br><strong>ج - سوء الاستخدام:</strong> إكسسوارات غير متوافقة أو غير معتمدة، استخدام مخالف لتوصيات المصنّع، برامج خبيثة من قِبل الزبون.<br><strong>د - الاستهلاك العادي:</strong> التدهور الطبيعي للبطارية، الاستهلاك الجمالي العادي للأزرار والمنافذ والمواد، خدوش الاستعمال، فقدان الجهاز أو سرقته.</div></div></div>
+      <div class="lart"><div class="lart-title">Art. 7 - Procédure SAV / إجراءات خدمة ما بعد البيع</div><div class="lbi"><div class="lfr">(1) Présenter la facture originale et l'appareil en magasin. La facture constitue le justificatif de référence. En cas de perte, une vérification peut être effectuée à partir de l'IMEI et des coordonnées du client.<br>(2) Diagnostic initial sous 48 heures ouvrables, sauf difficulté technique nécessitant un délai supplémentaire, communiqué au client.<br>(3) Décision communiquée par écrit : réparation, échange standard ou refus motivé par constat technique. Le délai estimatif de réparation est communiqué après diagnostic.<br>(4) Restitution de l'appareil accompagnée d'un Bon de Restitution SAV signé des deux parties. Le délai de la garantie commerciale est prorogé de la durée d'immobilisation en atelier.</div><div class="lar" dir="rtl" lang="ar">(1) تقديم الفاتورة الأصلية والجهاز في المتجر. تُعدّ الفاتورة المرجع الرئيسي للإثبات. في حالة الضياع، يمكن التحقق انطلاقاً من رقم IMEI ومعلومات الزبون.<br>(2) تشخيص أولي في غضون 48 ساعة عمل، ما لم تستوجب صعوبة تقنية أجلاً إضافياً يُبلَّغ به الزبون.<br>(3) إبلاغ القرار كتابياً: إصلاح أو استبدال أو رفض مُسبَّب بتقرير تقني. يُبلَّغ الزبون بالأجل التقديري للإصلاح بعد التشخيص.<br>(4) إعادة الجهاز مرفقاً بوصل إعادة خدمة ما بعد البيع موقّع من الطرفين. يُمدَّد أجل الضمان التجاري بمدة احتجاز الجهاز في الورشة.</div></div></div>
+      <div class="lart"><div class="lart-title">Art. 8 - Échanges et Remboursements / الاستبدال والاسترداد</div><div class="lbi"><div class="lfr">Les échanges et remboursements pour simple changement d'avis ne sont pas proposés pour les achats effectués en magasin. Les droits du consommateur au titre des garanties légale et commerciale restent intégralement applicables conformément aux articles précédents. Pour les ventes conclues à distance ou hors établissement, les dispositions spécifiques prévues par la loi 31-08 s'appliquent.</div><div class="lar" dir="rtl" lang="ar">لا يُقبل الاستبدال أو استرداد الثمن لمجرد تغيير الرأي في المشتريات التي تتم داخل المتجر. تبقى حقوق المستهلك القانونية والتجارية سارية كاملةً وفق المواد السابقة. تطبَّق أحكام القانون 31-08 الخاصة بالعقود المبرمة عن بُعد أو خارج المؤسسة حيثما انطبقت.</div></div></div>
+      <div class="lart"><div class="lart-title">Art. 9 - Données Personnelles / البيانات الشخصية</div><div class="lbi"><div class="lfr">Le client est responsable de la sauvegarde de ses données personnelles avant tout dépôt SAV. Il est recommandé de retirer les données personnelles et de déconnecter les comptes lorsque cela est techniquement possible. Les opérations de diagnostic ou de réparation peuvent nécessiter une réinitialisation aux paramètres d'usine. ELECTRO ZAKI EZ ne garantit pas la conservation des données et ne saurait être tenu responsable de leur perte. Le traitement des données est effectué dans le respect des exigences de la loi 09-08 relative à la protection des personnes physiques à l'égard du traitement des données à caractère personnel.</div><div class="lar" dir="rtl" lang="ar">يتحمل الزبون مسؤولية نسخ بياناته الشخصية احتياطياً قبل أي إيداع للجهاز في خدمة ما بعد البيع. يُنصح بحذف البيانات الشخصية وقطع الاتصال بالحسابات متى أمكن ذلك تقنياً. قد تستلزم عمليات التشخيص أو الإصلاح إعادة الضبط على إعدادات المصنع. لا تضمن ELECTRO ZAKI EZ الحفاظ على البيانات الشخصية وتُعفى من المسؤولية عن فقدانها. يُعالَج ما يُجمع من بيانات وفق متطلبات القانون 09-08 المتعلق بحماية الأشخاص الذاتيين تجاه معالجة البيانات ذات الطابع الشخصي.</div></div></div>
+      <div class="lart"><div class="lart-title">Art. 10 - Contact &amp; Réclamations / التواصل والشكاوى</div><div class="lbi"><div class="lfr">Pour toute question ou réclamation relative à la garantie ou à une opération d'achat, le client peut se présenter en magasin ou contacter le service client : Tél. +212 6 67 65 44 30. ELECTRO ZAKI EZ s'engage à traiter toute réclamation de bonne foi dans les meilleurs délais.</div><div class="lar" dir="rtl" lang="ar">لأي استفسار أو شكوى تتعلق بالضمان أو عملية شراء، يمكن للزبون التوجه إلى المتجر أو الاتصال بخدمة الزبناء: هاتف <span dir="ltr">+212 6 67 65 44 30</span>. تلتزم ELECTRO ZAKI EZ بمعالجة أي شكوى بحسن نية وفي أقرب الآجال.</div></div></div>
+      <div style="position:absolute;bottom:8mm;left:15mm;right:15mm;border-top:0.5pt solid #000;padding-top:2.5pt;font-size:5.5pt;font-family:monospace;color:#374151;text-align:center;">ELECTRO ZAKI EZ · Meknès · ICE: 002533374000004 · IF: 45725467 · TP: 17202369 · RC: 102816</div>
+    </div><!-- /fac-p2 -->
+  </div><!-- /preview-panel -->
+</div><!-- /tab-body -->
+<script>
+var $=function(id){return document.getElementById(id);};
+var v=function(id){var e=$(id);return e?(e.value||''):''};
+var t=function(id,val){var e=$(id);if(e)e.textContent=(val===''||val===null||val===undefined)?'-':val;};
+var sh=function(id){var e=$(id);if(e)e.classList.remove('hidden');};
+var hi=function(id){var e=$(id);if(e)e.classList.add('hidden');};
+function fmt(n){return Number(n||0).toLocaleString('fr-MA',{minimumFractionDigits:2,maximumFractionDigits:2})+' MAD';}
+function fmtDate(d){if(!d)return '-';var p=d.split('-');return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:d;}
+function today(){return new Date().toISOString().split('T')[0];}
+function etatLbl(code){var m={NEUF_SCELLE:'Neuf – Scellé',NEUF_DEBALLE:'Neuf – Ouvert',OCC_EXCELLENT:'Occasion – Excellent',OCC_TRES_BON:'Occasion – Très bon',OCC_BON:'Occasion – Bon',OCC_ACCEPTABLE:'Occasion – Acceptable'};return m[code]||code;}
+
+function overrideRef(tab){
+  if(tab==='fac'){var ov=v('fac_ref_ov');if(ov){$('fac_ref').value=ov;$('fac-ref-bar').textContent=ov;}upFac();}
+}
+
+function initSigPad(canvasId,imgIds){
+  var canvas=$(canvasId);if(!canvas)return;
+  var ctx=canvas.getContext('2d');
+  var drawing=false,lx=0,ly=0;
+  function getPos(e){var r=canvas.getBoundingClientRect();var src=e.touches?e.touches[0]:e;return{x:(src.clientX-r.left)*(canvas.width/r.width),y:(src.clientY-r.top)*(canvas.height/r.height)};}
+  function onStart(e){e.preventDefault();drawing=true;var p=getPos(e);lx=p.x;ly=p.y;}
+  function onDraw(e){
+    if(!drawing)return;e.preventDefault();
+    var p=getPos(e);
+    ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(p.x,p.y);
+    ctx.strokeStyle='#0f172a';ctx.lineWidth=2;ctx.lineCap='round';ctx.lineJoin='round';ctx.stroke();
+    lx=p.x;ly=p.y;
+    var data=canvas.toDataURL();
+    imgIds.forEach(function(id){var img=$(id);if(img){img.src=data;img.style.display='block';}});
+  }
+  function onEnd(){drawing=false;}
+  canvas.addEventListener('mousedown',onStart);canvas.addEventListener('mousemove',onDraw);
+  canvas.addEventListener('mouseup',onEnd);canvas.addEventListener('mouseleave',onEnd);
+  canvas.addEventListener('touchstart',onStart,{passive:false});
+  canvas.addEventListener('touchmove',onDraw,{passive:false});
+  canvas.addEventListener('touchend',onEnd);
+}
+function clearSig(tab){
+  var map={fac:['fac-sig-canvas',['fac-sig-img']]};
+  var entry=map[tab];if(!entry)return;
+  var canvas=$(entry[0]);if(!canvas)return;
+  canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height);
+  entry[1].forEach(function(id){var img=$(id);if(img){img.src='';img.style.display='none';}});
+}
+
+async function genQR(containerId,docData){
+  var raw=[docData.ref||'',docData.date||'',docData.clientNom||'',docData.clientTel||'',docData.imei||'',String(docData.montant||'0')].join('|');
+  var hashHex='000000000000';
+  try{var buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(raw));hashHex=Array.from(new Uint8Array(buf)).map(function(b){return b.toString(16).padStart(2,'0');}).join('').substring(0,12).toUpperCase();}catch(e){console.warn(e);}
+  var qrText=['ELECTRO ZAKI EZ · Meknes','ICE:002533374000004','REF:'+(docData.ref||'N/A'),'DATE:'+(docData.date||'N/A'),'IMEI:'+(docData.imei||'N/A'),'HASH:'+hashHex].join('\n');
+  var c=$(containerId);if(!c)return hashHex;c.innerHTML='';
+  if(typeof QRCode!=='undefined'){new QRCode(c,{text:qrText,width:64,height:64,colorDark:'#000000',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});}
+  var hEl=$(containerId.replace('-qr','-qr-hash'));if(hEl)hEl.textContent='Code: '+hashHex;
+  return hashHex;
+}
+
+/* ===== FAC LOGIC ===== */
+var facCT='PART',facPM='PRINC',facReg='ESP';
+var artRows=[];
+
+function setClientType(tp){
+  facCT=tp;
+  $('btn-part').classList.toggle('active',tp==='PART');
+  $('btn-pro').classList.toggle('active',tp==='PRO');
+  $('fc-part').classList.toggle('hidden',tp!=='PART');
+  $('fc-pro').classList.toggle('hidden',tp!=='PRO');
+  $('p1-cp').classList.toggle('hidden',tp!=='PART');
+  $('p1-cpro').classList.toggle('hidden',tp!=='PRO');
+  upFac();
+}
+function setProdMode(m){
+  facPM=m;
+  $('btn-mprinc').classList.toggle('active',m==='PRINC');
+  $('btn-mmulti').classList.toggle('active',m==='MULTI');
+  $('fac-princ').classList.toggle('hidden',m!=='PRINC');
+  $('fac-multi').classList.toggle('hidden',m!=='MULTI');
+  $('p1-mode-princ').classList.toggle('hidden',m!=='PRINC');
+  $('p1-mode-multi').classList.toggle('hidden',m!=='MULTI');
+  if(m==='MULTI'&&artRows.length===0)addArtRow();
+  calcFacTotals();
+}
+function setReg(r){
+  facReg=r;
+  $('btn-esp').classList.toggle('active',r==='ESP');
+  $('btn-vir').classList.toggle('active',r==='VIR');
+  $('p1-esp').textContent=r==='ESP'?'☑':'☐';
+  $('p1-vir').textContent=r==='VIR'?'☑':'☐';
+}
+function toggleNature(){
+  var n=v('fac_nature');
+  $('fac-reprise-row').classList.toggle('hidden',n!=='ECHANGE');
+  $('fac-rep-disp-row').classList.toggle('hidden',n!=='ECHANGE');
+  $('p1-rep-tr').classList.toggle('hidden',n!=='ECHANGE');
+  calcFacTotals();
+}
+function updateEtat(){
+  var e=v('fac_etat');
+  var isOcc=e.indexOf('OCC')===0;
+  $('fac-bat-row').classList.toggle('hidden',!isOcc);
+  $('fac-part-row').classList.toggle('hidden',!isOcc);
+  $('fac_gar_display').textContent=e.indexOf('NEUF')===0?'12 Mois':'30 Jours';
+  upFac();
+}
+function addArtRow(){
+  if(artRows.length>=8)return;
+  var idx=Date.now();artRows.push(idx);
+  var tr=document.createElement('tr');tr.id='ar-'+idx;
+  tr.innerHTML='<td><input type="text" placeholder="Description" oninput="upFac()" style="font-size:11px;padding:3px 5px;"></td><td><input type="number" value="1" min="1" oninput="rowTotal(this)" style="font-size:11px;padding:3px 5px;text-align:center;"></td><td><input type="number" placeholder="0" oninput="rowTotal(this)" style="font-size:11px;padding:3px 5px;text-align:right;"></td><td><input type="text" readonly value="0.00" style="font-size:11px;padding:3px 5px;text-align:right;background:#f9f9f8;"></td><td><select onchange="upFac()" style="font-size:11px;padding:3px 5px;"><option>12 Mois</option><option>30 Jours</option><option>7 Jours</option><option>Aucune</option></select></td><td><button class="btn-xs" onclick="removeArtRow('+idx+')">&#10005;</button></td>';
+  $('fac-art-body').appendChild(tr);calcFacTotals();
+}
+function rowTotal(inp){
+  var tr=inp.closest('tr');var ins=tr.querySelectorAll('input');
+  ins[3].value=((parseFloat(ins[1].value)||0)*(parseFloat(ins[2].value)||0)).toFixed(2);
+  calcFacTotals();
+}
+function removeArtRow(idx){
+  if(artRows.length<=1)return;
+  artRows=artRows.filter(function(i){return i!==idx;});
+  var tr=$('ar-'+idx);if(tr)tr.remove();calcFacTotals();
+}
+function calcFacTotals(){
+  var sub=0;
+  if(facPM==='PRINC'){sub=parseFloat(v('fac_prix_ht'))||0;}
+  else{document.querySelectorAll('#fac-art-body tr').forEach(function(tr){sub+=parseFloat(tr.querySelectorAll('input')[3].value)||0;});}
+  var rem=parseFloat(v('fac_remise'))||0;
+  var rep=(v('fac_nature')==='ECHANGE')?(parseFloat(v('fac_reprise_val'))||0):0;
+  var net=Math.max(0,sub-rem-rep);
+  $('fac-multi-sub').textContent=sub.toLocaleString('fr-MA',{minimumFractionDigits:2})+' MAD';
+  $('fac-sub-disp').textContent=fmt(sub);$('fac-rem-disp').textContent='– '+fmt(rem);$('fac-rep-disp').textContent='– '+fmt(rep);$('fac-net-disp').textContent=fmt(net);
+  t('p1-sub',fmt(sub));$('p1-rem-tr').classList.toggle('hidden',rem===0);t('p1-rem','– '+fmt(rem));t('p1-rep','– '+fmt(rep));t('p1-net',fmt(net));t('p1-pu',fmt(sub));t('p1-tot',fmt(sub));
+  upFac();
+}
+function upFac(){
+  var ref=v('fac_ref');t('p1-ref',ref);t('p1-ref-ar',ref);
+  var d=v('fac_date');t('p1-date',fmtDate(d));t('p1-date-ar',fmtDate(d));
+  if(facCT==='PART'){
+    t('p1-cn',v('fac_client_nom')||'-');t('p1-cin-val',v('fac_client_cin')||'-');t('p1-ct',v('fac_client_tel')||'-');
+  }else{
+    t('p1-rs',v('fac_client_rs')||'-');t('p1-adr',v('fac_client_adresse')||'-');t('p1-ice',v('fac_client_ice')||'-');t('p1-if',v('fac_client_if')||'-');t('p1-tpro',v('fac_client_tel_pro')||'-');
+  }
+  if(facPM==='PRINC'){
+    var mm=[v('fac_marque'),v('fac_modele')].filter(Boolean).join(' ');t('p1-mmm',mm||'-');
+    t('p1-im1',v('fac_imei1')||'-');t('p1-etat',etatLbl(v('fac_etat')));t('p1-stk',v('fac_stockage'));t('p1-coul',v('fac_couleur')||'-');t('p1-im2',v('fac_imei2')||'-');
+    var bat=v('fac_batterie');t('p1-bat',bat?bat+'%':'-');t('p1-ser',v('fac_serial')||'-');
+    var part=v('fac_particularites');if(part){sh('p1-partrow');t('p1-part',part);}else{hi('p1-partrow');}
+    var gar=$('fac_gar_display').textContent;t('p1-gar-sum',gar);t('p1-gar-sum-ar',gar==='12 Mois'?'12 شهراً':'30 يوماً');
+  }else{
+    var tbody=$('p1-multi-body');
+    if(tbody){
+      tbody.innerHTML='';var i=1;
+      document.querySelectorAll('#fac-art-body tr').forEach(function(tr){
+        var ins=tr.querySelectorAll('input');var sel=tr.querySelector('select');
+        var row=document.createElement('tr');
+        row.innerHTML='<td>'+i+'</td><td>'+(ins[0].value||'-')+'</td><td style="text-align:center;">'+ins[1].value+'</td><td style="text-align:right;font-family:monospace;">'+parseFloat(ins[2].value||0).toFixed(2)+'</td><td style="text-align:right;font-family:monospace;">'+parseFloat(ins[3].value||0).toFixed(2)+'</td><td>'+(sel?sel.value:'-')+'</td>';
+        tbody.appendChild(row);i++;
+      });
+    }
+  }
+}
+
+/* ===== PRINT (postMessage to parent React) ===== */
+async function printFac(){
+  var cn=facCT==='PART'?v('fac_client_nom'):v('fac_client_rs');
+  var ct=facCT==='PART'?v('fac_client_tel'):v('fac_client_tel_pro');
+  var sub=0;
+  if(facPM==='PRINC'){var px=parseFloat(v('fac_prix_ht'))||0;var rm=parseFloat(v('fac_remise'))||0;var rp=(v('fac_nature')==='ECHANGE')?(parseFloat(v('fac_reprise_val'))||0):0;sub=Math.max(0,px-rm-rp);}
+  else{document.querySelectorAll('#fac-art-body tr').forEach(function(tr){sub+=parseFloat(tr.querySelectorAll('input')[3].value)||0;});sub=Math.max(0,sub-(parseFloat(v('fac_remise'))||0));}
+  window.parent.postMessage({
+    type:'FAC_PRINT_REQUEST',
+    data:{
+      date:v('fac_date'),client_nom:cn,client_tel:ct,client_cin:v('fac_client_cin'),
+      client_rs:v('fac_client_rs'),client_adresse:v('fac_client_adresse'),
+      client_ice:v('fac_client_ice'),client_if:v('fac_client_if'),
+      client_type:facCT,marque:v('fac_marque'),modele:v('fac_modele'),
+      imei1:v('fac_imei1'),imei2:v('fac_imei2'),serial:v('fac_serial'),
+      stockage:v('fac_stockage'),couleur:v('fac_couleur'),etat:v('fac_etat'),
+      batterie:v('fac_batterie'),particularites:v('fac_particularites'),
+      garantie:$('fac_gar_display').textContent,nature:v('fac_nature'),
+      reglement:facReg,remise:parseFloat(v('fac_remise'))||0,
+      reprise_val:(v('fac_nature')==='ECHANGE')?(parseFloat(v('fac_reprise_val'))||0):0,
+      montant:sub,prod_mode:facPM
+    }
+  },'*');
+}
+
+/* Called by parent React once doc_ref is ready */
+async function executeFacPrint(ref){
+  $('fac_ref').value=ref;$('fac-ref-bar').textContent=ref;$('fac_ref_ov').value='';upFac();
+  var cn=facCT==='PART'?v('fac_client_nom'):v('fac_client_rs');
+  var ct=facCT==='PART'?v('fac_client_tel'):v('fac_client_tel_pro');
+  var sub=0;
+  if(facPM==='PRINC'){var px=parseFloat(v('fac_prix_ht'))||0;var rm=parseFloat(v('fac_remise'))||0;var rp=(v('fac_nature')==='ECHANGE')?(parseFloat(v('fac_reprise_val'))||0):0;sub=Math.max(0,px-rm-rp);}
+  else{document.querySelectorAll('#fac-art-body tr').forEach(function(tr){sub+=parseFloat(tr.querySelectorAll('input')[3].value)||0;});sub=Math.max(0,sub-(parseFloat(v('fac_remise'))||0));}
+  await genQR('fac-qr',{ref:ref,date:v('fac_date'),clientNom:cn,clientTel:ct,imei:v('fac_imei1'),montant:sub});
+  window.print();
+}
+
+window.addEventListener('message',function(e){
+  if(!e.data)return;
+  if(e.data.type==='FAC_REF_READY')executeFacPrint(e.data.ref);
+});
+
+function clearTab(tab){
+  if(!confirm('Effacer tous les champs ?'))return;
+  ['fac_ref_ov','fac_client_nom','fac_client_cin','fac_client_tel','fac_client_rs','fac_client_adresse','fac_client_ice','fac_client_if','fac_client_tel_pro','fac_marque','fac_modele','fac_couleur','fac_imei1','fac_imei2','fac_serial','fac_batterie','fac_particularites','fac_prix_ht'].forEach(function(id){var e=$(id);if(e)e.value='';});
+  $('fac_stockage').value='N/A';$('fac_etat').value='NEUF_SCELLE';$('fac_nature').value='VENTE';$('fac_remise').value='0';$('fac_reprise_val').value='0';
+  $('fac-art-body').innerHTML='';artRows=[];
+  $('fac_ref').value='';$('fac-ref-bar').textContent='N° auto';
+  setClientType('PART');setProdMode('PRINC');setReg('ESP');toggleNature();updateEtat();clearSig('fac');calcFacTotals();
+}
+
+window.addEventListener('beforeprint',function(){
+  document.querySelectorAll('.no-print,.form-panel').forEach(function(el){el._pd=el.style.display;el.style.display='none';});
+});
+window.addEventListener('afterprint',function(){
+  document.querySelectorAll('.no-print,.form-panel').forEach(function(el){el.style.display=el._pd||'';});
+});
+
+document.addEventListener('DOMContentLoaded',function(){
+  $('fac_date').value=today();
+  $('fac_ref').value='';$('fac-ref-bar').textContent='N° auto';
+  setClientType('PART');setProdMode('PRINC');setReg('ESP');
+  toggleNature();updateEtat();calcFacTotals();upFac();
+  initSigPad('fac-sig-canvas',['fac-sig-img']);
+});
+</script>
+</body>
+</html>

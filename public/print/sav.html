@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="fr" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SAV - Prise en Charge &amp; Restitution — ELECTRO ZAKI EZ</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Arabic:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{height:100%;}
+body{font-family:'Inter',sans-serif;background:#ffffff;color:#0f172a;display:flex;flex-direction:column;height:100vh;overflow:hidden;}
+.logo-wrap{display:inline-flex;align-items:center;font-family:'Inter',sans-serif;user-select:none;}
+.logo-ez-mark{background:#0f172a;color:#d97706;padding:2px 6px;border-radius:3px;font-style:italic;font-weight:900;font-size:1em;letter-spacing:-0.05em;border:1px solid #d97706;margin-right:5px;display:inline-block;line-height:1.15;}
+.logo-text-electro{color:#0f172a;font-weight:900;letter-spacing:-0.02em;}
+.logo-text-zaki{color:#d97706;font-weight:900;letter-spacing:0.02em;}
+.tab-header{padding:12px 20px;border-bottom:1px solid #e5e5e5;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;flex-shrink:0;}
+.tab-header h2{font-size:14px;font-weight:600;color:#0f172a;}
+.tab-header p{font-size:11px;color:#6b7280;margin-top:1px;}
+.tab-body{display:flex;overflow:hidden;min-height:0;}
+.form-panel{width:320px;flex-shrink:0;border-right:1px solid #e5e5e5;padding:12px;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;gap:10px;min-height:0;}
+.preview-panel{flex:1;padding:20px;background:#f0f0f0;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0;}
+.form-card{background:#ffffff;border:1px solid #e5e5e5;border-radius:4px;padding:10px;}
+.form-card-title{font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#6b7280;font-weight:400;padding-bottom:8px;border-bottom:1px solid #e5e5e5;margin-bottom:8px;}
+.form-group{margin-bottom:8px;}
+.form-group:last-child{margin-bottom:0;}
+.form-group label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#6b7280;font-weight:400;margin-bottom:4px;}
+.form-row-2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+input[type="text"],input[type="number"],input[type="date"],select,textarea{border:1px solid #d1d5db;border-radius:4px;padding:7px 9px;font-family:'Inter',sans-serif;font-size:12px;width:100%;background:#ffffff;color:#0f172a;outline:none;display:block;}
+input[type="text"]:focus,input[type="number"]:focus,input[type="date"]:focus,select:focus,textarea:focus{outline:2px solid #d97706;outline-offset:-1px;}
+input.mono,.mono{font-family:monospace;}
+textarea{resize:vertical;min-height:54px;}
+.ref-readonly{background:#f9f9f8!important;color:#374151;}
+.override-input{margin-top:3px;font-size:11px!important;padding:5px 8px!important;color:#6b7280;}
+.btn-primary{background:#0f172a;color:white;border-radius:4px;padding:8px 16px;border:none;cursor:pointer;font-family:'Inter',sans-serif;font-size:13px;font-weight:500;white-space:nowrap;}
+.btn-primary:hover{background:#1e293b;}
+.btn-secondary{background:transparent;border:1px solid #d1d5db;border-radius:4px;padding:7px 14px;cursor:pointer;font-family:'Inter',sans-serif;font-size:12px;color:#374151;}
+.btn-secondary:hover{background:#f9fafb;}
+.btn-xs{padding:3px 8px;font-size:10px;border-radius:3px;border:1px solid #e5e5e5;background:transparent;cursor:pointer;color:#6b7280;font-family:'Inter',sans-serif;}
+.btn-xs:hover{background:#fef2f2;border-color:#fca5a5;color:#dc2626;}
+.btn-group{display:flex;border:1px solid #d1d5db;border-radius:4px;overflow:hidden;}
+.btn-group-item{flex:1;padding:6px 8px;font-size:11px;font-family:'Inter',sans-serif;background:transparent;border:none;border-right:1px solid #d1d5db;cursor:pointer;color:#374151;white-space:nowrap;}
+.btn-group-item:last-child{border-right:none;}
+.btn-group-item.active{background:#0f172a;color:white;font-weight:500;}
+.btn-group-item:hover:not(.active){background:#f9fafb;}
+.art-tbl{width:100%;border-collapse:collapse;font-size:11px;}
+.art-tbl th{font-size:10px;text-transform:uppercase;letter-spacing:0.04em;color:#6b7280;padding:4px 5px;border-bottom:1px solid #e5e5e5;text-align:left;font-weight:400;}
+.art-tbl td{padding:3px 2px;border-bottom:1px solid #f3f4f6;vertical-align:middle;}
+.art-tbl input,.art-tbl select{font-size:11px;padding:4px 5px;}
+.imei-warn{font-size:11px;color:#dc2626;padding:4px 8px;background:#fef2f2;border:1px solid #fca5a5;border-radius:4px;margin-top:4px;display:none;}
+.imei-warn.show{display:block;}
+.a4-paper{background:#ffffff;width:210mm;max-width:210mm;min-height:297mm;height:297mm;max-height:297mm;padding:12mm 15mm;margin:0 auto 16px auto;border:1px solid #d1d5db;border-radius:2px;box-sizing:border-box;position:relative;font-size:9pt;line-height:1.35;overflow:hidden;font-family:'Inter',sans-serif;}
+.dh{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1pt solid #000;padding-bottom:4pt;margin-bottom:5pt;}
+.dh-right{text-align:right;}
+.dtitle{font-size:11pt;font-weight:700;text-transform:uppercase;line-height:1.2;}
+.drule{border:none;border-top:0.5pt solid #d97706;margin:3pt 0;}
+.dtbl{width:100%;border-collapse:collapse;font-size:8.5pt;}
+.dtbl th{background:#f9f9f8;font-size:7.5pt;text-transform:uppercase;letter-spacing:0.03em;padding:2.5pt 3.5pt;border:0.5pt solid #000;font-weight:600;text-align:left;}
+.dtbl td{padding:2.5pt 3.5pt;border:0.5pt solid #000;vertical-align:top;}
+.dblk{border:0.5pt solid #000;padding:3.5pt 4pt;margin-bottom:3.5pt;}
+.dsrow{display:grid;gap:6pt;margin-top:5pt;}
+.dsig{border:0.5pt solid #000;padding:3.5pt 4pt;min-height:18mm;}
+.dqr{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;border:0.5pt solid #000;padding:3.5pt 4pt;}
+.qrh{font-family:monospace;font-size:6.5pt;text-align:center;margin-top:1.5pt;}
+.dref{font-family:monospace;font-weight:700;}
+.ar{font-family:'Noto Sans Arabic',sans-serif;line-height:1.65;}
+.stub-sep{border:none;border-top:1.5pt dashed #000;margin:5mm 0;position:relative;}
+.stub-sep::before{content:"\2702";font-size:9pt;position:absolute;left:-3pt;top:-8pt;background:white;line-height:1;}
+.hidden{display:none!important;}
+.ref-bar{font-family:monospace;font-size:12px;color:#6b7280;}
+.sav-outer-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0;}
+.sav-section{border-bottom:2px solid #e5e5e5;}
+.sav-section .tab-body{overflow:visible;min-height:80vh;}
+.sav-section .form-panel{height:auto;max-height:none;overflow-y:visible;}
+@media print{
+  @page{size:A4 portrait;margin:0;}
+  html,body{background:white!important;color:black!important;margin:0!important;padding:0!important;width:210mm!important;height:auto!important;display:block!important;overflow:visible!important;}
+  ::-webkit-scrollbar{display:none!important;width:0!important;}
+  .no-print,.tab-header{display:none!important;}
+  .sav-outer-body{display:block!important;overflow:visible!important;}
+  .sav-section{display:block!important;border:none!important;}
+  .sav-section .tab-body{display:block!important;overflow:visible!important;}
+  .form-panel{display:none!important;}
+  .preview-panel{display:block!important;width:100%!important;padding:0!important;margin:0!important;background:white!important;overflow:visible!important;height:auto!important;}
+  .hidden{display:none!important;}
+  .a4-paper{box-shadow:none!important;border:none!important;width:210mm!important;max-width:210mm!important;height:297mm!important;min-height:297mm!important;max-height:297mm!important;padding:12mm 15mm!important;margin:0!important;border-radius:0!important;overflow:hidden!important;page-break-inside:avoid!important;background:white!important;display:block!important;page-break-after:always!important;}
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color:black!important;background-color:transparent!important;box-shadow:none!important;}
+  .logo-ez-mark{background:#0f172a!important;background-color:#0f172a!important;color:#d97706!important;border:1pt solid #d97706!important;}
+  .logo-text-zaki{color:#d97706!important;}
+  .dtbl th,.dtbl td,.dblk,.dsig,.dqr{border:0.5pt solid #000!important;}
+  .dtbl th{background:#f9f9f8!important;background-color:#f9f9f8!important;}
+  .drule{border-top:0.5pt solid #d97706!important;}
+  table,tr,th,td{background-color:transparent!important;}
+}
+</style>
+</head>
+<body>
+<div class="tab-header no-print">
+  <div><h2>SAV - Prise en Charge &amp; Restitution</h2><p>Fiche de dépôt SAV et bon de restitution après intervention</p></div>
+  <div style="display:flex;gap:8px;align-items:center;">
+    <div class="btn-group">
+      <button class="btn-group-item active" id="btn-sav-pec" onclick="setSavMode('PEC')">Prise en Charge</button>
+      <button class="btn-group-item" id="btn-sav-rst" onclick="setSavMode('RST')">Restitution</button>
+      <button class="btn-group-item" id="btn-sav-both" onclick="setSavMode('BOTH')">Imprimer les deux</button>
+    </div>
+    <button class="btn-secondary" onclick="clearTab('sav')">Effacer</button>
+    <button class="btn-primary" onclick="printSav()">Imprimer</button>
+  </div>
+</div>
+<div class="sav-outer-body">
+  <!-- PEC SECTION -->
+  <div class="sav-section" id="sav-pec-section">
+    <div class="tab-body">
+      <div class="form-panel no-print">
+        <div class="form-card">
+          <div class="form-card-title">Prise en Charge SAV</div>
+          <div class="form-group"><label>N° SAV</label><input type="text" id="sav_ref" class="mono ref-readonly" readonly><input type="text" id="sav_ref_ov" class="override-input" placeholder="Modifier N°" oninput="overrideRef('sav')"></div>
+          <div class="form-group"><label>Date de réception</label><input type="date" id="sav_date_reception" onchange="upSav();autoDeadline()"></div>
+          <div class="form-group"><label>Reçu par</label><input type="text" id="sav_employe" oninput="upSav()"></div>
+          <div class="form-group"><label>N° Facture liée</label><input type="text" id="sav_facture_liee" class="mono" oninput="upSav()"></div>
+        </div>
+        <div class="form-card">
+          <div class="form-card-title">Client</div>
+          <div class="form-group"><label>Nom client</label><input type="text" id="sav_client_nom" oninput="upSav()"></div>
+          <div class="form-group"><label>Téléphone</label><input type="text" id="sav_client_tel" oninput="upSav()"></div>
+        </div>
+        <div class="form-card">
+          <div class="form-card-title">Appareil</div>
+          <div class="form-row-2"><div class="form-group"><label>Marque</label><input type="text" id="sav_marque" oninput="upSav()"></div><div class="form-group"><label>Modèle</label><input type="text" id="sav_modele" oninput="upSav()"></div></div>
+          <div class="form-group"><label>IMEI</label><input type="text" id="sav_imei" class="mono" oninput="upSav()"></div>
+        </div>
+        <div class="form-card">
+          <div class="form-card-title">Détails</div>
+          <div class="form-group"><label>Accessoires reçus avec l'appareil</label><textarea id="sav_accessoires" oninput="upSav()" placeholder="Ex: chargeur, coque, boîte d'origine…"></textarea></div>
+          <div class="form-group"><label>État physique à la réception</label><textarea id="sav_etat_reception" oninput="upSav()" placeholder="Décrire l'état visuel: écran, cadre, dos, ports…"></textarea></div>
+          <div class="form-group"><label>Réclamation client</label><textarea id="sav_plainte" oninput="upSav()" placeholder="Décrire le problème signalé par le client…"></textarea></div>
+          <div class="form-group"><label>Délai diagnostic estimé</label><input type="date" id="sav_deadline" onchange="upSav()"></div>
+        </div>
+        <div class="form-card">
+          <div class="form-card-title">Signature Client</div>
+          <div style="position:relative;">
+            <canvas id="sav-sig-canvas" width="276" height="140" style="border:1px solid #d1d5db;border-radius:4px;cursor:crosshair;touch-action:none;width:100%;display:block;background:#fff;"></canvas>
+            <button onclick="clearSig('sav')" style="position:absolute;top:4px;right:4px;font-size:10px;padding:2px 7px;background:#fff;border:1px solid #d1d5db;border-radius:3px;cursor:pointer;color:#6b7280;">Effacer</button>
+          </div>
+          <div style="font-size:10px;color:#9ca3af;margin-top:4px;">Signez ici - s'applique sur PEC et Restitution</div>
+        </div>
+      </div>
+      <div class="preview-panel">
+        <div class="a4-paper" id="sav-pec-p1">
+          <div class="dh">
+            <div><div class="logo-wrap" style="font-size:13pt;"><span class="logo-ez-mark" style="font-size:9.5pt;">EZ</span><span><span class="logo-text-electro">ELECTRO</span><span class="logo-text-zaki">ZAKI</span></span></div><div style="font-size:6.5pt;font-family:monospace;margin-top:2pt;">ICE: 002533374000004 · IF: 45725467 · TP: 17202369 · RC: 102816 (Meknès)</div><div style="font-size:6.5pt;color:#374151;">Hotline SAV: +212 6 67 65 44 30</div></div>
+            <div class="dh-right"><div dir="rtl" lang="ar" class="ar" style="font-size:8pt;font-weight:700;">ELECTRO ZAKI EZ · مكناس</div><div style="margin-top:4pt;"><div style="font-size:8pt;">N° <span class="dref" id="sav-p1-ref">-</span></div><div style="font-size:7.5pt;color:#374151;">Date: <span id="sav-p1-date">-</span></div><div style="font-size:7pt;color:#374151;">Reçu par: <span id="sav-p1-emp">-</span></div></div></div>
+          </div>
+          <div class="dbi" style="margin-bottom:3pt;display:grid;grid-template-columns:1fr 1fr;gap:6pt;"><div style="text-align:left;" class="dtitle">PRISE EN CHARGE SAV</div><div style="text-align:right;font-family:'Noto Sans Arabic',sans-serif;" class="dtitle" dir="rtl" lang="ar">وصل استلام الجهاز للصيانة</div></div>
+          <hr class="drule">
+          <div class="dblk" style="margin-bottom:3pt;font-size:8pt;">Facture liée: <span class="mono" id="sav-p1-liee">-</span></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:3.5pt;margin-bottom:3.5pt;">
+            <div class="dblk" style="font-size:8.5pt;"><div style="font-size:7pt;font-weight:700;text-transform:uppercase;color:#374151;margin-bottom:2pt;">CLIENT / الزبون</div><div style="font-weight:700;" id="sav-p1-cn">-</div><div class="mono" id="sav-p1-ct">-</div></div>
+            <div class="dblk" style="font-size:8.5pt;"><div style="font-size:7pt;font-weight:700;text-transform:uppercase;color:#374151;margin-bottom:2pt;">APPAREIL / الجهاز</div><div style="font-weight:700;" id="sav-p1-mm">-</div><div>IMEI: <span class="mono" style="font-weight:700;" id="sav-p1-imei">-</span></div></div>
+          </div>
+          <div class="dblk" style="margin-bottom:3.5pt;"><div style="font-size:7pt;font-weight:700;text-transform:uppercase;margin-bottom:2pt;">Accessoires reçus / الإكسسوارات المستلمة</div><div style="font-size:8.5pt;" id="sav-p1-acc">Aucun</div></div>
+          <div class="dblk" style="margin-bottom:3.5pt;min-height:14mm;"><div style="font-size:7pt;font-weight:700;text-transform:uppercase;margin-bottom:2pt;">État à la réception / الحال عند الاستلام</div><div style="font-size:8.5pt;" id="sav-p1-etat">-</div></div>
+          <div class="dblk" style="margin-bottom:3.5pt;min-height:11mm;"><div style="font-size:7pt;font-weight:700;text-transform:uppercase;margin-bottom:2pt;">Réclamation client / شكوى الزبون</div><div style="font-size:8.5pt;" id="sav-p1-plainte">-</div></div>
+          <div style="font-size:8.5pt;margin-bottom:3.5pt;">Délai diagnostic estimé / الأجل التقديري للتشخيص: <strong id="sav-p1-deadline">-</strong></div>
+          <div class="dblk" style="margin-bottom:3.5pt;font-size:7.5pt;"><strong>Important:</strong> Le client est responsable de la sauvegarde de ses données personnelles. Une réinitialisation aux paramètres d'usine peut être nécessaire selon le diagnostic. ELECTRO ZAKI EZ ne peut être tenu responsable de la perte de données.<div dir="rtl" lang="ar" class="ar" style="font-size:7pt;margin-top:2pt;">يتحمل الزبون مسؤولية نسخ بياناته الشخصية احتياطياً. قد تكون إعادة الضبط ضرورية تبعاً للتشخيص. لا تتحمل ELECTRO ZAKI EZ مسؤولية فقدان البيانات.</div></div>
+          <div class="dsrow" style="grid-template-columns:1fr 1fr 0.8fr;">
+            <div class="dsig"><div style="font-size:8pt;font-weight:700;">Signature Client / توقيع الزبون</div><img id="sav-sig-img" src="" alt="" style="display:none;max-height:12mm;max-width:100%;object-fit:contain;margin-top:2pt;"><div style="border-top:0.5pt solid #000;margin-top:2pt;"></div></div>
+            <div class="dsig"><div style="font-size:8pt;font-weight:700;">Reçu par / إستلم من طرف</div><div style="font-size:7.5pt;color:#374151;" id="sav-p1-sig-emp">-</div><div style="border-top:0.5pt solid #000;margin-top:9mm;"></div></div>
+            <div class="dqr" style="text-align:center;"><div id="sav-qr" style="width:64px;height:64px;margin:0 auto;"></div><div class="qrh">VISA ÉLECTRONIQUE</div><div class="qrh" id="sav-qr-hash">-</div></div>
+          </div>
+          <div class="stub-sep"></div>
+          <div style="font-size:7pt;text-align:center;color:#374151;margin-bottom:3pt;">DÉTACHER ET CONSERVER / احتفظ بهذه النسخة</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6pt;font-size:8pt;">
+            <div><div class="logo-wrap" style="font-size:9pt;"><span class="logo-ez-mark" style="font-size:7pt;">EZ</span><span><span class="logo-text-electro">ELECTRO</span><span class="logo-text-zaki">ZAKI</span></span></div><div style="margin-top:3pt;">N° SAV: <span class="mono" id="stub-ref">-</span></div><div>Appareil: <span id="stub-app">-</span></div><div>IMEI: <span class="mono" id="stub-imei">-</span></div></div>
+            <div><div>Date de dépôt: <span id="stub-date">-</span></div><div>Tél: +212 6 67 65 44 30</div><div>Diagnostic estimé: <span id="stub-dl">-</span></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div><!-- /sav-pec-section -->
+
+  <!-- RST SECTION -->
+  <div class="sav-section hidden" id="sav-rst-section">
+    <div class="tab-body">
+      <div class="form-panel no-print">
+        <div class="form-card">
+          <div class="form-card-title">Bon de Restitution SAV</div>
+          <div class="form-group"><label>N° Restitution</label><input type="text" id="rst_ref" class="mono ref-readonly" readonly><input type="text" id="rst_ref_ov" class="override-input" placeholder="Modifier N°" oninput="overrideRef('rst')"></div>
+          <div class="form-group"><label>N° SAV lié</label><input type="text" id="rst_sav_ref" class="mono" oninput="upRst()"></div>
+          <div class="form-group"><label>Date de restitution</label><input type="date" id="rst_date" onchange="upRst()"></div>
+          <div class="form-group"><label>IMEI restitué</label><input type="text" id="rst_imei" class="mono" oninput="upRst();checkImei()"><div class="imei-warn" id="rst-imei-warn">IMEI différent de la prise en charge - vérifier avant impression</div></div>
+        </div>
+        <div class="form-card">
+          <div class="form-card-title">Intervention</div>
+          <div class="form-group"><label>Diagnostic établi</label><textarea id="rst_diagnostic" oninput="upRst()"></textarea></div>
+          <div class="form-group"><label>Travaux effectués</label><textarea id="rst_travaux" oninput="upRst()" placeholder="Ou 'Aucun' si diagnostic uniquement"></textarea></div>
+          <div class="form-group"><label>Nom du technicien</label><input type="text" id="rst_technicien" oninput="upRst()"></div>
+        </div>
+        <div class="form-card">
+          <div class="form-card-title">Pièces Remplacées</div>
+          <table class="art-tbl"><thead><tr><th style="width:38%;">Pièce</th><th style="width:30%;">Type</th><th style="width:27%;">Note</th><th style="width:20px;"></th></tr></thead><tbody id="rst-pieces-body"></tbody></table>
+          <button class="btn-secondary" style="width:100%;margin-top:6px;font-size:11px;" onclick="addPieceRow()">+ Ajouter pièce</button>
+        </div>
+        <div class="form-card">
+          <div class="form-card-title">Tests Effectués</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;">
+            <label style="display:flex;gap:6px;align-items:center;font-size:12px;text-transform:none;letter-spacing:0;"><input type="checkbox" id="rst_t_ecran" onchange="upRst()" style="width:auto;display:inline;"> Écran</label>
+            <label style="display:flex;gap:6px;align-items:center;font-size:12px;text-transform:none;letter-spacing:0;"><input type="checkbox" id="rst_t_bat" onchange="upRst()" style="width:auto;display:inline;"> Batterie</label>
+            <label style="display:flex;gap:6px;align-items:center;font-size:12px;text-transform:none;letter-spacing:0;"><input type="checkbox" id="rst_t_chg" onchange="upRst()" style="width:auto;display:inline;"> Charge</label>
+            <label style="display:flex;gap:6px;align-items:center;font-size:12px;text-transform:none;letter-spacing:0;"><input type="checkbox" id="rst_t_cam" onchange="upRst()" style="width:auto;display:inline;"> Appareil photo</label>
+            <label style="display:flex;gap:6px;align-items:center;font-size:12px;text-transform:none;letter-spacing:0;"><input type="checkbox" id="rst_t_hp" onchange="upRst()" style="width:auto;display:inline;"> Haut-parleur</label>
+            <label style="display:flex;gap:6px;align-items:center;font-size:12px;text-transform:none;letter-spacing:0;"><input type="checkbox" id="rst_t_mic" onchange="upRst()" style="width:auto;display:inline;"> Micro</label>
+            <label style="display:flex;gap:6px;align-items:center;font-size:12px;text-transform:none;letter-spacing:0;"><input type="checkbox" id="rst_t_net" onchange="upRst()" style="width:auto;display:inline;"> Réseau–SIM</label>
+            <label style="display:flex;gap:6px;align-items:center;font-size:12px;text-transform:none;letter-spacing:0;"><input type="checkbox" id="rst_t_wifi" onchange="upRst()" style="width:auto;display:inline;"> Wi-Fi</label>
+            <label style="display:flex;gap:6px;align-items:center;font-size:12px;text-transform:none;letter-spacing:0;"><input type="checkbox" id="rst_t_bt" onchange="upRst()" style="width:auto;display:inline;"> Bluetooth</label>
+            <label style="display:flex;gap:6px;align-items:center;font-size:12px;text-transform:none;letter-spacing:0;"><input type="checkbox" id="rst_t_bio" onchange="upRst()" style="width:auto;display:inline;"> Face ID / Touch ID</label>
+          </div>
+        </div>
+        <div class="form-card">
+          <div class="form-card-title">Finalisation</div>
+          <div class="form-group"><label>Défauts résiduels après intervention</label><textarea id="rst_defauts" oninput="upRst()" placeholder="Ou 'Aucun'"></textarea></div>
+          <div class="form-group"><label>Garantie sur la réparation</label><input type="text" id="rst_garantie" oninput="upRst()" placeholder="Ex: 30 jours sur la pièce remplacée"></div>
+        </div>
+      </div>
+      <div class="preview-panel">
+        <div class="a4-paper" id="sav-rst-p1">
+          <div class="dh">
+            <div><div class="logo-wrap" style="font-size:13pt;"><span class="logo-ez-mark" style="font-size:9.5pt;">EZ</span><span><span class="logo-text-electro">ELECTRO</span><span class="logo-text-zaki">ZAKI</span></span></div><div style="font-size:6.5pt;font-family:monospace;margin-top:2pt;">ICE: 002533374000004 · IF: 45725467 · TP: 17202369 · RC: 102816 (Meknès)</div><div style="font-size:6.5pt;color:#374151;">Hotline SAV: +212 6 67 65 44 30</div></div>
+            <div class="dh-right"><div dir="rtl" lang="ar" class="ar" style="font-size:8pt;font-weight:700;">ELECTRO ZAKI EZ · مكناس</div><div style="margin-top:4pt;"><div style="font-size:8pt;">N° RST <span class="dref" id="rst-p1-ref">-</span></div><div style="font-size:7.5pt;color:#374151;">N° SAV lié: <span class="mono" id="rst-p1-sav">-</span></div><div style="font-size:7.5pt;color:#374151;">Date: <span id="rst-p1-date">-</span></div><div style="font-size:7pt;color:#374151;">Technicien: <span id="rst-p1-tech">-</span></div></div></div>
+          </div>
+          <div class="dbi" style="margin-bottom:3pt;display:grid;grid-template-columns:1fr 1fr;gap:6pt;"><div style="text-align:left;" class="dtitle">BON DE RESTITUTION SAV</div><div style="text-align:right;font-family:'Noto Sans Arabic',sans-serif;" class="dtitle" dir="rtl" lang="ar">وصل إعادة الجهاز بعد الصيانة</div></div>
+          <hr class="drule">
+          <div class="dblk" style="margin-bottom:3.5pt;font-size:8.5pt;">Client: <strong id="rst-p1-client">-</strong> &nbsp;&nbsp; Tél: <span class="mono" id="rst-p1-tel">-</span></div>
+          <div class="dblk" style="margin-bottom:3.5pt;font-size:8.5pt;">Appareil: <strong id="rst-p1-app">-</strong> &nbsp;&nbsp; IMEI: <span class="mono" style="font-weight:700;" id="rst-p1-imei">-</span></div>
+          <div class="dblk" style="margin-bottom:3.5pt;min-height:11mm;"><div style="font-size:7pt;font-weight:700;text-transform:uppercase;margin-bottom:2pt;">Diagnostic / التشخيص</div><div style="font-size:8.5pt;" id="rst-p1-diag">-</div></div>
+          <div class="dblk" style="margin-bottom:3.5pt;min-height:11mm;"><div style="font-size:7pt;font-weight:700;text-transform:uppercase;margin-bottom:2pt;">Travaux effectués / الأشغال المنجزة</div><div style="font-size:8.5pt;" id="rst-p1-trav">-</div></div>
+          <div style="margin-bottom:3.5pt;"><div style="font-size:7pt;font-weight:700;text-transform:uppercase;margin-bottom:2pt;">Pièces remplacées / القطع المستبدلة</div><table class="dtbl" style="width:100%;"><thead><tr><th>Pièce</th><th>Type</th><th>Note</th></tr></thead><tbody id="rst-p1-pieces"></tbody></table></div>
+          <div style="margin-bottom:3.5pt;"><div style="font-size:7pt;font-weight:700;text-transform:uppercase;margin-bottom:2pt;">Tests effectués / الاختبارات المُجراة</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:2pt;font-size:7.5pt;" id="rst-p1-tests"></div></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:3.5pt;margin-bottom:3.5pt;font-size:8.5pt;">
+            <div class="dblk"><div style="font-size:7pt;font-weight:700;text-transform:uppercase;margin-bottom:2pt;">Défauts résiduels / عيوب متبقية</div><div id="rst-p1-def">Aucun</div></div>
+            <div class="dblk"><div style="font-size:7pt;font-weight:700;text-transform:uppercase;margin-bottom:2pt;">Garantie réparation / ضمان الإصلاح</div><div id="rst-p1-gar">Non applicable</div></div>
+          </div>
+          <div class="dblk" style="margin-bottom:3.5pt;font-size:7.5pt;">Le client reconnaît avoir récupéré son appareil en l'état décrit ci-dessus et avoir vérifié ses fonctions principales au moment de la restitution.<div dir="rtl" lang="ar" class="ar" style="font-size:7pt;margin-top:2pt;">يُقرّ الزبون باستلام جهازه على الحال الموصوف أعلاه وبالتحقق من وظائفه الأساسية لحظة الاستلام.</div></div>
+          <div class="dsrow" style="grid-template-columns:1fr 1fr 0.8fr;">
+            <div class="dsig"><div style="font-size:8pt;font-weight:700;">Signature Client / توقيع الزبون</div><img id="rst-sig-img" src="" alt="" style="display:none;max-height:12mm;max-width:100%;object-fit:contain;margin-top:2pt;"><div style="border-top:0.5pt solid #000;margin-top:2pt;"></div></div>
+            <div class="dsig"><div style="font-size:8pt;font-weight:700;">Technicien</div><div style="font-size:7.5pt;color:#374151;" id="rst-p1-sig-tech">-</div><div style="border-top:0.5pt solid #000;margin-top:9mm;"></div></div>
+            <div class="dqr" style="text-align:center;"><div id="rst-qr" style="width:64px;height:64px;margin:0 auto;"></div><div class="qrh">VISA ÉLECTRONIQUE</div><div class="qrh" id="rst-qr-hash">-</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div><!-- /sav-rst-section -->
+</div><!-- /sav-outer-body -->
+<script>
+var $=function(id){return document.getElementById(id);};
+var v=function(id){var e=$(id);return e?(e.value||''):''};
+var t=function(id,val){var e=$(id);if(e)e.textContent=(val===''||val===null||val===undefined)?'-':val;};
+var sh=function(id){var e=$(id);if(e)e.classList.remove('hidden');};
+var hi=function(id){var e=$(id);if(e)e.classList.add('hidden');};
+function fmtDate(d){if(!d)return '-';var p=d.split('-');return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:d;}
+function today(){return new Date().toISOString().split('T')[0];}
+
+function overrideRef(tab){
+  if(tab==='sav'){var ov=v('sav_ref_ov');if(ov)$('sav_ref').value=ov;upSav();}
+  else if(tab==='rst'){var ov=v('rst_ref_ov');if(ov)$('rst_ref').value=ov;upRst();}
+}
+
+function initSigPad(canvasId,imgIds){
+  var canvas=$(canvasId);if(!canvas)return;
+  var ctx=canvas.getContext('2d');
+  var drawing=false,lx=0,ly=0;
+  function getPos(e){var r=canvas.getBoundingClientRect();var src=e.touches?e.touches[0]:e;return{x:(src.clientX-r.left)*(canvas.width/r.width),y:(src.clientY-r.top)*(canvas.height/r.height)};}
+  function onStart(e){e.preventDefault();drawing=true;var p=getPos(e);lx=p.x;ly=p.y;}
+  function onDraw(e){
+    if(!drawing)return;e.preventDefault();
+    var p=getPos(e);
+    ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(p.x,p.y);
+    ctx.strokeStyle='#0f172a';ctx.lineWidth=2;ctx.lineCap='round';ctx.lineJoin='round';ctx.stroke();
+    lx=p.x;ly=p.y;
+    var data=canvas.toDataURL();
+    imgIds.forEach(function(id){var img=$(id);if(img){img.src=data;img.style.display='block';}});
+  }
+  function onEnd(){drawing=false;}
+  canvas.addEventListener('mousedown',onStart);canvas.addEventListener('mousemove',onDraw);
+  canvas.addEventListener('mouseup',onEnd);canvas.addEventListener('mouseleave',onEnd);
+  canvas.addEventListener('touchstart',onStart,{passive:false});
+  canvas.addEventListener('touchmove',onDraw,{passive:false});
+  canvas.addEventListener('touchend',onEnd);
+}
+function clearSig(tab){
+  var canvas=$('sav-sig-canvas');if(!canvas)return;
+  canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height);
+  ['sav-sig-img','rst-sig-img'].forEach(function(id){var img=$(id);if(img){img.src='';img.style.display='none';}});
+}
+
+async function genQR(containerId,docData){
+  var raw=[docData.ref||'',docData.date||'',docData.clientNom||'',docData.clientTel||'',docData.imei||'',String(docData.montant||'0')].join('|');
+  var hashHex='000000000000';
+  try{var buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(raw));hashHex=Array.from(new Uint8Array(buf)).map(function(b){return b.toString(16).padStart(2,'0');}).join('').substring(0,12).toUpperCase();}catch(e){console.warn(e);}
+  var qrText=['ELECTRO ZAKI EZ · Meknes','ICE:002533374000004','REF:'+(docData.ref||'N/A'),'DATE:'+(docData.date||'N/A'),'IMEI:'+(docData.imei||'N/A'),'HASH:'+hashHex].join('\n');
+  var c=$(containerId);if(!c)return hashHex;c.innerHTML='';
+  if(typeof QRCode!=='undefined'){new QRCode(c,{text:qrText,width:64,height:64,colorDark:'#000000',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});}
+  var hEl=$(containerId.replace('-qr','-qr-hash'));if(hEl)hEl.textContent='Code: '+hashHex;
+  return hashHex;
+}
+
+/* ===== SAV LOGIC ===== */
+var savMode='PEC';var pieceRows=[];
+function setSavMode(m){
+  savMode=m;
+  ['pec','rst','both'].forEach(function(k){var btn=$('btn-sav-'+k);if(btn)btn.classList.toggle('active',m===k.toUpperCase());});
+  if(m==='PEC'){sh('sav-pec-section');hi('sav-rst-section');}
+  else if(m==='RST'){hi('sav-pec-section');sh('sav-rst-section');}
+  else{sh('sav-pec-section');sh('sav-rst-section');}
+}
+function autoDeadline(){
+  var rec=v('sav_date_reception');if(!rec)return;
+  var d=new Date(rec);var added=0;
+  while(added<2){d.setDate(d.getDate()+1);var dow=d.getDay();if(dow!==0&&dow!==6)added++;}
+  $('sav_deadline').value=d.toISOString().split('T')[0];upSav();
+}
+function upSav(){
+  t('sav-p1-ref',v('sav_ref'));t('sav-p1-date',fmtDate(v('sav_date_reception')));
+  var emp=v('sav_employe');t('sav-p1-emp',emp||'-');t('sav-p1-sig-emp',emp||'-');
+  t('sav-p1-liee',v('sav_facture_liee')||'-');t('sav-p1-cn',v('sav_client_nom')||'-');t('sav-p1-ct',v('sav_client_tel')||'-');
+  var mm=[v('sav_marque'),v('sav_modele')].filter(Boolean).join(' ');
+  t('sav-p1-mm',mm||'-');t('sav-p1-imei',v('sav_imei')||'-');t('sav-p1-acc',v('sav_accessoires')||'Aucun');t('sav-p1-etat',v('sav_etat_reception')||'-');t('sav-p1-plainte',v('sav_plainte')||'-');t('sav-p1-deadline',fmtDate(v('sav_deadline')));
+  t('stub-ref',v('sav_ref'));t('stub-app',mm||'-');t('stub-imei',v('sav_imei')||'-');t('stub-date',fmtDate(v('sav_date_reception')));t('stub-dl',fmtDate(v('sav_deadline')));
+}
+function checkImei(){
+  var si=v('sav_imei').trim();var ri=v('rst_imei').trim();
+  var w=$('rst-imei-warn');if(w)w.classList.toggle('show',!!(si&&ri&&si!==ri));
+  upRst();
+}
+function addPieceRow(){
+  var idx=Date.now();pieceRows.push(idx);
+  var tr=document.createElement('tr');tr.id='pr-'+idx;
+  tr.innerHTML='<td><input type="text" placeholder="Pièce" oninput="upRst()" style="font-size:11px;padding:3px 5px;"></td><td><select onchange="upRst()" style="font-size:11px;padding:3px 5px;"><option>Original</option><option>Compatible</option><option>Réparé</option></select></td><td><input type="text" placeholder="Note" oninput="upRst()" style="font-size:11px;padding:3px 5px;"></td><td><button class="btn-xs" onclick="removePieceRow('+idx+')">&#10005;</button></td>';
+  $('rst-pieces-body').appendChild(tr);upRst();
+}
+function removePieceRow(idx){
+  pieceRows=pieceRows.filter(function(i){return i!==idx;});
+  var tr=$('pr-'+idx);if(tr)tr.remove();upRst();
+}
+function upRst(){
+  t('rst-p1-ref',v('rst_ref'));t('rst-p1-sav',v('rst_sav_ref')||'-');t('rst-p1-date',fmtDate(v('rst_date')));
+  var tech=v('rst_technicien');t('rst-p1-tech',tech||'-');t('rst-p1-sig-tech',tech||'-');
+  t('rst-p1-imei',v('rst_imei')||'-');
+  t('rst-p1-client',v('sav_client_nom')||'-');t('rst-p1-tel',v('sav_client_tel')||'-');
+  var mm=[v('sav_marque'),v('sav_modele')].filter(Boolean).join(' ');
+  t('rst-p1-app',mm||'-');t('rst-p1-diag',v('rst_diagnostic')||'-');t('rst-p1-trav',v('rst_travaux')||'-');t('rst-p1-def',v('rst_defauts')||'Aucun');t('rst-p1-gar',v('rst_garantie')||'Non applicable');
+  var pb=$('rst-p1-pieces');
+  if(pb){pb.innerHTML='';var rows=document.querySelectorAll('#rst-pieces-body tr');if(rows.length===0){pb.innerHTML='<tr><td colspan="3" style="font-size:7.5pt;color:#374151;">Aucune</td></tr>';}else{rows.forEach(function(r){var ins=r.querySelectorAll('input');var sel=r.querySelector('select');var row=document.createElement('tr');row.innerHTML='<td>'+(ins[0]?ins[0].value:'-')+'</td><td>'+(sel?sel.value:'-')+'</td><td>'+(ins[1]?ins[1].value:'')+'</td>';pb.appendChild(row);});}}
+  var testDefs=[{id:'rst_t_ecran',lbl:'Écran'},{id:'rst_t_bat',lbl:'Batterie'},{id:'rst_t_chg',lbl:'Charge'},{id:'rst_t_cam',lbl:'Appareil photo'},{id:'rst_t_hp',lbl:'Haut-parleur'},{id:'rst_t_mic',lbl:'Micro'},{id:'rst_t_net',lbl:'Réseau–SIM'},{id:'rst_t_wifi',lbl:'Wi-Fi'},{id:'rst_t_bt',lbl:'Bluetooth'},{id:'rst_t_bio',lbl:'Face ID / Touch ID'}];
+  var te=$('rst-p1-tests');
+  if(te){te.innerHTML=testDefs.map(function(td){var ck=$(td.id);return '<div>'+(ck&&ck.checked?'☑':'☐')+' '+td.lbl+'</div>';}).join('');}
+}
+
+/* ===== PRINT (postMessage to parent React) ===== */
+async function printSav(){
+  window.parent.postMessage({
+    type:'SAV_PRINT_REQUEST',
+    mode:savMode,
+    pec:{
+      date:v('sav_date_reception'),employee:v('sav_employe'),facture_liee:v('sav_facture_liee'),
+      client_nom:v('sav_client_nom'),client_tel:v('sav_client_tel'),
+      marque:v('sav_marque'),modele:v('sav_modele'),imei:v('sav_imei'),
+      accessoires:v('sav_accessoires'),etat_reception:v('sav_etat_reception'),
+      plainte:v('sav_plainte'),deadline:v('sav_deadline')
+    },
+    rst:{
+      date:v('rst_date'),sav_ref:v('rst_sav_ref'),imei:v('rst_imei'),
+      diagnostic:v('rst_diagnostic'),travaux:v('rst_travaux'),technicien:v('rst_technicien'),
+      defauts:v('rst_defauts'),garantie:v('rst_garantie')
+    }
+  },'*');
+}
+
+async function executeSavPrint(pecRef,rstRef){
+  if((savMode==='PEC'||savMode==='BOTH')&&pecRef){
+    $('sav_ref').value=pecRef;$('sav_ref_ov').value='';upSav();
+    await genQR('sav-qr',{ref:pecRef,date:v('sav_date_reception'),clientNom:v('sav_client_nom'),clientTel:v('sav_client_tel'),imei:v('sav_imei'),montant:0});
+  }
+  if((savMode==='RST'||savMode==='BOTH')&&rstRef){
+    $('rst_ref').value=rstRef;$('rst_ref_ov').value='';upRst();
+    await genQR('rst-qr',{ref:rstRef,date:v('rst_date'),clientNom:v('sav_client_nom'),clientTel:v('sav_client_tel'),imei:v('rst_imei'),montant:0});
+  }
+  window.print();
+}
+
+window.addEventListener('message',function(e){
+  if(!e.data)return;
+  if(e.data.type==='SAV_REF_READY')executeSavPrint(e.data.pecRef,e.data.rstRef);
+});
+
+function clearTab(tab){
+  if(!confirm('Effacer tous les champs ?'))return;
+  ['sav_ref_ov','sav_employe','sav_facture_liee','sav_client_nom','sav_client_tel','sav_marque','sav_modele','sav_imei','sav_accessoires','sav_etat_reception','sav_plainte','sav_deadline','rst_ref_ov','rst_sav_ref','rst_diagnostic','rst_travaux','rst_technicien','rst_imei','rst_defauts','rst_garantie'].forEach(function(id){var e=$(id);if(e)e.value='';});
+  $('rst-pieces-body').innerHTML='';pieceRows=[];
+  ['rst_t_ecran','rst_t_bat','rst_t_chg','rst_t_cam','rst_t_hp','rst_t_mic','rst_t_net','rst_t_wifi','rst_t_bt','rst_t_bio'].forEach(function(id){var e=$(id);if(e)e.checked=false;});
+  $('sav_ref').value='';$('rst_ref').value='';
+  clearSig('sav');
+  $('sav_date_reception').value=today();$('rst_date').value=today();
+  autoDeadline();upSav();upRst();
+}
+
+window.addEventListener('beforeprint',function(){
+  document.querySelectorAll('.no-print,.form-panel,.tab-header').forEach(function(el){el._pd=el.style.display;el.style.display='none';});
+});
+window.addEventListener('afterprint',function(){
+  document.querySelectorAll('.no-print,.form-panel,.tab-header').forEach(function(el){el.style.display=el._pd||'';});
+});
+
+document.addEventListener('DOMContentLoaded',function(){
+  $('sav_date_reception').value=today();$('rst_date').value=today();
+  $('sav_ref').value='';$('rst_ref').value='';
+  setSavMode('PEC');autoDeadline();upSav();upRst();
+  initSigPad('sav-sig-canvas',['sav-sig-img','rst-sig-img']);
+});
+</script>
+</body>
+</html>
