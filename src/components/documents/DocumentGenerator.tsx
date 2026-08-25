@@ -165,7 +165,7 @@ export function DocumentGenerator({ userProfile }: DocumentGeneratorProps) {
           formats: ['code_128', 'code_39', 'ean_13', 'qr_code', 'code_93'],
         })
 
-        async function scan() {
+        const scan = async (): Promise<void> => {
           if (!active || !videoRef.current) return
           try {
             const codes = await detector.detect(videoRef.current)
