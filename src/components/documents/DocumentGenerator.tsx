@@ -70,26 +70,35 @@ export function DocumentGenerator({ userProfile }: DocumentGeneratorProps) {
         const result = await res.json()
         if (!result.doc_ref) throw new Error(result.error || 'Aucune référence retournée')
 
+        // Look up phone_id from IMEI (needed by confirm_document_sale RPC)
+        let phone_id = ''
+        if (data.imei1) {
+          try {
+            const lr = await fetch(`/api/documents?lookup_imei=${encodeURIComponent(data.imei1)}`)
+            if (lr.ok) {
+              const ld = await lr.json()
+              phone_id = ld.phone_id ?? ld.phones?.[0]?.phone_id ?? ''
+            }
+          } catch { /* non-blocking — phone_id stays empty */ }
+        }
+
         // Send ref to iframe → triggers executeFacPrint(ref) → window.print()
         facRef.current?.contentWindow?.postMessage(
           { type: 'FAC_REF_READY', ref: result.doc_ref },
           '*'
         )
 
-        // Show confirm modal slightly after print dialog opens
+        // Show confirm modal after print dialog opens
         setTimeout(() => {
           setConfirmData({
-            doc_ref: result.doc_ref,
-            store_id: storeId,
-            montant: data.montant ?? 0,
-            imei1: data.imei1 ?? '',
-            marque: data.marque ?? '',
-            modele: data.modele ?? '',
-            etat: data.etat ?? '',
-            garantie: data.garantie ?? '',
-            client_nom: data.client_nom ?? '',
-            client_tel: data.client_tel ?? '',
-            date: data.date ?? '',
+            doc_id:       result.doc_id ?? result.doc_ref,
+            doc_ref:      result.doc_ref,
+            phone_id:     phone_id,
+            client_name:  data.client_nom ?? null,
+            client_tel:   data.client_tel ?? null,
+            device_label: [data.marque, data.modele].filter(Boolean).join(' ') || null,
+            imei:         data.imei1 ?? null,
+            montant:      data.montant ?? 0,
           })
         }, 800)
       } catch (err: any) {
@@ -319,10 +328,20 @@ export function DocumentGenerator({ userProfile }: DocumentGeneratorProps) {
       {/* Confirm sale modal — FAC only */}
       {confirmData && (
         <ConfirmSaleModal
-          doc_ref={confirmData.doc_ref}
-          montant={confirmData.montant}
-          imei={confirmData.imei1}
+          isOpen={true}
           onClose={() => setConfirmData(null)}
+          onSuccess={(txn_id) => {
+            setConfirmData(null)
+            toast.success(`Transaction enregistrée — ${txn_id}`)
+          }}
+          doc_id={confirmData.doc_id}
+          doc_ref={confirmData.doc_ref}
+          phone_id={confirmData.phone_id}
+          client_name={confirmData.client_name}
+          client_tel={confirmData.client_tel}
+          device_label={confirmData.device_label}
+          imei={confirmData.imei}
+          montant={confirmData.montant}
         />
       )}
     </div>
