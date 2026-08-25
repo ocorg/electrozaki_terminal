@@ -117,10 +117,10 @@ textarea{resize:vertical;min-height:54px;}
     </div>
     <div class="form-card">
       <div class="form-card-title">Appareil</div>
-      <div class="form-row-2"><div class="form-group"><label>Marque</label><input type="text" id="rep_marque" oninput="upRep()"></div><div class="form-group"><label>Modèle</label><input type="text" id="rep_modele" oninput="upRep()"></div></div>
-      <div class="form-row-2">
-        <div class="form-group"><label>Stockage</label><select id="rep_stockage" onchange="upRep()"><option>N/A</option><option>16GB</option><option>32GB</option><option>64GB</option><option>128GB</option><option>256GB</option><option>512GB</option><option>1TB</option></select></div>
-        <div class="form-group"><label>Couleur</label><input type="text" id="rep_couleur" oninput="upRep()"></div>
+            <div class="form-row-2"><div class="form-group"><label>Stockage</label><select id="rep_stockage" onchange="upRep()"><option>N/A</option><option>16GB</option><option>32GB</option><option>64GB</option><option>128GB</option><option>256GB</option><option>512GB</option><option>1TB</option></select></div>
+        <div class="form-group"><label>RAM</label><select id="rep_ram" onchange="upRep()"><option>N/A</option><option>2GB</option><option>3GB</option><option>4GB</option><option>6GB</option><option>8GB</option><option>12GB</option><option>16GB</option></select></div>
+      </div>
+      <div class="form-group"><label>Couleur</label><input type="text" id="rep_couleur" oninput="upRep()"></div>
       </div>
       <div class="form-group"><label>État</label><select id="rep_etat" onchange="upRep()"><option value="NEUF_SCELLE">Neuf – Scellé</option><option value="NEUF_DEBALLE">Neuf – Ouvert</option><option value="OCC_EXCELLENT">Occasion – Excellent</option><option value="OCC_TRES_BON">Occasion – Très bon</option><option value="OCC_BON">Occasion – Bon</option><option value="OCC_ACCEPTABLE">Occasion – Acceptable</option></select></div>
       <div class="form-group"><label>IMEI 1</label><input type="text" id="rep_imei1" class="mono" oninput="upRep()"></div>
@@ -163,7 +163,7 @@ textarea{resize:vertical;min-height:54px;}
       <div class="dblk" style="margin-bottom:3.5pt;font-size:8.5pt;">
         <div style="font-size:7pt;font-weight:700;text-transform:uppercase;color:#374151;margin-bottom:2pt;">APPAREIL / الجهاز:</div>
         <div><strong id="rep-p1-mm">-</strong> &nbsp;|&nbsp; IMEI 1: <span class="mono" style="font-weight:700;" id="rep-p1-im1">-</span></div>
-        <div style="font-size:7.5pt;margin-top:2pt;">Stockage: <span id="rep-p1-stk">-</span> &nbsp;·&nbsp; Couleur: <span id="rep-p1-coul">-</span> &nbsp;·&nbsp; IMEI 2: <span class="mono" id="rep-p1-im2">-</span> &nbsp;·&nbsp; Série: <span class="mono" id="rep-p1-ser">-</span></div>
+        <div style="font-size:7.5pt;margin-top:2pt;">Stockage: <span id="rep-p1-stk">-</span> &nbsp;·&nbsp; RAM: <span id="rep-p1-ram">-</span> &nbsp;·&nbsp; Couleur: <span id="rep-p1-coul">-</span> &nbsp;·&nbsp; IMEI 2: <span class="mono" id="rep-p1-im2">-</span> &nbsp;·&nbsp; Série: <span class="mono" id="rep-p1-ser">-</span></div>
         <div style="margin-top:2pt;">État: <span id="rep-p1-etat">-</span></div>
         <div style="margin-top:2pt;font-size:7.5pt;">Défauts constatés à l'acquisition: <span id="rep-p1-def">Aucun signalé</span></div>
       </div>
@@ -263,7 +263,7 @@ function upRep(){
   if(isR){var nom=v('rch_vendeur_nom');t('rep-p1-nom',nom||'-');t('rep-p1-cin',v('rch_vendeur_cin_ref')||'-');t('rep-p1-tel',v('rch_vendeur_tel')||'-');t('rep-p1-adr',v('rch_vendeur_adresse')||'-');t('rep-decl-nom',nom||'_________');t('rep-decl-nom-ar',nom||'_________');}
   else{var nom2=v('ech_client_nom');t('rep-p1-ech-nom',nom2||'-');t('rep-p1-ech-tel',v('ech_client_tel')||'-');t('rep-decl-ech-nom',nom2||'_________');t('rep-decl-ech-nom-ar',nom2||'_________');var fac=v('ech_facture_liee');t('rep-decl-fac',fac||'-');t('rep-decl-fac-ar',fac||'-');}
   var mm=[v('rep_marque'),v('rep_modele')].filter(Boolean).join(' ');
-  t('rep-p1-mm',mm||'-');t('rep-p1-im1',v('rep_imei1')||'-');t('rep-p1-im2',v('rep_imei2')||'-');t('rep-p1-stk',v('rep_stockage'));t('rep-p1-coul',v('rep_couleur')||'-');t('rep-p1-ser',v('rep_serial')||'-');t('rep-p1-etat',etatLbl(v('rep_etat')));t('rep-p1-def',v('rep_defauts')||'Aucun signalé');
+  t('rep-p1-mm',mm||'-');t('rep-p1-im1',v('rep_imei1')||'-');t('rep-p1-im2',v('rep_imei2')||'-');  t('rep-p1-stk',v('rep_stockage'));t('rep-p1-ram',v('rep_ram')||'-');t('rep-p1-coul',v('rep_couleur')||'-');t('rep-p1-ser',v('rep_serial')||'-');t('rep-p1-etat',etatLbl(v('rep_etat')));t('rep-p1-def',v('rep_defauts')||'Aucun signalé');
   ['apple','google','samsung','xiaomi','reset'].forEach(function(k){var el=$('rep-ck-'+k);var ck=$('rep_ck_'+k);if(el)el.textContent=(ck&&ck.checked)?'☑':'☐';});
   t('rep-p1-prix',fmt(parseFloat(v('rep_prix'))||0));
   t('rep-p1-prix-lbl',isR?"Prix d'achat: ":"Valeur de reprise: ");
@@ -315,7 +315,7 @@ window.addEventListener('message',function(e){
 function clearTab(tab){
   if(!confirm('Effacer tous les champs ?'))return;
   ['rep_ref_ov','rch_employee','rch_vendeur_nom','rch_vendeur_cin_ref','rch_vendeur_tel','rch_vendeur_adresse','ech_facture_liee','ech_client_nom','ech_client_tel','rep_marque','rep_modele','rep_couleur','rep_imei1','rep_imei2','rep_serial','rep_defauts','rep_prix'].forEach(function(id){var e=$(id);if(e)e.value='';});
-  $('rep_stockage').value='N/A';$('rep_etat').value='NEUF_SCELLE';
+  $('rep_stockage').value='N/A';$('rep_ram').value='N/A';$('rep_etat').value='NEUF_SCELLE';
   ['rep_ck_apple','rep_ck_google','rep_ck_samsung','rep_ck_xiaomi','rep_ck_reset'].forEach(function(id){var e=$(id);if(e)e.checked=false;});
   $('rep_ref').value='';$('rep-ref-bar').textContent='N° auto';
   clearSig('rep');upRep();

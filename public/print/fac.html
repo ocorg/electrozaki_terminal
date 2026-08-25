@@ -160,8 +160,11 @@ textarea{resize:vertical;min-height:54px;}
           <div class="form-group"><label>Stockage</label>
             <select id="fac_stockage" onchange="upFac()"><option>N/A</option><option>16GB</option><option>32GB</option><option>64GB</option><option>128GB</option><option>256GB</option><option>512GB</option><option>1TB</option></select>
           </div>
-          <div class="form-group"><label>Couleur</label><input type="text" id="fac_couleur" oninput="upFac()"></div>
+          <div class="form-group"><label>RAM</label>
+            <select id="fac_ram" onchange="upFac()"><option>N/A</option><option>2GB</option><option>3GB</option><option>4GB</option><option>6GB</option><option>8GB</option><option>12GB</option><option>16GB</option></select>
+          </div>
         </div>
+        <div class="form-group"><label>Couleur</label><input type="text" id="fac_couleur" oninput="upFac()"></div>
         <div class="form-group"><label>État</label>
           <select id="fac_etat" onchange="updateEtat()">
             <option value="NEUF_SCELLE">Neuf – Scellé</option>
@@ -249,7 +252,7 @@ textarea{resize:vertical;min-height:54px;}
       <div id="p1-mode-princ">
         <table class="dtbl" style="margin-bottom:2pt;"><thead><tr><th>Description / Modèle</th><th>IMEI 1</th><th>État</th><th style="text-align:right;">P.U. (MAD)</th><th style="text-align:right;">Total (MAD)</th></tr></thead>
         <tbody><tr><td id="p1-mmm">-</td><td class="mono" id="p1-im1">-</td><td id="p1-etat">-</td><td style="text-align:right;" class="mono" id="p1-pu">-</td><td style="text-align:right;" class="mono" id="p1-tot">-</td></tr></tbody></table>
-        <div class="dsub" style="margin-bottom:2pt;">Stockage: <span id="p1-stk">-</span> &nbsp;·&nbsp; Couleur: <span id="p1-coul">-</span> &nbsp;·&nbsp; IMEI 2: <span class="mono" id="p1-im2">-</span> &nbsp;·&nbsp; Batterie: <span id="p1-bat">-</span> &nbsp;·&nbsp; Série: <span class="mono" id="p1-ser">-</span></div>
+        <div class="dsub" style="margin-bottom:2pt;">Stockage: <span id="p1-stk">-</span> &nbsp;·&nbsp; RAM: <span id="p1-ram">-</span> &nbsp;·&nbsp; Couleur: <span id="p1-coul">-</span> &nbsp;·&nbsp; IMEI 2: <span class="mono" id="p1-im2">-</span> &nbsp;·&nbsp; Batterie: <span id="p1-bat">-</span> &nbsp;·&nbsp; Série: <span class="mono" id="p1-ser">-</span></div>
         <div class="dblk hidden" id="p1-partrow" style="font-size:7.5pt;margin-bottom:2.5pt;"><span style="font-weight:600;">Particularités acceptées:</span> <span id="p1-part"></span></div>
       </div>
       <div id="p1-mode-multi" class="hidden">
@@ -452,7 +455,7 @@ function upFac(){
   }
   if(facPM==='PRINC'){
     var mm=[v('fac_marque'),v('fac_modele')].filter(Boolean).join(' ');t('p1-mmm',mm||'-');
-    t('p1-im1',v('fac_imei1')||'-');t('p1-etat',etatLbl(v('fac_etat')));t('p1-stk',v('fac_stockage'));t('p1-coul',v('fac_couleur')||'-');t('p1-im2',v('fac_imei2')||'-');
+    t('p1-im1',v('fac_imei1')||'-');t('p1-etat',etatLbl(v('fac_etat')));  t('p1-stk',v('fac_stockage'));t('p1-ram',v('fac_ram')||'-');t('p1-coul',v('fac_couleur')||'-');t('p1-im2',v('fac_imei2')||'-');
     var bat=v('fac_batterie');t('p1-bat',bat?bat+'%':'-');t('p1-ser',v('fac_serial')||'-');
     var part=v('fac_particularites');if(part){sh('p1-partrow');t('p1-part',part);}else{hi('p1-partrow');}
     var gar=$('fac_gar_display').textContent;t('p1-gar-sum',gar);t('p1-gar-sum-ar',gar==='12 Mois'?'12 شهراً':'30 يوماً');
@@ -515,7 +518,7 @@ window.addEventListener('message',function(e){
 function clearTab(tab){
   if(!confirm('Effacer tous les champs ?'))return;
   ['fac_ref_ov','fac_client_nom','fac_client_cin','fac_client_tel','fac_client_rs','fac_client_adresse','fac_client_ice','fac_client_if','fac_client_tel_pro','fac_marque','fac_modele','fac_couleur','fac_imei1','fac_imei2','fac_serial','fac_batterie','fac_particularites','fac_prix_ht'].forEach(function(id){var e=$(id);if(e)e.value='';});
-  $('fac_stockage').value='N/A';$('fac_etat').value='NEUF_SCELLE';$('fac_nature').value='VENTE';$('fac_remise').value='0';$('fac_reprise_val').value='0';
+  $('fac_stockage').value='N/A';$('fac_ram').value='N/A';$('fac_etat').value='NEUF_SCELLE';$('fac_nature').value='VENTE';$('fac_remise').value='0';$('fac_reprise_val').value='0';
   $('fac-art-body').innerHTML='';artRows=[];
   $('fac_ref').value='';$('fac-ref-bar').textContent='N° auto';
   setClientType('PART');setProdMode('PRINC');setReg('ESP');toggleNature();updateEtat();clearSig('fac');calcFacTotals();
