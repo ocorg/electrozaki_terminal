@@ -58,6 +58,8 @@ textarea{resize:vertical;min-height:54px;}
 .ar{font-family:'Noto Sans Arabic',sans-serif;line-height:1.65;}
 .hidden{display:none!important;}
 .ref-bar{font-family:monospace;font-size:12px;color:#6b7280;}
+.cndp-consent{border:0.5pt solid #000;padding:3.5pt 4pt;margin-bottom:3pt;font-size:8pt;font-style:italic;line-height:1.3;}
+.cndp-notice{background:#f5f5f5;border:0.5pt solid #bbb;padding:3pt 4pt;font-size:7.5pt;line-height:1.25;}
 @media print{
   @page{size:A4 portrait;margin:0;}
   html,body{background:white!important;color:black!important;margin:0!important;padding:0!important;width:210mm!important;height:auto!important;display:block!important;overflow:visible!important;}
@@ -73,6 +75,8 @@ textarea{resize:vertical;min-height:54px;}
   .logo-text-zaki{color:#d97706!important;}
   .dtbl th,.dtbl td,.dblk,.dsig,.dqr{border:0.5pt solid #000!important;}
   .dtbl th{background:#f9f9f8!important;background-color:#f9f9f8!important;}
+  .cndp-consent{border:0.5pt solid #000!important;}
+  .cndp-notice{background:#f5f5f5!important;background-color:#f5f5f5!important;border:0.5pt solid #bbb!important;}
   table,tr,th,td{background-color:transparent!important;}
 }
 </style>
@@ -173,9 +177,16 @@ textarea{resize:vertical;min-height:54px;}
         <div id="rep-decl-rch"><strong>Je soussigné(e),</strong> <span id="rep-decl-nom">_________</span>, déclare sur l'honneur être le propriétaire légitime de l'appareil désigné ci-dessus et que cet appareil ne provient d'aucun vol, recel, fraude ou litige. Je confirme avoir supprimé tous les comptes personnels liés à cet appareil avant la remise. Je cède la pleine propriété dudit appareil à ELECTRO ZAKI EZ pour le prix convenu.<div dir="rtl" lang="ar" class="ar" style="font-size:7pt;margin-top:3pt;">أنا الموقع أدناه، <span id="rep-decl-nom-ar">_________</span>، أُقرّ بشرفي بأنني المالك الشرعي للجهاز المحدد أعلاه وأن هذا الجهاز لم يُكتسب بسرقة أو إخفاء أو احتيال أو نزاع. أؤكد حذف جميع الحسابات الشخصية المرتبطة بالجهاز قبل تسليمه. أُنقل ملكية الجهاز كاملةً إلى ELECTRO ZAKI EZ مقابل الثمن المتفق عليه.</div></div>
         <div class="hidden" id="rep-decl-ech"><strong>Le soussigné(e)</strong> <span id="rep-decl-ech-nom">_________</span> confirme céder l'appareil décrit ci-dessus à ELECTRO ZAKI EZ dans le cadre de l'échange effectué ce jour. Il/Elle confirme avoir supprimé ses comptes personnels liés à cet appareil et accepte la valeur de reprise indiquée, imputée sur la facture de vente N° <span id="rep-decl-fac">-</span>.<div dir="rtl" lang="ar" class="ar" style="font-size:7pt;margin-top:3pt;">يُقرّ الزبون/ة <span id="rep-decl-ech-nom-ar">_________</span> بالتنازل عن الجهاز الموصوف أعلاه إلى ELECTRO ZAKI EZ في إطار المبادلة المُجراة اليوم، ويؤكد/تؤكد حذف حساباته/ها الشخصية المرتبطة بهذا الجهاز، ويقبل/تقبل قيمة الاسترداد والمحسومة من فاتورة البيع رقم <span id="rep-decl-fac-ar">-</span>.</div></div>
       </div>
+      <div class="cndp-consent">Je soussigné(e), [Nom Prénom], titulaire de la CIN N°&nbsp;________, consens expressément au traitement de mes données personnelles (nom, prénom, numéro CIN, numéro de téléphone) par ELECTRO ZAKI EZ (RC&nbsp;: 102816, Meknès), dans le cadre exclusif du présent achat d'occasion, aux fins d'identification du cédant et de traçabilité du bien, conformément à la loi n°&nbsp;09-08 relative à la protection des personnes physiques à l'égard du traitement des données à caractère personnel.</div>
       <div class="dsrow" style="grid-template-columns:2fr 1.2fr;">
         <div class="dsig"><div style="font-size:8pt;font-weight:700;" id="rep-sig-lbl">Signature du Vendeur / توقيع البائع</div><img id="rep-sig-img" src="" alt="" style="display:none;max-height:16mm;max-width:100%;object-fit:contain;margin-top:2pt;"><div style="border-top:0.5pt solid #000;margin-top:2pt;"></div></div>
         <div class="dqr" style="text-align:center;"><div id="rep-qr" style="width:64px;height:64px;margin:0 auto;"></div><div class="qrh">VISA ÉLECTRONIQUE / التوقيع الإلكتروني</div><div class="qrh" id="rep-qr-hash">-</div><div style="font-size:7pt;font-weight:700;margin-top:3pt;">SIGNATURE ELECTRO ZAKI EZ</div><div dir="rtl" lang="ar" class="ar" style="font-size:6.5pt;">توقيع وختم المتجر</div></div>
+      </div>
+      <div class="cndp-notice" style="position:absolute;bottom:10mm;left:15mm;right:15mm;">
+        <div style="font-weight:700;text-transform:uppercase;letter-spacing:0.03em;margin-bottom:2pt;">Protection de vos données personnelles — Loi 09-08</div>
+        <div>Par le biais de ce document, <strong>ELECTRO ZAKI EZ</strong> (RC&nbsp;: 102816, Meknès) collecte vos données personnelles (nom, prénom, numéro CIN, téléphone) en vue de l'<strong>identification du cédant et de la traçabilité du bien d'occasion acquis</strong>. Ce traitement est en cours d'instruction auprès de la CNDP.</div>
+        <div style="margin-top:1.5pt;">Vos données sont conservées exclusivement par Electro Zaki EZ et ne sont pas transmises à des tiers, sauf obligation légale (notamment aux autorités en cas de signalement de vol). Elles sont conservées pendant une durée de <strong>10 ans</strong> conformément à l'Article 21 du Code de Commerce marocain.</div>
+        <div style="margin-top:1.5pt;">Conformément à la loi 09-08, vous disposez d'un droit d'accès, de rectification et d'opposition sur vos données personnelles. Pour exercer ces droits&nbsp;: <strong>Electro Zaki EZ — [Adresse à compléter] — Meknès — Tél&nbsp;: +212&nbsp;6&nbsp;67&nbsp;65&nbsp;44&nbsp;30</strong>.</div>
       </div>
     </div><!-- /rep-p1 -->
   </div><!-- /preview-panel -->

@@ -72,6 +72,8 @@ textarea{resize:vertical;min-height:54px;}
 .sav-section{border-bottom:2px solid #e5e5e5;}
 .sav-section .tab-body{overflow:visible;min-height:80vh;}
 .sav-section .form-panel{height:auto;max-height:none;overflow-y:visible;}
+.cndp-consent{border:0.5pt solid #000;padding:3.5pt 4pt;margin-bottom:3pt;font-size:8pt;font-style:italic;line-height:1.3;}
+.cndp-notice{background:#f5f5f5;border:0.5pt solid #bbb;padding:3pt 4pt;font-size:7.5pt;line-height:1.25;}
 @media print{
   @page{size:A4 portrait;margin:0;}
   html,body{background:white!important;color:black!important;margin:0!important;padding:0!important;width:210mm!important;height:auto!important;display:block!important;overflow:visible!important;}
@@ -90,6 +92,8 @@ textarea{resize:vertical;min-height:54px;}
   .dtbl th,.dtbl td,.dblk,.dsig,.dqr{border:0.5pt solid #000!important;}
   .dtbl th{background:#f9f9f8!important;background-color:#f9f9f8!important;}
   .drule{border-top:0.5pt solid #d97706!important;}
+  .cndp-consent{border:0.5pt solid #000!important;}
+  .cndp-notice{background:#f5f5f5!important;background-color:#f5f5f5!important;border:0.5pt solid #bbb!important;}
   table,tr,th,td{background-color:transparent!important;}
 }
 </style>
@@ -163,6 +167,7 @@ textarea{resize:vertical;min-height:54px;}
           <div class="dblk" style="margin-bottom:3.5pt;min-height:11mm;"><div style="font-size:7pt;font-weight:700;text-transform:uppercase;margin-bottom:2pt;">Réclamation client / شكوى الزبون</div><div style="font-size:8.5pt;" id="sav-p1-plainte">-</div></div>
           <div style="font-size:8.5pt;margin-bottom:3.5pt;">Délai diagnostic estimé / الأجل التقديري للتشخيص: <strong id="sav-p1-deadline">-</strong></div>
           <div class="dblk" style="margin-bottom:3.5pt;font-size:7.5pt;"><strong>Important:</strong> Le client est responsable de la sauvegarde de ses données personnelles. Une réinitialisation aux paramètres d'usine peut être nécessaire selon le diagnostic. ELECTRO ZAKI EZ ne peut être tenu responsable de la perte de données.<div dir="rtl" lang="ar" class="ar" style="font-size:7pt;margin-top:2pt;">يتحمل الزبون مسؤولية نسخ بياناته الشخصية احتياطياً. قد تكون إعادة الضبط ضرورية تبعاً للتشخيص. لا تتحمل ELECTRO ZAKI EZ مسؤولية فقدان البيانات.</div></div>
+          <div class="cndp-consent">Je soussigné(e), [Nom Prénom], titulaire de la CIN N°&nbsp;________, consens expressément au traitement de mes données personnelles (nom, prénom, numéro CIN, numéro de téléphone) par ELECTRO ZAKI EZ (RC&nbsp;: 102816, Meknès), dans le cadre exclusif du suivi de la présente réparation, conformément à la loi n°&nbsp;09-08 relative à la protection des personnes physiques à l'égard du traitement des données à caractère personnel.</div>
           <div class="dsrow" style="grid-template-columns:1fr 1fr 0.8fr;">
             <div class="dsig"><div style="font-size:8pt;font-weight:700;">Signature Client / توقيع الزبون</div><img id="sav-sig-img" src="" alt="" style="display:none;max-height:12mm;max-width:100%;object-fit:contain;margin-top:2pt;"><div style="border-top:0.5pt solid #000;margin-top:2pt;"></div></div>
             <div class="dsig"><div style="font-size:8pt;font-weight:700;">Reçu par / إستلم من طرف</div><div style="font-size:7.5pt;color:#374151;" id="sav-p1-sig-emp">-</div><div style="border-top:0.5pt solid #000;margin-top:9mm;"></div></div>
@@ -245,6 +250,12 @@ textarea{resize:vertical;min-height:54px;}
             <div class="dsig"><div style="font-size:8pt;font-weight:700;">Signature Client / توقيع الزبون</div><img id="rst-sig-img" src="" alt="" style="display:none;max-height:12mm;max-width:100%;object-fit:contain;margin-top:2pt;"><div style="border-top:0.5pt solid #000;margin-top:2pt;"></div></div>
             <div class="dsig"><div style="font-size:8pt;font-weight:700;">Technicien</div><div style="font-size:7.5pt;color:#374151;" id="rst-p1-sig-tech">-</div><div style="border-top:0.5pt solid #000;margin-top:9mm;"></div></div>
             <div class="dqr" style="text-align:center;"><div id="rst-qr" style="width:64px;height:64px;margin:0 auto;"></div><div class="qrh">VISA ÉLECTRONIQUE</div><div class="qrh" id="rst-qr-hash">-</div></div>
+          </div>
+          <div class="cndp-notice" style="position:absolute;bottom:10mm;left:15mm;right:15mm;">
+            <div style="font-weight:700;text-transform:uppercase;letter-spacing:0.03em;margin-bottom:2pt;">Protection de vos données personnelles — Loi 09-08</div>
+            <div>Par le biais de ce document, <strong>ELECTRO ZAKI EZ</strong> (RC&nbsp;: 102816, Meknès) collecte vos données personnelles (nom, prénom, numéro CIN, téléphone) en vue de l'<strong>identification du propriétaire et du suivi de votre dossier de réparation</strong>. Ce traitement est en cours d'instruction auprès de la CNDP.</div>
+            <div style="margin-top:1.5pt;">Vos données sont conservées exclusivement par Electro Zaki EZ et ne sont pas transmises à des tiers, sauf obligation légale. Elles sont conservées pendant une durée de <strong>10 ans</strong> conformément à l'Article 21 du Code de Commerce marocain.</div>
+            <div style="margin-top:1.5pt;">Conformément à la loi 09-08, vous disposez d'un droit d'accès, de rectification et d'opposition sur vos données personnelles. Pour exercer ces droits&nbsp;: <strong>Electro Zaki EZ — [Adresse à compléter] — Meknès — Tél&nbsp;: +212&nbsp;6&nbsp;67&nbsp;65&nbsp;44&nbsp;30</strong>.</div>
           </div>
         </div>
       </div>

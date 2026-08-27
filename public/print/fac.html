@@ -66,7 +66,7 @@ textarea{resize:vertical;min-height:54px;}
 .dref{font-family:monospace;font-weight:700;}
 .dsub{font-size:7.5pt;padding:2pt 3.5pt;border:0.5pt solid #e0e0e0;margin-bottom:2.5pt;background:#f9f9f8;}
 .ar{font-family:'Noto Sans Arabic',sans-serif;line-height:1.65;}
-.lp{font-size:5.9pt;line-height:1.16;padding-bottom:15mm;}
+.lp{font-size:5.9pt;line-height:1.16;padding-bottom:42mm;}
 .lart{margin-bottom:1.2pt;}
 .lart-title{font-size:6.8pt;font-weight:700;text-transform:uppercase;letter-spacing:0.02em;margin-bottom:0.8pt;border-bottom:0.5pt solid #d97706;padding-bottom:0.5pt;}
 .lbi{display:grid;grid-template-columns:1fr 1fr;gap:4pt;margin-bottom:0.8pt;}
@@ -74,6 +74,8 @@ textarea{resize:vertical;min-height:54px;}
 .lar-l{text-align:right;font-family:'Noto Sans Arabic',sans-serif;font-size:5.9pt;line-height:1.26;}
 .hidden{display:none!important;}
 .ref-bar{font-family:monospace;font-size:12px;color:#6b7280;}
+.cndp-consent{border:0.5pt solid #000;padding:3.5pt 4pt;margin-bottom:3pt;font-size:8pt;font-style:italic;line-height:1.3;}
+.cndp-notice{background:#f5f5f5;border:0.5pt solid #bbb;padding:3pt 4pt;font-size:7.5pt;line-height:1.25;}
 @media print{
   @page{size:A4 portrait;margin:0;}
   html,body{background:white!important;color:black!important;margin:0!important;padding:0!important;width:210mm!important;height:auto!important;display:block!important;overflow:visible!important;}
@@ -94,6 +96,8 @@ textarea{resize:vertical;min-height:54px;}
   .dsub{background:#f9f9f8!important;background-color:#f9f9f8!important;border:0.5pt solid #ccc!important;}
   .drule{border-top:0.5pt solid #d97706!important;}
   .lart-title{border-bottom:0.5pt solid #d97706!important;}
+  .cndp-consent{border:0.5pt solid #000!important;}
+  .cndp-notice{background:#f5f5f5!important;background-color:#f5f5f5!important;border:0.5pt solid #bbb!important;}
   table,tr,th,td{background-color:transparent!important;}
 }
 </style>
@@ -273,6 +277,7 @@ textarea{resize:vertical;min-height:54px;}
         <div>Garantie commerciale: <strong id="p1-gar-sum">-</strong> - sans préjudice de la garantie légale applicable (Loi 31-08, Art. 549–575 COC)</div>
         <div dir="rtl" lang="ar" class="ar" style="font-size:7pt;margin-top:2pt;">الضمان التجاري: <strong id="p1-gar-sum-ar">-</strong> - دون الإخلال بالضمان القانوني الساري (ق.31-08، المواد 549–575 ق.ل.ع)</div>
       </div>
+      <div class="cndp-consent">Je soussigné(e), [Nom Prénom], titulaire de la CIN N°&nbsp;________, consens expressément au traitement de mes données personnelles (nom, prénom, numéro CIN, numéro de téléphone) par ELECTRO ZAKI EZ (RC&nbsp;: 102816, Meknès), dans le cadre exclusif de la présente transaction commerciale, conformément à la loi n°&nbsp;09-08 relative à la protection des personnes physiques à l'égard du traitement des données à caractère personnel.</div>
       <div class="dsrow" style="grid-template-columns:2fr 1.2fr;">
         <div class="dsig">
           <div style="font-size:8pt;font-weight:700;margin-bottom:2pt;">SIGNATURE CLIENT / توقيع الزبون</div>
@@ -309,7 +314,13 @@ textarea{resize:vertical;min-height:54px;}
       <div class="lart"><div class="lart-title">Art. 8 - Échanges et Remboursements / الاستبدال والاسترداد</div><div class="lbi"><div class="lfr">Les échanges et remboursements pour simple changement d'avis ne sont pas proposés pour les achats effectués en magasin. Les droits du consommateur au titre des garanties légale et commerciale restent intégralement applicables conformément aux articles précédents. Pour les ventes conclues à distance ou hors établissement, les dispositions spécifiques prévues par la loi 31-08 s'appliquent.</div><div class="lar" dir="rtl" lang="ar">لا يُقبل الاستبدال أو استرداد الثمن لمجرد تغيير الرأي في المشتريات التي تتم داخل المتجر. تبقى حقوق المستهلك القانونية والتجارية سارية كاملةً وفق المواد السابقة. تطبَّق أحكام القانون 31-08 الخاصة بالعقود المبرمة عن بُعد أو خارج المؤسسة حيثما انطبقت.</div></div></div>
       <div class="lart"><div class="lart-title">Art. 9 - Données Personnelles / البيانات الشخصية</div><div class="lbi"><div class="lfr">Le client est responsable de la sauvegarde de ses données personnelles avant tout dépôt SAV. Il est recommandé de retirer les données personnelles et de déconnecter les comptes lorsque cela est techniquement possible. Les opérations de diagnostic ou de réparation peuvent nécessiter une réinitialisation aux paramètres d'usine. ELECTRO ZAKI EZ ne garantit pas la conservation des données et ne saurait être tenu responsable de leur perte. Le traitement des données est effectué dans le respect des exigences de la loi 09-08 relative à la protection des personnes physiques à l'égard du traitement des données à caractère personnel.</div><div class="lar" dir="rtl" lang="ar">يتحمل الزبون مسؤولية نسخ بياناته الشخصية احتياطياً قبل أي إيداع للجهاز في خدمة ما بعد البيع. يُنصح بحذف البيانات الشخصية وقطع الاتصال بالحسابات متى أمكن ذلك تقنياً. قد تستلزم عمليات التشخيص أو الإصلاح إعادة الضبط على إعدادات المصنع. لا تضمن ELECTRO ZAKI EZ الحفاظ على البيانات الشخصية وتُعفى من المسؤولية عن فقدانها. يُعالَج ما يُجمع من بيانات وفق متطلبات القانون 09-08 المتعلق بحماية الأشخاص الذاتيين تجاه معالجة البيانات ذات الطابع الشخصي.</div></div></div>
       <div class="lart"><div class="lart-title">Art. 10 - Contact &amp; Réclamations / التواصل والشكاوى</div><div class="lbi"><div class="lfr">Pour toute question ou réclamation relative à la garantie ou à une opération d'achat, le client peut se présenter en magasin ou contacter le service client : Tél. +212 6 67 65 44 30. ELECTRO ZAKI EZ s'engage à traiter toute réclamation de bonne foi dans les meilleurs délais.</div><div class="lar" dir="rtl" lang="ar">لأي استفسار أو شكوى تتعلق بالضمان أو عملية شراء، يمكن للزبون التوجه إلى المتجر أو الاتصال بخدمة الزبناء: هاتف <span dir="ltr">+212 6 67 65 44 30</span>. تلتزم ELECTRO ZAKI EZ بمعالجة أي شكوى بحسن نية وفي أقرب الآجال.</div></div></div>
-      <div style="position:absolute;bottom:8mm;left:15mm;right:15mm;border-top:0.5pt solid #000;padding-top:2.5pt;font-size:5.5pt;font-family:monospace;color:#374151;text-align:center;">ELECTRO ZAKI EZ · Meknès · ICE: 002533374000004 · IF: 45725467 · TP: 17202369 · RC: 102816</div>
+      <div class="cndp-notice" style="position:absolute;bottom:10mm;left:15mm;right:15mm;">
+        <div style="font-weight:700;text-transform:uppercase;letter-spacing:0.03em;margin-bottom:2pt;">Protection de vos données personnelles — Loi 09-08</div>
+        <div>Par le biais de ce document, <strong>ELECTRO ZAKI EZ</strong> (RC&nbsp;: 102816, Meknès) collecte vos données personnelles (nom, prénom, numéro CIN, téléphone) en vue de la <strong>gestion de votre achat et du suivi de votre garantie</strong>. Ce traitement est en cours d'instruction auprès de la CNDP.</div>
+        <div style="margin-top:1.5pt;">Vos données sont conservées exclusivement par Electro Zaki EZ et ne sont pas transmises à des tiers, sauf obligation légale. Elles sont conservées pendant une durée de <strong>10 ans</strong> conformément à l'Article 21 du Code de Commerce marocain.</div>
+        <div style="margin-top:1.5pt;">Conformément à la loi 09-08, vous disposez d'un droit d'accès, de rectification et d'opposition sur vos données personnelles. Pour exercer ces droits&nbsp;: <strong>Electro Zaki EZ — [Adresse à compléter] — Meknès — Tél&nbsp;: +212&nbsp;6&nbsp;67&nbsp;65&nbsp;44&nbsp;30</strong>.</div>
+      </div>
+      <div style="position:absolute;bottom:3mm;left:15mm;right:15mm;border-top:0.5pt solid #000;padding-top:2.5pt;font-size:5.5pt;font-family:monospace;color:#374151;text-align:center;">ELECTRO ZAKI EZ · Meknès · ICE: 002533374000004 · IF: 45725467 · TP: 17202369 · RC: 102816</div>
     </div><!-- /fac-p2 -->
   </div><!-- /preview-panel -->
 </div><!-- /tab-body -->
