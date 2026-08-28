@@ -277,7 +277,7 @@ textarea{resize:vertical;min-height:54px;}
         <div>Garantie commerciale: <strong id="p1-gar-sum">-</strong> - sans préjudice de la garantie légale applicable (Loi 31-08, Art. 549–575 COC)</div>
         <div dir="rtl" lang="ar" class="ar" style="font-size:7pt;margin-top:2pt;">الضمان التجاري: <strong id="p1-gar-sum-ar">-</strong> - دون الإخلال بالضمان القانوني الساري (ق.31-08، المواد 549–575 ق.ل.ع)</div>
       </div>
-      <div class="cndp-consent">Je soussigné(e), [Nom Prénom], titulaire de la CIN N°&nbsp;________, consens expressément au traitement de mes données personnelles (nom, prénom, numéro CIN, numéro de téléphone) par ELECTRO ZAKI EZ (RC&nbsp;: 102816, Meknès), dans le cadre exclusif de la présente transaction commerciale, conformément à la loi n°&nbsp;09-08 relative à la protection des personnes physiques à l'égard du traitement des données à caractère personnel.</div>
+      <div class="cndp-consent">Je soussigné(e), <span id="fac-consent-nom" style="font-weight:600;">[Nom Prénom]</span>, titulaire de la CIN N°&nbsp;<span id="fac-consent-cin" class="mono">________</span>, consens expressément au traitement de mes données personnelles (nom, prénom, numéro CIN, numéro de téléphone) par ELECTRO ZAKI EZ (RC&nbsp;: 102816, Meknès), dans le cadre exclusif de la présente transaction commerciale, conformément à la loi n°&nbsp;09-08 relative à la protection des personnes physiques à l'égard du traitement des données à caractère personnel.</div>
       <div class="dsrow" style="grid-template-columns:2fr 1.2fr;">
         <div class="dsig">
           <div style="font-size:8pt;font-weight:700;margin-bottom:2pt;">SIGNATURE CLIENT / توقيع الزبون</div>
@@ -459,6 +459,10 @@ function calcFacTotals(){
 function upFac(){
   var ref=v('fac_ref');t('p1-ref',ref);t('p1-ref-ar',ref);
   var d=v('fac_date');t('p1-date',fmtDate(d));t('p1-date-ar',fmtDate(d));
+  var cn2=facCT==='PART'?v('fac_client_nom'):v('fac_client_rs');
+  var cin2=facCT==='PART'?v('fac_client_cin'):'';
+  var en=$('fac-consent-nom');if(en)en.textContent=cn2||'[Nom Prénom]';
+  var ec=$('fac-consent-cin');if(ec)ec.textContent=cin2||'________';
   if(facCT==='PART'){
     t('p1-cn',v('fac_client_nom')||'-');t('p1-cin-val',v('fac_client_cin')||'-');t('p1-ct',v('fac_client_tel')||'-');
   }else{
