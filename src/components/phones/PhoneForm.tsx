@@ -47,6 +47,7 @@ const EMPTY: Partial<Phone> = {
   damage_notes:         null,
   promo_type:           null,
   promo_montant:        null,
+  fournisseur_id:       null,
 }
 
 export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId }: PhoneFormProps) {
@@ -58,6 +59,14 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
   const canSeeFinancials = role === 'manager' || role === 'owner'
 
   const { brands, seriesFor, modelsFor, couleursFor, addEntry, loading: catalogLoading } = usePhoneCatalog()
+
+  const [suppliers, setSuppliers] = useState<{ supplier_id: string; nom: string; type_fournisseur: string }[]>([])
+  useEffect(() => {
+    fetch('/api/suppliers?mode=dropdown')
+      .then(r => r.json())
+      .then(json => setSuppliers(json.data || []))
+      .catch(() => {})
+  }, [])
 
   const [form, setForm]           = useState<Partial<Phone>>({ ...EMPTY })
   const [loading, setLoading]     = useState(false)
@@ -163,7 +172,10 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
         {/* Row 1 — Source + Condition */}
         <div className="grid grid-cols-2 gap-4">
           <Field label={isAr ? 'المصدر' : 'Source'} required>
-            <select className={selectClass} value={form.source || ''} onChange={e => set('source', e.target.value as DeviceSource)}>
+            <select className={selectClass} value={form.source || ''} onChange={e => {
+              set('source', e.target.value as DeviceSource)
+              if (e.target.value !== 'Fournisseur') set('fournisseur_id', null)
+            }}>
               <option value="Fournisseur">Fournisseur</option>
               <option value="Reprise">Reprise</option>
               <option value="Échange">Échange</option>
@@ -177,6 +189,40 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
             </select>
           </Field>
         </div>
+
+        {/* Fournisseur — visible uniquement si source = Fournisseur */}
+        {form.source === 'Fournisseur' && (
+          <Field label={isAr ? 'المورد' : 'Fournisseur'}>
+            <select
+              className={selectClass}
+              value={form.fournisseur_id || ''}
+              onChange={e => set('fournisseur_id', e.target.value || null)}
+            >
+              <option value="">{isAr ? '— غير محدد' : '— Non spécifié'}</option>
+              {suppliers.map(s => (
+                <option key={s.supplier_id} value={s.supplier_id}>{s.nom}</option>
+              ))}
+            </select>
+            {form.fournisseur_id && (() => {
+              const sel = suppliers.find(s => s.supplier_id === form.fournisseur_id)
+              return sel ? (
+                <div className="flex items-center gap-2 mt-1.5">
+                  <span
+                    className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                    style={sel.type_fournisseur === 'A'
+                      ? { backgroundColor: '#FAF5E8', color: '#C9A440', border: '1px solid #E8D494' }
+                      : { backgroundColor: '#EFF6FF', color: '#3B82F6', border: '1px solid #BFDBFE' }
+                    }
+                  >
+                    {sel.type_fournisseur === 'A'
+                      ? (isAr ? 'مورد أ · تسليف' : 'Fournisseur A · Consignation')
+                      : (isAr ? 'مجموعة ب · دفع مباشر' : 'Groupe B · Paiement direct')}
+                  </span>
+                </div>
+              ) : null
+            })()}
+          </Field>
+        )}
 
         {/* Row 2 — Marque */}
         <Field label={isAr ? 'الماركة' : 'Marque'} required>

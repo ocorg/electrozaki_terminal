@@ -38,9 +38,10 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
   const [editPhone, setEditPhone]     = useState<Phone | null>(null)
   const [showFilters, setShowFilters] = useState(false)
   const [labelProduct,  setLabelProduct]  = useState<LabelProduct | null>(null)
-  const [confirmDelete,  setConfirmDelete]  = useState<string | null>(null)  // holds phone_id
+  const [confirmDelete,  setConfirmDelete]  = useState<string | null>(null)
   const [deleting,       setDeleting]       = useState(false)
   const [openProspects,  setOpenProspects]  = useState<Prospect[]>([])
+  const [suppliers,      setSuppliers]      = useState<{ supplier_id: string; nom: string; type_fournisseur: string }[]>([])
   const [catalogOpen, setCatalogOpen]   = useState(false)
   const [catalogItems, setCatalogItems] = useState<{ catalog_id: string; marque: string; serie: string; type: string; model: string; couleur: string }[]>([])
   const [catForm, setCatForm]           = useState({ marque: '', serie: '', type: 'Normal', model: '', couleur: '' })
@@ -121,13 +122,19 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
   const [filterStorage, setFilterStorage] = useState('')
   const [filterPromo,   setFilterPromo]   = useState('')
 
-  // Fetch open prospects for stock-match badges
   useEffect(() => {
     fetch(`/api/prospects?store_id=${storeId}&open=1`)
       .then(r => r.json())
       .then(json => setOpenProspects(json.data || []))
       .catch(() => {})
+    fetch('/api/suppliers?mode=dropdown')
+      .then(r => r.json())
+      .then(json => setSuppliers(json.data || []))
+      .catch(() => {})
   }, [storeId])
+
+  const getSupplierBadge = (fournisseur_id: string | null | undefined) =>
+    fournisseur_id ? (suppliers.find(s => s.supplier_id === fournisseur_id) ?? null) : null
 
   const getProspectMatchCount = (phone: Phone): number =>
     openProspects.filter(p => {
@@ -196,7 +203,6 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
 
   const hasFilters = filterStatus || filterMarque || filterLocation || filterStorage || filterPromo || search
 
-  // Counts by status
   const counts = STATUSES.reduce((acc, s) => {
     acc[s] = phones.filter(p => p.status === s).length
     return acc
@@ -295,7 +301,6 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
         {/* Filters panel */}
         {showFilters && (
           <div className="flex flex-wrap gap-3 p-4 bg-white border border-[#E8E5DE] rounded-2xl animate-fade-in">
-            {/* Status */}
             <div className="flex flex-wrap gap-2">
               {STATUSES.map(s => (
                 <button
@@ -318,7 +323,6 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
 
             <div className="w-px bg-[#E8E5DE]" />
 
-            {/* Marque */}
             <select
               className="text-sm border border-[#E8E5DE] rounded-xl px-3 py-1.5 bg-white text-[#6B6860] focus:outline-none"
               value={filterMarque}
@@ -328,7 +332,6 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
               {MARQUES.map(m => <option key={m} value={m}>{m}</option>)}
             </select>
 
-            {/* Location */}
             <select
               className="text-sm border border-[#E8E5DE] rounded-xl px-3 py-1.5 bg-white text-[#6B6860] focus:outline-none"
               value={filterLocation}
@@ -338,7 +341,6 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
               {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
             </select>
 
-            {/* Storage */}
             <select
               className="text-sm border border-[#E8E5DE] rounded-xl px-3 py-1.5 bg-white text-[#6B6860] focus:outline-none"
               value={filterStorage}
@@ -350,7 +352,6 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                 .map(s => <option key={s} value={s}>{s}</option>)}
             </select>
 
-            {/* Promo toggle */}
             <button
               onClick={() => setFilterPromo(filterPromo === '1' ? '' : '1')}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all"
@@ -470,6 +471,22 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                             </span>
                           </div>
                         )}
+                        {(() => {
+                          const sup = getSupplierBadge(phone.fournisseur_id)
+                          return sup ? (
+                            <div className="flex items-center gap-1 mt-1">
+                              <span
+                                className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                                style={sup.type_fournisseur === 'A'
+                                  ? { backgroundColor: '#FAF5E8', color: '#C9A440', border: '1px solid #E8D494' }
+                                  : { backgroundColor: '#EFF6FF', color: '#3B82F6', border: '1px solid #BFDBFE' }
+                                }
+                              >
+                                {sup.nom} · {sup.type_fournisseur}
+                              </span>
+                            </div>
+                          ) : null
+                        })()}
                         {((phone.replaced_components || []).length > 0 || phone.is_damaged) && (
                           <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                             {(phone.replaced_components || []).map((comp, idx) => (
@@ -661,6 +678,22 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                           </span>
                         </div>
                       )}
+                      {(() => {
+                        const sup = getSupplierBadge(phone.fournisseur_id)
+                        return sup ? (
+                          <div className="flex items-center gap-1 mt-1">
+                            <span
+                              className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                              style={sup.type_fournisseur === 'A'
+                                ? { backgroundColor: '#FAF5E8', color: '#C9A440', border: '1px solid #E8D494' }
+                                : { backgroundColor: '#EFF6FF', color: '#3B82F6', border: '1px solid #BFDBFE' }
+                              }
+                            >
+                              {sup.nom} · {sup.type_fournisseur}
+                            </span>
+                          </div>
+                        ) : null
+                      })()}
                       {((phone.replaced_components || []).length > 0 || phone.is_damaged) && (
                         <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                           {(phone.replaced_components || []).length > 0 && (
@@ -751,7 +784,6 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
         size="lg"
       >
         {(() => {
-          // Build suggestion lists from live catalog data — no hardcoding
           const suggestions = {
             marques:  Array.from(new Set(catalogItems.map(i => i.marque))).sort(),
             series:   Array.from(new Set(catalogItems.map(i => i.serie).filter(Boolean))).sort(),
@@ -775,15 +807,12 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
 
           return (
             <div className="space-y-4">
-
-              {/* Datalists — populated from live catalog */}
               <datalist id="dl-marque">{suggestions.marques.map(v => <option key={v} value={v} />)}</datalist>
               <datalist id="dl-serie">{suggestions.series.map(v => <option key={v} value={v} />)}</datalist>
               <datalist id="dl-model">{suggestions.models.map(v => <option key={v} value={v} />)}</datalist>
               <datalist id="dl-couleur">{suggestions.couleurs.map(v => <option key={v} value={v} />)}</datalist>
               <datalist id="dl-type">{suggestions.types.map(v => <option key={v} value={v} />)}</datalist>
 
-              {/* Add form */}
               <div className="bg-[#F8F7F4] border border-[#E8E5DE] rounded-xl p-4 space-y-3">
                 <p className="text-xs font-bold text-[#1A1A1A] flex items-center gap-2">
                   <Plus className="w-3.5 h-3.5 text-[#C9A440]" />
@@ -817,7 +846,6 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                 </button>
               </div>
 
-              {/* Search */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#B0ADA6]" />
                 <input className={`${sharedInput} pl-9`}
@@ -826,7 +854,6 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                   onChange={e => setCatSearch(e.target.value)} />
               </div>
 
-              {/* List */}
               <div className="border border-[#E8E5DE] rounded-xl overflow-hidden max-h-72 overflow-y-auto">
                 {catalogItems.length === 0 ? (
                   <div className="flex items-center justify-center py-10 text-sm text-[#B0ADA6] gap-2">
@@ -843,11 +870,8 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                       <p className="text-[10px] font-bold text-[#6B6860] uppercase tracking-wider">{brand}</p>
                     </div>
                     {items.map(item => (
-                      <div key={item.catalog_id}
-                        className="border-b border-[#F2F0EB] last:border-0">
-
+                      <div key={item.catalog_id} className="border-b border-[#F2F0EB] last:border-0">
                         {editingId === item.catalog_id ? (
-                          /* ── Inline edit row ── */
                           <div className="px-4 py-3 bg-amber-50 space-y-2">
                             <div className="grid grid-cols-2 gap-2">
                               {[
@@ -877,7 +901,6 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                             </div>
                           </div>
                         ) : (
-                          /* ── Normal row ── */
                           <div className="flex items-center justify-between px-4 py-2.5 hover:bg-[#F8F7F4] transition-all group">
                             <div className="min-w-0">
                               <p className="text-xs font-semibold text-[#1A1A1A] truncate">{item.model}</p>

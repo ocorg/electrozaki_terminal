@@ -8,9 +8,20 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const store_id = searchParams.get('store_id')
     const search   = searchParams.get('search')
+    const mode     = searchParams.get('mode')
+
+    if (mode === 'dropdown') {
+      const { data, error } = await supabase
+        .from('suppliers')
+        .select('supplier_id, nom, type_fournisseur')
+        .eq('is_deleted', false)
+        .order('nom')
+      if (error) throw error
+      return NextResponse.json({ data })
+    }
 
     let query = supabase
-      .from('supplier_summary')
+      .from('suppliers_summary')
       .select('*')
       .order('created_at', { ascending: false })
 
