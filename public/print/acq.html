@@ -185,7 +185,7 @@ textarea{resize:vertical;min-height:54px;}
         <div style="font-weight:700;text-transform:uppercase;letter-spacing:0.03em;margin-bottom:2pt;">Protection de vos données personnelles — Loi 09-08</div>
         <div>Par le biais de ce document, <strong>EZ ELECTRO ZAKI</strong> (RC&nbsp;: 102816, Meknès) collecte vos données personnelles (nom, prénom, numéro CIN, téléphone) en vue de l'<strong>identification du cédant et de la traçabilité du bien d'occasion acquis</strong>. Ce traitement est en cours d'instruction auprès de la CNDP.</div>
         <div style="margin-top:1.5pt;">Vos données sont conservées exclusivement par EZ ELECTRO ZAKI et ne sont pas transmises à des tiers, sauf obligation légale (notamment aux autorités en cas de signalement de vol). Elles sont conservées pendant une durée de <strong>10 ans</strong> conformément à l'Article 21 du Code de Commerce marocain.</div>
-        <div style="margin-top:1.5pt;">Conformément à la loi 09-08, vous disposez d'un droit d'accès, de rectification et d'opposition sur vos données personnelles. Pour exercer ces droits&nbsp;: <strong>Electro Zaki EZ — [APPT 11 4 EME ETAGE RES UOM RABIA N 112 AV
+        <div style="margin-top:1.5pt;">Conformément à la loi 09-08, vous disposez d'un droit d'accès, de rectification et d'opposition sur vos données personnelles. Pour exercer ces droits&nbsp;: <strong>EZ ELECTRO ZAKI — [APPT 11 4 EME ETAGE RES UOM RABIA N 112 AV
 MOHAMED 6 LOT SAHARA 1] — Meknès — Tél&nbsp;: +212&nbsp;6&nbsp;67&nbsp;65&nbsp;44&nbsp;30</strong>.</div>
       </div>
     </div><!-- /rep-p1 -->
@@ -240,7 +240,7 @@ async function genQR(containerId,docData){
   var raw=[docData.ref||'',docData.date||'',docData.clientNom||'',docData.clientTel||'',docData.imei||'',String(docData.montant||'0')].join('|');
   var hashHex='000000000000';
   try{var buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(raw));hashHex=Array.from(new Uint8Array(buf)).map(function(b){return b.toString(16).padStart(2,'0');}).join('').substring(0,12).toUpperCase();}catch(e){console.warn(e);}
-  var qrText=['ELECTRO ZAKI EZ · Meknes','ICE:002533374000004','REF:'+(docData.ref||'N/A'),'DATE:'+(docData.date||'N/A'),'IMEI:'+(docData.imei||'N/A'),'HASH:'+hashHex].join('\n');
+  var qrText=['EZ ELECTRO ZAKI · Meknes','ICE:002533374000004','REF:'+(docData.ref||'N/A'),'DATE:'+(docData.date||'N/A'),'IMEI:'+(docData.imei||'N/A'),'HASH:'+hashHex].join('\n');
   var c=$(containerId);if(!c)return hashHex;c.innerHTML='';
   if(typeof QRCode!=='undefined'){new QRCode(c,{text:qrText,width:64,height:64,colorDark:'#000000',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});}
   var hEl=$(containerId.replace('-qr','-qr-hash'));if(hEl)hEl.textContent='Code: '+hashHex;
