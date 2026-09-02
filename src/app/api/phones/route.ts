@@ -14,9 +14,10 @@ export async function GET(request: NextRequest) {
     const marque   = searchParams.get('marque')
     const location = searchParams.get('location')
     const stockage = searchParams.get('stockage')
-    const promo    = searchParams.get('promo')
-    const search   = searchParams.get('search')
-    const store_id = searchParams.get('store_id')
+    const promo          = searchParams.get('promo')
+    const search         = searchParams.get('search')
+    const store_id       = searchParams.get('store_id')
+    const fournisseur_id = searchParams.get('fournisseur_id')
 
     const { data: callerProfile } = await supabase
       .from('user_profiles')
@@ -40,7 +41,8 @@ export async function GET(request: NextRequest) {
     if (marque)   query = query.ilike('marque', `%${marque}%`)
     if (location) query = query.eq('location', location)
     if (stockage)     query = query.eq('stockage', stockage)
-    if (promo === '1') query = query.not('promo_type', 'is', null)
+    if (fournisseur_id) query = query.eq('fournisseur_id', fournisseur_id)
+    if (promo === '1')  query = query.not('promo_type', 'is', null)
     if (search) {
       const looksLikeImei = /^\d{6,}$/.test(search)
       if (looksLikeImei) {
