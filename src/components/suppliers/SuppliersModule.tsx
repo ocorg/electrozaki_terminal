@@ -13,48 +13,37 @@ import {
   ChevronRight, Check, Loader2, Package,
 } from 'lucide-react'
 
-// ─── Interfaces ──────────────────────────────────────────────────────────────
+// ─── Interfaces ───────────────────────────────────────────────────────────────
 
 interface Supplier {
-  supplier_id:        string
-  nom:                string
-  telephone?:         string | null
-  email?:             string | null
-  adresse?:           string | null
-  ville?:             string | null
-  categorie?:         string | null
-  type_fournisseur:   string
-  store_id?:          string | null
-  notes?:             string | null
-  created_at:         string
-  total_paye?:        number
-  total_achats?:      number
-  solde_du?:          number
-  nb_en_stock?:       number
-  nb_vendus?:         number
+  supplier_id:         string
+  nom:                 string
+  telephone?:          string | null
+  email?:              string | null
+  adresse?:            string | null
+  ville?:              string | null
+  categorie?:          string | null
+  type_fournisseur:    string
+  store_id?:           string | null
+  notes?:              string | null
+  created_at:          string
+  total_paye?:         number
+  total_achats?:       number
+  solde_du?:           number
+  nb_en_stock?:        number
+  nb_vendus?:          number
   a_montant_en_stock?: number
 }
 
-interface UnsettledPhone {
-  phone_id:   string
-  marque:     string
-  model:      string
-  imei?:      string | null
-  couleur?:   string | null
-  stockage?:  string | null
-  cash_recu:  number
-  fac_ref?:   string | null
-}
-
-interface SupplierPhone {
-  phone_id:    string
-  marque:      string
-  model:       string
-  imei?:       string | null
-  couleur?:    string | null
-  stockage?:   string | null
-  prix_achat?: number | null
-  status:      string
+interface PhoneRow {
+  phone_id:  string
+  marque:    string
+  model:     string
+  imei?:     string | null
+  couleur?:  string | null
+  stockage?: string | null
+  cash_recu: number   // type A = cash réel ; type B/C = prix_achat
+  fac_ref?:  string | null
 }
 
 interface Payment {
@@ -72,12 +61,6 @@ const EMPTY_FORM = {
   nom: '', telephone: '', email: '',
   adresse: '', ville: '', categorie: '',
   notes: '', type_fournisseur: 'B',
-}
-
-const EMPTY_PAY = {
-  montant: '',
-  date_paiement: new Date().toISOString().split('T')[0],
-  notes: '',
 }
 
 const TYPE_CFG: Record<string, { bg: string; color: string; border: string; desc: string }> = {
@@ -105,44 +88,40 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
 
   const { suppliers: supplierCats } = useCategories()
 
-  // ── Core state ──────────────────────────────────────────────────────────────
+  // ── Core state ───────────────────────────────────────────────────────────────
   const [suppliers,       setSuppliers]       = useState<Supplier[]>([])
   const [loading,         setLoading]         = useState(true)
   const [search,          setSearch]          = useState('')
   const [selected,        setSelected]        = useState<Supplier | null>(null)
   const [formOpen,        setFormOpen]        = useState(false)
   const [editSupplier,    setEditSupplier]    = useState<Supplier | null>(null)
-  const [payOpen,         setPayOpen]         = useState(false)
   const [payments,        setPayments]        = useState<Payment[]>([])
   const [paymentsLoading, setPaymentsLoading] = useState(false)
   const [form,            setForm]            = useState({ ...EMPTY_FORM })
-  const [payForm,         setPayForm]         = useState({ ...EMPTY_PAY })
   const [submitting,      setSubmitting]      = useState(false)
 
-  // ── Type A — settlement state ────────────────────────────────────────────────
-  const [unsettledPhones,  setUnsettledPhones]  = useState<UnsettledPhone[]>([])
+  // ── Unified phone list state ──────────────────────────────────────────────────
+  const [phoneRows,        setPhoneRows]        = useState<PhoneRow[]>([])
   const [selectedPhoneIds, setSelectedPhoneIds] = useState<Set<string>>(new Set())
-  const [unsettledLoading, setUnsettledLoading] = useState(false)
-  const [showAvance,       setShowAvance]       = useState(false)
-  const [avanceMontant,    setAvanceMontant]    = useState('')
+  const [phonesLoading,    setPhonesLoading]    = useState(false)
 
-  // ── Type B/C — phone linking state ──────────────────────────────────────────
-  const [supplierPhones,       setSupplierPhones]       = useState<SupplierPhone[]>([])
-  const [linkedPhoneIds,       setLinkedPhoneIds]       = useState<Set<string>>(new Set())
-  const [supplierPhonesLoading,setSupplierPhonesLoading]= useState(false)
-  const [showPhoneSelector,    setShowPhoneSelector]    = useState(false)
+  // ── B/C inline payment form ───────────────────────────────────────────────────
+  const [showPayForm, setShowPayForm] = useState(false)
+  const [payMontant,  setPayMontant]  = useState('')
+  const [payDate,     setPayDate]     = useState(new Date().toISOString().split('T')[0])
+  const [payNotes,    setPayNotes]    = useState('')
 
   // ── Derived ──────────────────────────────────────────────────────────────────
   const selectedTotal = useMemo(() =>
-    unsettledPhones
+    phoneRows
       .filter(p => selectedPhoneIds.has(p.phone_id))
       .reduce((sum, p) => sum + (p.cash_recu ?? 0), 0),
-    [unsettledPhones, selectedPhoneIds]
+    [phoneRows, selectedPhoneIds]
   )
 
   const totalDue = suppliers.reduce((s, sup) => s + (sup.solde_du ?? 0), 0)
 
-  // ── Fetch functions ──────────────────────────────────────────────────────────
+  // ── Fetch ────────────────────────────────────────────────────────────────────
 
   const fetchSuppliers = useCallback(async () => {
     setLoading(true)
@@ -171,27 +150,50 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
     }
   }
 
-  async function fetchUnsettledPhones(supplierId: string) {
-    setUnsettledLoading(true)
+  // Unified phone list: type A → unsettled sold phones (cash_recu computed)
+  //                    type B/C → all sold phones (cash_recu = prix_achat, for reference)
+  async function fetchPhoneRows(supplier: Supplier) {
+    setPhonesLoading(true)
     try {
-      const res  = await fetch(`/api/supplier-payments?mode=unsettled_phones&supplier_id=${supplierId}`)
-      const json = await res.json()
-      const phones: UnsettledPhone[] = json.data || []
-      setUnsettledPhones(phones)
-      setSelectedPhoneIds(new Set(phones.map(p => p.phone_id)))
+      if (supplier.type_fournisseur === 'A') {
+        const res  = await fetch(
+          `/api/supplier-payments?mode=unsettled_phones&supplier_id=${supplier.supplier_id}`
+        )
+        const json = await res.json()
+        const rows: PhoneRow[] = (json.data || []).map((p: any) => ({
+          phone_id:  p.phone_id,
+          marque:    p.marque,
+          model:     p.model,
+          imei:      p.imei    ?? null,
+          couleur:   p.couleur  ?? null,
+          stockage:  p.stockage ?? null,
+          cash_recu: p.cash_recu ?? 0,
+          fac_ref:   p.fac_ref  ?? null,
+        }))
+        setPhoneRows(rows)
+        // Pre-select all for type A
+        setSelectedPhoneIds(new Set(rows.map(r => r.phone_id)))
+      } else {
+        // B/C : sold phones from this supplier (for payment traceability)
+        const res  = await fetch(
+          `/api/phones?fournisseur_id=${supplier.supplier_id}&status=${encodeURIComponent('مباع')}&store_id=${storeId}`
+        )
+        const json = await res.json()
+        const rows: PhoneRow[] = (json.data || []).map((p: any) => ({
+          phone_id:  p.phone_id,
+          marque:    p.marque,
+          model:     p.model,
+          imei:      p.imei    ?? null,
+          couleur:   p.couleur  ?? null,
+          stockage:  p.stockage ?? null,
+          cash_recu: p.prix_achat ?? 0,
+          fac_ref:   null,
+        }))
+        setPhoneRows(rows)
+        setSelectedPhoneIds(new Set()) // B/C: no pre-selection
+      }
     } finally {
-      setUnsettledLoading(false)
-    }
-  }
-
-  async function fetchSupplierPhones(supplierId: string) {
-    setSupplierPhonesLoading(true)
-    try {
-      const res  = await fetch(`/api/phones?fournisseur_id=${supplierId}&store_id=${storeId}`)
-      const json = await res.json()
-      setSupplierPhones(json.data || [])
-    } finally {
-      setSupplierPhonesLoading(false)
+      setPhonesLoading(false)
     }
   }
 
@@ -202,18 +204,17 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
     return () => clearTimeout(t)
   }, [fetchSuppliers, search])
 
-  // ── Modal helpers ────────────────────────────────────────────────────────────
+  // ── Modal controls ───────────────────────────────────────────────────────────
 
   function closeDetail() {
     setSelected(null)
-    setUnsettledPhones([])
+    setPhoneRows([])
     setSelectedPhoneIds(new Set())
-    setSupplierPhones([])
-    setLinkedPhoneIds(new Set())
-    setShowAvance(false)
-    setAvanceMontant('')
-    setShowPhoneSelector(false)
     setPayments([])
+    setShowPayForm(false)
+    setPayMontant('')
+    setPayDate(new Date().toISOString().split('T')[0])
+    setPayNotes('')
   }
 
   function openAdd() {
@@ -241,14 +242,10 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
   function openDetail(s: Supplier) {
     setSelected(s)
     fetchPayments(s.supplier_id)
-    if (s.type_fournisseur === 'A') {
-      fetchUnsettledPhones(s.supplier_id)
-    } else {
-      fetchSupplierPhones(s.supplier_id)
-    }
+    fetchPhoneRows(s)
   }
 
-  // ── Toggle helpers ───────────────────────────────────────────────────────────
+  // ── Toggle phones ────────────────────────────────────────────────────────────
 
   function togglePhone(id: string) {
     setSelectedPhoneIds(prev => {
@@ -259,19 +256,11 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
   }
 
   function toggleAllPhones() {
-    if (selectedPhoneIds.size === unsettledPhones.length) {
-      setSelectedPhoneIds(new Set())
-    } else {
-      setSelectedPhoneIds(new Set(unsettledPhones.map(p => p.phone_id)))
-    }
-  }
-
-  function toggleLinkedPhone(id: string) {
-    setLinkedPhoneIds(prev => {
-      const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
-      return next
-    })
+    setSelectedPhoneIds(
+      selectedPhoneIds.size === phoneRows.length
+        ? new Set()
+        : new Set(phoneRows.map(p => p.phone_id))
+    )
   }
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
@@ -314,6 +303,7 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
     }
   }
 
+  // Type A — règlement sur ventes sélectionnées
   async function handleReglement() {
     if (!selected || selectedPhoneIds.size === 0) return
     setSubmitting(true)
@@ -334,9 +324,13 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
       if (!res.ok) throw new Error(json.error)
       showSuccess(`${isAr ? 'تمت التسوية ✓' : 'Règlement enregistré ✓'} — ${formatMAD(selectedTotal)}`)
       await fetchSuppliers()
-      fetchUnsettledPhones(selected.supplier_id)
-      fetchPayments(selected.supplier_id)
-      setSelected(prev => prev ? { ...prev, solde_du: Math.max(0, (prev.solde_du ?? 0) - selectedTotal) } : null)
+      if (selected) {
+        fetchPhoneRows(selected)
+        fetchPayments(selected.supplier_id)
+        setSelected(prev => prev
+          ? { ...prev, solde_du: Math.max(0, (prev.solde_du ?? 0) - selectedTotal) }
+          : null)
+      }
     } catch (err: unknown) {
       showError((err as Error).message)
     } finally {
@@ -344,39 +338,9 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
     }
   }
 
-  async function handleAvance() {
-    if (!selected || !avanceMontant || parseFloat(avanceMontant) <= 0) return
-    setSubmitting(true)
-    try {
-      const montant = parseFloat(avanceMontant)
-      const res  = await fetch('/api/supplier-payments', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({
-          supplier_id:   selected.supplier_id,
-          store_id:      storeId,
-          payment_type:  'AVANCE_A',
-          montant,
-          phone_ids:     [],
-          date_paiement: new Date().toISOString().split('T')[0],
-        }),
-      })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error)
-      showSuccess(isAr ? 'تم تسجيل المسبقة ✓' : 'Avance enregistrée ✓')
-      setAvanceMontant('')
-      setShowAvance(false)
-      await fetchSuppliers()
-      fetchPayments(selected.supplier_id)
-    } catch (err: unknown) {
-      showError((err as Error).message)
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  async function handlePayment() {
-    if (!selected || !payForm.montant || parseFloat(payForm.montant) <= 0) {
+  // Type B/C — paiement avec traçabilité téléphones
+  async function handlePaymentBC() {
+    if (!selected || !payMontant || parseFloat(payMontant) <= 0) {
       showError(isAr ? 'أدخل مبلغاً صحيحاً' : 'Montant invalide')
       return
     }
@@ -389,21 +353,24 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
           supplier_id:   selected.supplier_id,
           store_id:      storeId,
           payment_type:  'PAIEMENT_B',
-          montant:       parseFloat(payForm.montant),
-          phone_ids:     Array.from(linkedPhoneIds),
-          date_paiement: payForm.date_paiement,
-          notes:         payForm.notes || null,
+          montant:       parseFloat(payMontant),
+          phone_ids:     Array.from(selectedPhoneIds),
+          date_paiement: payDate,
+          notes:         payNotes || null,
         }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
       showSuccess(isAr ? 'تم تسجيل الدفعة ✓' : 'Paiement enregistré ✓')
-      setPayOpen(false)
-      setPayForm({ ...EMPTY_PAY })
-      setLinkedPhoneIds(new Set())
-      setShowPhoneSelector(false)
+      setShowPayForm(false)
+      setPayMontant('')
+      setPayNotes('')
+      setSelectedPhoneIds(new Set())
       await fetchSuppliers()
       fetchPayments(selected.supplier_id)
+      setSelected(prev => prev
+        ? { ...prev, solde_du: Math.max(0, (prev.solde_du ?? 0) - parseFloat(payMontant)) }
+        : null)
     } catch (err: unknown) {
       showError((err as Error).message)
     } finally {
@@ -414,12 +381,10 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
   // ── Helpers ──────────────────────────────────────────────────────────────────
 
   function getTypeBadge(type: string) {
-    const cfg = TYPE_CFG[type] ?? { bg: '#F8F7F4', color: '#6B6860', border: '1px solid #E8E5DE', desc: '' }
+    const cfg = TYPE_CFG[type] ?? TYPE_CFG['B']
     return (
-      <span
-        className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-        style={{ backgroundColor: cfg.bg, color: cfg.color, border: cfg.border }}
-      >
+      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+            style={{ backgroundColor: cfg.bg, color: cfg.color, border: cfg.border }}>
         {type} · {cfg.desc}
       </span>
     )
@@ -491,7 +456,7 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
         </div>
       </div>
 
-      {/* ── List ────────────────────────────────────────────────────────────── */}
+      {/* ── Supplier list ────────────────────────────────────────────────────── */}
       <div className="flex-1 overflow-auto px-6 pb-6">
         <div className="bg-white border border-[#E8E5DE] rounded-2xl overflow-hidden">
           {loading ? (
@@ -518,21 +483,15 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
                   <div key={sup.supplier_id}
                     className="flex items-center gap-4 px-5 py-4 hover:bg-[#F8F7F4] transition-all cursor-pointer"
                     onClick={() => openDetail(sup)}>
-
-                    {/* Avatar */}
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 font-bold text-sm"
                          style={{ backgroundColor: `${cfg.color}18`, color: cfg.color }}>
                       {sup.nom.charAt(0).toUpperCase()}
                     </div>
-
-                    {/* Info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="text-sm font-bold text-[#1A1A1A]">{sup.nom}</p>
-                        <span
-                          className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-                          style={{ backgroundColor: cfg.bg, color: cfg.color, border: cfg.border }}
-                        >
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                              style={{ backgroundColor: cfg.bg, color: cfg.color, border: cfg.border }}>
                           {sup.type_fournisseur}
                         </span>
                       </div>
@@ -549,19 +508,16 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
                         )}
                       </div>
                     </div>
-
-                    {/* Balance */}
                     <div className="text-right flex-shrink-0">
-                      {(sup.solde_du ?? 0) > 0 && (
-                        <p className="text-sm font-bold text-red-500">
-                          {formatMAD(sup.solde_du ?? 0)}
-                        </p>
+                      {(sup.solde_du ?? 0) > 0 ? (
+                        <p className="text-sm font-bold text-red-500">{formatMAD(sup.solde_du ?? 0)}</p>
+                      ) : (
+                        <p className="text-sm font-bold text-emerald-600">À jour ✓</p>
                       )}
-                      {(sup.nb_en_stock ?? 0) > 0 && (
-                        <p className="text-[10px] text-[#B0ADA6]">
-                          {sup.nb_en_stock} {isAr ? 'في المخزون' : 'en stock'}
-                        </p>
-                      )}
+                      <p className="text-[10px] text-[#B0ADA6] mt-0.5">
+                        {sup.nb_en_stock ?? 0} {isAr ? 'في المخزون' : 'en stock'}
+                        {(sup.nb_vendus ?? 0) > 0 && ` · ${sup.nb_vendus} vendus`}
+                      </p>
                     </div>
                     <ChevronRight className="w-4 h-4 text-[#B0ADA6] flex-shrink-0" />
                   </div>
@@ -585,116 +541,129 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
               )}
             </div>
 
-            {/* ── TYPE A ── */}
-            {selected.type_fournisseur === 'A' ? (
-              <>
-                {/* KPIs */}
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="rounded-xl p-3 text-center border"
-                       style={{ backgroundColor: (selected.solde_du ?? 0) > 0 ? '#FFF1F2' : '#F0FDF4', borderColor: (selected.solde_du ?? 0) > 0 ? '#FECDD3' : '#BBF7D0' }}>
-                    <p className="text-[10px] uppercase tracking-wider font-bold mb-1"
-                       style={{ color: (selected.solde_du ?? 0) > 0 ? '#9B1C1C' : '#065F46' }}>
-                      {isAr ? 'المستحق' : 'Solde dû'}
-                    </p>
-                    <p className="font-bold text-sm"
-                       style={{ color: (selected.solde_du ?? 0) > 0 ? '#EF4444' : '#059669' }}>
-                      {formatMAD(selected.solde_du ?? 0)}
-                    </p>
-                  </div>
-                  <div className="rounded-xl p-3 text-center bg-[#F0FDF4] border border-emerald-100">
-                    <p className="text-[10px] text-emerald-700 uppercase tracking-wider font-bold mb-1">
-                      {isAr ? 'المُسوَّى' : 'Total réglé'}
-                    </p>
-                    <p className="font-bold text-sm text-emerald-600">
-                      {formatMAD(selected.total_paye ?? 0)}
-                    </p>
-                  </div>
-                  <div className="rounded-xl p-3 text-center bg-[#F8F7F4] border border-[#E8E5DE]">
-                    <p className="text-[10px] text-[#6B6860] uppercase tracking-wider font-bold mb-1">
-                      {isAr ? 'المخزون' : 'En stock'}
-                    </p>
-                    <p className="font-bold text-sm text-[#1A1A1A]">
-                      {selected.nb_en_stock ?? 0} tél.
-                    </p>
-                  </div>
+            {/* ── UNIFIED KPIs (same for all types) ── */}
+            <div className="grid grid-cols-3 gap-2">
+              {/* Total achats */}
+              <div className="rounded-xl p-3 text-center bg-[#F8F7F4] border border-[#E8E5DE]">
+                <p className="text-[10px] text-[#6B6860] uppercase tracking-wider font-bold mb-1">
+                  {isAr ? 'إجمالي الشراء' : 'Total achats'}
+                </p>
+                <p className="font-bold text-sm text-[#1A1A1A]">
+                  {formatMAD(selected.total_achats ?? 0)}
+                </p>
+              </div>
+              {/* Solde dû */}
+              <div className="rounded-xl p-3 text-center border"
+                   style={{
+                     backgroundColor: (selected.solde_du ?? 0) > 0 ? '#FFF1F2' : '#F0FDF4',
+                     borderColor:     (selected.solde_du ?? 0) > 0 ? '#FECDD3' : '#BBF7D0',
+                   }}>
+                <p className="text-[10px] uppercase tracking-wider font-bold mb-1"
+                   style={{ color: (selected.solde_du ?? 0) > 0 ? '#9B1C1C' : '#065F46' }}>
+                  {isAr ? 'المستحق' : 'Solde dû'}
+                </p>
+                <p className="font-bold text-sm"
+                   style={{ color: (selected.solde_du ?? 0) > 0 ? '#EF4444' : '#059669' }}>
+                  {(selected.solde_du ?? 0) > 0 ? formatMAD(selected.solde_du ?? 0) : 'À jour ✓'}
+                </p>
+              </div>
+              {/* En stock */}
+              <div className="rounded-xl p-3 text-center bg-[#F8F7F4] border border-[#E8E5DE]">
+                <p className="text-[10px] text-[#6B6860] uppercase tracking-wider font-bold mb-1">
+                  {isAr ? 'في المخزون' : 'En stock'}
+                </p>
+                <p className="font-bold text-sm text-[#1A1A1A]">
+                  {selected.nb_en_stock ?? 0}
+                  <span className="text-[10px] font-normal text-[#B0ADA6] ml-1">tél.</span>
+                </p>
+              </div>
+            </div>
+
+            {/* ── UNIFIED Phone list section ── */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-bold text-[#6B6860] uppercase tracking-widest">
+                  {selected.type_fournisseur === 'A'
+                    ? (isAr ? `مبيعات غير مُسوَّاة (${phoneRows.length})` : `Ventes non réglées (${phoneRows.length})`)
+                    : (isAr ? `هواتف مباعة (${phoneRows.length})` : `Téléphones vendus (${phoneRows.length})`)
+                  }
+                </p>
+                {phoneRows.length > 0 && (
+                  <button onClick={toggleAllPhones}
+                    className="text-xs font-medium transition-colors"
+                    style={{ color: primary }}>
+                    {selectedPhoneIds.size === phoneRows.length
+                      ? (isAr ? 'إلغاء الكل' : 'Désélectionner')
+                      : (isAr ? 'تحديد الكل' : 'Tout sélectionner')}
+                  </button>
+                )}
+              </div>
+
+              {phonesLoading ? (
+                <div className="flex items-center justify-center py-6 gap-2 text-[#B0ADA6]">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span className="text-sm">{isAr ? 'جارٍ التحميل...' : 'Chargement...'}</span>
                 </div>
-
-                {/* Unsettled phones */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs font-bold text-[#6B6860] uppercase tracking-widest">
-                      {isAr ? 'مبيعات غير مُسوَّاة' : `Ventes non réglées (${unsettledPhones.length})`}
-                    </p>
-                    {unsettledPhones.length > 0 && (
-                      <button onClick={toggleAllPhones}
-                        className="text-xs font-medium transition-colors"
-                        style={{ color: primary }}>
-                        {selectedPhoneIds.size === unsettledPhones.length
-                          ? (isAr ? 'إلغاء الكل' : 'Désélectionner')
-                          : (isAr ? 'تحديد الكل' : 'Tout sélectionner')}
-                      </button>
-                    )}
-                  </div>
-
-                  {unsettledLoading ? (
-                    <div className="flex items-center justify-center py-6 gap-2 text-[#B0ADA6]">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span className="text-sm">{isAr ? 'جارٍ التحميل...' : 'Chargement...'}</span>
-                    </div>
-                  ) : unsettledPhones.length === 0 ? (
-                    <div className="flex items-center justify-center py-5 gap-2">
-                      <Package className="w-4 h-4 text-emerald-500" />
-                      <p className="text-sm text-emerald-600 font-medium">
-                        {isAr ? 'لا توجد مبيعات غير مُسوَّاة ✓' : 'Tout est à jour ✓'}
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1">
-                      {unsettledPhones.map(phone => {
-                        const isSel = selectedPhoneIds.has(phone.phone_id)
-                        return (
-                          <div
-                            key={phone.phone_id}
-                            onClick={() => togglePhone(phone.phone_id)}
-                            className="flex items-center gap-3 p-2.5 rounded-xl border cursor-pointer transition-all select-none"
-                            style={{
-                              borderColor:     isSel ? '#C9A440' : '#E8E5DE',
-                              backgroundColor: isSel ? '#FAF5E8' : 'white',
-                            }}
-                          >
-                            <div
-                              className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0 transition-all"
-                              style={{
-                                border:          `2px solid ${isSel ? '#C9A440' : '#D1D5DB'}`,
-                                backgroundColor: isSel ? '#C9A440' : 'transparent',
-                              }}
-                            >
-                              {isSel && <Check className="w-2.5 h-2.5 text-white" />}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-bold text-[#1A1A1A] truncate">
-                                {phone.marque} {phone.model}
-                                {phone.stockage ? ` · ${phone.stockage}` : ''}
-                                {phone.couleur  ? ` · ${phone.couleur}`  : ''}
-                              </p>
-                              {(phone.imei || phone.fac_ref) && (
-                                <p className="text-[10px] text-[#B0ADA6] truncate">
-                                  {phone.imei ? `IMEI: ${phone.imei}` : ''}
-                                  {phone.fac_ref ? ` · ${phone.fac_ref}` : ''}
-                                </p>
-                              )}
-                            </div>
-                            <p className="text-sm font-bold flex-shrink-0" style={{ color: '#C9A440' }}>
-                              {formatMAD(phone.cash_recu)}
+              ) : phoneRows.length === 0 ? (
+                <div className="flex items-center justify-center py-5 gap-2">
+                  <Package className="w-4 h-4 text-emerald-500" />
+                  <p className="text-sm text-emerald-600 font-medium">
+                    {isAr ? 'لا توجد هواتف مباعة بعد' : 'Aucun téléphone vendu pour l\'instant'}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1">
+                  {phoneRows.map(phone => {
+                    const isSel = selectedPhoneIds.has(phone.phone_id)
+                    return (
+                      <div
+                        key={phone.phone_id}
+                        onClick={() => togglePhone(phone.phone_id)}
+                        className="flex items-center gap-3 p-2.5 rounded-xl border cursor-pointer transition-all select-none"
+                        style={{
+                          borderColor:     isSel ? '#C9A440' : '#E8E5DE',
+                          backgroundColor: isSel ? '#FAF5E8' : 'white',
+                        }}
+                      >
+                        <div className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0 transition-all"
+                             style={{
+                               border:          `2px solid ${isSel ? '#C9A440' : '#D1D5DB'}`,
+                               backgroundColor: isSel ? '#C9A440' : 'transparent',
+                             }}>
+                          {isSel && <Check className="w-2.5 h-2.5 text-white" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold text-[#1A1A1A] truncate">
+                            {phone.marque} {phone.model}
+                            {phone.stockage ? ` · ${phone.stockage}` : ''}
+                            {phone.couleur  ? ` · ${phone.couleur}`  : ''}
+                          </p>
+                          {(phone.imei || phone.fac_ref) && (
+                            <p className="text-[10px] text-[#B0ADA6] truncate">
+                              {phone.imei ? `IMEI: ${phone.imei}` : ''}
+                              {phone.fac_ref ? ` · ${phone.fac_ref}` : ''}
                             </p>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
+                          )}
+                        </div>
+                        {phone.cash_recu > 0 && (
+                          <p className="text-sm font-bold flex-shrink-0"
+                             style={{ color: selected.type_fournisseur === 'A' ? '#C9A440' : '#6B6860' }}>
+                            {formatMAD(phone.cash_recu)}
+                          </p>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
 
-                  {unsettledPhones.length > 0 && (
-                    <div className="mt-3 space-y-2">
+              {/* ── Action zone (differs by type) ── */}
+              {phoneRows.length > 0 && (
+                <div className="mt-3 space-y-2">
+
+                  {selected.type_fournisseur === 'A' ? (
+                    /* TYPE A — auto-calculated settlement */
+                    <>
                       <div className="flex items-center justify-between px-4 py-2.5 rounded-xl"
                            style={{ backgroundColor: '#FAF5E8', border: '1px solid #E8D494' }}>
                         <span className="text-xs font-bold" style={{ color: '#C9A440' }}>
@@ -715,87 +684,95 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
                           ? `تسوية المحدد — ${formatMAD(selectedTotal)}`
                           : `Régler la sélection — ${formatMAD(selectedTotal)}`}
                       </button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Avance */}
-                <div>
-                  {!showAvance ? (
-                    <button onClick={() => setShowAvance(true)}
-                      className="text-xs text-[#B0ADA6] hover:text-[#6B6860] transition-colors flex items-center gap-1">
-                      <Plus className="w-3 h-3" />
-                      {isAr ? 'تسجيل مسبقة على المخزون' : 'Enregistrer une avance sur stock'}
-                    </button>
+                    </>
                   ) : (
-                    <div className="flex items-end gap-2 p-3 bg-[#F8F7F4] rounded-xl border border-[#E8E5DE]">
-                      <div className="flex-1">
-                        <p className="text-[10px] text-[#B0ADA6] uppercase tracking-wider font-bold mb-1">
-                          {isAr ? 'مبلغ المسبقة (درهم)' : 'Montant avance (MAD)'}
-                        </p>
-                        <input
-                          type="number" min={0} step={50}
-                          className={inputClass}
-                          placeholder="0.00"
-                          autoFocus
-                          value={avanceMontant}
-                          onChange={e => setAvanceMontant(e.target.value)}
-                        />
-                      </div>
-                      <Btn variant="primary" onClick={handleAvance} loading={submitting}
-                        style={{ backgroundColor: primary } as React.CSSProperties}>
-                        {isAr ? 'تسجيل' : 'Valider'}
-                      </Btn>
-                      <button onClick={() => { setShowAvance(false); setAvanceMontant('') }}
-                        className="text-[#B0ADA6] hover:text-[#1A1A1A] transition-colors pb-2">
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
+                    /* TYPE B/C — manual payment with phone traceability */
+                    <>
+                      {selectedPhoneIds.size > 0 && !showPayForm && (
+                        <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-[#F8F7F4] border border-[#E8E5DE]">
+                          <span className="text-xs text-[#6B6860]">
+                            {selectedPhoneIds.size} tél. sélectionné{selectedPhoneIds.size > 1 ? 's' : ''}
+                          </span>
+                          <span className="text-xs font-bold text-[#6B6860]">
+                            {formatMAD(selectedTotal)} (réf.)
+                          </span>
+                        </div>
+                      )}
+
+                      {!showPayForm ? (
+                        <button
+                          onClick={() => setShowPayForm(true)}
+                          className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-bold transition-all border"
+                          style={{ borderColor: primary, color: primary, backgroundColor: `${primary}10` }}
+                        >
+                          <Plus className="w-4 h-4" />
+                          {isAr ? 'تسجيل دفعة' : 'Enregistrer un paiement'}
+                        </button>
+                      ) : (
+                        <div className="p-3 bg-[#F8F7F4] border border-[#E8E5DE] rounded-xl space-y-3">
+                          <p className="text-xs font-bold text-[#6B6860] uppercase tracking-wider">
+                            {isAr ? 'تسجيل دفعة' : 'Nouveau paiement'}
+                            {selectedPhoneIds.size > 0 && ` · ${selectedPhoneIds.size} tél. liés`}
+                          </p>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <p className="text-[10px] text-[#B0ADA6] uppercase tracking-wider font-bold mb-1">
+                                {isAr ? 'المبلغ (درهم) *' : 'Montant (MAD) *'}
+                              </p>
+                              <input
+                                type="number" min={0} step={0.01}
+                                className={inputClass}
+                                placeholder="0.00"
+                                autoFocus
+                                value={payMontant}
+                                onChange={e => setPayMontant(e.target.value)}
+                              />
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-[#B0ADA6] uppercase tracking-wider font-bold mb-1">
+                                {isAr ? 'التاريخ' : 'Date'}
+                              </p>
+                              <input
+                                type="date"
+                                className={inputClass}
+                                value={payDate}
+                                onChange={e => setPayDate(e.target.value)}
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-[#B0ADA6] uppercase tracking-wider font-bold mb-1">
+                              {isAr ? 'ملاحظات' : 'Notes'}
+                            </p>
+                            <input
+                              type="text"
+                              className={inputClass}
+                              placeholder={isAr ? 'اختياري...' : 'Optionnel...'}
+                              value={payNotes}
+                              onChange={e => setPayNotes(e.target.value)}
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            <Btn variant="primary" onClick={handlePaymentBC} loading={submitting}
+                              disabled={!payMontant}
+                              style={{ backgroundColor: primary } as React.CSSProperties}>
+                              {isAr ? 'تأكيد' : 'Confirmer'}
+                            </Btn>
+                            <Btn variant="secondary"
+                              onClick={() => { setShowPayForm(false); setPayMontant(''); setPayNotes('') }}>
+                              {isAr ? 'إلغاء' : 'Annuler'}
+                            </Btn>
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
-              </>
-            ) : (
-              /* ── TYPE B/C ── */
-              <>
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="rounded-xl p-3 text-center bg-[#F8F7F4] border border-[#E8E5DE]">
-                    <p className="text-[10px] text-[#6B6860] uppercase tracking-wider font-bold mb-1">
-                      {isAr ? 'إجمالي الشراء' : 'Total achats'}
-                    </p>
-                    <p className="font-bold text-sm text-[#1A1A1A]">{formatMAD(selected.total_achats ?? 0)}</p>
-                  </div>
-                  <div className="rounded-xl p-3 text-center bg-[#F0FDF4] border border-emerald-100">
-                    <p className="text-[10px] text-emerald-700 uppercase tracking-wider font-bold mb-1">
-                      {isAr ? 'المدفوع' : 'Total payé'}
-                    </p>
-                    <p className="font-bold text-sm text-emerald-600">{formatMAD(selected.total_paye ?? 0)}</p>
-                  </div>
-                  <div className="rounded-xl p-3 text-center border"
-                       style={{ backgroundColor: (selected.solde_du ?? 0) > 0 ? '#FFF1F2' : '#F0FDF4', borderColor: (selected.solde_du ?? 0) > 0 ? '#FECDD3' : '#BBF7D0' }}>
-                    <p className="text-[10px] uppercase tracking-wider font-bold mb-1"
-                       style={{ color: (selected.solde_du ?? 0) > 0 ? '#9B1C1C' : '#065F46' }}>
-                      {isAr ? 'المستحق' : 'Solde dû'}
-                    </p>
-                    <p className="font-bold text-sm"
-                       style={{ color: (selected.solde_du ?? 0) > 0 ? '#EF4444' : '#059669' }}>
-                      {formatMAD(selected.solde_du ?? 0)}
-                    </p>
-                  </div>
-                </div>
+              )}
+            </div>
 
-                <button
-                  onClick={() => setPayOpen(true)}
-                  className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-bold transition-all border"
-                  style={{ borderColor: primary, color: primary, backgroundColor: `${primary}10` }}
-                >
-                  <Plus className="w-4 h-4" />
-                  {isAr ? 'دفعة جديدة' : 'Nouveau paiement'}
-                </button>
-              </>
-            )}
-
-            {/* SHARED — Contact */}
-            {(selected.telephone || selected.ville || selected.adresse) && (
+            {/* ── SHARED — Contact ── */}
+            {(selected.telephone || selected.ville || selected.adresse || selected.notes) && (
               <div className="space-y-2">
                 {selected.telephone && (
                   <div className="flex items-center gap-3 p-3 bg-[#F8F7F4] rounded-xl">
@@ -812,8 +789,8 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
                       </a>
                       <a href={`https://wa.me/212${selected.telephone.replace(/^0/, '')}`}
                          target="_blank" rel="noopener noreferrer"
-                         className="text-xs font-bold py-1 px-3 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
-                        <MessageCircle className="w-3.5 h-3.5 inline" />
+                         className="text-xs font-bold py-1 px-3 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-100 flex items-center gap-1">
+                        <MessageCircle className="w-3 h-3" />
                       </a>
                     </div>
                   </div>
@@ -837,7 +814,7 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
               </div>
             )}
 
-            {/* SHARED — Payment history */}
+            {/* ── SHARED — Payment history ── */}
             <div>
               <p className="text-xs font-bold text-[#6B6860] uppercase tracking-widest mb-3">
                 {isAr ? 'سجل الدفعات' : 'Historique paiements'}
@@ -879,7 +856,7 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
               )}
             </div>
 
-            {/* SHARED — Actions */}
+            {/* ── SHARED — Actions ── */}
             <div className="flex gap-3 pt-2 border-t border-[#E8E5DE]">
               <Btn variant="secondary" className="flex-1" onClick={closeDetail}>
                 {isAr ? 'إغلاق' : 'Fermer'}
@@ -891,134 +868,22 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
                 {isAr ? 'تعديل' : 'Modifier'}
               </Btn>
             </div>
+
           </div>
         </Modal>
       )}
 
-      {/* ── B/C Payment Modal ─────────────────────────────────────────────── */}
-      <Modal
-        open={payOpen}
-        onClose={() => { setPayOpen(false); setPayForm({ ...EMPTY_PAY }); setLinkedPhoneIds(new Set()); setShowPhoneSelector(false) }}
-        title={isAr ? 'تسجيل دفعة' : 'Nouveau paiement'}
-        size="sm"
-      >
-        <div className="space-y-4" dir={isAr ? 'rtl' : 'ltr'}>
-          <p className="text-sm text-[#6B6860]">
-            {isAr ? 'مورد:' : 'Fournisseur:'}{' '}
-            <span className="font-bold text-[#1A1A1A]">{selected?.nom}</span>
-          </p>
-
-          <Field label={isAr ? 'المبلغ (درهم)' : 'Montant (MAD)'} required>
-            <input type="number" min={0} step={0.01} className={inputClass}
-              placeholder="0.00" autoFocus
-              value={payForm.montant}
-              onChange={e => setPayForm(p => ({ ...p, montant: e.target.value }))} />
-          </Field>
-
-          <Field label={isAr ? 'تاريخ الدفع' : 'Date paiement'}>
-            <input type="date" className={inputClass}
-              value={payForm.date_paiement}
-              onChange={e => setPayForm(p => ({ ...p, date_paiement: e.target.value }))} />
-          </Field>
-
-          <Field label={isAr ? 'ملاحظات' : 'Notes'}>
-            <textarea className={`${inputClass} resize-none text-sm`} rows={2}
-              value={payForm.notes}
-              onChange={e => setPayForm(p => ({ ...p, notes: e.target.value }))} />
-          </Field>
-
-          {/* Phone selector — optional */}
-          <div>
-            <button
-              onClick={() => setShowPhoneSelector(v => !v)}
-              className="flex items-center gap-1.5 text-xs font-medium transition-colors"
-              style={{ color: showPhoneSelector ? primary : '#B0ADA6' }}
-            >
-              <ChevronRight className={`w-3 h-3 transition-transform ${showPhoneSelector ? 'rotate-90' : ''}`} />
-              {isAr ? 'ربط بهواتف محددة' : 'Lier à des téléphones spécifiques'}
-              {linkedPhoneIds.size > 0 && (
-                <span className="ml-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold text-white"
-                      style={{ backgroundColor: primary }}>
-                  {linkedPhoneIds.size}
-                </span>
-              )}
-            </button>
-
-            {showPhoneSelector && (
-              <div className="mt-2 border border-[#E8E5DE] rounded-xl overflow-hidden max-h-44 overflow-y-auto">
-                {supplierPhonesLoading ? (
-                  <div className="flex items-center justify-center py-4 gap-2 text-[#B0ADA6]">
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    <span className="text-xs">Chargement...</span>
-                  </div>
-                ) : supplierPhones.length === 0 ? (
-                  <p className="text-xs text-[#B0ADA6] text-center py-4">
-                    {isAr ? 'لا توجد هواتف' : 'Aucun téléphone'}
-                  </p>
-                ) : (
-                  supplierPhones.map(phone => {
-                    const isLinked = linkedPhoneIds.has(phone.phone_id)
-                    return (
-                      <div
-                        key={phone.phone_id}
-                        onClick={() => toggleLinkedPhone(phone.phone_id)}
-                        className="flex items-center gap-2.5 px-3 py-2 border-b border-[#F2F0EB] last:border-0 cursor-pointer hover:bg-[#F8F7F4] transition-all"
-                      >
-                        <div
-                          className="w-3.5 h-3.5 rounded flex-shrink-0 flex items-center justify-center"
-                          style={{
-                            border: `2px solid ${isLinked ? primary : '#D1D5DB'}`,
-                            backgroundColor: isLinked ? primary : 'transparent',
-                          }}
-                        >
-                          {isLinked && <Check className="w-2 h-2 text-white" />}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium text-[#1A1A1A] truncate">
-                            {phone.marque} {phone.model}
-                            {phone.stockage ? ` · ${phone.stockage}` : ''}
-                          </p>
-                          {phone.imei && (
-                            <p className="text-[10px] text-[#B0ADA6]">IMEI: {phone.imei}</p>
-                          )}
-                        </div>
-                        {phone.prix_achat && (
-                          <p className="text-xs font-bold text-[#6B6860] flex-shrink-0">
-                            {formatMAD(phone.prix_achat)}
-                          </p>
-                        )}
-                      </div>
-                    )
-                  })
-                )}
-              </div>
-            )}
-          </div>
-
-          <div className="flex gap-3 justify-end pt-2">
-            <Btn variant="secondary"
-              onClick={() => { setPayOpen(false); setPayForm({ ...EMPTY_PAY }); setLinkedPhoneIds(new Set()); setShowPhoneSelector(false) }}>
-              {isAr ? 'إلغاء' : 'Annuler'}
-            </Btn>
-            <Btn variant="primary" onClick={handlePayment} loading={submitting}
-              disabled={!payForm.montant}
-              style={{ backgroundColor: primary } as React.CSSProperties}>
-              {isAr ? 'تسجيل الدفعة' : 'Enregistrer'}
-            </Btn>
-          </div>
-        </div>
-      </Modal>
-
-      {/* ── Add / Edit Modal ─────────────────────────────────────────────────── */}
+      {/* ── Add / Edit Supplier Modal ────────────────────────────────────────── */}
       <Modal
         open={formOpen}
         onClose={() => { setFormOpen(false); setEditSupplier(null) }}
-        title={editSupplier ? (isAr ? 'تعديل المورد' : 'Modifier') : (isAr ? 'مورد جديد' : 'Nouveau fournisseur')}
+        title={editSupplier
+          ? (isAr ? 'تعديل المورد' : 'Modifier le fournisseur')
+          : (isAr ? 'مورد جديد' : 'Nouveau fournisseur')}
         size="sm"
       >
         <div className="space-y-4" dir={isAr ? 'rtl' : 'ltr'}>
 
-          {/* Type — shown first so it's obvious */}
           <Field label={isAr ? 'نوع المورد' : 'Type de fournisseur'} required>
             <select className={selectClass}
               value={form.type_fournisseur}
@@ -1029,7 +894,7 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
             </select>
           </Field>
 
-          <Field label={isAr ? 'اسم المورد' : 'Nom du fournisseur'} required>
+          <Field label={isAr ? 'الاسم' : 'Nom'} required>
             <input type="text" className={inputClass} autoFocus
               placeholder={isAr ? 'اسم الشركة أو الشخص...' : 'Société ou nom...'}
               value={form.nom}
