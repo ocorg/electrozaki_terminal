@@ -6,6 +6,7 @@ import { usePortal } from '@/lib/context/portal'
 import { formatMAD, formatDate, getWarrantyFlag, computePromoPrice } from '@/lib/utils'
 import { StatusBadge, BatteryBar, EmptyState, SkeletonRow, PageHeader, Btn, Modal, Field, inputClass, selectClass } from '@/components/shared'
 import PhoneForm from '@/components/phones/PhoneForm'
+import PhoneCreditPanel from '@/components/phones/PhoneCreditPanel'
 import type { Phone, Prospect } from '@/types/database'
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import ScanButton from '@/components/scanner/ScanButton'
@@ -13,10 +14,10 @@ import LabelGenerator, { type LabelProduct } from '@/components/print/LabelGener
 import {
   Plus, Search, Filter, RefreshCw,
   Smartphone, Edit2, MapPin, Shield,
-  ChevronDown, X, Eye, EyeOff, Trash2, Loader2, BookOpen, Check
+  ChevronDown, X, Eye, EyeOff, Trash2, Loader2, BookOpen, Check, CreditCard
 } from 'lucide-react'
 
-const STATUSES = ['متوفر', 'مباع', 'إستبدال', 'إصلاح']
+const STATUSES = ['متوفر', 'حجز', 'مباع', 'إستبدال', 'إصلاح']
 const MARQUES  = ['Apple', 'Samsung', 'Xiaomi', 'Redmi', 'Huawei', 'Oppo', 'Realme']
 const LOCATIONS = ['Magasin Principal', 'Magasin Secondaire', 'Externe']
 
@@ -39,6 +40,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
   const [showFilters, setShowFilters] = useState(false)
   const [labelProduct,  setLabelProduct]  = useState<LabelProduct | null>(null)
   const [confirmDelete,  setConfirmDelete]  = useState<string | null>(null)
+  const [creditPhone,    setCreditPhone]    = useState<Phone | null>(null)
   const [deleting,       setDeleting]       = useState(false)
   const [openProspects,  setOpenProspects]  = useState<Prospect[]>([])
   const [suppliers,      setSuppliers]      = useState<{ supplier_id: string; nom: string; type_fournisseur: string }[]>([])
@@ -209,11 +211,11 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
   }, {} as Record<string, number>)
 
   const STATUS_LABELS_FR: Record<string, string> = {
-    'متوفر': 'Disponible', 'مباع': 'Vendu',
+    'متوفر': 'Disponible', 'حجز': 'Réservé', 'مباع': 'Vendu',
     'إستبدال': 'Échangé', 'إصلاح': 'Réparation',
   }
   const STATUS_COLORS: Record<string, string> = {
-    'متوفر': '#10B981', 'مباع': '#6B6860',
+    'متوفر': '#10B981', 'حجز': '#C9A440', 'مباع': '#6B6860',
     'إستبدال': '#3B82F6', 'إصلاح': '#F59E0B',
   }
 
@@ -617,6 +619,15 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                       >
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
+                      {(['متوفر', 'حجز', 'مباع'] as string[]).includes(phone.status) && (
+                        <button
+                          onClick={() => setCreditPhone(phone)}
+                          className="flex items-center justify-center w-8 h-8 rounded-lg text-[#B0ADA6] hover:text-[#C9A440] hover:bg-[#FAF5E8] transition-all"
+                          title="Crédit / Avance"
+                        >
+                          <CreditCard className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                       {canSeeFinancials && (
                         <button
                           onClick={() => setConfirmDelete(phone.phone_id)}
@@ -720,6 +731,15 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                         {formatMAD(phone.prix_vente_recommande)}
                       </p>
                     )}
+                    {(['متوفر', 'حجز', 'مباع'] as string[]).includes(phone.status) && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setCreditPhone(phone) }}
+                        className="p-1.5 rounded-lg text-[#B0ADA6] hover:text-[#C9A440] hover:bg-[#FAF5E8] transition-all flex-shrink-0"
+                        title="Crédit / Avance"
+                      >
+                        <CreditCard className="w-4 h-4" />
+                      </button>
+                    )}
                     <button onClick={() => openEdit(phone)}
                       className="p-1.5 rounded-lg text-[#B0ADA6] hover:text-[#1A1A1A] hover:bg-[#F2F0EB] transition-all flex-shrink-0">
                       <Edit2 className="w-4 h-4" />
@@ -775,6 +795,45 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
         role={user?.role}
         storeId={storeId}
       />
+
+      {/* Modal crédit / avance */}
+      {creditPhone && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-[#0F0F0F] border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
+            {/* En-tête */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center">
+                  <Smartphone className="w-4 h-4 text-white/60" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-white">
+                    {creditPhone.marque} {creditPhone.model.replace(/\s*\d+(GB|TB)\s*$/i, '').trim()}
+                  </p>
+                  <p className="text-xs text-white/40 font-mono">{creditPhone.phone_id}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setCreditPhone(null)}
+                className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-all"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            {/* Panel crédit */}
+            <div className="p-4">
+              <PhoneCreditPanel
+                phoneId={creditPhone.phone_id}
+                phoneStatus={creditPhone.status as string}
+                storeId={storeId}
+                userId={user?.id ?? ''}
+                userName={''}
+                onCreditCreated={() => fetchPhones(true)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Catalogue modal */}
       <Modal

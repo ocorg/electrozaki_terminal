@@ -54,6 +54,13 @@ export async function GET(request: NextRequest) {
       .eq('store_id', store_id)
       .eq('date', date) as { data: Record<string, unknown>[] | null }
 
+    // Sum phone credit versements today (avances & tranches reçus)
+    const { data: creditPmts } = await supabase
+      .from('phone_credit_payments')
+      .select('montant, payment_method')
+      .eq('store_id', store_id)
+      .eq('date_paiement', date) as { data: Record<string, unknown>[] | null }
+
     const total_ventes = (txns || []).reduce((s, t) => {
       const pv = (t.prix_vente     as number) || 0
       const av = (t.avance         as number) || 0
@@ -64,26 +71,30 @@ export async function GET(request: NextRequest) {
       const isPartial = av > 0 && (pv - av - ve) > 0
       return s + (isPartial ? av : pv - ve)          // partial تسبيق → avance; fully paid → full
     }, 0)
-    const total_reparations = (reps  || []).reduce((s, r) => s + ((r.cout_reparation as number) || 0), 0)
-    const total_depenses    = (exps  || []).reduce((s, e) => s + ((e.montant          as number) || 0), 0)
-    const total_cash_drops  = (drops || []).reduce((s, d) => s + ((d.amount           as number) || 0), 0)
-    const ouverture         = (caisse.ouverture as number) || 0
-    const solde_theorique   = ouverture + total_ventes + total_reparations + total_cash_drops - total_depenses
+    const total_reparations       = (reps       || []).reduce((s, r) => s + ((r.cout_reparation as number) || 0), 0)
+    const total_depenses          = (exps       || []).reduce((s, e) => s + ((e.montant          as number) || 0), 0)
+    const total_cash_drops        = (drops      || []).reduce((s, d) => s + ((d.amount           as number) || 0), 0)
+    const total_credit_versements = (creditPmts || []).reduce((s, p) => s + ((p.montant          as number) || 0), 0)
+    const ouverture               = (caisse.ouverture as number) || 0
+    const solde_theorique         = ouverture + total_ventes + total_reparations + total_cash_drops + total_credit_versements - total_depenses
 
     // Payment breakdown — use actual amounts per method, including mixed payment split
+    const credit_cash     = (creditPmts || []).filter(p => (p.payment_method as string) === 'نقد').reduce((s, p) => s + ((p.montant as number) || 0), 0)
+    const credit_transfer = (creditPmts || []).filter(p => (p.payment_method as string) === 'تحويل').reduce((s, p) => s + ((p.montant as number) || 0), 0)
+
     const payment_breakdown = {
       cash: (txns || []).reduce((s, t) => {
         const pm = t.payment_method as string
         if (pm === 'نقد')    return s + ((t.prix_vente as number) || 0)
         if (pm === 'مختلط')  return s + ((t.montant_especes as number) || 0)
         return s
-      }, 0) + total_cash_drops,   // cash drops are always physical cash
+      }, 0) + total_cash_drops + credit_cash,
       transfer: (txns || []).reduce((s, t) => {
         const pm = t.payment_method as string
         if (pm === 'تحويل')  return s + ((t.prix_vente as number) || 0)
         if (pm === 'مختلط')  return s + ((t.montant_carte as number) || 0)
         return s
-      }, 0),
+      }, 0) + credit_transfer,
       credit: (txns || []).reduce((s, t) => {
         const pv = (t.prix_vente as number) || 0
         const av = (t.avance as number) || 0
@@ -102,8 +113,10 @@ export async function GET(request: NextRequest) {
         total_cash_drops,
         solde_theorique,
         payment_breakdown,
-        nb_transactions: (txns || []).length,
-        nb_cash_drops:   (drops || []).length,
+        total_credit_versements,
+        nb_transactions:      (txns       || []).length,
+        nb_cash_drops:        (drops      || []).length,
+        nb_credit_versements: (creditPmts || []).length,
       }
     })
   } catch (err: unknown) {
@@ -210,7 +223,7 @@ export async function PATCH(request: NextRequest) {
     const caisseDate = current.date as string
     const caisseStore = current.store_id as string
 
-    const [txnRes, repRes, expRes, dropRes] = await Promise.all([
+    const [txnRes, repRes, expRes, dropRes, creditRes] = await Promise.all([
       supabase.from('transactions').select('prix_vente, payment_method, avance, valeur_echange')
         .eq('store_id', caisseStore).eq('date_vente', caisseDate).eq('voided', false),
       supabase.from('reparations').select('cout_reparation')
@@ -219,6 +232,8 @@ export async function PATCH(request: NextRequest) {
         .eq('store_id', caisseStore).eq('date', caisseDate),
       supabase.from('cash_drops').select('amount')
         .eq('store_id', caisseStore).eq('date', caisseDate),
+      supabase.from('phone_credit_payments').select('montant')
+        .eq('store_id', caisseStore).eq('date_paiement', caisseDate),
     ])
 
     const live_ventes = ((txnRes.data || []) as Record<string, unknown>[]).reduce((s, t) => {
@@ -231,10 +246,11 @@ export async function PATCH(request: NextRequest) {
       const isPartial = av > 0 && (pv - av - ve) > 0
       return s + (isPartial ? av : pv - ve)
     }, 0)
-    const live_reps  = ((repRes.data  || []) as Record<string, unknown>[]).reduce((s, r) => s + ((r.cout_reparation as number) || 0), 0)
-    const live_exps  = ((expRes.data  || []) as Record<string, unknown>[]).reduce((s, e) => s + ((e.montant          as number) || 0), 0)
-    const live_drops = ((dropRes.data || []) as Record<string, unknown>[]).reduce((s, d) => s + ((d.amount           as number) || 0), 0)
-    const solde_theorique = ((current.ouverture as number) || 0) + live_ventes + live_reps + live_drops - live_exps
+    const live_reps              = ((repRes.data    || []) as Record<string, unknown>[]).reduce((s, r) => s + ((r.cout_reparation as number) || 0), 0)
+    const live_exps              = ((expRes.data    || []) as Record<string, unknown>[]).reduce((s, e) => s + ((e.montant          as number) || 0), 0)
+    const live_drops             = ((dropRes.data   || []) as Record<string, unknown>[]).reduce((s, d) => s + ((d.amount           as number) || 0), 0)
+    const live_credit_versements = ((creditRes.data || []) as Record<string, unknown>[]).reduce((s, p) => s + ((p.montant          as number) || 0), 0)
+    const solde_theorique        = ((current.ouverture as number) || 0) + live_ventes + live_reps + live_drops + live_credit_versements - live_exps
     const ecart           = solde_reel - solde_theorique
 
     const { data, error } = await supabase
