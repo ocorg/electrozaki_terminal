@@ -31,13 +31,21 @@ export async function GET(request: NextRequest) {
       .eq('date_vente', date)
       .eq('voided', false) as { data: Record<string, unknown>[] | null }
 
-    // Sum repairs collected today
-    const { data: reps } = await supabase
+    // Réparations livrées aujourd'hui — encaisser le RESTE (cout - avance déjà perçue au dépôt)
+    const { data: repsDelivered } = await supabase
       .from('reparations')
-      .select('cout_reparation, avance_rep, statut')
+      .select('cout_reparation, avance_rep')
       .eq('store_id', store_id)
       .eq('date_livraison', date)
       .eq('statut', 'تم الاستلام') as { data: Record<string, unknown>[] | null }
+
+    // Réparations déposées aujourd'hui avec avance — encaisser l'avance reçue AU DÉPÔT
+    const { data: repsDepot } = await supabase
+      .from('reparations')
+      .select('avance_rep')
+      .eq('store_id', store_id)
+      .eq('date_depot', date)
+      .gt('avance_rep', 0) as { data: Record<string, unknown>[] | null }
 
     // Sum expenses today (exclude soft-deleted)
     const { data: exps } = await supabase
@@ -71,7 +79,15 @@ export async function GET(request: NextRequest) {
       const isPartial = av > 0 && (pv - av - ve) > 0
       return s + (isPartial ? av : pv - ve)          // partial تسبيق → avance; fully paid → full
     }, 0)
-    const total_reparations       = (reps       || []).reduce((s, r) => s + ((r.cout_reparation as number) || 0), 0)
+    const total_reparations =
+      // Reste encaissé à la livraison (cout − avance déjà perçue au dépôt)
+      (repsDelivered || []).reduce((s, r) => {
+        const cout  = (r.cout_reparation as number) || 0
+        const avance = (r.avance_rep    as number) || 0
+        return s + Math.max(cout - avance, 0)
+      }, 0)
+      // + Avances encaissées au dépôt aujourd'hui
+      + (repsDepot || []).reduce((s, r) => s + ((r.avance_rep as number) || 0), 0)
     const total_depenses          = (exps       || []).reduce((s, e) => s + ((e.montant          as number) || 0), 0)
     const total_cash_drops        = (drops      || []).reduce((s, d) => s + ((d.amount           as number) || 0), 0)
     const total_credit_versements = (creditPmts || []).reduce((s, p) => s + ((p.montant          as number) || 0), 0)
@@ -83,24 +99,40 @@ export async function GET(request: NextRequest) {
     const credit_transfer = (creditPmts || []).filter(p => (p.payment_method as string) === 'تحويل').reduce((s, p) => s + ((p.montant as number) || 0), 0)
 
     const payment_breakdown = {
+      // Cash physique réel : ventes نقد + portion espèces مختلط + échanges net + drops + versements crédit نقد
       cash: (txns || []).reduce((s, t) => {
         const pm = t.payment_method as string
-        if (pm === 'نقد')    return s + ((t.prix_vente as number) || 0)
-        if (pm === 'مختلط')  return s + ((t.montant_especes as number) || 0)
+        const pv = (t.prix_vente      as number) || 0
+        const av = (t.avance          as number) || 0
+        const ve = (t.valeur_echange  as number) || 0
+        if (pm === 'نقد') {
+          const isPartial = av > 0 && (pv - av - ve) > 0
+          return s + (isPartial ? av : Math.max(pv - ve, 0))
+        }
+        if (pm === 'مختلط')   return s + ((t.montant_especes as number) || 0)
+        if (pm === 'إستبدال') return s + Math.max(pv - ve, 0)
         return s
       }, 0) + total_cash_drops + credit_cash,
+      // Virements : ventes تحويل + portion virement مختلط + versements crédit تحويل
       transfer: (txns || []).reduce((s, t) => {
         const pm = t.payment_method as string
-        if (pm === 'تحويل')  return s + ((t.prix_vente as number) || 0)
-        if (pm === 'مختلط')  return s + ((t.montant_carte as number) || 0)
+        const pv = (t.prix_vente as number) || 0
+        const av = (t.avance    as number) || 0
+        if (pm === 'تحويل') {
+          const isPartial = av > 0 && (pv - av) > 0
+          return s + (isPartial ? av : pv)
+        }
+        if (pm === 'مختلط') return s + ((t.montant_carte as number) || 0)
         return s
       }, 0) + credit_transfer,
+      // Créances : montant RESTANT DÛ sur ventes آجل (non encore encaissé)
       credit: (txns || []).reduce((s, t) => {
-        const pv = (t.prix_vente as number) || 0
-        const av = (t.avance as number) || 0
+        const pm = t.payment_method as string
+        const pv = (t.prix_vente     as number) || 0
+        const av = (t.avance         as number) || 0
         const ve = (t.valeur_echange as number) || 0
-        const fariq = pv - av - ve
-        return fariq > 0 ? s + av : s
+        if (pm === 'آجل') return s + Math.max(pv - av - ve, 0)
+        return s
       }, 0),
     }
 
@@ -223,11 +255,13 @@ export async function PATCH(request: NextRequest) {
     const caisseDate = current.date as string
     const caisseStore = current.store_id as string
 
-    const [txnRes, repRes, expRes, dropRes, creditRes] = await Promise.all([
+    const [txnRes, repDeliveredRes, repDepotRes, expRes, dropRes, creditRes] = await Promise.all([
       supabase.from('transactions').select('prix_vente, payment_method, avance, valeur_echange')
         .eq('store_id', caisseStore).eq('date_vente', caisseDate).eq('voided', false),
-      supabase.from('reparations').select('cout_reparation')
+      supabase.from('reparations').select('cout_reparation, avance_rep')
         .eq('store_id', caisseStore).eq('date_livraison', caisseDate).eq('statut', 'تم الاستلام'),
+      supabase.from('reparations').select('avance_rep')
+        .eq('store_id', caisseStore).eq('date_depot', caisseDate).gt('avance_rep', 0),
       supabase.from('expenses').select('montant')
         .eq('store_id', caisseStore).eq('date', caisseDate),
       supabase.from('cash_drops').select('amount')
@@ -246,7 +280,13 @@ export async function PATCH(request: NextRequest) {
       const isPartial = av > 0 && (pv - av - ve) > 0
       return s + (isPartial ? av : pv - ve)
     }, 0)
-    const live_reps              = ((repRes.data    || []) as Record<string, unknown>[]).reduce((s, r) => s + ((r.cout_reparation as number) || 0), 0)
+    const live_reps =
+      ((repDeliveredRes.data || []) as Record<string, unknown>[]).reduce((s, r) => {
+        const cout  = (r.cout_reparation as number) || 0
+        const avance = (r.avance_rep    as number) || 0
+        return s + Math.max(cout - avance, 0)
+      }, 0)
+      + ((repDepotRes.data || []) as Record<string, unknown>[]).reduce((s, r) => s + ((r.avance_rep as number) || 0), 0)
     const live_exps              = ((expRes.data    || []) as Record<string, unknown>[]).reduce((s, e) => s + ((e.montant          as number) || 0), 0)
     const live_drops             = ((dropRes.data   || []) as Record<string, unknown>[]).reduce((s, d) => s + ((d.amount           as number) || 0), 0)
     const live_credit_versements = ((creditRes.data || []) as Record<string, unknown>[]).reduce((s, p) => s + ((p.montant          as number) || 0), 0)
