@@ -561,6 +561,12 @@ export default function DeliveriesModule({ storeId }: DeliveriesModuleProps) {
                               >
                                 ✗ Annuler
                               </button>
+                              <button
+                                onClick={() => updateStatus(d.delivery_id, 'retour')}
+                                className="text-[9px] px-1.5 py-0.5 rounded-lg border border-orange-200 text-orange-600 hover:bg-orange-50 transition-all"
+                              >
+                                ↩ Retour
+                              </button>
                             </div>
                           )}
                         </div>

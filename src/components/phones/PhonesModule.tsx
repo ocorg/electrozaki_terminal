@@ -17,7 +17,7 @@ import {
   ChevronDown, X, Eye, EyeOff, Trash2, Loader2, BookOpen, Check, CreditCard
 } from 'lucide-react'
 
-const STATUSES = ['متوفر', 'حجز', 'مباع', 'إستبدال', 'إصلاح']
+const STATUSES = ['متوفر', 'حجز', 'مباع', 'إستبدال', 'إصلاح', 'en_livraison']
 const MARQUES  = ['Apple', 'Samsung', 'Xiaomi', 'Redmi', 'Huawei', 'Oppo', 'Realme']
 const LOCATIONS = ['Magasin Principal', 'Magasin Secondaire', 'Externe']
 
@@ -211,12 +211,24 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
   }, {} as Record<string, number>)
 
   const STATUS_LABELS_FR: Record<string, string> = {
-    'متوفر': 'Disponible', 'حجز': 'Réservé', 'مباع': 'Vendu',
-    'إستبدال': 'Échangé', 'إصلاح': 'Réparation',
+    'متوفر':       'Disponible',
+    'حجز':         'Réservé',
+    'مباع':        'Vendu',
+    'إستبدال':     'Échangé',
+    'إصلاح':       'Réparation',
+    'en_livraison': 'En livraison',
+  }
+  // Override AR pour les statuts non-arabes
+  const STATUS_LABELS_AR: Record<string, string> = {
+    'en_livraison': 'في التوصيل',
   }
   const STATUS_COLORS: Record<string, string> = {
-    'متوفر': '#10B981', 'حجز': '#C9A440', 'مباع': '#6B6860',
-    'إستبدال': '#3B82F6', 'إصلاح': '#F59E0B',
+    'متوفر':       '#10B981',
+    'حجز':         '#C9A440',
+    'مباع':        '#6B6860',
+    'إستبدال':     '#3B82F6',
+    'إصلاح':       '#F59E0B',
+    'en_livraison': '#8B5CF6',   // violet — en mouvement
   }
 
   return (
@@ -317,7 +329,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                 >
                   <span className="w-1.5 h-1.5 rounded-full"
                         style={{ backgroundColor: STATUS_COLORS[s] }} />
-                  {isAr ? s : STATUS_LABELS_FR[s]}
+                  {isAr ? (STATUS_LABELS_AR[s] ?? s) : STATUS_LABELS_FR[s]}
                   {counts[s] > 0 && <span className="opacity-60">({counts[s]})</span>}
                 </button>
               ))}
