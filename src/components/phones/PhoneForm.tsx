@@ -342,6 +342,7 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
           <Field label={isAr ? 'الحالة في المخزون' : 'Statut'} required>
             <select className={selectClass} value={form.status || 'متوفر'} onChange={e => set('status', e.target.value)}>
               <option value="متوفر">{isAr ? 'متوفر' : 'Disponible'}</option>
+              <option value="حجز">{isAr ? 'محجوز' : 'Réservé'}</option>
               <option value="مباع">{isAr ? 'مباع' : 'Vendu'}</option>
               <option value="إستبدال">{isAr ? 'مستبدل' : 'Échangé'}</option>
               <option value="إصلاح">{isAr ? 'في الإصلاح' : 'En réparation'}</option>
