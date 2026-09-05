@@ -55,6 +55,13 @@ export async function POST(
       return NextResponse.json({ error: 'Ce crédit a déjà été déchargé' }, { status: 400 })
     }
 
+    // ── Reprise : préparer warning si jamais marquée comme reçue avant ──
+    const hasReprise     = Boolean(credit.has_reprise)
+    const repriseRemise  = Boolean(credit.reprise_remise)
+    const repriseWarning = hasReprise && !repriseRemise
+      ? 'reprise_not_previously_confirmed' as const
+      : null
+
     // ── Marquer soldé + déchargé ──
     const { error: dischargeErr } = await (supabase as any)
       .from('phone_credit_sales')
@@ -66,6 +73,54 @@ export async function POST(
       .eq('credit_id', creditId)
 
     if (dischargeErr) throw dischargeErr
+
+    // ── Créer stock entry pour le téléphone de reprise ──
+    let reprisePhoneId: string | null = null
+
+    if (hasReprise) {
+      const etatMap: Record<string, string> = {
+        bon:     'مستعمل',
+        moyen:   'مستعمل',
+        mauvais: 'معطوب',
+      }
+      const repriseCondition = etatMap[credit.reprise_etat as string] ?? 'مستعمل'
+      const repriseNow       = new Date().toISOString()
+
+      const { data: reprisePhoneRaw, error: repriseErr } = await (supabase as any)
+        .from('phones')
+        .insert({
+          source:      'Reprise',
+          status:      'متوفر',
+          marque:      credit.reprise_marque as string,
+          serie:       (credit.reprise_serie as string | null) ?? (credit.reprise_marque as string),
+          model:       credit.reprise_model  as string,
+          imei:        (credit.reprise_imei  as string | null) ?? null,
+          condition:   repriseCondition,
+          prix_achat:  credit.reprise_valeur as number,
+          store_id:    storeId,
+          description: `Reprise crédit ${creditId} — ${credit.client_name as string}`,
+          created_by:  user.id,
+          updated_by:  user.id,
+          is_deleted:  false,
+        })
+        .select('phone_id')
+        .single()
+
+      if (repriseErr) throw repriseErr
+      reprisePhoneId = (reprisePhoneRaw as Record<string, unknown>).phone_id as string
+
+      // Lier le téléphone repris au crédit et confirmer la réception
+      const { error: repriseUpdateErr } = await (supabase as any)
+        .from('phone_credit_sales')
+        .update({
+          reprise_phone_id:  reprisePhoneId,
+          reprise_remise:    true,
+          reprise_remise_at: repriseNow,
+        })
+        .eq('credit_id', creditId)
+
+      if (repriseUpdateErr) throw repriseUpdateErr
+    }
 
     // ── حجز → مباع si téléphone réservé qui part maintenant ──
     if (!credit.phone_remis) {
@@ -97,18 +152,23 @@ export async function POST(
       module:     'phones' as any,
       action_type: 'UPDATE',
       after_state: {
-        credit_id:     creditId,
-        phone_id:      credit.phone_id,
-        action:        'DISCHARGE',
-        phone_remis:   credit.phone_remis,
-        montant_total: credit.montant_total,
+        credit_id:        creditId,
+        phone_id:         credit.phone_id,
+        action:           'DISCHARGE',
+        phone_remis:      credit.phone_remis,
+        montant_total:    credit.montant_total,
+        has_reprise:      hasReprise,
+        reprise_phone_id: reprisePhoneId,
+        ...(repriseWarning ? { warning: repriseWarning } : {}),
       },
     })
 
     return NextResponse.json({
       data: {
-        discharged:  true,
-        credit_id:   creditId,
+        discharged:       true,
+        credit_id:        creditId,
+        reprise_phone_id: reprisePhoneId,
+        ...(repriseWarning ? { warning: repriseWarning } : {}),
         fac_prefill: {
           phone_id:     credit.phone_id     as string,
           client_name:  credit.client_name  as string,

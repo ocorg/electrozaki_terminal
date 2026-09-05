@@ -83,7 +83,38 @@ export async function POST(req: NextRequest) {
     const phone_remis      = Boolean(body.phone_remis)
     const notes            = body.notes            as string | undefined
 
+    const has_reprise      = body.has_reprise === true
+    const reprise_marque   = has_reprise ? ((body.reprise_marque  as string | undefined) ?? null) : null
+    const reprise_serie    = has_reprise ? ((body.reprise_serie   as string | undefined) ?? null) : null
+    const reprise_model    = has_reprise ? ((body.reprise_model   as string | undefined) ?? null) : null
+    const reprise_valeur   = has_reprise && body.reprise_valeur ? Number(body.reprise_valeur) : 0
+    const reprise_imei     = has_reprise ? ((body.reprise_imei    as string | undefined) ?? null) : null
+    const reprise_etat     = has_reprise ? ((body.reprise_etat    as string)  ?? 'bon')           : 'bon'
+    const reprise_remis_now = has_reprise && body.reprise_remis_now === true
+
     const storeId = (profile?.store_id as string | null) ?? (body.store_id as string) ?? 'EZ-001'
+
+    // ── Validation reprise ──
+    if (has_reprise) {
+      if (!reprise_marque || !reprise_model) {
+        return NextResponse.json(
+          { error: 'Reprise : marque et modèle sont obligatoires' },
+          { status: 400 }
+        )
+      }
+      if (reprise_valeur <= 0) {
+        return NextResponse.json(
+          { error: 'Reprise : la valeur doit être supérieure à 0' },
+          { status: 400 }
+        )
+      }
+      if (reprise_valeur >= montant_total) {
+        return NextResponse.json(
+          { error: 'La valeur de reprise ne peut pas égaler ou dépasser le prix total' },
+          { status: 400 }
+        )
+      }
+    }
 
     // ── Validation ──
     if (!phone_id || !client_name || !montant_total) {
@@ -145,15 +176,24 @@ export async function POST(req: NextRequest) {
       .insert({
         phone_id,
         client_name,
-        client_tel:   client_tel  ?? null,
-        client_cin:   client_cin  ?? null,
+        client_tel:          client_tel    ?? null,
+        client_cin:          client_cin    ?? null,
         montant_total,
-        montant_paye: 0,
-        statut:       'en_cours',
+        montant_paye:        0,
+        statut:              'en_cours',
         phone_remis,
-        notes:        notes ?? null,
-        store_id:     storeId,
-        created_by:   user.id,
+        notes:               notes         ?? null,
+        store_id:            storeId,
+        created_by:          user.id,
+        has_reprise,
+        reprise_marque:      reprise_marque,
+        reprise_serie:       reprise_serie,
+        reprise_model:       reprise_model,
+        reprise_valeur:      has_reprise ? reprise_valeur : null,
+        reprise_imei:        reprise_imei,
+        reprise_etat:        has_reprise ? reprise_etat : 'bon',
+        reprise_remise:      reprise_remis_now,
+        reprise_remise_at:   reprise_remis_now ? new Date().toISOString() : null,
       })
       .select()
       .single()
@@ -183,7 +223,8 @@ export async function POST(req: NextRequest) {
       firstPayment     = paymentRaw
       finalMontantPaye = avance_initiale
 
-      const autoSolde = finalMontantPaye >= montant_total
+      const cashObligation = montant_total - (has_reprise ? reprise_valeur : 0)
+      const autoSolde      = finalMontantPaye >= cashObligation
       const { error: updateErr } = await (supabase as any)
         .from('phone_credit_sales')
         .update({
@@ -218,6 +259,8 @@ export async function POST(req: NextRequest) {
         avance_initiale,
         phone_remis,
         new_phone_status: newStatus,
+        has_reprise,
+        ...(has_reprise ? { reprise_model, reprise_valeur } : {}),
       },
     })
 

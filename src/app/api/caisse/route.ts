@@ -8,6 +8,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const store_id = searchParams.get('store_id')
     const date     = searchParams.get('date') || new Date().toISOString().split('T')[0]
+    const nextDate = new Date(new Date(date + 'T00:00:00Z').getTime() + 86_400_000)
+      .toISOString().split('T')[0]
 
     if (!store_id) return NextResponse.json({ error: 'store_id requis' }, { status: 400 })
 
@@ -68,6 +70,20 @@ export async function GET(request: NextRequest) {
       .select('montant, payment_method')
       .eq('store_id', store_id)
       .eq('date_paiement', date) as { data: Record<string, unknown>[] | null }
+
+    // Sum reprises déchargées aujourd'hui — non-cash, informatif uniquement
+    const { data: reprisesData } = await supabase
+      .from('phone_credit_sales')
+      .select('reprise_valeur')
+      .eq('store_id', store_id)
+      .eq('has_reprise', true)
+      .not('reprise_phone_id', 'is', null)
+      .gte('discharged_at', `${date}T00:00:00.000Z`)
+      .lt('discharged_at',  `${nextDate}T00:00:00.000Z`) as { data: Record<string, unknown>[] | null }
+
+    const total_reprises = (reprisesData || []).reduce(
+      (s, r) => s + ((r.reprise_valeur as number) || 0), 0
+    )
 
     const total_ventes = (txns || []).reduce((s, t) => {
       const pv = (t.prix_vente     as number) || 0
@@ -144,11 +160,16 @@ export async function GET(request: NextRequest) {
         total_depenses,
         total_cash_drops,
         solde_theorique,
-        payment_breakdown,
+        payment_breakdown: {
+          ...payment_breakdown,
+          reprises: total_reprises,   // non-cash — n'affecte pas solde_theorique
+        },
         total_credit_versements,
-        nb_transactions:      (txns       || []).length,
-        nb_cash_drops:        (drops      || []).length,
-        nb_credit_versements: (creditPmts || []).length,
+        total_reprises,
+        nb_transactions:      (txns        || []).length,
+        nb_cash_drops:        (drops       || []).length,
+        nb_credit_versements: (creditPmts  || []).length,
+        nb_reprises:          (reprisesData || []).length,
       }
     })
   } catch (err: unknown) {

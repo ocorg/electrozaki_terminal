@@ -13,22 +13,27 @@ import {
 } from 'lucide-react'
 
 interface CaisseData {
-  caisse_id:          string
-  date:               string
-  ouverture:          number
-  total_ventes:       number
-  total_reparations:  number
-  total_depenses:     number
-  total_cash_drops:   number
-  solde_theorique:    number
-  solde_reel:         number | null
-  ecart:              number | null
-  status:             'open' | 'pending_eod' | 'closed'
-  payment_breakdown:  { cash: number; transfer: number; credit: number }
-  nb_transactions:    number
-  notes:              string | null
-  rejection_note:     string | null
-  eod_submitted_at:   string | null
+  caisse_id:               string
+  date:                    string
+  ouverture:               number
+  total_ventes:            number
+  total_reparations:       number
+  total_depenses:          number
+  total_cash_drops:        number
+  solde_theorique:         number
+  solde_reel:              number | null
+  ecart:                   number | null
+  status:                  'open' | 'pending_eod' | 'closed'
+  payment_breakdown:       { cash: number; transfer: number; credit: number; reprises?: number }
+  nb_transactions:         number
+  // Champs optionnels — présents uniquement dans la vue live (GET open)
+  total_reprises?:         number
+  total_credit_versements?: number
+  nb_credit_versements?:   number
+  nb_reprises?:            number
+  notes:                   string | null
+  rejection_note:          string | null
+  eod_submitted_at:        string | null
 }
 
 interface CaisseModuleProps {
@@ -478,7 +483,7 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
           </p>
           <div className="grid grid-cols-3 gap-3">
             {[
-              { label: isAr ? 'نقد' : 'Espèces',  value: caisse.payment_breakdown.cash },
+              { label: isAr ? 'نقد' : 'Espèces',   value: caisse.payment_breakdown.cash },
               { label: isAr ? 'تحويل' : 'Virement', value: caisse.payment_breakdown.transfer },
               { label: isAr ? 'تسبيق' : 'Avances',  value: caisse.payment_breakdown.credit },
             ].map(row => (
@@ -488,6 +493,26 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
               </div>
             ))}
           </div>
+
+          {/* Reprises — non-cash, affichées uniquement si > 0 ce jour */}
+          {(caisse.total_reprises ?? 0) > 0 && (
+            <div className="mt-3 flex items-center justify-between px-3 py-2.5 rounded-xl border border-blue-200 bg-blue-50">
+              <div className="flex items-center gap-2">
+                <RefreshCw className="w-3.5 h-3.5 text-blue-500" />
+                <span className="text-xs font-medium text-blue-700">
+                  {isAr ? 'مبادلات (غير نقدي)' : 'Reprises (non-cash)'}
+                </span>
+                {(caisse.nb_reprises ?? 0) > 0 && (
+                  <span className="text-[10px] text-blue-400">
+                    {caisse.nb_reprises} op.
+                  </span>
+                )}
+              </div>
+              <span className="text-sm font-bold text-blue-700">
+                {formatMAD(caisse.total_reprises ?? 0)}
+              </span>
+            </div>
+          )}
         </div>
       )}
 

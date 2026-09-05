@@ -6,23 +6,38 @@ import { useRouter } from 'next/navigation'
 import {
   CreditCard, Plus, CheckCircle, Loader2,
   X, ArrowUpRight, Banknote, Landmark,
+  RefreshCw, AlertTriangle,
 } from 'lucide-react'
+import ComboBox from '@/components/phones/ComboBox'
+import { usePhoneCatalog } from '@/lib/hooks/usePhoneCatalog'
 
 // ── Types ───────────────────────────────────────────────────────────
 interface CreditSale {
-  credit_id:      string
-  phone_id:       string
-  client_name:    string
-  client_tel:     string | null
-  client_cin:     string | null
-  montant_total:  number
-  montant_paye:   number
-  montant_restant: number
-  pct_paye:       number
-  statut:         'en_cours' | 'solde' | 'annule'
-  phone_remis:    boolean
-  created_at:     string
-  discharged_at:  string | null
+  credit_id:        string
+  phone_id:         string
+  client_name:      string
+  client_tel:       string | null
+  client_cin:       string | null
+  montant_total:    number
+  montant_cash_total: number       // = montant_total − reprise_valeur (calculé par la vue)
+  montant_paye:     number
+  montant_restant:  number         // = montant_cash_total − montant_paye
+  pct_paye:         number         // basé sur montant_cash_total
+  statut:           'en_cours' | 'solde' | 'annule'
+  phone_remis:      boolean
+  created_at:       string
+  discharged_at:    string | null
+  // Reprise
+  has_reprise:      boolean
+  reprise_marque:   string | null
+  reprise_serie:    string | null
+  reprise_model:    string | null
+  reprise_valeur:   number | null
+  reprise_imei:     string | null
+  reprise_etat:     string | null
+  reprise_remise:   boolean
+  reprise_remise_at: string | null
+  reprise_phone_id: string | null
 }
 
 interface CreditPayment {
@@ -34,14 +49,23 @@ interface CreditPayment {
 }
 
 interface CreditForm {
-  client_name:     string
-  client_tel:      string
-  client_cin:      string
-  montant_total:   string
-  avance_initiale: string
-  payment_method:  string
-  phone_remis:     boolean
-  notes:           string
+  client_name:       string
+  client_tel:        string
+  client_cin:        string
+  montant_total:     string
+  avance_initiale:   string
+  payment_method:    string
+  phone_remis:       boolean
+  notes:             string
+  // Reprise
+  has_reprise:       boolean
+  reprise_marque:    string
+  reprise_serie:     string
+  reprise_model:     string
+  reprise_valeur:    string
+  reprise_imei:      string
+  reprise_etat:      'bon' | 'moyen' | 'mauvais'
+  reprise_remis_now: boolean   // téléphone remis physiquement dès la création
 }
 
 interface PaymentForm {
@@ -79,11 +103,18 @@ export default function PhoneCreditPanel({
   const [showDischargeResult, setShowDischargeResult] = useState(false)
   const [dischargeData, setDischargeData]             = useState<Record<string, unknown> | null>(null)
 
-  const [creditForm, setCreditForm] = useState<CreditForm>({
+  const CREDIT_FORM_EMPTY: CreditForm = {
     client_name: '', client_tel: '', client_cin: '',
     montant_total: '', avance_initiale: '0',
     payment_method: 'نقد', phone_remis: false, notes: '',
-  })
+    has_reprise: false,
+    reprise_marque: '', reprise_serie: '', reprise_model: '',
+    reprise_valeur: '', reprise_imei: '',
+    reprise_etat: 'bon', reprise_remis_now: false,
+  }
+
+  const [creditForm, setCreditForm] = useState<CreditForm>(CREDIT_FORM_EMPTY)
+  const [dischargeWarning, setDischargeWarning] = useState<string | null>(null)
 
   const [paymentForm, setPaymentForm] = useState<PaymentForm>({
     montant: '', payment_method: 'نقد',
@@ -114,29 +145,57 @@ export default function PhoneCreditPanel({
     const montantTotal   = parseFloat(creditForm.montant_total)
     const avanceInitiale = parseFloat(creditForm.avance_initiale) || 0
     if (!montantTotal || montantTotal <= 0) { toast.error('Montant total invalide'); return }
-    if (avanceInitiale > montantTotal)      { toast.error("L'avance dépasse le total"); return }
+
+    // Validation reprise
+    let repriseVal = 0
+    if (creditForm.has_reprise) {
+      if (!creditForm.reprise_marque || !creditForm.reprise_model) {
+        toast.error('Reprise : marque et modèle obligatoires'); return
+      }
+      repriseVal = parseFloat(creditForm.reprise_valeur) || 0
+      if (repriseVal <= 0) { toast.error('Reprise : valeur obligatoire'); return }
+      if (repriseVal >= montantTotal) {
+        toast.error('La valeur de reprise ne peut pas égaler ou dépasser le prix total'); return
+      }
+    }
+
+    const cashObligation = montantTotal - repriseVal
+    if (avanceInitiale > cashObligation) {
+      toast.error("L'avance dépasse l'obligation cash (prix − reprise)"); return
+    }
 
     setSubmitting(true)
     try {
-      const res  = await fetch('/api/phone-credits', {
+      const res = await fetch('/api/phone-credits', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          phone_id:        phoneId,
-          client_name:     creditForm.client_name.trim(),
-          client_tel:      creditForm.client_tel.trim()  || null,
-          client_cin:      creditForm.client_cin.trim()  || null,
-          montant_total:   montantTotal,
-          avance_initiale: avanceInitiale,
-          payment_method:  creditForm.payment_method,
-          phone_remis:     creditForm.phone_remis,
-          notes:           creditForm.notes.trim() || null,
-          store_id:        storeId,
+          phone_id:          phoneId,
+          client_name:       creditForm.client_name.trim(),
+          client_tel:        creditForm.client_tel.trim()  || null,
+          client_cin:        creditForm.client_cin.trim()  || null,
+          montant_total:     montantTotal,
+          avance_initiale:   avanceInitiale,
+          payment_method:    creditForm.payment_method,
+          phone_remis:       creditForm.phone_remis,
+          notes:             creditForm.notes.trim() || null,
+          store_id:          storeId,
+          has_reprise:       creditForm.has_reprise,
+          ...(creditForm.has_reprise ? {
+            reprise_marque:    creditForm.reprise_marque  || null,
+            reprise_serie:     creditForm.reprise_serie   || null,
+            reprise_model:     creditForm.reprise_model   || null,
+            reprise_valeur:    repriseVal,
+            reprise_imei:      creditForm.reprise_imei    || null,
+            reprise_etat:      creditForm.reprise_etat,
+            reprise_remis_now: creditForm.reprise_remis_now,
+          } : {}),
         }),
       })
       const json = await res.json() as { error?: string }
       if (!res.ok) throw new Error(json.error)
       toast.success('Vente à crédit créée')
       setShowNewCreditModal(false)
+      setCreditForm(CREDIT_FORM_EMPTY)
       onCreditCreated()
       await fetchCredit()
     } catch (err: unknown) {
@@ -186,11 +245,32 @@ export default function PhoneCreditPanel({
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ store_id: storeId }),
       })
-      const json = await res.json() as { data?: { fac_prefill: Record<string, unknown> }; error?: string }
+      const json = await res.json() as { data?: { fac_prefill: Record<string, unknown>; warning?: string }; error?: string }
       if (!res.ok) throw new Error(json.error)
       setDischargeData(json.data?.fac_prefill ?? null)
+      setDischargeWarning(json.data?.warning ?? null)
       setShowDischargeResult(true)
       onCreditCreated()
+      await fetchCredit()
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Erreur')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  // ── Marquer reprise comme reçue (mid-crédit) ─────────────────────
+  async function handleReceiveReprise() {
+    if (!credit) return
+    setSubmitting(true)
+    try {
+      const res  = await fetch(`/api/phone-credits/${credit.credit_id}/receive-reprise`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ store_id: storeId }),
+      })
+      const json = await res.json() as { error?: string }
+      if (!res.ok) throw new Error(json.error)
+      toast.success('Reprise marquée comme reçue ✓')
       await fetchCredit()
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Erreur')
@@ -293,6 +373,46 @@ export default function PhoneCreditPanel({
           ))}
         </div>
 
+        {/* Bloc reprise — affiché uniquement si has_reprise */}
+        {credit.has_reprise && (
+          <div className="mx-3 mb-2 rounded-lg border border-blue-500/20 bg-blue-500/5 p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <RefreshCw className="w-3.5 h-3.5 text-blue-400" />
+                <span className="text-xs font-medium text-blue-400 uppercase tracking-wide">Reprise</span>
+              </div>
+              <span className="text-sm font-semibold text-blue-300">
+                −{(credit.reprise_valeur ?? 0).toLocaleString('fr-MA')} DH
+              </span>
+            </div>
+            <p className="text-xs text-white/60">
+              {[credit.reprise_marque, credit.reprise_model].filter(Boolean).join(' ')}
+              {credit.reprise_imei ? ` · IMEI ${credit.reprise_imei}` : ''}
+              {credit.reprise_etat ? ` · ${credit.reprise_etat}` : ''}
+            </p>
+            <div className="flex items-center justify-between">
+              <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                credit.reprise_remise
+                  ? 'bg-green-500/20 text-green-400'
+                  : 'bg-amber-500/20 text-amber-400'
+              }`}>
+                {credit.reprise_remise
+                  ? `Reçu le ${new Date(credit.reprise_remise_at! + '').toLocaleDateString('fr-MA', { day: '2-digit', month: 'short' })}`
+                  : 'À recevoir'}
+              </span>
+              {!credit.reprise_remise && credit.statut === 'en_cours' && (
+                <button
+                  onClick={handleReceiveReprise}
+                  disabled={submitting}
+                  className="text-[10px] px-2.5 py-1 rounded-lg bg-blue-500/20 text-blue-300 hover:bg-blue-500/30 transition-all disabled:opacity-50 flex items-center gap-1"
+                >
+                  Marquer comme reçu →
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Barre de progression */}
         <div className="px-4 pb-3">
           <div className="flex justify-between text-xs text-white/40 mb-1.5">
@@ -383,7 +503,8 @@ export default function PhoneCreditPanel({
       {showDischargeResult && dischargeData && (
         <DischargeResultModal
           data={dischargeData}
-          onClose={() => setShowDischargeResult(false)}
+          warning={dischargeWarning}
+          onClose={() => { setShowDischargeResult(false); setDischargeWarning(null) }}
           onGoToDocuments={() => { router.push('/ez/documents') }}
         />
       )}
@@ -412,9 +533,16 @@ function NewCreditModal({
   onClose: () => void
   submitting: boolean
 }) {
-  const avance   = parseFloat(form.avance_initiale) || 0
-  const total    = parseFloat(form.montant_total)   || 0
-  const restant  = Math.max(total - avance, 0)
+  const { brands, seriesFor, modelsFor } = usePhoneCatalog()
+
+  const avance     = parseFloat(form.avance_initiale) || 0
+  const total      = parseFloat(form.montant_total)   || 0
+  const repriseVal = form.has_reprise ? (parseFloat(form.reprise_valeur) || 0) : 0
+  const cashObl    = Math.max(total - repriseVal, 0)
+  const restant    = Math.max(cashObl - avance, 0)
+
+  const serieOptions = seriesFor(form.reprise_marque ?? '')
+  const modelOptions = modelsFor(form.reprise_marque ?? '', form.reprise_serie ?? '')
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
@@ -494,15 +622,132 @@ function NewCreditModal({
                   <option value="تحويل">تحويل — Virement</option>
                 </select>
               </div>
-              {/* Récap */}
-              {total > 0 && (
-                <div className="flex justify-between text-xs bg-white/5 rounded-lg px-3 py-2">
-                  <span className="text-white/50">Reste après avance</span>
-                  <span className="font-semibold text-amber-400">{restant.toLocaleString('fr-MA')} DH</span>
-                </div>
-              )}
             </div>
           </div>
+
+          {/* Toggle reprise */}
+          <div
+            onClick={() => setForm((f) => ({
+              ...f,
+              has_reprise: !f.has_reprise,
+              reprise_marque: '', reprise_serie: '', reprise_model: '',
+              reprise_valeur: '', reprise_imei: '', reprise_etat: 'bon',
+              reprise_remis_now: false,
+            }))}
+            className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer transition-all ${
+              form.has_reprise
+                ? 'border-blue-500/40 bg-blue-500/10'
+                : 'border-white/10 bg-white/5'
+            }`}
+          >
+            <div>
+              <p className="text-sm font-medium text-white">
+                {form.has_reprise ? 'Vente avec reprise' : 'Inclure une reprise ?'}
+              </p>
+              <p className="text-xs text-white/40 mt-0.5">
+                {form.has_reprise
+                  ? 'Renseigner le téléphone repris ci-dessous'
+                  : 'Le client échange son ancien téléphone'}
+              </p>
+            </div>
+            <div className={`w-10 h-5 rounded-full transition-all relative flex-shrink-0 ${form.has_reprise ? 'bg-blue-500' : 'bg-white/20'}`}>
+              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${form.has_reprise ? 'left-5' : 'left-0.5'}`} />
+            </div>
+          </div>
+
+          {/* Section reprise — conditionnelle */}
+          {form.has_reprise && (
+            <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-4 space-y-3">
+              <p className="text-xs text-blue-400 uppercase tracking-wide font-medium">Téléphone repris</p>
+
+              <ComboBox
+                options={brands}
+                value={form.reprise_marque}
+                onChange={(v) => setForm((f) => ({ ...f, reprise_marque: v, reprise_serie: '', reprise_model: '' }))}
+                placeholder="Marque *"
+              />
+
+              <div className="grid grid-cols-2 gap-2">
+                <ComboBox
+                  options={serieOptions}
+                  value={form.reprise_serie}
+                  onChange={(v) => setForm((f) => ({ ...f, reprise_serie: v, reprise_model: '' }))}
+                  placeholder="Série"
+                  disabled={!form.reprise_marque}
+                />
+                <ComboBox
+                  options={modelOptions}
+                  value={form.reprise_model}
+                  onChange={(v) => setForm((f) => ({ ...f, reprise_model: v }))}
+                  placeholder="Modèle *"
+                  disabled={!form.reprise_marque}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  value={form.reprise_imei}
+                  onChange={(e) => setForm((f) => ({ ...f, reprise_imei: e.target.value }))}
+                  placeholder="IMEI (optionnel)"
+                  className="bg-black/20 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-blue-400/50"
+                />
+                <div className="relative">
+                  <input
+                    type="number" min="0" step="0.01"
+                    value={form.reprise_valeur}
+                    onChange={(e) => setForm((f) => ({ ...f, reprise_valeur: e.target.value }))}
+                    placeholder="Valeur *"
+                    className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2.5 pr-10 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-blue-400/50"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-white/30">DH</span>
+                </div>
+              </div>
+
+              {/* État du téléphone repris */}
+              <div className="flex gap-2">
+                {(['bon', 'moyen', 'mauvais'] as const).map((etat) => (
+                  <button
+                    key={etat}
+                    type="button"
+                    onClick={() => setForm((f) => ({ ...f, reprise_etat: etat }))}
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-medium border transition-all capitalize ${
+                      form.reprise_etat === etat
+                        ? etat === 'bon'    ? 'border-green-500/60 bg-green-500/15 text-green-400'
+                        : etat === 'moyen'  ? 'border-amber-500/60 bg-amber-500/15 text-amber-400'
+                                            : 'border-red-500/60 bg-red-500/15 text-red-400'
+                        : 'border-white/10 bg-white/5 text-white/40 hover:border-white/20'
+                    }`}
+                  >
+                    {etat}
+                  </button>
+                ))}
+              </div>
+
+              {/* Remis maintenant ou plus tard */}
+              <div
+                onClick={() => setForm((f) => ({ ...f, reprise_remis_now: !f.reprise_remis_now }))}
+                className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all ${
+                  form.reprise_remis_now
+                    ? 'border-green-500/40 bg-green-500/10'
+                    : 'border-white/10 bg-white/5'
+                }`}
+              >
+                <div>
+                  <p className="text-sm text-white">
+                    {form.reprise_remis_now ? 'Téléphone remis maintenant' : "Client le garde jusqu'au solde"}
+                  </p>
+                  <p className="text-xs text-white/40 mt-0.5">
+                    {form.reprise_remis_now
+                      ? 'Téléphone physiquement en magasin dès maintenant'
+                      : 'Sera reçu et enregistré en stock à la décharge'}
+                  </p>
+                </div>
+                <div className={`w-10 h-5 rounded-full transition-all relative flex-shrink-0 ${form.reprise_remis_now ? 'bg-green-500' : 'bg-white/20'}`}>
+                  <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${form.reprise_remis_now ? 'left-5' : 'left-0.5'}`} />
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Toggle téléphone remis */}
           <div
@@ -527,6 +772,32 @@ function NewCreditModal({
               <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${form.phone_remis ? 'left-5' : 'left-0.5'}`} />
             </div>
           </div>
+
+          {/* Récapitulatif financier */}
+          {total > 0 && (
+            <div className="rounded-xl bg-white/5 border border-white/10 divide-y divide-white/5 text-sm">
+              <div className="flex justify-between px-4 py-2.5">
+                <span className="text-white/50">Prix convenu</span>
+                <span className="text-white">{total.toLocaleString('fr-MA')} DH</span>
+              </div>
+              {form.has_reprise && repriseVal > 0 && (
+                <div className="flex justify-between px-4 py-2.5">
+                  <span className="text-blue-400/70">Reprise</span>
+                  <span className="text-blue-400">−{repriseVal.toLocaleString('fr-MA')} DH</span>
+                </div>
+              )}
+              {avance > 0 && (
+                <div className="flex justify-between px-4 py-2.5">
+                  <span className="text-white/50">Avance cash</span>
+                  <span className="text-white/60">−{avance.toLocaleString('fr-MA')} DH</span>
+                </div>
+              )}
+              <div className="flex justify-between px-4 py-2.5 font-semibold">
+                <span className="text-white/70">Reste dû (cash)</span>
+                <span className="text-amber-400">{restant.toLocaleString('fr-MA')} DH</span>
+              </div>
+            </div>
+          )}
 
           {/* Notes */}
           <textarea
@@ -687,11 +958,12 @@ function PaymentModal({
 
 // ── Modal : Résultat décharge ────────────────────────────────────────
 function DischargeResultModal({
-  data, onClose, onGoToDocuments,
+  data, warning, onClose, onGoToDocuments,
 }: {
-  data:             Record<string, unknown>
-  onClose:          () => void
-  onGoToDocuments:  () => void
+  data:            Record<string, unknown>
+  warning:         string | null
+  onClose:         () => void
+  onGoToDocuments: () => void
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
@@ -707,6 +979,14 @@ function DischargeResultModal({
               <p className="text-xs text-white/40">Décharge effectuée — téléphone marqué مباع</p>
             </div>
           </div>
+          {warning === 'reprise_not_previously_confirmed' && (
+            <div className="flex items-start gap-2 mt-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
+              <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-400">
+                La reprise n'avait pas été marquée comme reçue. Le téléphone a été enregistré en stock sans confirmation physique préalable.
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="p-5 space-y-2">
