@@ -346,6 +346,7 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
               <option value="مباع">{isAr ? 'مباع' : 'Vendu'}</option>
               <option value="إستبدال">{isAr ? 'مستبدل' : 'Échangé'}</option>
               <option value="إصلاح">{isAr ? 'في الإصلاح' : 'En réparation'}</option>
+              <option value="en_transfert">{isAr ? 'في النقل' : 'En transfert'}</option>
             </select>
           </Field>
           <Field label={isAr ? 'الموقع' : 'Emplacement'}>
