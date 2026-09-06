@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
       if (body.device_type === 'هاتف') {
         if      (reason === 'Retour')              deviceUpdate.status = 'متوفر'
         else if (reason === 'Réparation Externe')  deviceUpdate.status = 'إصلاح'
-        else if (reason === 'Prêt' || toLocation === 'Externe')
+        else if (reason === 'Prêt' || toLocation === 'Externe' || toStoreId !== null)
                                                    deviceUpdate.status = 'en_transfert'
         else                                       deviceUpdate.status = 'متوفر'
       }
