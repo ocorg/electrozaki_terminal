@@ -88,9 +88,32 @@ export async function POST(request: NextRequest) {
       : 'acc_id'
 
     if (deviceTable) {
+      const reason      = (body.reason      as string) ?? 'Transfert'
+      const toLocation  = body.to_location  as string
+      const toStoreId   = (body.to_store_id as string | null) ?? null
+
+      const deviceUpdate: Record<string, unknown> = {
+        location:   toLocation,
+        updated_by: user.id,
+      }
+
+      // Statut — uniquement pour les téléphones (ENUM device_status)
+      if (body.device_type === 'هاتف') {
+        if      (reason === 'Retour')              deviceUpdate.status = 'متوفر'
+        else if (reason === 'Réparation Externe')  deviceUpdate.status = 'إصلاح'
+        else if (reason === 'Prêt' || toLocation === 'Externe')
+                                                   deviceUpdate.status = 'en_transfert'
+        else                                       deviceUpdate.status = 'متوفر'
+      }
+
+      // Inter-magasin → transférer la propriété au magasin destination
+      if (toStoreId) {
+        deviceUpdate.store_id = toStoreId
+      }
+
       await supabase
         .from(deviceTable)
-        .update({ location: body.to_location, updated_by: user.id })
+        .update(deviceUpdate)
         .eq(deviceIdCol, body.device_id)
     }
 

@@ -17,7 +17,7 @@ import {
   ChevronDown, X, Eye, EyeOff, Trash2, Loader2, BookOpen, Check, CreditCard
 } from 'lucide-react'
 
-const STATUSES = ['متوفر', 'حجز', 'مباع', 'إستبدال', 'إصلاح', 'en_livraison']
+const STATUSES = ['متوفر', 'حجز', 'مباع', 'إستبدال', 'إصلاح', 'en_livraison', 'en_transfert']
 const MARQUES  = ['Apple', 'Samsung', 'Xiaomi', 'Redmi', 'Huawei', 'Oppo', 'Realme']
 const LOCATIONS = ['Magasin Principal', 'Magasin Secondaire', 'Externe']
 
@@ -210,25 +210,28 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
     return acc
   }, {} as Record<string, number>)
 
-  const STATUS_LABELS_FR: Record<string, string> = {
-    'متوفر':       'Disponible',
-    'حجز':         'Réservé',
-    'مباع':        'Vendu',
-    'إستبدال':     'Échangé',
-    'إصلاح':       'Réparation',
+    const STATUS_LABELS_FR: Record<string, string> = {
+    'متوفر':        'Disponible',
+    'حجز':          'Réservé',
+    'مباع':         'Vendu',
+    'إستبدال':      'Échangé',
+    'إصلاح':        'Réparation',
     'en_livraison': 'En livraison',
+    'en_transfert': 'En transfert',
   }
-  // Override AR pour les statuts non-arabes
+  // Libellés AR pour les statuts à clé non-arabe
   const STATUS_LABELS_AR: Record<string, string> = {
     'en_livraison': 'في التوصيل',
+    'en_transfert': 'في النقل',
   }
-  const STATUS_COLORS: Record<string, string> = {
-    'متوفر':       '#10B981',
-    'حجز':         '#C9A440',
-    'مباع':        '#6B6860',
-    'إستبدال':     '#3B82F6',
-    'إصلاح':       '#F59E0B',
-    'en_livraison': '#8B5CF6',   // violet — en mouvement
+    const STATUS_COLORS: Record<string, string> = {
+    'متوفر':        '#10B981',
+    'حجز':          '#C9A440',
+    'مباع':         '#6B6860',
+    'إستبدال':      '#3B82F6',
+    'إصلاح':        '#F59E0B',
+    'en_livraison': '#8B5CF6',   // violet — en cours de livraison client
+    'en_transfert': '#F97316',   // orange — sorti du magasin temporairement
   }
 
   return (
@@ -393,7 +396,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
           {STATUSES.map(s => (
             <div key={s} className="flex items-center gap-1.5 text-xs text-[#6B6860]">
               <span className="w-2 h-2 rounded-full" style={{ backgroundColor: STATUS_COLORS[s] }} />
-              {counts[s]} {isAr ? s : STATUS_LABELS_FR[s]}
+              {counts[s]} {isAr ? (STATUS_LABELS_AR[s] ?? s) : STATUS_LABELS_FR[s]}
             </div>
           ))}
         </div>

@@ -11,7 +11,7 @@ import type { DeviceType, LocationType, MovementReason } from '@/types/database'
 import {
   ArrowLeftRight, Plus, RefreshCw,
   MapPin, Clock, Smartphone, Laptop, Package,
-  ArrowRight, Search, X
+  ArrowRight, Search, X, RotateCcw
 } from 'lucide-react'
 
 interface Movement {
@@ -274,16 +274,40 @@ export default function MovementsModule({ storeId }: MovementsModuleProps) {
                       )}
                     </div>
 
-                    {/* Date */}
-                    <div className="text-right flex-shrink-0">
-                      <div className="flex items-center gap-1 text-xs text-[#B0ADA6]">
-                        <Clock className="w-3 h-3" />
-                        {formatDate(mov.moved_at)}
+                    {/* Date + raccourci retour */}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <div className="text-right">
+                        <div className="flex items-center gap-1 text-xs text-[#B0ADA6]">
+                          <Clock className="w-3 h-3" />
+                          {formatDate(mov.moved_at)}
+                        </div>
+                        {mov.quantity > 1 && (
+                          <p className="text-xs font-bold mt-0.5" style={{ color: primary }}>
+                            ×{mov.quantity}
+                          </p>
+                        )}
                       </div>
-                      {mov.quantity > 1 && (
-                        <p className="text-xs font-bold mt-0.5" style={{ color: primary }}>
-                          ×{mov.quantity}
-                        </p>
+
+                      {/* Raccourci retour — visible uniquement pour les mouvements non-retour */}
+                      {canMove && mov.reason !== 'Retour' && (
+                        <button
+                          onClick={() => {
+                            setForm({
+                              ...EMPTY_FORM,
+                              device_type:   mov.device_type,
+                              device_id:     mov.device_id,
+                              from_location: mov.to_location,
+                              to_location:   mov.from_location,
+                              reason:        'Retour',
+                              notes:         `Retour — ${mov.movement_id}`,
+                            })
+                            setFormOpen(true)
+                          }}
+                          className="p-2 rounded-xl border border-[#E8E5DE] bg-white text-[#B0ADA6] hover:text-[#C9A440] hover:border-[#C9A440] hover:bg-[#FAF5E8] transition-all"
+                          title={isAr ? 'تسجيل الإرجاع' : 'Enregistrer le retour'}
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                        </button>
                       )}
                     </div>
                   </div>
