@@ -109,7 +109,9 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
     (isAr ? a.ar : a.fr).localeCompare(isAr ? b.ar : b.fr, isAr ? 'ar' : 'fr')
   )
   const primary      = portal.primaryColor
-  const canSeePrices = user?.role !== 'staff'
+  // canSeeAchat : seuls manager/owner voient prix_achat et la marge
+  // prix_vente_recommandé visible à tous les rôles (staff inclus)
+  const canSeeAchat = user?.role === 'manager' || user?.role === 'owner'
 
   const [search,    setSearch]    = useState('')
   const [results,   setResults]   = useState<DeviceResult[]>([])
@@ -736,11 +738,9 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                       ? (isAr ? 'إكسسوار' : 'Accessoire')
                       : ((item as Phone).imei ? (item as Phone).imei?.slice(-6) : (isAr ? 'متوفر' : 'Disponible'))}
                   </p>
-                  {canSeePrices && (
-                    <p className="text-sm font-bold mt-2" style={{ color: primary }}>
-                      {formatMAD(item._type === 'accessory' ? getAccPrice(item) : (item as Phone).prix_vente_recommande ?? 0)}
-                    </p>
-                  )}
+                  <p className="text-sm font-bold mt-2" style={{ color: primary }}>
+                    {formatMAD(item._type === 'accessory' ? getAccPrice(item) : (item as Phone).prix_vente_recommande ?? 0)}
+                  </p>
                 </button>
               ))}
             </div>
@@ -781,7 +781,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                       {(item as Phone).imei && (
                         <p className="text-[10px] text-[#B0ADA6] font-mono truncate">{(item as Phone).imei}</p>
                       )}
-                      {canSeePrices && (item as Phone).promo_type && (item as Phone).promo_montant && (item as Phone).prix_vente_recommande && (
+                      {(item as Phone).promo_type && (item as Phone).promo_montant && (item as Phone).prix_vente_recommande && (
                         <p className="text-[9px] font-bold mt-0.5" style={{ color: '#C9A440' }}>
                           {isAr ? 'السعر المقترح بعد الخصم:' : 'Prix suggéré après promo :'}{' '}
                           {formatMAD(computePromoPrice((item as Phone).prix_vente_recommande ?? 0, (item as Phone).promo_type, (item as Phone).promo_montant) ?? 0)}
@@ -809,7 +809,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                         value={item.prix_vente_saisi || ''}
                         onChange={e => updatePrice(item._id, Number(e.target.value))}
                         style={{ borderColor: isBelowMinimum(item.prix_vente_saisi, (item as Phone).prix_vente_minimum) ? '#F59E0B' : undefined }} />
-                      {canSeePrices && (item as Phone).prix_achat && (
+                      {canSeeAchat && (item as Phone).prix_achat && (
                         <span className={`text-[10px] font-bold w-16 text-right flex-shrink-0 ${item.prix_vente_saisi - ((item as Phone).prix_achat || 0) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                           {formatMAD(item.prix_vente_saisi - ((item as Phone).prix_achat || 0))}
                         </span>
@@ -1240,11 +1240,9 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
             <p className="text-sm font-bold text-[#1A1A1A] mb-1 leading-snug line-clamp-2">
               {qtyPicker.device._displayName}
             </p>
-            {canSeePrices && (
-              <p className="text-xs text-[#B0ADA6] mb-5">
-                {formatMAD(getAccPrice(qtyPicker.device))} / {isAr ? 'وحدة' : 'unité'}
-              </p>
-            )}
+            <p className="text-xs text-[#B0ADA6] mb-5">
+              {formatMAD(getAccPrice(qtyPicker.device))} / {isAr ? 'وحدة' : 'unité'}
+            </p>
             <div className="flex items-center justify-center gap-6 mb-6">
               <button type="button"
                 onClick={() => setQtyPicker(p => p ? { ...p, qty: Math.max(1, p.qty - 1) } : p)}

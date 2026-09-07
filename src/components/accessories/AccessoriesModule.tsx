@@ -330,12 +330,12 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
 
           {/* Table header */}
           <div className="hidden lg:grid border-b border-[#F2F0EB] px-5 py-3 text-[10px] font-bold text-[#B0ADA6] uppercase tracking-widest"
-               style={{ gridTemplateColumns: canFinancials ? '2fr 1fr 1fr 1fr 1fr 120px' : '2fr 1fr 1fr 1fr 120px' }}>
+               style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 120px' }}>
             <span>{isAr ? 'المنتج' : 'Produit'}</span>
             <span>{isAr ? 'الفئة' : 'Catégorie'}</span>
             <span>{isAr ? 'الكمية' : 'Quantité'}</span>
             <span>{isAr ? 'الحالة' : 'Statut'}</span>
-            {canFinancials && <span>{isAr ? 'سعر البيع' : 'Prix vente'}</span>}
+            <span>{isAr ? 'سعر البيع' : 'Prix vente'}</span>
             <span />
           </div>
 
@@ -361,7 +361,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
                 <div
                   key={acc.acc_id}
                   className={`hidden lg:grid items-center px-5 py-3.5 transition-all ${acc.is_low_stock ? 'bg-red-50/30' : 'hover:bg-[#F8F7F4]'}`}
-                  style={{ gridTemplateColumns: canFinancials ? '2fr 1fr 1fr 1fr 1fr 120px' : '2fr 1fr 1fr 1fr 120px' }}
+                  style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 120px' }}
                 >
                   {/* Name */}
                   <div className="flex items-center gap-3 min-w-0">
@@ -410,12 +410,10 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
                     lang={isAr ? 'ar' : 'fr'}
                   />
 
-                  {/* Price */}
-                  {canFinancials && (
-                    <p className="text-sm font-bold text-[#1A1A1A]">
-                      {acc.prix_vente_recommande ? formatMAD(acc.prix_vente_recommande) : '—'}
-                    </p>
-                  )}
+                  {/* Prix de vente — visible à tous les rôles */}
+                  <p className="text-sm font-bold text-[#1A1A1A]">
+                    {acc.prix_vente_recommande ? formatMAD(acc.prix_vente_recommande) : '—'}
+                  </p>
 
                   {/* Actions */}
                   <div className="flex items-center gap-1 justify-end">
@@ -591,10 +589,31 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
             </Field>
           </div>
 
+          {/* Prix de vente — lecture seule pour le staff */}
+          {!canFinancials && (
+            <div className="border-t border-[#E8E5DE] pt-4">
+              <p className="text-xs font-bold text-[#6B6860] uppercase tracking-widest mb-4">
+                {isAr ? 'أسعار البيع' : 'Prix de vente'}
+              </p>
+              <div className="grid grid-cols-2 gap-4">
+                <Field label={isAr ? 'سعر البيع' : 'Prix recommandé'}>
+                  <input type="number" readOnly tabIndex={-1}
+                    className={`${inputClass} bg-[#F8F7F4] cursor-default`}
+                    value={form.prix_vente_recommande} />
+                </Field>
+                <Field label={isAr ? 'السعر الأدنى' : 'Prix minimum'}>
+                  <input type="number" readOnly tabIndex={-1}
+                    className={`${inputClass} bg-[#F8F7F4] cursor-default`}
+                    value={form.prix_vente_minimum} />
+                </Field>
+              </div>
+            </div>
+          )}
+
           {canFinancials && (
             <div className="border-t border-[#E8E5DE] pt-4">
               <p className="text-xs font-bold text-[#6B6860] uppercase tracking-widest mb-4">
-                {isAr ? 'الأسعار' : 'Prix'}
+                {isAr ? 'الأسعار' : 'Prix & marges (gestion uniquement)'}
               </p>
               <div className="grid grid-cols-3 gap-4">
                 {[
