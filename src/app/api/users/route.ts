@@ -106,10 +106,13 @@ export async function POST(request: NextRequest) {
 
     const newUserId = authData.user.id
 
-    // Step 2 — Insert user_profiles row
-    const { data: profile, error: profileError } = await supabase
+    // Step 2 — Upsert user_profiles row
+    // Upsert instead of insert: a Supabase DB trigger (handle_new_user) may
+    // auto-create a stub row for this UUID the moment the auth user is inserted.
+    // On conflict, overwrite the stub with the real profile data.
+    const { data: profile, error: profileError } = await (supabase as any)
       .from('user_profiles')
-      .insert({
+      .upsert({
         id:           newUserId,
         display_name: full_name.trim(),
         role,
@@ -118,13 +121,18 @@ export async function POST(request: NextRequest) {
         is_active:    is_active !== false,
         created_at:   new Date().toISOString(),
         updated_at:   new Date().toISOString(),
-      })
+      }, { onConflict: 'id' })
       .select()
       .single() as { data: Record<string, unknown> | null; error: unknown }
 
     if (profileError || !profile) {
-      // Rollback: delete the auth user to prevent orphaned records
+      // Rollback: delete auth user + any orphaned profile stub
       await adminSupabase.auth.admin.deleteUser(newUserId).catch(() => {})
+      await (supabase as any)
+        .from('user_profiles')
+        .delete()
+        .eq('id', newUserId)
+        .catch(() => {})
       const msg = profileError ? (profileError as Error).message : 'Échec création profil'
       return NextResponse.json({ error: `Profil non créé — compte auth supprimé: ${msg}` }, { status: 500 })
     }
