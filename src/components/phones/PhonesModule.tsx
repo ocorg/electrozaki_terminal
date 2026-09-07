@@ -408,14 +408,14 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
 
           {/* Table header */}
           <div className="hidden lg:grid border-b border-[#F2F0EB] px-5 py-3 text-[10px] font-bold text-[#B0ADA6] uppercase tracking-widest"
-               style={{ gridTemplateColumns: canSeeFinancials ? '2fr 1fr 0.7fr 0.7fr 0.7fr 0.6fr 1fr 68px' : '2fr 1fr 0.7fr 0.7fr 0.7fr 0.6fr 68px' }}>
+               style={{ gridTemplateColumns: '2fr 1fr 0.7fr 0.7fr 0.7fr 0.6fr 1fr 68px' }}>
             <span>{isAr ? 'الجهاز' : 'Appareil'}</span>
             <span>IMEI</span>
             <span>{isAr ? 'الذاكرة / RAM' : 'Stockage / RAM'}</span>
             <span>{isAr ? 'البطارية' : 'Batterie'}</span>
             <span>{isAr ? 'الموقع' : 'Emplacement'}</span>
             <span>{isAr ? 'الحالة' : 'Statut'}</span>
-            {canSeeFinancials && <span>{isAr ? 'السعر' : 'Prix vente'}</span>}
+            <span>{isAr ? 'السعر' : 'Prix vente'}</span>
             <span />
           </div>
 
@@ -456,7 +456,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                     key={phone.phone_id}
                     onClick={() => openEdit(phone)}
                     className="hidden lg:grid items-center px-5 py-3.5 hover:bg-[#F8F7F4] transition-all cursor-pointer"
-                    style={{ gridTemplateColumns: canSeeFinancials ? '2fr 1fr 0.7fr 0.7fr 0.7fr 0.6fr 1fr 68px' : '2fr 1fr 0.7fr 0.7fr 0.7fr 0.6fr 68px' }}
+                    style={{ gridTemplateColumns: '2fr 1fr 0.7fr 0.7fr 0.7fr 0.6fr 1fr 68px' }}
                   >
                     {/* Device name */}
                     <div className="flex items-center gap-3 min-w-0">
@@ -564,40 +564,38 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                       <StatusBadge status={phone.status} lang={isAr ? 'ar' : 'fr'} />
                     </div>
 
-                    {/* Price — manager/owner only */}
-                    {canSeeFinancials && (
-                      <div>
-                        {phone.promo_type && phone.promo_montant ? (
-                          <>
-                            <p className="text-xs text-[#B0ADA6] line-through">
-                              {phone.prix_vente_recommande ? formatMAD(phone.prix_vente_recommande) : '—'}
-                            </p>
-                            <p className="text-sm font-bold" style={{ color: '#C9A440' }}>
-                              {formatMAD(
-                                computePromoPrice(phone.prix_vente_recommande ?? 0, phone.promo_type, phone.promo_montant) ?? 0
-                              )}
-                            </p>
-                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-                              style={{ backgroundColor: '#FAF5E8', color: '#C9A440' }}>
-                              {phone.promo_type === 'pourcentage'
-                                ? `-${phone.promo_montant}%`
-                                : `-${formatMAD(phone.promo_montant)}`}
-                            </span>
-                          </>
-                        ) : (
-                          <>
-                            <p className="text-sm font-bold text-[#1A1A1A]">
-                              {phone.prix_vente_recommande ? formatMAD(phone.prix_vente_recommande) : '—'}
-                            </p>
-                            {phone.prix_achat && phone.prix_vente_recommande && (
-                              <p className="text-xs text-emerald-600">
-                                +{formatMAD(phone.prix_vente_recommande - phone.prix_achat)}
-                              </p>
+                    {/* Prix de vente — visible à tous les rôles */}
+                    <div>
+                      {phone.promo_type && phone.promo_montant ? (
+                        <>
+                          <p className="text-xs text-[#B0ADA6] line-through">
+                            {phone.prix_vente_recommande ? formatMAD(phone.prix_vente_recommande) : '—'}
+                          </p>
+                          <p className="text-sm font-bold" style={{ color: '#C9A440' }}>
+                            {formatMAD(
+                              computePromoPrice(phone.prix_vente_recommande ?? 0, phone.promo_type, phone.promo_montant) ?? 0
                             )}
-                          </>
-                        )}
-                      </div>
-                    )}
+                          </p>
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                            style={{ backgroundColor: '#FAF5E8', color: '#C9A440' }}>
+                            {phone.promo_type === 'pourcentage'
+                              ? `-${phone.promo_montant}%`
+                              : `-${formatMAD(phone.promo_montant)}`}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-sm font-bold text-[#1A1A1A]">
+                            {phone.prix_vente_recommande ? formatMAD(phone.prix_vente_recommande) : '—'}
+                          </p>
+                          {canSeeFinancials && phone.prix_achat && phone.prix_vente_recommande && (
+                            <p className="text-xs text-emerald-600">
+                              +{formatMAD(phone.prix_vente_recommande - phone.prix_achat)}
+                            </p>
+                          )}
+                        </>
+                      )}
+                    </div>
 
                     {/* Actions */}
                     <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
@@ -741,7 +739,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                         </div>
                       )}
                     </div>
-                    {canSeeFinancials && phone.prix_vente_recommande && (
+                    {phone.prix_vente_recommande != null && (
                       <p className="text-sm font-bold flex-shrink-0" style={{ color: primary }}>
                         {formatMAD(phone.prix_vente_recommande)}
                       </p>

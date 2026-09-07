@@ -470,12 +470,41 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
           )}
         </div>
 
+        {/* Prix de vente — lecture seule pour le staff */}
+        {!canSeeFinancials && (
+          <div className="border-t border-[#E8E5DE] pt-4">
+            <p className="text-xs font-bold text-[#6B6860] uppercase tracking-widest mb-4">
+              {isAr ? 'أسعار البيع' : 'Prix de vente'}
+            </p>
+            <div className="grid grid-cols-2 gap-4">
+              <Field label={isAr ? 'سعر البيع المقترح' : 'Prix vente recommandé'}>
+                <input
+                  type="number"
+                  readOnly
+                  tabIndex={-1}
+                  className={`${inputClass} bg-[#F8F7F4] cursor-default select-none`}
+                  value={form.prix_vente_recommande ?? ''}
+                />
+              </Field>
+              <Field label={isAr ? 'سعر البيع الأدنى' : 'Prix vente minimum'}>
+                <input
+                  type="number"
+                  readOnly
+                  tabIndex={-1}
+                  className={`${inputClass} bg-[#F8F7F4] cursor-default select-none`}
+                  value={form.prix_vente_minimum ?? ''}
+                />
+              </Field>
+            </div>
+          </div>
+        )}
+
         {/* Financial fields */}
         {canSeeFinancials && (
           <>
             <div className="border-t border-[#E8E5DE] pt-4">
               <p className="text-xs font-bold text-[#6B6860] uppercase tracking-widest mb-4">
-                {isAr ? 'الأسعار (للإدارة فقط)' : 'Prix (gestion uniquement)'}
+                {isAr ? 'الأسعار (للإدارة فقط)' : 'Prix & marges (gestion uniquement)'}
               </p>
               <div className="grid grid-cols-3 gap-4">
                 <Field label={isAr ? 'سعر الشراء' : 'Prix achat'}>
