@@ -2,7 +2,7 @@
 import { createContext, useContext, ReactNode } from 'react'
 
 // ─── Portal Types ─────────────────────────────────────────────
-export type PortalType = 'ez' | 'hp' | 'bzg'
+export type PortalType = 'ez' | 'bzg'
 
 export interface PortalConfig {
   type:         PortalType
@@ -28,17 +28,6 @@ export const PORTAL_CONFIGS: Record<PortalType, PortalConfig> = {
     borderAccent: '#E8D494',
     sidebarBg:    '#111111',
     logoText:     'ELECTRO ZAKI',
-  },
-  hp: {
-    type:         'hp',
-    storeId:      'HP-001',
-    storeName:    'Hamid Phone',
-    shortName:    'HP',
-    primaryColor: '#0EA5E9',
-    bgAccent:     '#F0F9FF',
-    borderAccent: '#BAE6FD',
-    sidebarBg:    '#0C2D48',
-    logoText:     'HAMID PHONE',
   },
   bzg: {
     type:         'bzg',

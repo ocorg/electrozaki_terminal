@@ -5,7 +5,6 @@ import Link from 'next/link'
 
 const STORE_NAMES: Record<string, string> = {
   'EZ-001': 'Electro Zaki',
-  'HP-001': 'Hamid Phone',
 }
 
 function Content() {

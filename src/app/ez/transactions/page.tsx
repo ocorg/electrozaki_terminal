@@ -76,8 +76,8 @@ export default function EZTransactionsPage() {
     }
     setVoiding(true)
     try {
-      const res  = await fetch('/api/transactions', {
-        method:  'DELETE',
+      const res  = await fetch('/api/transactions/void', {
+        method:  'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ txn_id: voidTxnId, voided_reason: voidReason.trim() }),
       })

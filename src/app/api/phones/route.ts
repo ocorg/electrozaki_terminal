@@ -1,6 +1,7 @@
 import { createClient, createUntypedClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
+import { escapeLike, validateRequired, sanitizeText } from '@/lib/utils/validation'
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,6 +19,7 @@ export async function GET(request: NextRequest) {
     const search         = searchParams.get('search')
     const store_id       = searchParams.get('store_id')
     const fournisseur_id = searchParams.get('fournisseur_id')
+    const limit          = Math.min(parseInt(searchParams.get('limit') || '200', 10), 500)
 
     const { data: callerProfile } = await supabase
       .from('user_profiles')
@@ -35,6 +37,7 @@ export async function GET(request: NextRequest) {
       .select(columns)
       .eq('is_deleted', false)
       .order('created_at', { ascending: false })
+      .limit(limit)
 
     if (store_id) query = query.eq('store_id', store_id)
     if (status)   query = query.eq('status', status)
@@ -44,11 +47,12 @@ export async function GET(request: NextRequest) {
     if (fournisseur_id) query = query.eq('fournisseur_id', fournisseur_id)
     if (promo === '1')  query = query.not('promo_type', 'is', null)
     if (search) {
+      const safeSearch    = escapeLike(search)
       const looksLikeImei = /^\d{6,}$/.test(search)
       if (looksLikeImei) {
-        query = query.ilike('imei', `%${search}%`)
+        query = query.ilike('imei', `%${safeSearch}%`)
       } else {
-        query = query.or(`model.ilike.%${search},marque.ilike.%${search}%`)
+        query = query.or(`model.ilike.%${safeSearch}%,marque.ilike.%${safeSearch}%`)
       }
     }
 
@@ -75,11 +79,36 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
 
+    const {
+      imei, source, fournisseur_id, txn_ref_id, condition,
+      marque, serie, type: deviceType, couleur, model, stockage,
+      battery_level, ram, description, icloud_compte, icloud_mdp,
+      prix_achat, prix_vente_recommande, prix_vente_minimum,
+      warranty_months, status, location, date_entree, image_url,
+      replaced_components, is_damaged, damage_notes,
+      promo_type, promo_montant,
+    } = body as Record<string, unknown>
+
+    validateRequired(
+      body as Record<string, unknown>,
+      ['marque', 'model', 'status', 'date_entree']
+    )
+
+    const safeMarque      = typeof marque      === 'string' ? sanitizeText(marque)      : marque
+    const safeModel       = typeof model       === 'string' ? sanitizeText(model)       : model
+    const safeDescription = typeof description === 'string' ? sanitizeText(description) : description
+
     const { data, error } = await supabase
       .from('phones')
       .insert({
-        ...body,
-        store_id:   body.store_id ?? profile?.store_id ?? null,
+        imei, source, fournisseur_id, txn_ref_id, condition,
+        marque: safeMarque, serie, type: deviceType, couleur, model: safeModel, stockage,
+        battery_level, ram, description: safeDescription, icloud_compte, icloud_mdp,
+        prix_achat, prix_vente_recommande, prix_vente_minimum,
+        warranty_months, status, location, date_entree, image_url,
+        replaced_components, is_damaged, damage_notes,
+        promo_type, promo_montant,
+        store_id:   (body as Record<string, unknown>).store_id ?? profile?.store_id ?? null,
         created_by: user.id,
         updated_by: user.id,
       })
@@ -119,9 +148,29 @@ export async function PATCH(request: NextRequest) {
       .eq('id', user.id)
       .single() as { data: { display_name: string; store_id: string | null } | null }
 
-    const body = await request.json()
-    const { phone_id, ...updates } = body
+    const body = await request.json() as Record<string, unknown>
+    const phone_id = body.phone_id as string | undefined
     if (!phone_id) return NextResponse.json({ error: 'phone_id requis' }, { status: 400 })
+
+    const {
+      imei, source, fournisseur_id, txn_ref_id, condition,
+      marque, serie, type: deviceType, couleur, model, stockage,
+      battery_level, ram, description, icloud_compte, icloud_mdp,
+      prix_achat, prix_vente_recommande, prix_vente_minimum,
+      warranty_months, status, location, store_id, date_entree, image_url,
+      replaced_components, is_damaged, damage_notes,
+      promo_type, promo_montant,
+    } = body
+
+    const allowedUpdates = {
+      imei, source, fournisseur_id, txn_ref_id, condition,
+      marque, serie, type: deviceType, couleur, model, stockage,
+      battery_level, ram, description, icloud_compte, icloud_mdp,
+      prix_achat, prix_vente_recommande, prix_vente_minimum,
+      warranty_months, status, location, store_id, date_entree, image_url,
+      replaced_components, is_damaged, damage_notes,
+      promo_type, promo_montant,
+    }
 
     const { data: before } = await supabase
       .from('phones')
@@ -131,7 +180,7 @@ export async function PATCH(request: NextRequest) {
 
     const { data, error } = await supabase
       .from('phones')
-      .update({ ...updates, updated_by: user.id })
+      .update({ ...allowedUpdates, updated_by: user.id })
       .eq('phone_id', phone_id)
       .select()
       .single() as { data: Record<string, unknown> | null; error: unknown }

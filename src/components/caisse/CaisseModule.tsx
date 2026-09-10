@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useUser } from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
 import { usePortal } from '@/lib/context/portal'
-import { formatMAD, formatDate } from '@/lib/utils'
+import { formatMAD, formatDate, getBusinessDate } from '@/lib/utils'
 import { Btn, Field, inputClass, Modal } from '@/components/shared'
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import {
@@ -38,13 +38,6 @@ interface CaisseData {
 
 interface CaisseModuleProps {
   storeId: string
-}
-
-// Business day doesn't roll over until 4AM — covers late-night closing shifts
-function getBusinessDate(): string {
-  const d = new Date()
-  if (d.getHours() < 4) d.setDate(d.getDate() - 1)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 export default function CaisseModule({ storeId }: CaisseModuleProps) {

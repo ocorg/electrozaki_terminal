@@ -2,6 +2,71 @@ import { createClient, createUntypedClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 
+// ─── Shared aggregation — called by both GET (live view) and PATCH (EOD submit) ───
+type LiveTotals = {
+  total_ventes:            number
+  total_reparations:       number
+  total_depenses:          number
+  total_cash_drops:        number
+  total_credit_versements: number
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function computeLiveTotals(supabase: any, store_id: string, date: string): Promise<LiveTotals> {
+  const [txnRes, repDeliveredRes, repDepotRes, expRes, dropRes, creditRes] = await Promise.all([
+    supabase.from('transactions')
+      .select('prix_vente, payment_method, avance, valeur_echange')
+      .eq('store_id', store_id).eq('date_vente', date).eq('voided', false),
+    supabase.from('reparations')
+      .select('cout_reparation, avance_rep')
+      .eq('store_id', store_id).eq('date_livraison', date).eq('statut', 'تم الاستلام'),
+    supabase.from('reparations')
+      .select('avance_rep')
+      .eq('store_id', store_id).eq('date_depot', date).gt('avance_rep', 0),
+    supabase.from('expenses')
+      .select('montant')
+      .eq('store_id', store_id).eq('date', date).eq('is_deleted', false),
+    supabase.from('cash_drops')
+      .select('amount')
+      .eq('store_id', store_id).eq('date', date),
+    supabase.from('phone_credit_payments')
+      .select('montant')
+      .eq('store_id', store_id).eq('date_paiement', date),
+  ])
+
+  const txns          = (txnRes.data          || []) as Record<string, unknown>[]
+  const repsDelivered = (repDeliveredRes.data  || []) as Record<string, unknown>[]
+  const repsDepot     = (repDepotRes.data      || []) as Record<string, unknown>[]
+  const exps          = (expRes.data           || []) as Record<string, unknown>[]
+  const drops         = (dropRes.data          || []) as Record<string, unknown>[]
+  const creditPmts    = (creditRes.data        || []) as Record<string, unknown>[]
+
+  const total_ventes = txns.reduce((s, t) => {
+    const pv = (t.prix_vente     as number) || 0
+    const av = (t.avance         as number) || 0
+    const ve = (t.valeur_echange as number) || 0
+    const pm =  t.payment_method as string
+    if (pm === 'إستبدال') return s + (pv - ve)
+    if (pm === 'آجل')    return s + av
+    const isPartial = av > 0 && (pv - av - ve) > 0
+    return s + (isPartial ? av : pv - ve)
+  }, 0)
+
+  const total_reparations =
+    repsDelivered.reduce((s, r) => {
+      const cout   = (r.cout_reparation as number) || 0
+      const avance = (r.avance_rep      as number) || 0
+      return s + Math.max(cout - avance, 0)
+    }, 0)
+    + repsDepot.reduce((s, r) => s + ((r.avance_rep as number) || 0), 0)
+
+  const total_depenses          = exps.reduce(     (s, e) => s + ((e.montant as number) || 0), 0)
+  const total_cash_drops        = drops.reduce(    (s, d) => s + ((d.amount  as number) || 0), 0)
+  const total_credit_versements = creditPmts.reduce((s, p) => s + ((p.montant as number) || 0), 0)
+
+  return { total_ventes, total_reparations, total_depenses, total_cash_drops, total_credit_versements }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createUntypedClient()
@@ -276,42 +341,14 @@ export async function PATCH(request: NextRequest) {
     const caisseDate = current.date as string
     const caisseStore = current.store_id as string
 
-    const [txnRes, repDeliveredRes, repDepotRes, expRes, dropRes, creditRes] = await Promise.all([
-      supabase.from('transactions').select('prix_vente, payment_method, avance, valeur_echange')
-        .eq('store_id', caisseStore).eq('date_vente', caisseDate).eq('voided', false),
-      supabase.from('reparations').select('cout_reparation, avance_rep')
-        .eq('store_id', caisseStore).eq('date_livraison', caisseDate).eq('statut', 'تم الاستلام'),
-      supabase.from('reparations').select('avance_rep')
-        .eq('store_id', caisseStore).eq('date_depot', caisseDate).gt('avance_rep', 0),
-      supabase.from('expenses').select('montant')
-        .eq('store_id', caisseStore).eq('date', caisseDate),
-      supabase.from('cash_drops').select('amount')
-        .eq('store_id', caisseStore).eq('date', caisseDate),
-      supabase.from('phone_credit_payments').select('montant')
-        .eq('store_id', caisseStore).eq('date_paiement', caisseDate),
-    ])
-
-    const live_ventes = ((txnRes.data || []) as Record<string, unknown>[]).reduce((s, t) => {
-      const pv = (t.prix_vente     as number) || 0
-      const av = (t.avance         as number) || 0
-      const ve = (t.valeur_echange as number) || 0
-      const pm =  t.payment_method as string
-      if (pm === 'إستبدال') return s + (pv - ve)
-      if (pm === 'آجل')    return s + av
-      const isPartial = av > 0 && (pv - av - ve) > 0
-      return s + (isPartial ? av : pv - ve)
-    }, 0)
-    const live_reps =
-      ((repDeliveredRes.data || []) as Record<string, unknown>[]).reduce((s, r) => {
-        const cout  = (r.cout_reparation as number) || 0
-        const avance = (r.avance_rep    as number) || 0
-        return s + Math.max(cout - avance, 0)
-      }, 0)
-      + ((repDepotRes.data || []) as Record<string, unknown>[]).reduce((s, r) => s + ((r.avance_rep as number) || 0), 0)
-    const live_exps              = ((expRes.data    || []) as Record<string, unknown>[]).reduce((s, e) => s + ((e.montant          as number) || 0), 0)
-    const live_drops             = ((dropRes.data   || []) as Record<string, unknown>[]).reduce((s, d) => s + ((d.amount           as number) || 0), 0)
-    const live_credit_versements = ((creditRes.data || []) as Record<string, unknown>[]).reduce((s, p) => s + ((p.montant          as number) || 0), 0)
-    const solde_theorique        = ((current.ouverture as number) || 0) + live_ventes + live_reps + live_drops + live_credit_versements - live_exps
+    const {
+      total_ventes:            live_ventes,
+      total_reparations:       live_reps,
+      total_depenses:          live_exps,
+      total_cash_drops:        live_drops,
+      total_credit_versements: live_credit_versements,
+    } = await computeLiveTotals(supabase, caisseStore, caisseDate)
+    const solde_theorique = ((current.ouverture as number) || 0) + live_ventes + live_reps + live_drops + live_credit_versements - live_exps
     const ecart           = solde_reel - solde_theorique
 
     const { data, error } = await supabase

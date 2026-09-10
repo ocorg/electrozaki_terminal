@@ -14,8 +14,7 @@ export async function GET(request: NextRequest) {
       .eq('id', user.id)
       .single() as { data: { store_id: string | null } | null }
 
-    const storeId = profile?.store_id
-    const prefix  = storeId === 'HP-001' ? 'HP-ACC-' : 'EZ-ACC-'
+    const prefix  = 'EZ-ACC-'
 
     // Find the highest existing sequence number for this prefix
     const { data: rows } = await supabase

@@ -375,13 +375,11 @@ export default function MovementsModule({ storeId }: MovementsModuleProps) {
                 <Field label={isAr ? 'من المحل' : 'Magasin source'}>
                   <select className={selectClass} value={form.from_store_id} onChange={e => setForm(p => ({ ...p, from_store_id: e.target.value }))}>
                     <option value="EZ-001">Electro Zaki (EZ)</option>
-                    <option value="HP-001">Hamid Phone (HP)</option>
                   </select>
                 </Field>
                 <Field label={isAr ? 'إلى المحل' : 'Magasin destination'}>
                   <select className={selectClass} value={form.to_store_id} onChange={e => setForm(p => ({ ...p, to_store_id: e.target.value }))}>
                     <option value="EZ-001">Electro Zaki (EZ)</option>
-                    <option value="HP-001">Hamid Phone (HP)</option>
                   </select>
                 </Field>
               </div>

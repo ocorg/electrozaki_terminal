@@ -7,7 +7,7 @@
 export type UserRole         = 'staff' | 'manager' | 'owner'
 export type DeviceSource     = 'Fournisseur' | 'Reprise' | 'Échange'
 export type DeviceCondition  = 'جديد' | 'مستعمل' | 'معطوب'
-export type DeviceStatus     = 'متوفر' | 'مباع' | 'إستبدال' | 'إصلاح'
+export type DeviceStatus     = 'متوفر' | 'مباع' | 'إستبدال' | 'إصلاح' | 'en_transfert' | 'en_livraison' | 'حجز'
 export type LocationType     = 'Magasin Principal' | 'Magasin Secondaire' | 'Externe'
 export type OperationType    = 'بيع' | 'إستبدال' | 'تسبيق' | 'Retour'
 export type PaymentMethod    = 'نقد' | 'تحويل' | 'تسبيق' | 'إستبدال' | 'مختلط' | 'آجل'
@@ -438,6 +438,95 @@ export interface InventorySessionItem {
   scanned_at:   string | null
 }
 
+// ─── Missing table interfaces ────────────────────────────────
+
+export interface CashDrop {
+  drop_id:    string
+  store_id:   string
+  date:       string
+  amount:     number
+  notes?:     string | null
+  created_at: string
+  created_by?: string | null
+}
+
+export interface PhoneCreditSale {
+  credit_sale_id:    string
+  phone_id:          string
+  client_id?:        string | null
+  store_id?:         string | null
+  prix_vente:        number
+  avance:            number
+  montant_restant:   number
+  payment_method:    PaymentMethod
+  has_reprise:       boolean
+  reprise_valeur?:   number | null
+  reprise_phone_id?: string | null
+  discharged_at?:    string | null
+  discharged_by?:    string | null
+  notes?:            string | null
+  created_at:        string
+  created_by?:       string | null
+  updated_at:        string
+  updated_by?:       string | null
+}
+
+export interface PhoneCreditPayment {
+  payment_id:      string
+  credit_sale_id:  string
+  client_id?:      string | null
+  store_id?:       string | null
+  montant:         number
+  payment_method:  PaymentMethod
+  date_paiement:   string
+  notes?:          string | null
+  created_at:      string
+  created_by?:     string | null
+}
+
+export interface CreditImport {
+  import_id:    string
+  client_id:    string
+  store_id?:    string | null
+  montant_du:   number
+  date_import:  string
+  source_ref?:  string | null
+  notes?:       string | null
+  created_at:   string
+  created_by?:  string | null
+}
+
+export interface EzDocument {
+  doc_id:          string
+  doc_ref:         string
+  type:            'FAC' | 'ACQ' | 'SAV' | 'ECH' | 'RCH' | 'GAR' | 'BON'
+  device_id?:      string | null
+  device_type?:    DeviceType | null
+  client_id?:      string | null
+  supplier_id?:    string | null
+  linked_doc_ref?: string | null
+  montant?:        number | null
+  store_id?:       string | null
+  notes?:          string | null
+  created_at:      string
+  created_by?:     string | null
+  updated_at:      string
+  updated_by?:     string | null
+}
+
+export interface WarrantyEvent {
+  event_id:    string
+  device_type: DeviceType
+  device_id:   string
+  txn_id?:     string | null
+  event_type:  string
+  event_date:  string
+  store_id?:   string | null
+  notes?:      string | null
+  created_at:  string
+  created_by?: string | null
+}
+
 // ─── Database shape for typed Supabase client ─────────────────
 export interface Database {
   public: {
@@ -536,6 +625,51 @@ export interface Database {
         Row:    PlatformChangelog
         Insert: Partial<PlatformChangelog>
         Update: Partial<PlatformChangelog>
+      }
+      prospects: {
+        Row:    Prospect
+        Insert: Partial<Prospect>
+        Update: Partial<Prospect>
+      }
+      inventory_sessions: {
+        Row:    InventorySession
+        Insert: Partial<InventorySession>
+        Update: Partial<InventorySession>
+      }
+      inventory_session_items: {
+        Row:    InventorySessionItem
+        Insert: Partial<InventorySessionItem>
+        Update: Partial<InventorySessionItem>
+      }
+      cash_drops: {
+        Row:    CashDrop
+        Insert: Partial<CashDrop>
+        Update: Partial<CashDrop>
+      }
+      phone_credit_sales: {
+        Row:    PhoneCreditSale
+        Insert: Partial<PhoneCreditSale>
+        Update: Partial<PhoneCreditSale>
+      }
+      phone_credit_payments: {
+        Row:    PhoneCreditPayment
+        Insert: Partial<PhoneCreditPayment>
+        Update: Partial<PhoneCreditPayment>
+      }
+      credit_imports: {
+        Row:    CreditImport
+        Insert: Partial<CreditImport>
+        Update: Partial<CreditImport>
+      }
+      ez_documents: {
+        Row:    EzDocument
+        Insert: Partial<EzDocument>
+        Update: Partial<EzDocument>
+      }
+      warranty_events: {
+        Row:    WarrantyEvent
+        Insert: Partial<WarrantyEvent>
+        Update: Partial<WarrantyEvent>
       }
     }
     Views: {

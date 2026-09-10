@@ -34,10 +34,10 @@ export function computeStatutPaiement(fariq: number): '✅ مسدد' | '🔵 م�
   return '⚠️ زيادة دفع'
 }
 
-/** Compute WARRANTY_EXPIRY: start + (months × 30 days) */
+/** Compute WARRANTY_EXPIRY: start + N calendar months (not × 30 days). */
 export function computeWarrantyExpiry(startDate: string, months: number): Date {
   const start = new Date(startDate)
-  start.setDate(start.getDate() + months * 30)
+  start.setMonth(start.getMonth() + months)
   return start
 }
 
@@ -68,6 +68,17 @@ export function computePromoPrice(
 export function isBelowMinimum(price: number, minimum: number | null | undefined): boolean {
   if (!minimum) return false
   return price < minimum
+}
+
+/**
+ * Returns today's business date as YYYY-MM-DD.
+ * Business day rolls at 4AM — covers late-night closing shifts.
+ * Use this everywhere instead of new Date().toISOString().split('T')[0].
+ */
+export function getBusinessDate(): string {
+  const d = new Date()
+  if (d.getHours() < 4) d.setDate(d.getDate() - 1)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 /** Moroccan phone number validation */
