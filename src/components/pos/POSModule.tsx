@@ -11,14 +11,18 @@ import { showSuccess, showError } from '@/lib/utils/toasts'
 import type { Phone, Laptop, PaymentMethod, OperationType } from '@/types/database'
 import ScanButton from '@/components/scanner/ScanButton'
 import ComboBox from '@/components/phones/ComboBox'
-import RetourModal from '@/components/pos/RetourModal'
+import RetourModal          from '@/components/pos/RetourModal'
+import CashDropModal        from '@/components/pos/CashDropModal'
+import QtyPickerModal       from '@/components/pos/QtyPickerModal'
+import OverridePinModal     from '@/components/pos/OverridePinModal'
+import ExchangeIntakePanel, { type ExchangePanelState } from '@/components/pos/ExchangeIntakePanel'
 import { ReceiptPrint, type ReceiptData } from '@/components/print/ReceiptGenerator'
 import { usePhoneCatalog } from '@/lib/hooks/usePhoneCatalog'
 import { BrandLogo } from '@/components/shared/BrandLogo'
 import {
   Search, ShoppingCart, User, CreditCard, ArrowLeftRight,
-  X, Plus, Minus, AlertTriangle, Loader2, CheckCircle,
-  Smartphone, Laptop as LaptopIcon, Package, Lock,
+  X, AlertTriangle, Loader2, CheckCircle,
+  Smartphone, Laptop as LaptopIcon, Package, Plus, Minus,
   Printer, RotateCcw
 } from 'lucide-react'
 
@@ -121,9 +125,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
   const { brands, seriesFor, modelsFor, couleursFor } = usePhoneCatalog()
 
   const [overrideOpen,         setOverrideOpen]         = useState(false)
-  const [overridePin,          setOverridePin]          = useState('')
   const [overrideItem,         setOverrideItem]         = useState<CartItem | null>(null)
-  const [overrideLoading,      setOverrideLoading]      = useState(false)
   const [overrideReason,       setOverrideReason]       = useState('')
   const [overrideAuthorizedBy, setOverrideAuthorizedBy] = useState<string | null>(null)
 
@@ -134,25 +136,8 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
 
   const [qtyPicker, setQtyPicker] = useState<{ device: DeviceResult; qty: number } | null>(null)
 
-  const [exchangePanel, setExchangePanel] = useState<{
-    open:                    boolean
-    txn_id:                  string
-    valeur_echange:          number
-    marque_echange:          string
-    model_echange:           string
-    imei_echange:            string
-    couleur_echange:         string
-    stockage_echange:        string
-    battery_echange?:        number
-    ram_echange:             string
-    prix_vente_echange?:     number
-    prix_min_echange?:       number
-    echange_vers_reparation: boolean
-  } | null>(null)
-  const [exchangeForm,    setExchangeForm]    = useState({ modele: '', imei: '', marque: '', prix_achat: 0, couleur: '', capacite: '' })
-  const [addingExchange,  setAddingExchange]  = useState(false)
-  const [addedPhoneId,    setAddedPhoneId]    = useState<string | null>(null)
-  const [successTxn,      setSuccessTxn]      = useState<string | null>(null)
+  const [exchangePanel, setExchangePanel] = useState<ExchangePanelState & { open: boolean } | null>(null)
+  const [successTxn,    setSuccessTxn]    = useState<string | null>(null)
   const searchRef = useRef<ReturnType<typeof setTimeout>>()
 
   const [activeCategory, setActiveCategory] = useState('phones')
@@ -165,10 +150,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
   const [selectedClientId,   setSelectedClientId]    = useState<string | null>(null)
   const clientSearchRef = useRef<ReturnType<typeof setTimeout>>()
 
-  const [cashDropOpen,       setCashDropOpen]       = useState(false)
-  const [cashDropAmount,     setCashDropAmount]     = useState('')
-  const [cashDropReason,     setCashDropReason]     = useState('')
-  const [cashDropSubmitting, setCashDropSubmitting] = useState(false)
+  const [cashDropOpen, setCashDropOpen] = useState(false)
 
   // ── Search: phones + accessories + laptops ─────────────────
   useEffect(() => {
@@ -296,31 +278,17 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
     setCart(prev => prev.map(c => c._id === id ? { ...c, prix_vente_saisi: prix } : c))
   }
 
-  // ── Override PIN ──────────────────────────────────────────
-  async function verifyOverride() {
-    if (!overridePin || overridePin.length !== 4) {
-      showError(isAr ? 'يلزم كود PIN من 4 أرقام' : 'Code PIN 4 chiffres requis'); return
+  // ── Override authorized callback (called by OverridePinModal) ─
+  function handleOverrideAuthorized(userId: string | null, reason: string) {
+    setOverrideAuthorizedBy(userId)
+    setOverrideReason(reason)
+    if (overrideItem) {
+      setCart(prev => prev.map(c =>
+        c._id === overrideItem._id ? { ...c, prix_vente_saisi: overrideItem.prix_vente_saisi } : c
+      ))
     }
-    setOverrideLoading(true)
-    try {
-      const res  = await fetch('/api/auth/verify-override', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin: overridePin }),
-      })
-      const json = await res.json()
-      if (!json.authorized) throw new Error(isAr ? 'كود غلط' : 'Code incorrect')
-      if (!overrideReason.trim()) throw new Error(isAr ? 'سبب التجاوز مطلوب' : 'Motif de dérogation obligatoire')
-      setOverrideAuthorizedBy(json.user_id ?? null)
-      if (overrideItem) {
-        setCart(prev => prev.map(c =>
-          c._id === overrideItem._id ? { ...c, prix_vente_saisi: overrideItem.prix_vente_saisi } : c
-        ))
-      }
-      showSuccess(isAr ? 'تمت الموافقة ✓' : 'Dérogation autorisée ✓')
-      setOverrideOpen(false); setOverridePin(''); setOverrideItem(null)
-    } catch (err: unknown) {
-      showError((err as Error).message)
-    } finally { setOverrideLoading(false) }
+    setOverrideOpen(false)
+    setOverrideItem(null)
   }
 
   function setSale(k: keyof SaleForm, v: unknown) {
@@ -466,97 +434,25 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
 
       if (saleForm.valeur_echange > 0) {
         setExchangePanel({
-          open: true, txn_id: lastTxnId || '',
-          valeur_echange: saleForm.valeur_echange, marque_echange: saleForm.marque_echange ?? '',
-          model_echange: saleForm.model_echange ?? '', imei_echange: saleForm.imei_echange ?? '',
-          couleur_echange: saleForm.couleur_echange ?? '', stockage_echange: saleForm.stockage_echange ?? '',
-          battery_echange: saleForm.battery_echange, ram_echange: saleForm.ram_echange ?? '',
-          prix_vente_echange: saleForm.prix_vente_echange, prix_min_echange: saleForm.prix_min_echange,
+          open:                    true,
+          txn_id:                  lastTxnId || '',
+          valeur_echange:          saleForm.valeur_echange,
+          marque_echange:          saleForm.marque_echange          ?? '',
+          model_echange:           saleForm.model_echange           ?? '',
+          imei_echange:            saleForm.imei_echange            ?? '',
+          couleur_echange:         saleForm.couleur_echange         ?? '',
+          stockage_echange:        saleForm.stockage_echange        ?? '',
+          battery_echange:         saleForm.battery_echange,
+          ram_echange:             saleForm.ram_echange             ?? '',
+          prix_vente_echange:      saleForm.prix_vente_echange,
+          prix_min_echange:        saleForm.prix_min_echange,
           echange_vers_reparation: saleForm.echange_vers_reparation ?? false,
         })
-        setExchangeForm({ modele: saleForm.model_echange ?? '', imei: saleForm.imei_echange ?? '',
-          marque: saleForm.marque_echange ?? '', prix_achat: saleForm.valeur_echange, couleur: '', capacite: '' })
-        setAddedPhoneId(null)
       }
       setCart([]); setSaleForm({ ...EMPTY_SALE }); setOverrideAuthorizedBy(null); setOverrideReason(''); setSelectedClientId(null); setClientSuggestions([])
     } catch (err: unknown) {
       showError((err as Error).message)
     } finally { setSubmitting(false) }
-  }
-
-  // ── Exchange intake panel ──────────────────────────────────
-  function ExchangeIntakePanel() {
-    if (!exchangePanel?.open) return null
-    async function handleAddToStock() {
-      if (!exchangeForm.modele || !exchangeForm.imei) {
-        showError(isAr ? 'الموديل والرقم التسلسلي مطلوبان' : 'Modèle et IMEI requis'); return
-      }
-      setAddingExchange(true)
-      try {
-        const res = await fetch('/api/phones', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            store_id: storeId, marque: exchangeForm.marque || 'Inconnu',
-            model: exchangeForm.modele, imei: exchangeForm.imei, prix_achat: exchangeForm.prix_achat,
-            prix_vente_recommande: exchangePanel?.prix_vente_echange ?? null,
-            prix_vente_minimum:    exchangePanel?.prix_min_echange   ?? null,
-            couleur:   exchangePanel?.couleur_echange  || exchangeForm.couleur  || null,
-            stockage:  exchangePanel?.stockage_echange || exchangeForm.capacite || null,
-            battery_level: exchangePanel?.battery_echange ?? null,
-            ram:       exchangePanel?.ram_echange || null,
-            condition: 'مستعمل', source: 'Échange',
-            status:    exchangePanel?.echange_vers_reparation ? 'إصلاح' : 'متوفر',
-            location:  'Magasin Principal', txn_ref_id: exchangePanel?.txn_id,
-          }),
-        })
-        const json = await res.json()
-        if (!res.ok) throw new Error(json.error)
-        setAddedPhoneId(json.data.phone_id)
-        showSuccess(`${isAr ? 'أضيف إلى المخزون' : 'Ajouté au stock'}: ${json.data.phone_id}`)
-        setExchangePanel(p => p ? { ...p, open: false } : null)
-      } catch (err: unknown) {
-        showError((err as Error).message)
-      } finally { setAddingExchange(false) }
-    }
-    return (
-      <div className="mt-4 border border-amber-200 bg-amber-50 rounded-xl p-4 animate-fade-in">
-        <p className="text-sm font-bold text-amber-800 mb-3">
-          {isAr ? 'إضافة الجهاز المستلم إلى المخزون؟' : "Ajouter l'appareil repris à l'inventaire ?"}
-        </p>
-        <div className="grid grid-cols-2 gap-3 mb-3">
-          <div>
-            <label className="text-xs text-amber-700 font-medium">{isAr ? 'الماركة' : 'Marque'}</label>
-            <input className="w-full mt-1 border border-amber-200 rounded-lg px-3 py-2 text-sm bg-white"
-              value={exchangeForm.marque} onChange={e => setExchangeForm(p => ({ ...p, marque: e.target.value }))} />
-          </div>
-          <div>
-            <label className="text-xs text-amber-700 font-medium">{isAr ? 'الموديل' : 'Modèle'} *</label>
-            <input className="w-full mt-1 border border-amber-200 rounded-lg px-3 py-2 text-sm bg-white"
-              value={exchangeForm.modele} onChange={e => setExchangeForm(p => ({ ...p, modele: e.target.value }))} />
-          </div>
-          <div>
-            <label className="text-xs text-amber-700 font-medium">IMEI *</label>
-            <input className="w-full mt-1 border border-amber-200 rounded-lg px-3 py-2 text-sm bg-white font-mono"
-              value={exchangeForm.imei} onChange={e => setExchangeForm(p => ({ ...p, imei: e.target.value }))} />
-          </div>
-          <div>
-            <label className="text-xs text-amber-700 font-medium">{isAr ? 'سعر الشراء' : 'Prix achat (MAD)'}</label>
-            <input type="number" className="w-full mt-1 border border-amber-200 rounded-lg px-3 py-2 text-sm bg-white"
-              value={exchangeForm.prix_achat} onChange={e => setExchangeForm(p => ({ ...p, prix_achat: Number(e.target.value) }))} />
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <button onClick={handleAddToStock} disabled={addingExchange}
-            className="px-4 py-2 rounded-xl bg-amber-600 text-white text-sm font-medium hover:bg-amber-700 transition-all disabled:opacity-50">
-            {addingExchange ? (isAr ? 'جارٍ...' : 'En cours...') : (isAr ? 'إضافة إلى المخزون' : 'Ajouter au stock')}
-          </button>
-          <button onClick={() => setExchangePanel(p => p ? { ...p, open: false } : null)}
-            className="px-4 py-2 rounded-xl border border-amber-200 text-amber-700 text-sm font-medium hover:bg-amber-100 transition-all">
-            {isAr ? 'تجاهل' : 'Ignorer'}
-          </button>
-        </div>
-      </div>
-    )
   }
 
   // ── Category list ──────────────────────────────────────────
@@ -1139,61 +1035,29 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
             {isAr ? 'إيداع نقدي' : 'Encaissement manuel'}
           </button>
 
-          {/* Cash Drop Modal */}
-          {cashDropOpen && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
-                <p className="text-sm font-bold text-[#1A1A1A]">{isAr ? 'إيداع نقدي' : 'Encaissement manuel'}</p>
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-xs font-bold text-[#6B6860] uppercase tracking-widest block mb-1">{isAr ? 'المبلغ (درهم) *' : 'Montant (MAD) *'}</label>
-                    <input type="number" className="w-full px-3 py-2.5 text-sm border border-[#E8E5DE] rounded-xl focus:outline-none focus:border-emerald-400"
-                      placeholder="0.00" value={cashDropAmount} onChange={e => setCashDropAmount(e.target.value)} autoFocus />
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-[#6B6860] uppercase tracking-widest block mb-1">{isAr ? 'السبب *' : 'Motif *'}</label>
-                    <input type="text" className="w-full px-3 py-2.5 text-sm border border-[#E8E5DE] rounded-xl focus:outline-none focus:border-emerald-400"
-                      placeholder={isAr ? 'مثال: دفع دين قديم' : 'Ex: remboursement dette ancienne'}
-                      value={cashDropReason} onChange={e => setCashDropReason(e.target.value)} />
-                  </div>
-                </div>
-                <div className="flex gap-2 pt-1">
-                  <button type="button" onClick={() => { setCashDropOpen(false); setCashDropAmount(''); setCashDropReason('') }}
-                    className="flex-1 py-2.5 rounded-xl text-sm font-bold border border-[#E8E5DE] text-[#6B6860] hover:bg-[#F8F7F4] transition-all">
-                    {isAr ? 'إلغاء' : 'Annuler'}
-                  </button>
-                  <button type="button" disabled={cashDropSubmitting || !cashDropAmount || !cashDropReason.trim()}
-                    onClick={async () => {
-                      if (!cashDropAmount || !cashDropReason.trim()) return
-                      setCashDropSubmitting(true)
-                      try {
-                        const res = await fetch('/api/cash-drops', {
-                          method: 'POST', headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ amount: Number(cashDropAmount), reason: cashDropReason.trim(), store_id: storeId }),
-                        })
-                        if (!res.ok) throw new Error((await res.json()).error)
-                        showSuccess(isAr ? 'تم تسجيل الإيداع ✓' : 'Encaissement enregistré ✓')
-                        setCashDropOpen(false); setCashDropAmount(''); setCashDropReason('')
-                      } catch (err: unknown) {
-                        showError((err as Error).message)
-                      } finally { setCashDropSubmitting(false) }
-                    }}
-                    className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-40"
-                    style={{ backgroundColor: primary }}>
-                    {cashDropSubmitting ? '...' : (isAr ? 'تأكيد' : 'Confirmer')}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+          <CashDropModal
+            open={cashDropOpen}
+            onClose={() => setCashDropOpen(false)}
+            storeId={storeId}
+            isAr={isAr}
+            primary={primary}
+          />
         </div>
       </div>
 
-      {/* Exchange intake panel */}
       {exchangePanel?.open && (
         <div className="fixed inset-0 z-40 flex items-end lg:items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
-            <div className="p-5"><ExchangeIntakePanel /></div>
+            <div className="p-5">
+              <ExchangeIntakePanel
+                key={exchangePanel.txn_id}
+                exchangePanel={exchangePanel}
+                storeId={storeId}
+                isAr={isAr}
+                onSuccess={_phoneId => setExchangePanel(p => p ? { ...p, open: false } : null)}
+                onClose={() => setExchangePanel(p => p ? { ...p, open: false } : null)}
+              />
+            </div>
           </div>
         </div>
       )}
@@ -1202,76 +1066,24 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
       <RetourModal open={retourOpen} onClose={() => setRetourOpen(false)} storeId={storeId} primary={primary}
         onRetourDone={() => { setCart([]); setSaleForm({ ...EMPTY_SALE }) }} />
 
-      {/* Override PIN modal */}
-      <Modal open={overrideOpen} onClose={() => { setOverrideOpen(false); setOverridePin('') }}
-        title={isAr ? 'تجاوز السعر الأدنى' : 'Dérogation prix minimum'} size="sm">
-        <div className="space-y-4">
-          <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4">
-            <Lock className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-medium text-amber-800">{isAr ? 'السعر أقل من الحد الأدنى' : 'Prix sous le minimum autorisé'}</p>
-              <p className="text-xs text-amber-600 mt-0.5">{isAr ? 'يلزم كود PIN من المدير أو المالك' : 'Un manager ou propriétaire doit saisir son code PIN'}</p>
-            </div>
-          </div>
-          <Field label={isAr ? 'كود PIN (4 أرقام)' : 'Code PIN (4 chiffres)'}>
-            <input type="password" maxLength={4} className={`${inputClass} text-center text-2xl tracking-[0.5em] font-mono`}
-              value={overridePin} onChange={e => setOverridePin(e.target.value.replace(/\D/g, '').slice(0, 4))}
-              placeholder="••••" autoFocus />
-          </Field>
-          <Field label={isAr ? 'سبب التجاوز *' : 'Motif de dérogation *'}>
-            <input type="text" className={inputClass} value={overrideReason} onChange={e => setOverrideReason(e.target.value)}
-              placeholder={isAr ? 'مثال: موافقة العميل...' : 'Ex: Accord client, vente en gros...'} />
-          </Field>
-          <div className="flex gap-3 justify-end">
-            <Btn variant="secondary" onClick={() => { setOverrideOpen(false); setOverridePin('') }}>{isAr ? 'إلغاء' : 'Annuler'}</Btn>
-            <Btn variant="primary" onClick={verifyOverride} loading={overrideLoading} disabled={overridePin.length !== 4}
-              style={{ backgroundColor: primary } as React.CSSProperties}>
-              {isAr ? 'تأكيد' : 'Confirmer'}
-            </Btn>
-          </div>
-        </div>
-      </Modal>
+      <OverridePinModal
+        open={overrideOpen}
+        onClose={() => setOverrideOpen(false)}
+        overrideItem={overrideItem}
+        isAr={isAr}
+        primary={primary}
+        onAuthorized={handleOverrideAuthorized}
+      />
 
-      {/* Quantity picker modal */}
-      {qtyPicker && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs p-6 text-center">
-            <Package className="w-8 h-8 mx-auto mb-3" style={{ color: primary }} />
-            <p className="text-sm font-bold text-[#1A1A1A] mb-1 leading-snug line-clamp-2">
-              {qtyPicker.device._displayName}
-            </p>
-            <p className="text-xs text-[#B0ADA6] mb-5">
-              {formatMAD(getAccPrice(qtyPicker.device))} / {isAr ? 'وحدة' : 'unité'}
-            </p>
-            <div className="flex items-center justify-center gap-6 mb-6">
-              <button type="button"
-                onClick={() => setQtyPicker(p => p ? { ...p, qty: Math.max(1, p.qty - 1) } : p)}
-                className="w-11 h-11 rounded-xl border-2 border-[#E8E5DE] flex items-center justify-center text-[#6B6860] hover:border-red-300 hover:text-red-500 hover:bg-red-50 transition-all">
-                <Minus className="w-4 h-4" />
-              </button>
-              <span className="text-3xl font-bold text-[#1A1A1A] tabular-nums w-12 text-center">{qtyPicker.qty}</span>
-              <button type="button"
-                onClick={() => setQtyPicker(p => p ? { ...p, qty: p.qty + 1 } : p)}
-                className="w-11 h-11 rounded-xl border-2 border-[#E8E5DE] flex items-center justify-center text-[#6B6860] transition-all"
-                onMouseEnter={e => { e.currentTarget.style.borderColor = primary; e.currentTarget.style.color = primary }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = '#E8E5DE'; e.currentTarget.style.color = '#6B6860' }}>
-                <Plus className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="flex gap-2">
-              <button type="button" onClick={() => setQtyPicker(null)}
-                className="flex-1 py-2.5 rounded-xl text-sm font-bold border border-[#E8E5DE] text-[#6B6860] hover:bg-[#F8F7F4] transition-all">
-                {isAr ? 'إلغاء' : 'Annuler'}
-              </button>
-              <button type="button" onClick={confirmQtyPicker}
-                className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition-all"
-                style={{ backgroundColor: primary }}>
-                {isAr ? `إضافة ${qtyPicker.qty}` : `Ajouter × ${qtyPicker.qty}`}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <QtyPickerModal
+        device={qtyPicker ? { _id: qtyPicker.device._id, _displayName: qtyPicker.device._displayName, price: getAccPrice(qtyPicker.device) } : null}
+        qty={qtyPicker?.qty ?? 1}
+        onQtyChange={qty => setQtyPicker(p => p ? { ...p, qty } : p)}
+        onConfirm={confirmQtyPicker}
+        onClose={() => setQtyPicker(null)}
+        primary={primary}
+        isAr={isAr}
+      />
 
     </div>
   )
