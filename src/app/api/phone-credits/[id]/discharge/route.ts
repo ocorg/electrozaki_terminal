@@ -75,9 +75,11 @@ export async function POST(
     if (dischargeErr) throw dischargeErr
 
     // ── Créer stock entry pour le téléphone de reprise ──
+    // Guard: skip if reprise_phone_id is already set — means the reprise was
+    // entered at credit creation. Creating another entry would duplicate stock.
     let reprisePhoneId: string | null = null
 
-    if (hasReprise) {
+    if (hasReprise && !credit.reprise_phone_id) {
       const etatMap: Record<string, string> = {
         bon:     'مستعمل',
         moyen:   'مستعمل',
@@ -120,6 +122,9 @@ export async function POST(
         .eq('credit_id', creditId)
 
       if (repriseUpdateErr) throw repriseUpdateErr
+    } else if (hasReprise && credit.reprise_phone_id) {
+      // Reprise was already entered at credit creation — use the existing stock entry
+      reprisePhoneId = credit.reprise_phone_id as string
     }
 
     // ── حجز → مباع si téléphone réservé qui part maintenant ──

@@ -3,15 +3,17 @@ import { useState } from 'react'
 import { Menu } from 'lucide-react'
 import { PortalProvider } from '@/lib/context/portal'
 import PortalSidebar from '@/components/layout/PortalSidebar'
+import { useUser } from '@/lib/hooks/useUser'
 
 export default function BZGLayout({ children }: { children: React.ReactNode }) {
-    // Extra client-side guard (middleware is the primary gate but can fail open)
-  const { user } = require('@/lib/hooks/useUser').useUser?.() ?? {}
-  if (user && !['manager', 'owner'].includes(user.role)) {
-    return <div className="p-8 text-red-600 font-bold">Accès refusé.</div>
-  }
+  const { user, loading }             = useUser()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [collapsed, setCollapsed]     = useState(false)
+
+  // Client-side guard — all hooks called above, safe to return early here
+  if (!loading && user && !['manager', 'owner'].includes(user.role ?? '')) {
+    return <div className="p-8 text-red-600 font-bold">Accès refusé.</div>
+  }
 
   return (
     <PortalProvider type="bzg">

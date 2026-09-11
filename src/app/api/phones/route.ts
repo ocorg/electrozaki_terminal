@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
 
     validateRequired(
       body as Record<string, unknown>,
-      ['marque', 'model', 'status', 'date_entree']
+      ['marque', 'model', 'status']
     )
 
     const safeMarque      = typeof marque      === 'string' ? sanitizeText(marque)      : marque
@@ -105,7 +105,9 @@ export async function POST(request: NextRequest) {
         marque: safeMarque, serie, type: deviceType, couleur, model: safeModel, stockage,
         battery_level, ram, description: safeDescription, icloud_compte, icloud_mdp,
         prix_achat, prix_vente_recommande, prix_vente_minimum,
-        warranty_months, status, location, date_entree, image_url,
+        warranty_months, status, location,
+        date_entree: (date_entree as string | null) ?? new Date().toISOString().split('T')[0],
+        image_url,
         replaced_components, is_damaged, damage_notes,
         promo_type, promo_montant,
         store_id:   (body as Record<string, unknown>).store_id ?? profile?.store_id ?? null,

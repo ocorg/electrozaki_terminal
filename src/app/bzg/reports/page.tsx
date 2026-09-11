@@ -43,9 +43,9 @@ export default function BZGReportsPage() {
       const weekStart  = new Date(Date.now() - 7  * 86400000).toISOString().split('T')[0]
       const monthStart = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]
 
-      // Fetch all transactions for both stores
+      // Fetch transactions bounded to last 30 days — covers today, week, and month stats
       const [txnRes, repairRes, accRes] = await Promise.all([
-        fetch(`/api/transactions?limit=500`),
+        fetch(`/api/transactions?store_id=EZ-001&date_from=${monthStart}&limit=2000`),
         fetch(`/api/repairs?store_id=EZ-001`),
         fetch(`/api/accessories?store_id=EZ-001&low_stock=true`),
       ])

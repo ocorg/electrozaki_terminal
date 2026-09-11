@@ -137,14 +137,13 @@ export default function BZGDashboard() {
   async function approveEOD(caisseId: string) {
     setApproving(caisseId)
     try {
-      await (supabase as any)
-        .from('caisse')
-        .update({
-          status:      'closed',
-          approved_by: user?.id,
-          approved_at: new Date().toISOString(),
-        })
-        .eq('caisse_id', caisseId)
+      const res  = await fetch('/api/bzg/caisse/eod', {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ caisse_id: caisseId, action: 'approve' }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error)
       await fetchAll()
     } finally {
       setApproving(null)
@@ -153,16 +152,16 @@ export default function BZGDashboard() {
 
   async function rejectEOD(caisseId: string) {
     const note = prompt(isAr ? 'سبب الرفض:' : 'Motif du rejet :')
-    if (!note) return
+    if (!note || note.trim().length < 3) return
     setApproving(caisseId)
     try {
-      await (supabase as any)
-        .from('caisse')
-        .update({
-          status:         'open',
-          rejection_note: note,
-        })
-        .eq('caisse_id', caisseId)
+      const res  = await fetch('/api/bzg/caisse/eod', {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ caisse_id: caisseId, action: 'reject', rejection_note: note.trim() }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error)
       await fetchAll()
     } finally {
       setApproving(null)
