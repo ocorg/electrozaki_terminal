@@ -268,14 +268,26 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
     setCart(prev => prev.filter(c => c._id !== id))
   }
 
-  function updatePrice(id: string, prix: number) {
+  // onChange — updates cart freely, no validation while typing
+  function handlePriceChange(id: string, raw: string) {
+    if (raw === '' || raw === '-') return          // ignore empty / mid-type negatives
+    const prix = Number(raw)
+    if (isNaN(prix) || prix < 0) return
+    setCart(prev => prev.map(c => c._id === id ? { ...c, prix_vente_saisi: prix } : c))
+  }
+
+  // onBlur — minimum check fires once when the user leaves the field
+  function handlePriceBlur(id: string, raw: string) {
+    if (!raw) return
+    const prix = Number(raw)
+    if (isNaN(prix) || prix <= 0) return
     const item = cart.find(c => c._id === id)
     if (!item) return
     const min = (item as Phone).prix_vente_minimum
     if (isBelowMinimum(prix, min) && user?.role === 'staff') {
-      setOverrideItem({ ...item, prix_vente_saisi: prix }); setOverrideOpen(true); return
+      setOverrideItem({ ...item, prix_vente_saisi: prix })
+      setOverrideOpen(true)
     }
-    setCart(prev => prev.map(c => c._id === id ? { ...c, prix_vente_saisi: prix } : c))
   }
 
   // ── Override authorized callback (called by OverridePinModal) ─
@@ -703,7 +715,8 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                       <input type="number" min={0} step={0.01} inputMode="decimal"
                         className="w-24 border border-[#E8E5DE] rounded-lg px-2 py-1 text-xs font-bold text-right bg-white focus:outline-none"
                         value={item.prix_vente_saisi || ''}
-                        onChange={e => updatePrice(item._id, Number(e.target.value))}
+                        onChange={e => handlePriceChange(item._id, e.target.value)}
+                        onBlur={e   => handlePriceBlur(item._id, e.target.value)}
                         style={{ borderColor: isBelowMinimum(item.prix_vente_saisi, (item as Phone).prix_vente_minimum) ? '#F59E0B' : undefined }} />
                       {canSeeAchat && (item as Phone).prix_achat && (
                         <span className={`text-[10px] font-bold w-16 text-right flex-shrink-0 ${item.prix_vente_saisi - ((item as Phone).prix_achat || 0) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
