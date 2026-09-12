@@ -67,6 +67,7 @@ const TYPE_CFG: Record<string, { bg: string; color: string; border: string; desc
   A: { bg: '#FAF5E8', color: '#C9A440', border: '1px solid #E8D494', desc: 'Consignation' },
   B: { bg: '#EFF6FF', color: '#3B82F6', border: '1px solid #BFDBFE', desc: 'Paiement direct' },
   C: { bg: '#F5F3FF', color: '#7C3AED', border: '1px solid #DDD6FE', desc: 'Paiement direct' },
+  D: { bg: '#F0FDF4', color: '#16A34A', border: '1px solid #BBF7D0', desc: 'Paiement direct' },
 }
 
 const PAY_LABEL: Record<string, string> = {
@@ -891,6 +892,7 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
               <option value="A">A — Consignation (règlement sur ventes)</option>
               <option value="B">B — Paiement direct (groupe B)</option>
               <option value="C">C — Paiement direct (groupe C)</option>
+              <option value="D">D — Paiement direct (groupe D)</option>
             </select>
           </Field>
 

@@ -1,6 +1,5 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { useUser } from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
 import { formatMAD, formatDate } from '@/lib/utils'
@@ -45,7 +44,6 @@ interface StaffPunch {
 export default function BZGDashboard() {
   const { user }     = useUser()
   const { language } = useLanguageStore()
-  const supabase     = createClient()
   const isAr         = language === 'ar'
 
   const [snapshots, setSnapshots]     = useState<StoreSnapshot[]>([])
@@ -58,76 +56,13 @@ export default function BZGDashboard() {
   async function fetchAll() {
     setLoading(true)
     try {
-      const today      = new Date().toISOString().split('T')[0]
-      const monthStart = today.slice(0, 7) + '-01'
+      const res  = await fetch('/api/bzg/dashboard')
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? 'Erreur chargement dashboard')
 
-      const [txnRes, repairRes, caisseRes, staffRes] = await Promise.all([
-        supabase
-          .from('transactions')
-          .select('store_id, prix_vente, date_vente')
-          .eq('voided', false)
-          .gte('date_vente', monthStart),
-
-        supabase
-          .from('reparations')
-          .select('store_id, statut')
-          .neq('statut', 'تم الاستلام'),
-
-        supabase
-          .from('caisse')
-          .select('caisse_id, store_id, date, status, solde_reel, solde_theorique, ecart, eod_submitted_at, created_by')
-          .gte('date', monthStart)
-          .order('date', { ascending: false }),
-
-        supabase
-          .from('staff_attendance')
-          .select('user_name, store_id, punch_type, punched_at')
-          .eq('date', today)
-          .order('punched_at', { ascending: false }),
-      ])
-
-      const txns    = (txnRes.data    || []) as Record<string, unknown>[]
-      const repairs = (repairRes.data || []) as Record<string, unknown>[]
-      const caisses = (caisseRes.data || []) as Record<string, unknown>[]
-      const staff   = (staffRes.data  || []) as StaffPunch[]
-
-      // Build per-store snapshot
-      const snaps: StoreSnapshot[] = STORES.map(store => {
-        const storeTxns   = txns.filter(t => t.store_id === store.id)
-        const todayTxns   = storeTxns.filter(t => t.date_vente === today)
-        const monthTxns   = storeTxns
-        const storeRepairs = repairs.filter(r => r.store_id === store.id)
-
-        const todayCaisse = caisses.find(c => c.store_id === store.id && c.date === today)
-
-        return {
-          store_id:       store.id,
-          ca_today:       todayTxns.reduce((s, t) => s + ((t.prix_vente as number) || 0), 0),
-          ca_month:       monthTxns.reduce((s, t) => s + ((t.prix_vente as number) || 0), 0),
-          nb_ventes:      monthTxns.length,
-          active_repairs: storeRepairs.length,
-          caisse_status:  todayCaisse ? (todayCaisse.status as StoreSnapshot['caisse_status']) : 'none',
-          caisse_id:      todayCaisse?.caisse_id as string | undefined,
-        }
-      })
-
-      // Pending EOD approvals
-      const pending: PendingEOD[] = caisses
-        .filter(c => c.status === 'pending_eod')
-        .map(c => ({
-          caisse_id:       c.caisse_id as string,
-          store_id:        c.store_id as string,
-          store_name:      STORES.find(s => s.id === c.store_id)?.name ?? c.store_id as string,
-          date:            c.date as string,
-          solde_reel:      c.solde_reel as number | null,
-          solde_theorique: c.solde_theorique as number | null,
-          ecart:           c.ecart as number | null,
-          submitted_by:    c.created_by as string ?? '—',
-        }))
-
-      setSnapshots(snaps)
-      setPendingEOD(pending)
-      setStaffToday(staff)
+      setSnapshots(json.snapshots   ?? [])
+      setPendingEOD(json.pendingEOD ?? [])
+      setStaffToday(json.staffToday ?? [])
       setLastSync(new Date())
     } finally {
       setLoading(false)

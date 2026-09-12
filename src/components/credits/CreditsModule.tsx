@@ -24,6 +24,8 @@ interface CreditImport {
   client_phone_free: string | null
   store_id:          string
   montant_du:        number
+  montant_paye:      number
+  statut:            'en_cours' | 'soldé'
   description:       string | null
   date_origine:      string
   notes:             string | null
@@ -88,6 +90,12 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
   const [linkTarget, setLinkTarget]   = useState<CreditImport | null>(null)
   const [linkSearch, setLinkSearch]   = useState('')
   const [linkSuggestions, setLinkSuggestions] = useState<ClientSuggestion[]>([])
+
+  // Import payment modal
+  const [importPayTarget, setImportPayTarget] = useState<CreditImport | null>(null)
+  const [importPayForm,   setImportPayForm]   = useState<PaymentForm>({
+    montant: '', payment_method: 'نقد', payment_ref: '', notes: '',
+  })
 
   // ── Fetch credits list (clients with solde_impaye > 0) ─────
   const fetchCredits = useCallback(async () => {
@@ -237,6 +245,43 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
     } finally {
       setSubmitting(false)
     }
+  }
+
+  // ── Record payment against an imported credit ─────────────
+  async function submitImportPayment() {
+    if (!importPayTarget) return
+    const montant   = parseFloat(importPayForm.montant)
+    const remaining = importPayTarget.montant_du - (importPayTarget.montant_paye ?? 0)
+    if (!montant || montant <= 0) { showError('Montant invalide'); return }
+    if (montant > remaining + 0.01) {
+      showError(`Montant dépasse le restant (${formatMAD(remaining)})`); return
+    }
+    if (importPayForm.payment_method === 'تحويل' && !importPayForm.payment_ref) {
+      showError('Référence virement requise'); return
+    }
+    setSubmitting(true)
+    try {
+      const res  = await fetch('/api/credit-imports/payments', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          import_id:      importPayTarget.import_id,
+          store_id:       storeId,
+          montant,
+          payment_method: importPayForm.payment_method,
+          payment_ref:    importPayForm.payment_ref || undefined,
+          notes:          importPayForm.notes || undefined,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error)
+      showSuccess(isAr ? 'تم تسجيل الدفع ✓' : 'Paiement enregistré ✓')
+      setImportPayTarget(null)
+      setImportPayForm({ montant: '', payment_method: 'نقد', payment_ref: '', notes: '' })
+      await fetchImports()
+    } catch (err: unknown) {
+      showError((err as Error).message)
+    } finally { setSubmitting(false) }
   }
 
   // ── Delete import ─────────────────────────────────────────
@@ -511,11 +556,36 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
                             {imp.description && ` · ${imp.description}`}
                           </p>
                         </div>
-                        <p className="text-sm font-bold text-red-500 flex-shrink-0">
-                          {formatMAD(imp.montant_du)}
-                        </p>
+                        <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
+                          <p className={`text-sm font-bold ${imp.statut === 'soldé' ? 'text-emerald-600' : 'text-red-500'}`}>
+                            {imp.statut === 'soldé'
+                              ? formatMAD(0)
+                              : formatMAD(imp.montant_du - (imp.montant_paye ?? 0))}
+                          </p>
+                          {(imp.montant_paye ?? 0) > 0 && (
+                            <p className="text-[10px] text-[#B0ADA6]">
+                              {formatMAD(imp.montant_paye)} / {formatMAD(imp.montant_du)} {isAr ? 'مدفوع' : 'payé'}
+                            </p>
+                          )}
+                          {imp.statut === 'soldé' && (
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
+                              {isAr ? 'مسدد' : 'Soldé'}
+                            </span>
+                          )}
+                        </div>
                         <div className="flex gap-2 flex-shrink-0">
-                          {isUnlinked && (
+                          {imp.statut !== 'soldé' && (
+                            <button
+                              onClick={() => {
+                                setImportPayTarget(imp)
+                                setImportPayForm({ montant: '', payment_method: 'نقد', payment_ref: '', notes: '' })
+                              }}
+                              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-all">
+                              <DollarSign className="w-3 h-3" />
+                              {isAr ? 'دفع' : 'Payer'}
+                            </button>
+                          )}
+                          {isUnlinked && imp.statut !== 'soldé' && (
                             <button
                               onClick={() => { setLinkTarget(imp); setLinkSearch('') }}
                               className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition-all">
@@ -593,6 +663,72 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
                 {isAr ? 'إلغاء' : 'Annuler'}
               </button>
               <button onClick={submitPayment} disabled={submitting}
+                className="flex-1 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 transition-all disabled:opacity-50">
+                {submitting ? '...' : (isAr ? 'تأكيد الدفع' : 'Confirmer')}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* ── Import Payment Modal ─────────────────────────── */}
+      {importPayTarget && (
+        <Modal
+          open={importPayTarget !== null}
+          title={isAr
+            ? `دفع دين مستورد — ${importPayTarget.clients?.nom ?? importPayTarget.client_name_free ?? '—'}`
+            : `Paiement import — ${importPayTarget.clients?.nom ?? importPayTarget.client_name_free ?? '—'}`}
+          onClose={() => setImportPayTarget(null)}>
+          <div className="space-y-4">
+            <div className="p-3 bg-red-50 border border-red-100 rounded-xl">
+              <p className="text-xs text-red-700 font-medium">
+                {isAr ? 'الرصيد المتبقي:' : 'Restant à payer :'}{' '}
+                <span className="font-bold">
+                  {formatMAD(importPayTarget.montant_du - (importPayTarget.montant_paye ?? 0))}
+                </span>
+              </p>
+              {(importPayTarget.montant_paye ?? 0) > 0 && (
+                <p className="text-xs text-[#6B6860] mt-1">
+                  {isAr ? 'مدفوع مسبقاً:' : 'Déjà réglé :'}{' '}
+                  <span className="font-bold text-emerald-700">{formatMAD(importPayTarget.montant_paye)}</span>
+                  {' '}{isAr ? 'من أصل' : 'sur'}{' '}
+                  <span className="font-bold">{formatMAD(importPayTarget.montant_du)}</span>
+                </p>
+              )}
+            </div>
+            <Field label={isAr ? 'المبلغ المحصل (درهم) *' : 'Montant encaissé (MAD) *'}>
+              <input className={inputClass} type="number" min="0" step="0.01"
+                inputMode="decimal"
+                value={importPayForm.montant}
+                onChange={e => setImportPayForm(f => ({ ...f, montant: e.target.value }))}
+                autoFocus />
+            </Field>
+            <Field label={isAr ? 'طريقة الدفع' : 'Méthode de paiement'}>
+              <select className={selectClass} value={importPayForm.payment_method}
+                onChange={e => setImportPayForm(f => ({ ...f, payment_method: e.target.value as 'نقد' | 'تحويل' }))}>
+                <option value="نقد">{isAr ? 'نقداً' : 'Espèces'}</option>
+                <option value="تحويل">{isAr ? 'تحويل بنكي' : 'Virement'}</option>
+              </select>
+            </Field>
+            {importPayForm.payment_method === 'تحويل' && (
+              <Field label={isAr ? 'مرجع التحويل *' : 'Référence virement *'}>
+                <input className={inputClass} placeholder="REF-..."
+                  value={importPayForm.payment_ref}
+                  onChange={e => setImportPayForm(f => ({ ...f, payment_ref: e.target.value }))} />
+              </Field>
+            )}
+            <Field label={isAr ? 'ملاحظات' : 'Notes'}>
+              <input className={inputClass}
+                placeholder={isAr ? 'ملاحظات...' : 'Notes...'}
+                value={importPayForm.notes}
+                onChange={e => setImportPayForm(f => ({ ...f, notes: e.target.value }))} />
+            </Field>
+            <div className="flex gap-3 pt-2">
+              <button onClick={() => setImportPayTarget(null)}
+                className="flex-1 py-2.5 rounded-xl border border-[#E8E5DE] text-sm font-bold text-[#6B6860] hover:bg-[#F8F7F4] transition-all">
+                {isAr ? 'إلغاء' : 'Annuler'}
+              </button>
+              <button onClick={submitImportPayment} disabled={submitting}
                 className="flex-1 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 transition-all disabled:opacity-50">
                 {submitting ? '...' : (isAr ? 'تأكيد الدفع' : 'Confirmer')}
               </button>
