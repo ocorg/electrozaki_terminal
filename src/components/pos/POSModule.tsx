@@ -150,7 +150,8 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
   const [selectedClientId,   setSelectedClientId]    = useState<string | null>(null)
   const clientSearchRef = useRef<ReturnType<typeof setTimeout>>()
 
-  const [cashDropOpen, setCashDropOpen] = useState(false)
+  const [cashDropOpen,  setCashDropOpen]  = useState(false)
+  const [priceInputs,   setPriceInputs]   = useState<Record<string, string>>({})
 
   // ── Search: phones + accessories + laptops ─────────────────
   useEffect(() => {
@@ -268,17 +269,22 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
     setCart(prev => prev.filter(c => c._id !== id))
   }
 
-  // onChange — updates cart freely, no validation while typing
+  // onChange — always update the raw string; only sync to cart when valid
   function handlePriceChange(id: string, raw: string) {
-    if (raw === '' || raw === '-') return          // ignore empty / mid-type negatives
+    setPriceInputs(p => ({ ...p, [id]: raw }))
+    if (raw === '') return                          // allow field to show empty while typing
     const prix = Number(raw)
     if (isNaN(prix) || prix < 0) return
     setCart(prev => prev.map(c => c._id === id ? { ...c, prix_vente_saisi: prix } : c))
   }
 
-  // onBlur — minimum check fires once when the user leaves the field
+  // onBlur — clear raw state so cart value takes over; then check minimum
   function handlePriceBlur(id: string, raw: string) {
-    if (!raw) return
+    setPriceInputs(p => { const n = { ...p }; delete n[id]; return n })
+    if (!raw) {
+      setCart(prev => prev.map(c => c._id === id ? { ...c, prix_vente_saisi: 0 } : c))
+      return
+    }
     const prix = Number(raw)
     if (isNaN(prix) || prix <= 0) return
     const item = cart.find(c => c._id === id)
@@ -461,7 +467,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
           echange_vers_reparation: saleForm.echange_vers_reparation ?? false,
         })
       }
-      setCart([]); setSaleForm({ ...EMPTY_SALE }); setOverrideAuthorizedBy(null); setOverrideReason(''); setSelectedClientId(null); setClientSuggestions([])
+      setCart([]); setPriceInputs({}); setSaleForm({ ...EMPTY_SALE }); setOverrideAuthorizedBy(null); setOverrideReason(''); setSelectedClientId(null); setClientSuggestions([])
     } catch (err: unknown) {
       showError((err as Error).message)
     } finally { setSubmitting(false) }
@@ -714,7 +720,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                       )}
                       <input type="number" min={0} step={0.01} inputMode="decimal"
                         className="w-24 border border-[#E8E5DE] rounded-lg px-2 py-1 text-xs font-bold text-right bg-white focus:outline-none"
-                        value={item.prix_vente_saisi || ''}
+                        value={priceInputs[item._id] !== undefined ? priceInputs[item._id] : (item.prix_vente_saisi || '')}
                         onChange={e => handlePriceChange(item._id, e.target.value)}
                         onBlur={e   => handlePriceBlur(item._id, e.target.value)}
                         style={{ borderColor: isBelowMinimum(item.prix_vente_saisi, (item as Phone).prix_vente_minimum) ? '#F59E0B' : undefined }} />
@@ -1036,7 +1042,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
 
           {/* Reset */}
           <button type="button"
-            onClick={() => { setCart([]); setSaleForm({ ...EMPTY_SALE }); setOverrideAuthorizedBy(null); setOverrideReason(''); setSelectedClientId(null); setClientSuggestions([]) }}
+            onClick={() => { setCart([]); setPriceInputs({}); setSaleForm({ ...EMPTY_SALE }); setOverrideAuthorizedBy(null); setOverrideReason(''); setSelectedClientId(null); setClientSuggestions([]) }}
             className="w-full py-2.5 rounded-2xl text-xs font-bold border border-[#E8E5DE] text-[#B0ADA6] hover:border-red-300 hover:text-red-400 transition-all">
             {isAr ? '× مسح الكل' : '× Réinitialiser'}
           </button>

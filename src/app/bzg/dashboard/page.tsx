@@ -9,6 +9,21 @@ import {
   RefreshCw, Clock, CheckCircle, XCircle, AlertTriangle
 } from 'lucide-react'
 
+// Simple fetch with retry helper used by this dashboard
+async function fetchWithRetry(input: RequestInfo, init?: RequestInit, retries = 2, backoff = 500) {
+  let lastErr: any
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(input, init)
+      return res
+    } catch (err) {
+      lastErr = err
+      if (attempt < retries) await new Promise(r => setTimeout(r, backoff * (attempt + 1)))
+    }
+  }
+  throw lastErr
+}
+
 const STORES = [
   { id: 'EZ-001', name: 'Electro Zaki', color: '#C9A440', bg: '#FAF5E8' },
 ]
@@ -56,7 +71,7 @@ export default function BZGDashboard() {
   async function fetchAll() {
     setLoading(true)
     try {
-      const res  = await fetch('/api/bzg/dashboard')
+      const res  = await fetchWithRetry('/api/bzg/dashboard')
       const json = await res.json()
       if (!res.ok) throw new Error(json.error ?? 'Erreur chargement dashboard')
 

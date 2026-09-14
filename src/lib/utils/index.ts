@@ -90,3 +90,21 @@ export function isValidMoroccanPhone(phone: string): boolean {
 export function generateBarcodeId(accId: string): string {
   return accId // acc_id already follows EZ-ACC-000001 format
 }
+
+/**
+ * Drop-in replacement for fetch() that handles the Supabase token-refresh
+ * race condition. On a 401, waits 800ms for the new token to be written
+ * then retries the request once. The user never sees the error.
+ */
+export async function fetchWithRetry(
+  url: string,
+  options?: RequestInit,
+  retries = 1
+): Promise<Response> {
+  const res = await fetch(url, options)
+  if (res.status === 401 && retries > 0) {
+    await new Promise(r => setTimeout(r, 800))
+    return fetchWithRetry(url, options, retries - 1)
+  }
+  return res
+}

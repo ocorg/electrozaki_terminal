@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useUser } from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
 import { usePortal } from '@/lib/context/portal'
-import { formatMAD, formatDate, getBusinessDate } from '@/lib/utils'
+import { formatMAD, formatDate, getBusinessDate, fetchWithRetry } from '@/lib/utils'
 import { Btn, Field, inputClass, Modal } from '@/components/shared'
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import {
