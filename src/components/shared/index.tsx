@@ -113,12 +113,15 @@ export function SkeletonRow() {
 }
 
 // ── Modal wrapper ─────────────────────────────────────────────
-export function Modal({ open, onClose, title, children, size = 'md' }: {
+let modalIdCounter = 0
+
+export function Modal({ open, onClose, title, children, size = 'md', closeLabel }: {
   open: boolean
   onClose: () => void
   title: string
   children: React.ReactNode
   size?: 'sm' | 'md' | 'lg' | 'xl'
+  closeLabel?: string
 }) {
   // Escape key closes the modal
   React.useEffect(() => {
@@ -128,15 +131,19 @@ export function Modal({ open, onClose, title, children, size = 'md' }: {
     return () => document.removeEventListener('keydown', handler)
   }, [open, onClose])
 
+  const titleId = React.useRef(`modal-title-${++modalIdCounter}`).current
+
   if (!open) return null
   const widths = { sm: 'max-w-md', md: 'max-w-xl', lg: 'max-w-2xl', xl: 'max-w-4xl' }
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className={`relative w-full ${widths[size]} bg-white rounded-2xl shadow-[0_24px_64px_rgba(0,0,0,0.15)] max-h-[90vh] flex flex-col`}>
+      <div role="dialog" aria-modal="true" aria-labelledby={titleId}
+           className={`relative w-full ${widths[size]} bg-white rounded-2xl shadow-[0_24px_64px_rgba(0,0,0,0.15)] max-h-[90vh] flex flex-col`}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-ez-border flex-shrink-0">
-          <h2 className="font-display text-lg font-bold text-ez-text tracking-wide">{title}</h2>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg text-ez-subtle hover:text-ez-text hover:bg-ez-muted transition-all text-lg leading-none">×</button>
+          <h2 id={titleId} className="font-display text-lg font-bold text-ez-text tracking-wide">{title}</h2>
+          <button onClick={onClose} aria-label={closeLabel ?? 'Fermer'}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg text-ez-subtle hover:text-ez-text hover:bg-ez-muted transition-all text-lg leading-none">×</button>
         </div>
         <div className="overflow-y-auto flex-1 p-6">
           {children}

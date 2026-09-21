@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Lock } from 'lucide-react'
 import { Modal, Field, Btn, inputClass } from '@/components/shared'
 import { showSuccess, showError } from '@/lib/utils/toasts'
+import { t } from '@/lib/i18n/t'
 
 interface Props {
   open:         boolean
@@ -74,10 +75,10 @@ export default function OverridePinModal({ open, onClose, isAr, primary, onAutho
             placeholder={isAr ? 'مثال: موافقة العميل...' : 'Ex: Accord client, vente en gros...'} />
         </Field>
         <div className="flex gap-3 justify-end">
-          <Btn variant="secondary" onClick={handleClose}>{isAr ? 'إلغاء' : 'Annuler'}</Btn>
+          <Btn variant="secondary" onClick={handleClose}>{t(isAr, 'common.cancel')}</Btn>
           <Btn variant="primary" onClick={handleVerify} loading={loading} disabled={pin.length !== 4}
             style={{ backgroundColor: primary } as React.CSSProperties}>
-            {isAr ? 'تأكيد' : 'Confirmer'}
+            {t(isAr, 'common.confirm')}
           </Btn>
         </div>
       </div>

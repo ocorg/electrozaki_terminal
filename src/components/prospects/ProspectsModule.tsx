@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useUser }          from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
+import { t } from '@/lib/i18n/t'
 import { usePortal }        from '@/lib/context/portal'
 import { formatDate }       from '@/lib/utils'
 import { usePhoneCatalog }  from '@/lib/hooks/usePhoneCatalog'
@@ -104,8 +105,8 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
   }, [storeId, filterStatus, filterSource, filterType, search])
 
   useEffect(() => {
-    const t = setTimeout(() => fetchProspects(), search ? 300 : 0)
-    return () => clearTimeout(t)
+    const timer = setTimeout(() => fetchProspects(), search ? 300 : 0)
+    return () => clearTimeout(timer)
   }, [fetchProspects, search])
 
   // Stock match — returns matching available phones for a given prospect
@@ -194,7 +195,7 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
       showSuccess(editProspect
-        ? (isAr ? 'تم التعديل ✓' : 'Modifié ✓')
+        ? (t(isAr, 'common.editedOk'))
         : (isAr ? 'تم إضافة الطلب ✓' : 'Prospect ajouté ✓'))
       closeForm()
       fetchProspects()
@@ -227,7 +228,7 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
       const res  = await fetch(`/api/prospects?prospect_id=${prospect_id}`, { method: 'DELETE' })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
-      showSuccess(isAr ? 'تم الحذف ✓' : 'Supprimé ✓')
+      showSuccess(t(isAr, 'common.deletedOk'))
       fetchProspects()
     } catch (err: unknown) {
       showError((err as Error).message)
@@ -287,7 +288,7 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
           <select
             className="text-sm border border-[#E8E5DE] rounded-xl px-3 py-1.5 bg-white text-[#6B6860] focus:outline-none"
             value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-            <option value="">{isAr ? 'كل الحالات' : 'Tous statuts'}</option>
+            <option value="">{t(isAr, 'common.allStatuses')}</option>
             {STATUTS.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
 
@@ -301,7 +302,7 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
           <select
             className="text-sm border border-[#E8E5DE] rounded-xl px-3 py-1.5 bg-white text-[#6B6860] focus:outline-none"
             value={filterType} onChange={e => setFilterType(e.target.value)}>
-            <option value="">{isAr ? 'كل الأنواع' : 'Tous types'}</option>
+            <option value="">{t(isAr, 'common.allTypes')}</option>
             <option value="modele">{isAr ? 'موديل محدد' : 'Modèle précis'}</option>
             <option value="budget">{isAr ? 'ميزانية' : 'Budget'}</option>
           </select>
@@ -310,7 +311,7 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
             <button onClick={clearFilters}
               className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 transition-colors">
               <X className="w-3 h-3" />
-              {isAr ? 'مسح الكل' : 'Effacer tout'}
+              {t(isAr, 'common.clearAll')}
             </button>
           )}
         </div>
@@ -334,7 +335,7 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
             <ClipboardList className="w-10 h-10 text-[#B0ADA6] mb-3 opacity-40" />
             <p className="text-sm text-[#6B6860] mb-4">
               {hasFilters
-                ? (isAr ? 'لا توجد نتائج لهذه التصفية' : 'Aucun résultat pour ces filtres')
+                ? (t(isAr, 'common.noResultsFiltered'))
                 : (isAr ? 'لا توجد طلبات بعد' : 'Aucun prospect pour le moment')}
             </p>
             {!hasFilters && (
@@ -489,13 +490,13 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
 
           {/* Name + Phone */}
           <div className="grid grid-cols-2 gap-3">
-            <Field label={isAr ? 'الاسم *' : 'Nom *'}>
+            <Field label={t(isAr, 'common.nameRequired')}>
               <input type="text" className={inputClass}
                 placeholder={isAr ? 'اسم الزبون' : 'Nom du client'}
                 value={form.nom}
                 onChange={e => setF('nom', e.target.value)} />
             </Field>
-            <Field label={isAr ? 'الهاتف' : 'Téléphone'}>
+            <Field label={t(isAr, 'common.phoneField')}>
               <input type="tel" className={inputClass} placeholder="06XXXXXXXX"
                 value={form.telephone as string}
                 onChange={e => setF('telephone', e.target.value)} />
@@ -541,7 +542,7 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
                 options={brands}
                 value={form.marque as string}
                 onChange={v => { setF('marque', v); setF('model', '') }}
-                placeholder={isAr ? 'الماركة' : 'Marque'}
+                placeholder={t(isAr, 'common.brand')}
               />
               <ComboBox
                 options={modelsFor(form.marque as string)}
@@ -549,7 +550,7 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
                 onChange={v => setF('model', v)}
                 placeholder={!form.marque
                   ? (isAr ? 'اختر الماركة أولاً' : 'Choisissez d\'abord la marque')
-                  : (isAr ? 'الموديل' : 'Modèle')}
+                  : (t(isAr, 'common.model'))}
                 disabled={!form.marque}
               />
               <ComboBox
@@ -569,7 +570,7 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
           )}
 
           {/* Notes */}
-          <Field label={isAr ? 'ملاحظات' : 'Notes'}>
+          <Field label={t(isAr, 'common.notes')}>
             <textarea className={`${inputClass} resize-none`} rows={2}
               placeholder={isAr ? 'تفاصيل، تفضيلات، متابعة...' : 'Détails, préférences, suivi...'}
               value={form.notes as string}
@@ -579,12 +580,12 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
           {/* Actions */}
           <div className="flex gap-3 justify-end pt-1 border-t border-[#E8E5DE]">
             <Btn variant="secondary" onClick={closeForm}>
-              {isAr ? 'إلغاء' : 'Annuler'}
+              {t(isAr, 'common.cancel')}
             </Btn>
             <Btn variant="primary" loading={saving} onClick={handleSubmit}
               style={{ backgroundColor: primary } as React.CSSProperties}>
               {editProspect
-                ? (isAr ? 'حفظ التعديلات' : 'Enregistrer les modifications')
+                ? (t(isAr, 'common.saveEditsFull'))
                 : (isAr ? 'إضافة الطلب'    : 'Ajouter le prospect')}
             </Btn>
           </div>

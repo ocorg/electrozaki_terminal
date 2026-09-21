@@ -6,6 +6,7 @@ import { showSuccess, showError } from '@/lib/utils/toasts'
 import { formatMAD, computePromoPrice } from '@/lib/utils'
 import { usePortal } from '@/lib/context/portal'
 import { useLanguageStore } from '@/lib/stores/language'
+import { t } from '@/lib/i18n/t'
 import type { Phone, DeviceCondition, DeviceSource, LocationType } from '@/types/database'
 import ScanButton from '@/components/scanner/ScanButton'
 import ComboBox from '@/components/phones/ComboBox'
@@ -122,7 +123,7 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!form.marque || !form.model) {
-      showError(isAr ? 'الماركة والموديل مطلوبان' : 'Marque et modèle obligatoires')
+      showError(t(isAr, 'common.brandModelRequired'))
       return
     }
     setLoading(true)
@@ -147,8 +148,8 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
       showSuccess(isEdit
-        ? (isAr ? 'تم التعديل ✓' : 'Modifié ✓')
-        : (isAr ? 'تم الإضافة ✓' : 'Ajouté ✓'))
+        ? (t(isAr, 'common.editedOk'))
+        : (t(isAr, 'common.addedOk')))
       onSaved()
       onClose()
     } catch (err: unknown) {
@@ -171,7 +172,7 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
 
         {/* Row 1 — Source + Condition */}
         <div className="grid grid-cols-2 gap-4">
-          <Field label={isAr ? 'المصدر' : 'Source'} required>
+          <Field label={t(isAr, 'common.source')} required>
             <select className={selectClass} value={form.source || ''} onChange={e => {
               set('source', e.target.value as DeviceSource)
               if (e.target.value !== 'Fournisseur') set('fournisseur_id', null)
@@ -181,18 +182,18 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
               <option value="Échange">Échange</option>
             </select>
           </Field>
-          <Field label={isAr ? 'الحالة' : 'Condition'} required>
+          <Field label={t(isAr, 'common.deviceCondition')} required>
             <select className={selectClass} value={form.condition || ''} onChange={e => set('condition', e.target.value as DeviceCondition)}>
-              <option value="جديد">{isAr ? 'جديد' : 'Neuf'}</option>
-              <option value="مستعمل">{isAr ? 'مستعمل' : 'Occasion'}</option>
-              <option value="معطوب">{isAr ? 'معطوب' : 'Défectueux'}</option>
+              <option value="جديد">{t(isAr, 'common.new')}</option>
+              <option value="مستعمل">{t(isAr, 'common.used')}</option>
+              <option value="معطوب">{t(isAr, 'common.damaged')}</option>
             </select>
           </Field>
         </div>
 
         {/* Fournisseur — visible uniquement si source = Fournisseur */}
         {form.source === 'Fournisseur' && (
-          <Field label={isAr ? 'المورد' : 'Fournisseur'}>
+          <Field label={t(isAr, 'common.supplier')}>
             <select
               className={selectClass}
               value={form.fournisseur_id || ''}
@@ -225,7 +226,7 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
         )}
 
         {/* Row 2 — Marque */}
-        <Field label={isAr ? 'الماركة' : 'Marque'} required>
+        <Field label={t(isAr, 'common.brand')} required>
           <ComboBox
             options={brands}
             value={form.marque ?? ''}
@@ -248,7 +249,7 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
               disabled={!form.marque}
             />
           </Field>
-          <Field label={isAr ? 'الموديل' : 'Modèle'} required>
+          <Field label={t(isAr, 'common.model')} required>
             <ComboBox
               options={modelOptions}
               value={form.model ?? ''}
@@ -261,7 +262,7 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
 
         {/* Row 4 — Stockage + RAM (non-Apple) + Couleur */}
         <div className={`grid gap-4 ${isApple ? 'grid-cols-2' : 'grid-cols-3'}`}>
-          <Field label={isAr ? 'السعة' : 'Stockage'}>
+          <Field label={t(isAr, 'common.storage')}>
             <ComboBox
               options={STOCKAGES}
               value={form.stockage ?? ''}
@@ -339,9 +340,9 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
 
         {/* Row 6 — Statut + Emplacement */}
         <div className="grid grid-cols-2 gap-4">
-          <Field label={isAr ? 'الحالة في المخزون' : 'Statut'} required>
+          <Field label={t(isAr, 'common.stockStatus')} required>
             <select className={selectClass} value={form.status || 'متوفر'} onChange={e => set('status', e.target.value)}>
-              <option value="متوفر">{isAr ? 'متوفر' : 'Disponible'}</option>
+              <option value="متوفر">{t(isAr, 'common.available')}</option>
               <option value="حجز">{isAr ? 'محجوز' : 'Réservé'}</option>
               <option value="مباع">{isAr ? 'مباع' : 'Vendu'}</option>
               <option value="إستبدال">{isAr ? 'مستبدل' : 'Échangé'}</option>
@@ -349,11 +350,11 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
               <option value="en_transfert">{isAr ? 'في النقل' : 'En transfert'}</option>
             </select>
           </Field>
-          <Field label={isAr ? 'الموقع' : 'Emplacement'}>
+          <Field label={t(isAr, 'common.location')}>
             <select className={selectClass} value={form.location || 'Magasin Principal'} onChange={e => set('location', e.target.value as LocationType)}>
-              <option value="Magasin Principal">{isAr ? 'المحل الرئيسي' : 'Magasin Principal'}</option>
-              <option value="Magasin Secondaire">{isAr ? 'المحل الثاني' : 'Magasin Secondaire'}</option>
-              <option value="Externe">{isAr ? 'خارجي' : 'Externe'}</option>
+              <option value="Magasin Principal">{t(isAr, 'common.mainStore')}</option>
+              <option value="Magasin Secondaire">{t(isAr, 'common.secondaryStore')}</option>
+              <option value="Externe">{t(isAr, 'common.external')}</option>
             </select>
           </Field>
         </div>
@@ -366,7 +367,7 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
         </Field>
 
         {/* Description */}
-        <Field label={isAr ? 'الوصف' : 'Description'}>
+        <Field label={t(isAr, 'common.description')}>
           <textarea
             className={`${inputClass} resize-none`}
             rows={2}
@@ -474,10 +475,10 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
         {!canSeeFinancials && (
           <div className="border-t border-[#E8E5DE] pt-4">
             <p className="text-xs font-bold text-[#6B6860] uppercase tracking-widest mb-4">
-              {isAr ? 'أسعار البيع' : 'Prix de vente'}
+              {t(isAr, 'common.salePrices')}
             </p>
             <div className="grid grid-cols-2 gap-4">
-              <Field label={isAr ? 'سعر البيع المقترح' : 'Prix vente recommandé'}>
+              <Field label={t(isAr, 'common.recommendedSalePrice')}>
                 <input
                   type="number"
                   readOnly
@@ -486,7 +487,7 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
                   value={form.prix_vente_recommande ?? ''}
                 />
               </Field>
-              <Field label={isAr ? 'سعر البيع الأدنى' : 'Prix vente minimum'}>
+              <Field label={t(isAr, 'common.minSalePrice')}>
                 <input
                   type="number"
                   readOnly
@@ -507,15 +508,15 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
                 {isAr ? 'الأسعار (للإدارة فقط)' : 'Prix & marges (gestion uniquement)'}
               </p>
               <div className="grid grid-cols-3 gap-4">
-                <Field label={isAr ? 'سعر الشراء' : 'Prix achat'}>
+                <Field label={t(isAr, 'common.purchasePrice')}>
                   <input type="number" min={0} step={0.01} className={inputClass} placeholder="0.00"
                     value={form.prix_achat ?? ''} onChange={e => set('prix_achat', e.target.value ? Number(e.target.value) : undefined)} />
                 </Field>
-                <Field label={isAr ? 'سعر البيع المقترح' : 'Prix vente recommandé'}>
+                <Field label={t(isAr, 'common.recommendedSalePrice')}>
                   <input type="number" min={0} step={0.01} className={inputClass} placeholder="0.00"
                     value={form.prix_vente_recommande ?? ''} onChange={e => set('prix_vente_recommande', e.target.value ? Number(e.target.value) : undefined)} />
                 </Field>
-                <Field label={isAr ? 'سعر البيع الأدنى' : 'Prix vente minimum'}>
+                <Field label={t(isAr, 'common.minSalePrice')}>
                   <input type="number" min={0} step={0.01} className={inputClass} placeholder="0.00"
                     value={form.prix_vente_minimum ?? ''} onChange={e => set('prix_vente_minimum', e.target.value ? Number(e.target.value) : undefined)} />
                 </Field>
@@ -592,12 +593,12 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
         {/* Actions */}
         <div className="flex gap-3 justify-end pt-2 border-t border-[#E8E5DE]">
           <Btn variant="secondary" type="button" onClick={onClose}>
-            {isAr ? 'إلغاء' : 'Annuler'}
+            {t(isAr, 'common.cancel')}
           </Btn>
           <Btn variant="primary" type="submit" loading={loading}
             style={{ backgroundColor: primary } as React.CSSProperties}>
             {isEdit
-              ? (isAr ? 'حفظ التعديلات' : 'Enregistrer les modifications')
+              ? (t(isAr, 'common.saveEditsFull'))
               : (isAr ? 'إضافة الهاتف' : 'Ajouter le téléphone')}
           </Btn>
         </div>

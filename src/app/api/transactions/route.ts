@@ -41,11 +41,9 @@ export async function GET(request: NextRequest) {
       const fariq =
         paymentMethod === 'إستبدال'
           ? 0
-          : paymentMethod === 'آجل'
-            ? Math.max(0, (t.prix_vente as number) - ((t.valeur_echange as number) || 0))
-            : avance > 0
-              ? Math.max(0, (t.prix_vente as number) - avance - ((t.valeur_echange as number) || 0))
-              : 0
+          : paymentMethod === 'آجل' || avance > 0
+            ? Math.max(0, (t.prix_vente as number) - avance - ((t.valeur_echange as number) || 0))
+            : 0
       return {
         ...t,
         fariq,
@@ -120,14 +118,17 @@ export async function POST(request: NextRequest) {
         .update({ status: 'مباع', updated_by: user.id })
         .eq(deviceIdCol, body.device_id)
     } else if (body.device_type === 'إكسسوار') {
-      // Decrement accessory quantity — floor at 0
+      // Decrement accessory quantity by the actual quantity sold — floor at 0.
+      // qty defaults to 1 for phones/laptops (implicitly, never multi-unit) and for any
+      // client that doesn't send it, matching the column's DB default.
+      const soldQty = (body.qty as number) || 1
       const { data: acc } = await supabase
         .from('accessories')
         .select('quantite')
         .eq('acc_id', body.device_id)
         .single() as { data: { quantite: number } | null }
 
-      const newQty = Math.max(0, (acc?.quantite ?? 1) - 1)
+      const newQty = Math.max(0, (acc?.quantite ?? soldQty) - soldQty)
       await supabase
         .from('accessories')
         .update({ quantite: newQty, updated_by: user.id })

@@ -1,6 +1,7 @@
 import { createClient, createUntypedClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
+import { escapeLike } from '@/lib/utils/validation'
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,9 +17,12 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false })
 
     if (store_id) query = query.eq('store_id', store_id)
-    if (search)   query = query.or(
-      `nom.ilike.%${search}%,telephone.ilike.%${search}%,telephone_2.ilike.%${search}%`
-    )
+    if (search) {
+      const safeSearch = escapeLike(search)
+      query = query.or(
+        `nom.ilike.%${safeSearch}%,telephone.ilike.%${safeSearch}%,telephone_2.ilike.%${safeSearch}%`
+      )
+    }
 
     const { data, error } = await query
     if (error) throw error

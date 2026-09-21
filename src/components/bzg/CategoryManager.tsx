@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useLanguageStore } from '@/lib/stores/language'
+import { t } from '@/lib/i18n/t'
 import { useCategories, type CategoryItem } from '@/lib/hooks/useCategories'
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import { Tag, Plus, X, Save, Loader2, AlertCircle } from 'lucide-react'
@@ -89,7 +90,7 @@ export default function CategoryManager() {
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
       invalidate()
-      showSuccess(isAr ? 'تم الحفظ ✓' : 'Enregistré ✓')
+      showSuccess(t(isAr, 'common.savedOk'))
       patch(type, { dirty: false })
     } catch (err: unknown) {
       showError((err as Error).message)
@@ -125,7 +126,7 @@ export default function CategoryManager() {
                 <button onClick={() => save(key)} disabled={s.saving}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-[#1A1A1A] text-white hover:bg-[#333] transition-all disabled:opacity-50">
                   {s.saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-                  {isAr ? 'حفظ' : 'Enregistrer'}
+                  {t(isAr, 'common.save')}
                 </button>
               )}
             </div>

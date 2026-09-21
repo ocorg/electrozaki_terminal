@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useUser } from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
+import { t } from '@/lib/i18n/t'
 import { formatMAD, formatDate } from '@/lib/utils'
 import { StatusBadge, SkeletonRow, EmptyState } from '@/components/shared'
 import {
@@ -352,12 +353,12 @@ export default function EZDashboard() {
       icon:  ShoppingCart, color: '#6366F1', bg: '#EEF2FF',
     },
     {
-      label: isAr ? 'إصلاحات نشطة' : 'Réparations actives',
+      label: t(isAr, 'common.activeRepairs'),
       value: String(data.active_repairs),
       icon:  Wrench, color: '#F59E0B', bg: '#FFFBEB',
     },
     {
-      label: isAr ? 'تنبيهات المخزون' : 'Alertes stock',
+      label: t(isAr, 'common.stockAlerts'),
       value: String(data.low_stock_count),
       icon:  AlertTriangle,
       color: data.low_stock_count > 0 ? '#EF4444' : '#10B981',
@@ -627,7 +628,7 @@ export default function EZDashboard() {
             </h2>
             <Link href="/ez/transactions"
               className="text-xs text-[#C9A440] hover:underline flex items-center gap-1">
-              {isAr ? 'عرض الكل' : 'Voir tout'} <ArrowRight className="w-3 h-3" />
+              {t(isAr, 'common.viewAll')} <ArrowRight className="w-3 h-3" />
             </Link>
           </div>
 
@@ -638,7 +639,7 @@ export default function EZDashboard() {
           ) : !data?.recent_txns.length ? (
             <EmptyState
               icon={<ShoppingCart className="w-6 h-6" />}
-              title={isAr ? 'لا توجد معاملات' : 'Aucune transaction'}
+              title={t(isAr, 'common.noTransactions')}
             />
           ) : (
             <div className="divide-y divide-[#F2F0EB]">
@@ -676,10 +677,10 @@ export default function EZDashboard() {
           <div className="bg-white border border-[#E8E5DE] rounded-2xl overflow-hidden">
             <div className="px-5 py-4 border-b border-[#E8E5DE] flex items-center justify-between">
               <h2 className="font-display font-bold text-[#1A1A1A] tracking-wide">
-                {isAr ? 'الإصلاحات' : 'Réparations'}
+                {t(isAr, 'common.repairs')}
               </h2>
               <Link href="/ez/repairs" className="text-xs text-[#C9A440] hover:underline">
-                {isAr ? 'عرض الكل' : 'Voir tout'}
+                {t(isAr, 'common.viewAll')}
               </Link>
             </div>
             <div className="p-4 space-y-2">
@@ -737,8 +738,8 @@ export default function EZDashboard() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">
             {[
               { key: 'cash',     label: isAr ? 'نقد'   : 'Espèces',  color: '#10B981', value: data.payment_breakdown.cash     },
-              { key: 'transfer', label: isAr ? 'تحويل' : 'Virement', color: '#3B82F6', value: data.payment_breakdown.transfer },
-              { key: 'credit',   label: isAr ? 'تسبيق' : 'Avances',  color: '#F59E0B', value: data.payment_breakdown.credit  },
+              { key: 'transfer', label: t(isAr, 'common.transfer'), color: '#3B82F6', value: data.payment_breakdown.transfer },
+              { key: 'credit',   label: t(isAr, 'common.advances'),  color: '#F59E0B', value: data.payment_breakdown.credit  },
               { key: 'mixed',    label: isAr ? 'مختلط' : 'Mixte',    color: '#8B5CF6', value: data.payment_breakdown.mixed   },
             ].filter(r => r.value > 0).map(row => {
               const pct = Math.round(row.value / brkTotal * 100)

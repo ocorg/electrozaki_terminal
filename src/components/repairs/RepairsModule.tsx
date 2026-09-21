@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useUser } from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
+import { t } from '@/lib/i18n/t'
 import { usePortal } from '@/lib/context/portal'
 import { formatMAD, formatDate } from '@/lib/utils'
 import { Modal, Field, inputClass, selectClass, Btn, EmptyState } from '@/components/shared'
@@ -132,7 +133,7 @@ function AddPartForm({ repId, isAr, onAdded }: { repId: string; isAr: boolean; o
         </p>
         <button onClick={() => setOpen(!open)}
           className="text-xs text-[#C9A440] font-medium hover:underline">
-          {open ? (isAr ? 'إلغاء' : 'Annuler') : (isAr ? '+ إضافة' : '+ Ajouter')}
+          {open ? (t(isAr, 'common.cancel')) : (isAr ? '+ إضافة' : '+ Ajouter')}
         </button>
       </div>
       {open && (
@@ -145,12 +146,12 @@ function AddPartForm({ repId, isAr, onAdded }: { repId: string; isAr: boolean; o
               placeholder={isAr ? 'التكلفة (درهم) *' : 'Coût (MAD) *'}
               value={cout} onChange={e => setCout(e.target.value)} />
             <input className="border border-[#E8E5DE] rounded-xl px-3 py-2 text-sm"
-              placeholder={isAr ? 'المورد' : 'Fournisseur'}
+              placeholder={t(isAr, 'common.supplier')}
               value={fournisseur} onChange={e => setFournisseur(e.target.value)} />
           </div>
           <button onClick={handleAdd} disabled={adding || !desc || !cout}
             className="w-full py-2 rounded-xl bg-[#C9A440] text-white text-sm font-bold disabled:opacity-50">
-            {adding ? '...' : (isAr ? 'إضافة' : 'Ajouter')}
+            {adding ? '...' : (t(isAr, 'common.add'))}
           </button>
         </div>
       )}
@@ -201,8 +202,8 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
   }, [storeId, search])
 
   useEffect(() => {
-    const t = setTimeout(() => fetchRepairs(), search ? 300 : 0)
-    return () => clearTimeout(t)
+    const timer = setTimeout(() => fetchRepairs(), search ? 300 : 0)
+    return () => clearTimeout(timer)
   }, [fetchRepairs, search])
 
   function setF(k: keyof typeof EMPTY_FORM, v: string) {
@@ -320,7 +321,7 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
         <div className="flex items-start justify-between">
           <div>
             <h1 className="font-display text-3xl font-bold text-[#1A1A1A] tracking-wide">
-              {isAr ? 'الإصلاحات' : 'Réparations'}
+              {t(isAr, 'common.repairs')}
             </h1>
             <p className="text-[#6B6860] text-sm mt-0.5">
               {isAr
@@ -342,7 +343,7 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
               style={{ backgroundColor: primary } as React.CSSProperties}
             >
               <Plus className="w-4 h-4" />
-              {isAr ? 'إصلاح جديد' : 'Nouvelle réparation'}
+              {t(isAr, 'common.newRepair')}
             </Btn>
           </div>
         </div>
@@ -475,7 +476,7 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
                                   </div>
                                   {(rep.fariq_rep ?? 0) > 0 && (
                                     <span className="text-xs text-amber-600 font-medium">
-                                      {isAr ? 'متبقي' : 'Reste'}: {formatMAD(rep.fariq_rep ?? 0)}
+                                      {t(isAr, 'common.remaining')}: {formatMAD(rep.fariq_rep ?? 0)}
                                     </span>
                                   )}
                                 </div>
@@ -546,10 +547,10 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
               {detailRep.clients && (
                 <>
                   <InfoRow icon={<User className="w-4 h-4" />}
-                    label={isAr ? 'العميل' : 'Client'}
+                    label={t(isAr, 'common.client')}
                     value={detailRep.clients.nom} />
                   <InfoRow icon={<Phone className="w-4 h-4" />}
-                    label={isAr ? 'الهاتف' : 'Téléphone'}
+                    label={t(isAr, 'common.phoneField')}
                     value={detailRep.clients.telephone} />
                 </>
               )}
@@ -583,7 +584,7 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
                 )}
                 {(detailRep.fariq_rep ?? 0) !== 0 && (
                   <div className="flex justify-between text-sm pt-2 border-t border-[#E8E5DE]">
-                    <span className="font-bold text-[#1A1A1A]">{isAr ? 'المتبقي' : 'Reste à payer'}</span>
+                    <span className="font-bold text-[#1A1A1A]">{t(isAr, 'common.remainingToPay')}</span>
                     <span className={`font-bold ${(detailRep.fariq_rep ?? 0) > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
                       {formatMAD(detailRep.fariq_rep ?? 0)}
                     </span>
@@ -620,7 +621,7 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
             {detailRep.notes && (
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
                 <p className="text-xs font-bold text-amber-700 mb-1">
-                  {isAr ? 'ملاحظات' : 'Notes'}
+                  {t(isAr, 'common.notes')}
                 </p>
                 <p className="text-sm text-amber-800">{detailRep.notes}</p>
               </div>
@@ -690,7 +691,7 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
       <Modal
         open={formOpen}
         onClose={() => { setFormOpen(false); setForm({ ...EMPTY_FORM }) }}
-        title={isAr ? 'إصلاح جديد' : 'Nouvelle réparation'}
+        title={t(isAr, 'common.newRepair')}
         size="lg"
       >
         <div className="space-y-5" dir={isAr ? 'rtl' : 'ltr'}>
@@ -716,12 +717,12 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
                 placeholder={isAr ? 'هاتف، لابتوب...' : 'Téléphone, laptop...'}
                 value={form.device_type_libre} onChange={e => setF('device_type_libre', e.target.value)} />
             </Field>
-            <Field label={isAr ? 'الماركة' : 'Marque'}>
+            <Field label={t(isAr, 'common.brand')}>
               <input type="text" className={inputClass}
                 placeholder="Apple, Samsung..."
                 value={form.marque} onChange={e => setF('marque', e.target.value)} />
             </Field>
-            <Field label={isAr ? 'الموديل' : 'Modèle'} required>
+            <Field label={t(isAr, 'common.model')} required>
               <input type="text" className={inputClass}
                 placeholder="iPhone 13, Galaxy A54..."
                 value={form.model} onChange={e => setF('model', e.target.value)} />
@@ -781,7 +782,7 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
             </Field>
           </div>
 
-          <Field label={isAr ? 'ملاحظات' : 'Notes'}>
+          <Field label={t(isAr, 'common.notes')}>
             <textarea className={`${inputClass} resize-none text-sm`} rows={2}
               value={form.notes} onChange={e => setF('notes', e.target.value)}
               placeholder={isAr ? 'ملاحظة للتقني أو العميل...' : 'Note interne...'} />
@@ -789,7 +790,7 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
 
           <div className="flex gap-3 justify-end pt-2 border-t border-[#E8E5DE]">
             <Btn variant="secondary" onClick={() => { setFormOpen(false); setForm({ ...EMPTY_FORM }) }}>
-              {isAr ? 'إلغاء' : 'Annuler'}
+              {t(isAr, 'common.cancel')}
             </Btn>
             <Btn
               variant="primary"

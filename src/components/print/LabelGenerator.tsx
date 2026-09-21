@@ -2,6 +2,7 @@
 import { useRef, useState, useEffect } from 'react'
 import { usePortal } from '@/lib/context/portal'
 import { useLanguageStore } from '@/lib/stores/language'
+import { t } from '@/lib/i18n/t'
 import { Modal, Btn } from '@/components/shared'
 import { Download, Share2, Printer, Loader2 } from 'lucide-react'
 import dynamic from 'next/dynamic'
@@ -292,7 +293,7 @@ export default function LabelGenerator({ product, open, onClose }: LabelGenerato
         </div>
 
         <div className="flex justify-end">
-          <Btn variant="secondary" onClick={onClose}>{isAr ? 'إغلاق' : 'Fermer'}</Btn>
+          <Btn variant="secondary" onClick={onClose}>{t(isAr, 'common.close')}</Btn>
         </div>
       </div>
     </Modal>

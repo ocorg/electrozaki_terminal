@@ -3,8 +3,9 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useUser } from '@/lib/hooks/useUser'
 import { useCategories } from '@/lib/hooks/useCategories'
 import { useLanguageStore } from '@/lib/stores/language'
+import { t } from '@/lib/i18n/t'
 import { usePortal } from '@/lib/context/portal'
-import { formatMAD, computeFariq, computeStatutPaiement, isBelowMinimum, computePromoPrice } from '@/lib/utils'
+import { formatMAD, computeFariq, computeStatutPaiement, isBelowMinimum, computePromoPrice, round2 } from '@/lib/utils'
 import { Modal, Field, inputClass, selectClass, Btn, PageHeader } from '@/components/shared'
 import { StatusBadge } from '@/components/shared'
 import { showSuccess, showError } from '@/lib/utils/toasts'
@@ -243,7 +244,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
       const prix = (device as Phone).prix_vente_recommande ?? 0
       setCart(prev => [...prev, { ...device, prix_vente_saisi: prix, qty: 1 }])
       setSearch(''); setResults([])
-      showSuccess(isAr ? 'أضيف للسلة' : 'Ajouté au panier')
+      showSuccess(t(isAr, 'common.addedToCart'))
       return
     }
     const existingQty = cart.find(c => c._id === device._id)?.qty ?? 1
@@ -262,7 +263,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
       setCart(prev => [...prev, { ...device, prix_vente_saisi: prix, qty }])
     }
     setQtyPicker(null)
-    showSuccess(isAr ? 'أضيف للسلة' : 'Ajouté au panier')
+    showSuccess(t(isAr, 'common.addedToCart'))
   }
 
   function removeFromCart(id: string) {
@@ -373,7 +374,26 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
       }
 
       let lastTxnId: string | null = null
-      for (const item of cart) {
+      // Cart items post as separate transaction rows (no shared sale_id in the schema), so
+      // per-sale totals (avance / montant_especes / montant_carte / valeur_echange) must be
+      // PRORATED across rows by each item's share of the cart — stamping the full amount on
+      // every row would make caisse count the same cash multiple times for one payment.
+      let allocAvance = 0, allocEspeces = 0, allocCarte = 0, allocEchange = 0
+      for (let i = 0; i < cart.length; i++) {
+        const item   = cart[i]
+        const isLast = i === cart.length - 1
+        const itemPv = item.prix_vente_saisi * (item.qty ?? 1)
+        const share  = totalVente > 0 ? itemPv / totalVente : 0
+
+        const itemAvance  = isLast ? round2(saleForm.avance          - allocAvance ) : round2(saleForm.avance          * share)
+        const itemEspeces = isLast ? round2(saleForm.montant_especes - allocEspeces) : round2(saleForm.montant_especes * share)
+        const itemCarte   = isLast ? round2(saleForm.montant_carte   - allocCarte  ) : round2(saleForm.montant_carte   * share)
+        const itemEchange = isLast ? round2(saleForm.valeur_echange  - allocEchange) : round2(saleForm.valeur_echange  * share)
+        allocAvance  += itemAvance
+        allocEspeces += itemEspeces
+        allocCarte   += itemCarte
+        allocEchange += itemEchange
+
         const res  = await fetch('/api/transactions', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -382,13 +402,14 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
             device_id:       item._id,
             client_id:       clientId,
             type_operation:  saleForm.type_operation,
-            prix_vente:      item.prix_vente_saisi * (item.qty ?? 1),
+            qty:             item.qty ?? 1,
+            prix_vente:      itemPv,
             payment_method:  saleForm.payment_method === 'تسبيق' ? (saleForm.avance_sub_method as PaymentMethod) : saleForm.payment_method,
-            avance:          saleForm.avance          || 0,
+            avance:          itemAvance  || 0,
             payment_ref:     saleForm.payment_ref     || undefined,
-            montant_especes: saleForm.montant_especes || 0,
-            montant_carte:   saleForm.montant_carte   || 0,
-            valeur_echange:  saleForm.type_operation === 'إستبدال' ? saleForm.valeur_echange : 0,
+            montant_especes: itemEspeces || 0,
+            montant_carte:   itemCarte   || 0,
+            valeur_echange:  saleForm.type_operation === 'إستبدال' ? itemEchange : 0,
             marque_echange:  saleForm.marque_echange  || undefined,
             model_echange:   saleForm.model_echange   || undefined,
             imei_echange:    saleForm.imei_echange    || undefined,
@@ -624,7 +645,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
           ) : isSearching && results.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-32 text-center">
               <Search className="w-8 h-8 text-[#B0ADA6] mb-2 opacity-40" />
-              <p className="text-sm text-[#B0ADA6]">{isAr ? 'لا توجد نتائج' : 'Aucun résultat'}</p>
+              <p className="text-sm text-[#B0ADA6]">{t(isAr, 'common.noResults')}</p>
             </div>
           ) : !isSearching && gridItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-32 text-center">
@@ -649,8 +670,8 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                   <p className="text-xs font-bold text-[#1A1A1A] leading-tight truncate">{item._displayName}</p>
                   <p className="text-[10px] text-[#B0ADA6] mt-0.5 truncate">
                     {item._type === 'accessory'
-                      ? (isAr ? 'إكسسوار' : 'Accessoire')
-                      : ((item as Phone).imei ? (item as Phone).imei?.slice(-6) : (isAr ? 'متوفر' : 'Disponible'))}
+                      ? (t(isAr, 'common.accessory'))
+                      : ((item as Phone).imei ? (item as Phone).imei?.slice(-6) : (t(isAr, 'common.available')))}
                   </p>
                   <p className="text-sm font-bold mt-2" style={{ color: primary }}>
                     {formatMAD(item._type === 'accessory' ? getAccPrice(item) : (item as Phone).prix_vente_recommande ?? 0)}
@@ -762,13 +783,13 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                     borderColor:     saleForm.type_operation === op ? primary : '#E8E5DE',
                     color:           saleForm.type_operation === op ? 'white' : '#6B6860',
                   }}>
-                  {op === 'بيع' ? (isAr ? 'بيع' : 'Vente') : (isAr ? 'إستبدال' : 'Échange')}
+                  {op === 'بيع' ? (t(isAr, 'common.sale')) : (isAr ? 'إستبدال' : 'Échange')}
                 </button>
               ))}
               <button onClick={() => setRetourOpen(true)}
                 className="py-2.5 rounded-xl text-xs font-bold border transition-all"
                 style={{ backgroundColor: 'white', borderColor: '#FCA5A5', color: '#EF4444' }}>
-                {isAr ? 'إرجاع' : 'Retour'}
+                {t(isAr, 'common.returnNoun')}
               </button>
             </div>
           </div>
@@ -779,10 +800,10 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
               <p className="text-xs font-bold text-blue-700 uppercase tracking-widest">{isAr ? 'الجهاز المستبدل' : 'Appareil échangé'}</p>
               <ComboBox options={brands} value={saleForm.marque_echange}
                 onChange={v => { setSale('marque_echange', v); setSale('model_echange', ''); setSale('couleur_echange', '') }}
-                placeholder={isAr ? 'الماركة' : 'Marque'} />
+                placeholder={t(isAr, 'common.brand')} />
               <ComboBox options={modelsFor(saleForm.marque_echange)} value={saleForm.model_echange}
                 onChange={v => { setSale('model_echange', v); setSale('couleur_echange', '') }}
-                placeholder={!saleForm.marque_echange ? "Choisissez d'abord la marque" : (isAr ? 'الموديل' : 'Modèle')}
+                placeholder={!saleForm.marque_echange ? "Choisissez d'abord la marque" : (t(isAr, 'common.model'))}
                 disabled={!saleForm.marque_echange} />
               <div className="grid grid-cols-2 gap-2">
                 <ComboBox options={couleursFor(saleForm.model_echange)} value={saleForm.couleur_echange ?? ''}
@@ -882,7 +903,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
               </div>
             )}
             {saleForm.payment_method === 'تحويل' && (
-              <input className={`${inputClass} mt-2`} placeholder={isAr ? 'مرجع التحويل *' : 'Référence virement *'}
+              <input className={`${inputClass} mt-2`} placeholder={t(isAr, 'common.transferReference')}
                 value={saleForm.payment_ref} onChange={e => setSale('payment_ref', e.target.value)} />
             )}
             {saleForm.payment_method === 'تسبيق' && (
@@ -903,7 +924,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                           borderColor:     saleForm.avance_sub_method === method ? primary : '#E8E5DE',
                           color:           saleForm.avance_sub_method === method ? 'white' : '#6B6860',
                         }}>
-                        {method === 'نقد' ? (isAr ? 'نقداً' : 'Espèces') : (isAr ? 'تحويل بنكي' : 'Virement')}
+                        {method === 'نقد' ? (t(isAr, 'common.cashAdverbial')) : (t(isAr, 'common.bankTransfer'))}
                       </button>
                     ))}
                   </div>
@@ -918,10 +939,10 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
             {saleForm.payment_method === 'مختلط' && (
               <div className="grid grid-cols-2 gap-2 mt-2">
                 <input type="number" min={0} step={0.01} inputMode="decimal" className={inputClass}
-                  placeholder={isAr ? 'نقد' : 'Espèces'}
+                  placeholder={t(isAr, 'common.cash')}
                   value={saleForm.montant_especes || ''} onChange={e => setSale('montant_especes', Number(e.target.value))} />
                 <input type="number" min={0} step={0.01} inputMode="decimal" className={inputClass}
-                  placeholder={isAr ? 'تحويل' : 'Virement'}
+                  placeholder={t(isAr, 'common.transfer')}
                   value={saleForm.montant_carte || ''} onChange={e => setSale('montant_carte', Number(e.target.value))} />
               </div>
             )}
@@ -931,7 +952,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
               <div className="mt-3 p-3 bg-white border border-[#E8E5DE] rounded-xl space-y-2 animate-fade-in">
                 <p className="text-[10px] font-bold text-[#6B6860] uppercase tracking-widest flex items-center gap-1.5">
                   <User className="w-3 h-3" />
-                  {isAr ? 'العميل' : 'Client'}
+                  {t(isAr, 'common.client')}
                   {saleForm.payment_method === 'آجل' && (
                     <span className="text-purple-600 font-bold normal-case tracking-normal">
                       {'— '}{isAr ? 'مطلوب' : 'requis'}
@@ -939,24 +960,24 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                   )}
                   {selectedClientId && (
                     <span className="ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 normal-case tracking-normal">
-                      ✓ {isAr ? 'موجود' : 'Existant'}
+                      ✓ {t(isAr, 'common.existing')}
                     </span>
                   )}
                   {selectedClientId && (
                     <span className="ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 normal-case tracking-normal">
-                      ✓ {isAr ? 'موجود' : 'Existant'}
+                      ✓ {t(isAr, 'common.existing')}
                     </span>
                   )}
                   {selectedClientId && (
                     <span className="ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 normal-case tracking-normal">
-                      ✓ {isAr ? 'موجود' : 'Existant'}
+                      ✓ {t(isAr, 'common.existing')}
                     </span>
                   )}
                 </p>
                 {/* Name with live autocomplete */}
                 <div className="relative">
                   <input className={inputClass}
-                    placeholder={saleForm.payment_method === 'آجل' ? (isAr ? 'الاسم *' : 'Nom *') : (isAr ? 'الاسم (اختياري)' : 'Nom (optionnel)')}
+                    placeholder={saleForm.payment_method === 'آجل' ? (t(isAr, 'common.nameRequired')) : (isAr ? 'الاسم (اختياري)' : 'Nom (optionnel)')}
                     value={saleForm.client_nom}
                     onChange={e => handleClientNameChange(e.target.value)}
                     onBlur={() => setTimeout(() => setShowClientDrop(false), 150)}
@@ -992,7 +1013,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
 
           {/* Notes */}
           <textarea className={`${inputClass} resize-none text-xs`} rows={2}
-            placeholder={isAr ? 'ملاحظات...' : 'Notes...'}
+            placeholder={t(isAr, 'common.notesPlaceholder')}
             value={saleForm.notes} onChange={e => setSale('notes', e.target.value)} />
 
           {/* Summary */}
@@ -1003,7 +1024,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
             </div>
             {saleForm.avance > 0 && (
               <div className="flex justify-between text-sm">
-                <span className="text-[#6B6860]">{isAr ? 'التسبيق' : 'Avance'}</span>
+                <span className="text-[#6B6860]">{t(isAr, 'common.avance')}</span>
                 <span className="text-[#1A1A1A]">- {formatMAD(saleForm.avance)}</span>
               </div>
             )}
@@ -1037,7 +1058,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
           <button onClick={handleSubmit} disabled={cart.length === 0 || submitting}
             className="w-full py-3 rounded-2xl text-sm font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             style={{ backgroundColor: primary, color: 'white' }}>
-            {submitting ? (isAr ? 'جارٍ الحفظ...' : 'Enregistrement...') : (isAr ? 'تأكيد البيع' : 'Confirmer la vente')}
+            {submitting ? (t(isAr, 'common.saving')) : (isAr ? 'تأكيد البيع' : 'Confirmer la vente')}
           </button>
 
           {/* Reset */}
@@ -1051,7 +1072,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
           <button type="button" onClick={() => setCashDropOpen(true)}
             className="w-full py-2.5 rounded-2xl text-xs font-bold border border-[#E8E5DE] text-[#6B6860] hover:border-emerald-400 hover:text-emerald-600 transition-all flex items-center justify-center gap-1.5">
             <span>＋</span>
-            {isAr ? 'إيداع نقدي' : 'Encaissement manuel'}
+            {t(isAr, 'common.manualCashDeposit')}
           </button>
 
           <CashDropModal

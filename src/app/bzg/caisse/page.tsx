@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useUser } from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
+import { t } from '@/lib/i18n/t'
 import { formatMAD, formatDate } from '@/lib/utils'
 import { PageHeader, SkeletonRow, EmptyState } from '@/components/shared'
 import { showSuccess, showError } from '@/lib/utils/toasts'
@@ -88,13 +89,17 @@ export default function BZGCaissePage() {
 
   useEffect(() => { fetchRecords() }, [filterStore, filterStatus, selectedDate])
 
+  // Both approve and reject go through /api/bzg/caisse/eod — the only EOD-approval
+  // path that role-checks (manager/owner) AND writes an activity_log entry. This used to
+  // call /api/caisse PUT (approve-only) and a raw client-side update (reject, unlogged,
+  // no server-side role check) — two paths that could silently drift from each other.
   async function approve(caisseId: string) {
     setApproving(caisseId)
     try {
-      const res  = await fetch('/api/caisse', {
-        method:  'PUT',
+      const res  = await fetch('/api/bzg/caisse/eod', {
+        method:  'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ caisse_id: caisseId }),
+        body:    JSON.stringify({ caisse_id: caisseId, action: 'approve' }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
@@ -108,15 +113,20 @@ export default function BZGCaissePage() {
   }
 
   async function reject(caisseId: string) {
-    const note = window.prompt(isAr ? 'سبب الرفض:' : 'Motif du rejet :')
-    if (!note) return
+    const note = window.prompt(t(isAr, 'common.rejectionReason'))
+    if (!note || note.trim().length < 3) {
+      if (note != null) showError(isAr ? 'السبب يجب أن يحتوي على 3 أحرف على الأقل' : 'Motif requis (3 caractères minimum)')
+      return
+    }
     setApproving(caisseId)
     try {
-      const { error } = await (supabase as any)
-        .from('caisse')
-        .update({ status: 'open', rejection_note: note })
-        .eq('caisse_id', caisseId)
-      if (error) throw error
+      const res  = await fetch('/api/bzg/caisse/eod', {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ caisse_id: caisseId, action: 'reject', rejection_note: note.trim() }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error)
       showSuccess(isAr ? 'تم الرفض' : 'Clôture rejetée')
       await fetchRecords()
     } catch (err: unknown) {
@@ -162,17 +172,17 @@ export default function BZGCaissePage() {
           <select
             className="text-sm border border-[#E8E5DE] rounded-xl px-3 py-2.5 bg-white text-[#6B6860] focus:outline-none"
             value={filterStore} onChange={e => setFilterStore(e.target.value)}>
-            <option value="">{isAr ? 'كل المتاجر' : 'Tous magasins'}</option>
+            <option value="">{t(isAr, 'common.allStores')}</option>
             {stores.map((s: { id: string; name: string; color: string }) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
 
           <select
             className="text-sm border border-[#E8E5DE] rounded-xl px-3 py-2.5 bg-white text-[#6B6860] focus:outline-none"
             value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-            <option value="">{isAr ? 'كل الحالات' : 'Tous statuts'}</option>
-            <option value="open">{isAr ? 'مفتوحة' : 'Ouverte'}</option>
+            <option value="">{t(isAr, 'common.allStatuses')}</option>
+            <option value="open">{t(isAr, 'common.openStatus')}</option>
             <option value="pending_eod">{isAr ? 'في انتظار' : 'En attente'}</option>
-            <option value="closed">{isAr ? 'مغلقة' : 'Clôturée'}</option>
+            <option value="closed">{t(isAr, 'common.closedStatus')}</option>
           </select>
 
           <div className="flex items-center gap-2 bg-white border border-[#E8E5DE] rounded-xl px-3 py-2">
@@ -254,7 +264,7 @@ export default function BZGCaissePage() {
                             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-all disabled:opacity-50"
                           >
                             <CheckCircle className="w-3.5 h-3.5" />
-                            {isAr ? 'موافقة' : 'Approuver'}
+                            {t(isAr, 'common.approve')}
                           </button>
                           <button
                             onClick={() => reject(rec.caisse_id)}
@@ -262,7 +272,7 @@ export default function BZGCaissePage() {
                             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 transition-all disabled:opacity-50"
                           >
                             <XCircle className="w-3.5 h-3.5" />
-                            {isAr ? 'رفض' : 'Rejeter'}
+                            {t(isAr, 'common.reject')}
                           </button>
                         </div>
                       )}
@@ -280,9 +290,9 @@ export default function BZGCaissePage() {
                           {[
                             { label: isAr ? 'الافتتاح' : 'Ouverture',    value: formatMAD(rec.ouverture),           negative: false },
                             { label: isAr ? 'المبيعات' : 'Ventes',              value: formatMAD(rec.total_ventes),      negative: false },
-                            { label: isAr ? 'الإصلاحات' : 'Réparations',        value: formatMAD(rec.total_reparations), negative: false },
+                            { label: t(isAr, 'common.repairs'),        value: formatMAD(rec.total_reparations), negative: false },
                             ...(rec.total_cash_drops > 0 ? [{ label: isAr ? 'إيداعات نقدية' : 'Encaissements', value: formatMAD(rec.total_cash_drops), negative: false }] : []),
-                            { label: isAr ? 'المصاريف' : 'Dépenses',            value: formatMAD(rec.total_depenses),     negative: true },
+                            { label: t(isAr, 'common.expenses'),            value: formatMAD(rec.total_depenses),     negative: true },
                           ].map(item => (
                             <div key={item.label} className="text-center">
                               <p className="text-xs text-[#B0ADA6] mb-1">{item.label}</p>
@@ -314,7 +324,7 @@ export default function BZGCaissePage() {
                         {rec.eod_submitted_at && (
                           <p className="text-xs text-[#B0ADA6] mt-2 flex items-center gap-1">
                             <Clock className="w-3 h-3" />
-                            {isAr ? 'أرسل في' : 'Soumis le'}{' '}
+                            {t(isAr, 'common.submittedAt')}{' '}
                             {new Date(rec.eod_submitted_at).toLocaleString('fr-FR')}
                           </p>
                         )}

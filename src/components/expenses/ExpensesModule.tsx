@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useUser } from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
+import { t } from '@/lib/i18n/t'
 import { usePortal } from '@/lib/context/portal'
 import { formatMAD, formatDate } from '@/lib/utils'
 import { Modal, Field, inputClass, selectClass, Btn, PageHeader, EmptyState, SkeletonRow } from '@/components/shared'
@@ -99,7 +100,7 @@ export default function ExpensesModule({ storeId }: ExpensesModuleProps) {
 
   async function handleSubmit() {
     if (!form.montant || parseFloat(form.montant) <= 0) {
-      showError(isAr ? 'أدخل مبلغاً صحيحاً' : 'Montant invalide')
+      showError(t(isAr, 'common.invalidAmount'))
       return
     }
     setSubmitting(true)
@@ -164,7 +165,7 @@ export default function ExpensesModule({ storeId }: ExpensesModuleProps) {
 
       {/* Header */}
       <PageHeader
-        title={isAr ? 'المصاريف' : 'Dépenses'}
+        title={t(isAr, 'common.expenses')}
         subtitle={isAr ? 'تسجيل ومتابعة المصاريف اليومية' : 'Enregistrement et suivi des dépenses'}
         actions={
           <Btn variant="primary" onClick={() => setModalOpen(true)} style={{ backgroundColor: primary } as React.CSSProperties}>
@@ -211,7 +212,7 @@ export default function ExpensesModule({ storeId }: ExpensesModuleProps) {
           value={filterCat}
           onChange={e => setFilterCat(e.target.value)}
         >
-          <option value="">{isAr ? 'كل الفئات' : 'Toutes catégories'}</option>
+          <option value="">{t(isAr, 'common.allCategories')}</option>
           {dynamicCategories.map(cat => (
             <option key={cat.ar} value={cat.ar}>
               {isAr ? cat.ar : cat.fr}
@@ -292,7 +293,7 @@ export default function ExpensesModule({ storeId }: ExpensesModuleProps) {
         size="sm"
       >
         <div className="space-y-4">
-          <Field label={isAr ? 'الفئة' : 'Catégorie'} required>
+          <Field label={t(isAr, 'common.category')} required>
             <div className="grid grid-cols-4 gap-2">
               {dynamicCategories.map(cat => {
               const active = form.categorie === cat.ar
@@ -323,7 +324,7 @@ export default function ExpensesModule({ storeId }: ExpensesModuleProps) {
             />
           </Field>
 
-          <Field label={isAr ? 'التاريخ' : 'Date'} required>
+          <Field label={t(isAr, 'common.date')} required>
             <input
               type="date"
               className={inputClass}
@@ -342,13 +343,13 @@ export default function ExpensesModule({ storeId }: ExpensesModuleProps) {
             />
           </Field>
 
-          <Field label={isAr ? 'ملاحظات (اختياري)' : 'Notes (optionnel)'}>
+          <Field label={t(isAr, 'common.notesOptional')}>
             <textarea
               className={`${inputClass} resize-none text-sm`}
               rows={2}
               value={form.notes}
               onChange={e => setF('notes', e.target.value)}
-              placeholder={isAr ? 'ملاحظة...' : 'Note...'}
+              placeholder={t(isAr, 'common.notePlaceholder')}
             />
           </Field>
 
@@ -399,7 +400,7 @@ export default function ExpensesModule({ storeId }: ExpensesModuleProps) {
 
           <div className="flex gap-3 justify-end pt-1">
             <Btn variant="secondary" onClick={() => { setModalOpen(false); setForm({ ...EMPTY_FORM }) }}>
-              {isAr ? 'إلغاء' : 'Annuler'}
+              {t(isAr, 'common.cancel')}
             </Btn>
             <Btn
               variant="primary"

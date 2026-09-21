@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useLanguageStore } from '@/lib/stores/language'
+import { t } from '@/lib/i18n/t'
 import { PageHeader, Field, inputClass, Btn } from '@/components/shared'
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import { Settings, Save, Store, Palette, Tag } from 'lucide-react'
@@ -90,7 +91,7 @@ export default function BZGSettingsPage() {
         })
         .eq('store_id', storeId)
       if (error) throw error
-      showSuccess(isAr ? 'تم الحفظ ✓' : 'Enregistré ✓')
+      showSuccess(t(isAr, 'common.savedOk'))
       await fetchStores()
     } catch (err: unknown) {
       showError((err as Error).message)
@@ -155,7 +156,7 @@ export default function BZGSettingsPage() {
                     onClick={() => saveKvSetting(s.key, s.store_id)}
                     className="px-4 py-2 rounded-xl bg-[#C9A440] text-white text-sm font-bold hover:opacity-90 transition-all flex-shrink-0"
                   >
-                    {isAr ? 'حفظ' : 'Sauver'}
+                    {t(isAr, 'common.saveAlt')}
                   </button>
                 </div>
               ))}
@@ -215,7 +216,7 @@ export default function BZGSettingsPage() {
                     </Field>
                   </div>
 
-                  <Field label={isAr ? 'العنوان' : 'Adresse'}>
+                  <Field label={t(isAr, 'common.address')}>
                     <input
                       type="text"
                       className={inputClass}
@@ -252,7 +253,7 @@ export default function BZGSettingsPage() {
                       style={{ backgroundColor: edit.theme_color ?? store.theme_color } as React.CSSProperties}
                     >
                       <Save className="w-4 h-4" />
-                      {isAr ? 'حفظ التغييرات' : 'Enregistrer'}
+                      {t(isAr, 'common.saveChangesShort')}
                     </Btn>
                   </div>
                 </div>

@@ -89,6 +89,24 @@ export async function PATCH(request: NextRequest) {
           updated_by: user.id,
         })
         .eq('laptop_id', deviceId)
+    } else if (deviceType === 'إكسسوار') {
+      // Mirror the decrement done at sale time (transactions POST) — restore the actual
+      // quantity sold, not a flat 1 unit (a qty>1 accessory sale decrements by qty at
+      // creation, so voiding it must restore the same qty or stock ends up short).
+      const soldQty = (txn.qty as number) || 1
+      const { data: acc } = await supabase
+        .from('accessories')
+        .select('quantite')
+        .eq('acc_id', deviceId)
+        .single() as { data: { quantite: number } | null }
+
+      await supabase
+        .from('accessories')
+        .update({
+          quantite:   (acc?.quantite ?? 0) + soldQty,
+          updated_by: user.id,
+        })
+        .eq('acc_id', deviceId)
     }
 
     // 4. Log to activity_log

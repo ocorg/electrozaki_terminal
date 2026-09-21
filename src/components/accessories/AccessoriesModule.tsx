@@ -3,6 +3,7 @@ import { useCategories } from '@/lib/hooks/useCategories'
 import { useState, useEffect, useCallback } from 'react'
 import { useUser } from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
+import { t } from '@/lib/i18n/t'
 import { usePortal } from '@/lib/context/portal'
 import { formatMAD } from '@/lib/utils'
 import { Modal, Field, inputClass, selectClass, Btn, PageHeader, EmptyState, SkeletonRow, StatusBadge } from '@/components/shared'
@@ -12,7 +13,7 @@ import { showSuccess, showError } from '@/lib/utils/toasts'
 import type { AccCategory } from '@/types/database'
 import {
   Package, Plus, Search, X, RefreshCw,
-  Edit2, AlertTriangle, Minus, TrendingUp, Trash2, Loader2
+  Edit2, AlertTriangle, Minus, TrendingUp, Trash2
 } from 'lucide-react'
 
 
@@ -104,8 +105,8 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
   }, [storeId, filterCat, onlyLowStock, search])
 
   useEffect(() => {
-    const t = setTimeout(() => fetchAccessories(), search ? 300 : 0)
-    return () => clearTimeout(t)
+    const timer = setTimeout(() => fetchAccessories(), search ? 300 : 0)
+    return () => clearTimeout(timer)
   }, [fetchAccessories, search])
 
   function setF(k: keyof AccessoryForm, v: string) {
@@ -119,7 +120,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
       setAccessories(prev => prev.filter(a => a.acc_id !== acc_id))
-      showSuccess(isAr ? 'تم الحذف ✓' : 'Supprimé ✓')
+      showSuccess(t(isAr, 'common.deletedOk'))
       setConfirmDelete(null)
     } catch (err: unknown) {
       showError((err as Error).message)
@@ -181,8 +182,8 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
       showSuccess(isEdit
-        ? (isAr ? 'تم التعديل ✓' : 'Modifié ✓')
-        : (isAr ? 'تم الإضافة ✓' : 'Ajouté ✓'))
+        ? (t(isAr, 'common.editedOk'))
+        : (t(isAr, 'common.addedOk')))
       setFormOpen(false)
       setEditAcc(null)
       // Silent background sync — no loading state, list stays visible
@@ -252,7 +253,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
               <Btn variant="primary" onClick={openAdd}
                 style={{ backgroundColor: primary } as React.CSSProperties}>
                 <Plus className="w-4 h-4" />
-                {isAr ? 'إضافة' : 'Ajouter'}
+                {t(isAr, 'common.add')}
               </Btn>
             </div>
           }
@@ -267,7 +268,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
           </div>
           <div className="bg-white border border-[#E8E5DE] rounded-xl px-4 py-3"
                style={{ borderLeftColor: lowStockCount > 0 ? '#EF4444' : '#10B981', borderLeftWidth: '3px' }}>
-            <p className="text-xs text-[#6B6860]">{isAr ? 'تنبيهات المخزون' : 'Alertes stock'}</p>
+            <p className="text-xs text-[#6B6860]">{t(isAr, 'common.stockAlerts')}</p>
             <p className={`font-display font-bold text-lg ${lowStockCount > 0 ? 'text-red-500' : 'text-[#1A1A1A]'}`}>
               {lowStockCount}
             </p>
@@ -304,7 +305,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
             value={filterCat}
             onChange={e => setFilterCat(e.target.value)}
           >
-            <option value="">{isAr ? 'كل الفئات' : 'Toutes catégories'}</option>
+            <option value="">{t(isAr, 'common.allCategories')}</option>
             {sortedCategories.map(c => (
               <option key={c.ar} value={c.ar}>{isAr ? c.ar : c.fr}</option>
             ))}
@@ -332,10 +333,10 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
           <div className="hidden lg:grid border-b border-[#F2F0EB] px-5 py-3 text-[10px] font-bold text-[#B0ADA6] uppercase tracking-widest"
                style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 120px' }}>
             <span>{isAr ? 'المنتج' : 'Produit'}</span>
-            <span>{isAr ? 'الفئة' : 'Catégorie'}</span>
-            <span>{isAr ? 'الكمية' : 'Quantité'}</span>
-            <span>{isAr ? 'الحالة' : 'Statut'}</span>
-            <span>{isAr ? 'سعر البيع' : 'Prix vente'}</span>
+            <span>{t(isAr, 'common.category')}</span>
+            <span>{t(isAr, 'common.quantity')}</span>
+            <span>{t(isAr, 'common.status')}</span>
+            <span>{t(isAr, 'common.salePrice')}</span>
             <span />
           </div>
 
@@ -351,7 +352,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
                 <Btn variant="primary" onClick={openAdd}
                   style={{ backgroundColor: primary } as React.CSSProperties}>
                   <Plus className="w-4 h-4" />
-                  {isAr ? 'إضافة' : 'Ajouter'}
+                  {t(isAr, 'common.add')}
                 </Btn>
               }
             />
@@ -491,29 +492,25 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
       </div>
 
       {/* Delete confirmation */}
-      {confirmDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
-            <p className="text-base font-bold text-[#1A1A1A] mb-2">
-              {isAr ? 'تأكيد الحذف' : 'Confirmer la suppression'}
-            </p>
-            <p className="text-sm text-[#6B6860] mb-6">
-              {isAr ? 'هذا الإجراء لا يمكن التراجع عنه.' : 'Cette action est irréversible.'}
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button onClick={() => setConfirmDelete(null)}
-                className="px-4 py-2 rounded-xl border border-[#E8E5DE] text-sm text-[#6B6860] hover:bg-[#F8F7F4] transition-all">
-                {isAr ? 'إلغاء' : 'Annuler'}
-              </button>
-              <button onClick={() => handleDelete(confirmDelete)} disabled={deleting}
-                className="px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-medium hover:bg-red-600 transition-all disabled:opacity-50 flex items-center gap-2">
-                {deleting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                {isAr ? 'حذف' : 'Supprimer'}
-              </button>
-            </div>
-          </div>
+      <Modal
+        open={!!confirmDelete}
+        onClose={() => setConfirmDelete(null)}
+        title={t(isAr, 'common.confirmDelete')}
+        size="sm"
+        closeLabel={t(isAr, 'common.close')}
+      >
+        <p className="text-sm text-[#6B6860] mb-6">
+          {t(isAr, 'common.irreversible')}
+        </p>
+        <div className="flex gap-3 justify-end">
+          <Btn variant="secondary" onClick={() => setConfirmDelete(null)}>
+            {t(isAr, 'common.cancel')}
+          </Btn>
+          <Btn variant="danger" onClick={() => confirmDelete && handleDelete(confirmDelete)} loading={deleting}>
+            {t(isAr, 'common.delete')}
+          </Btn>
         </div>
-      )}
+      </Modal>
 
       {/* Label generator */}
       {labelProduct && (
@@ -535,12 +532,12 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
       >
         <div className="space-y-4" dir={isAr ? 'rtl' : 'ltr'}>
           <div className="grid grid-cols-2 gap-4">
-            <Field label={isAr ? 'الاسم' : 'Nom'} required>
+            <Field label={t(isAr, 'common.name')} required>
               <input type="text" className={inputClass}
                 placeholder={isAr ? 'كفر آيفون 15...' : 'Coque iPhone 15...'}
                 value={form.nom} onChange={e => setF('nom', e.target.value)} autoFocus />
             </Field>
-            <Field label={isAr ? 'الفئة' : 'Catégorie'} required>
+            <Field label={t(isAr, 'common.category')} required>
               <select className={selectClass} value={form.categorie}
                 onChange={e => setF('categorie', e.target.value)}>
                 <option value="">{isAr ? 'اختر الفئة...' : 'Choisir...'}</option>
@@ -552,7 +549,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <Field label={isAr ? 'الماركة' : 'Marque'}>
+            <Field label={t(isAr, 'common.brand')}>
               <input type="text" className={inputClass}
                 placeholder="Apple, Samsung..."
                 value={form.marque} onChange={e => setF('marque', e.target.value)} />
@@ -593,7 +590,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
           {!canFinancials && (
             <div className="border-t border-[#E8E5DE] pt-4">
               <p className="text-xs font-bold text-[#6B6860] uppercase tracking-widest mb-4">
-                {isAr ? 'أسعار البيع' : 'Prix de vente'}
+                {t(isAr, 'common.salePrices')}
               </p>
               <div className="grid grid-cols-2 gap-4">
                 <Field label={isAr ? 'سعر البيع' : 'Prix recommandé'}>
@@ -601,7 +598,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
                     className={`${inputClass} bg-[#F8F7F4] cursor-default`}
                     value={form.prix_vente_recommande} />
                 </Field>
-                <Field label={isAr ? 'السعر الأدنى' : 'Prix minimum'}>
+                <Field label={t(isAr, 'common.minPrice')}>
                   <input type="number" readOnly tabIndex={-1}
                     className={`${inputClass} bg-[#F8F7F4] cursor-default`}
                     value={form.prix_vente_minimum} />
@@ -617,9 +614,9 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
               </p>
               <div className="grid grid-cols-3 gap-4">
                 {[
-                  { label: isAr ? 'سعر الشراء' : 'Prix achat',       key: 'prix_achat' },
+                  { label: t(isAr, 'common.purchasePrice'),       key: 'prix_achat' },
                   { label: isAr ? 'سعر البيع'   : 'Prix recommandé',  key: 'prix_vente_recommande' },
-                  { label: isAr ? 'السعر الأدنى' : 'Prix minimum',    key: 'prix_vente_minimum' },
+                  { label: t(isAr, 'common.minPrice'),    key: 'prix_vente_minimum' },
                 ].map(f => (
                   <Field key={f.key} label={f.label}>
                     <input type="number" min={0} step={0.01} className={inputClass}
@@ -634,11 +631,11 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
 
           <div className="flex gap-3 justify-end pt-2">
             <Btn variant="secondary" onClick={() => { setFormOpen(false); setEditAcc(null) }}>
-              {isAr ? 'إلغاء' : 'Annuler'}
+              {t(isAr, 'common.cancel')}
             </Btn>
             <Btn variant="primary" onClick={handleSubmit} loading={submitting}
               style={{ backgroundColor: primary } as React.CSSProperties}>
-              {editAcc ? (isAr ? 'حفظ' : 'Enregistrer') : (isAr ? 'إضافة' : 'Ajouter')}
+              {editAcc ? (t(isAr, 'common.save')) : (t(isAr, 'common.add'))}
             </Btn>
           </div>
         </div>

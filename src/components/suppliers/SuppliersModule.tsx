@@ -3,6 +3,7 @@ import { useCategories } from '@/lib/hooks/useCategories'
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useUser } from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
+import { t } from '@/lib/i18n/t'
 import { usePortal } from '@/lib/context/portal'
 import { formatMAD, formatDate, fetchWithRetry } from '@/lib/utils'
 import { Modal, Field, inputClass, selectClass, Btn, PageHeader, EmptyState, SkeletonRow } from '@/components/shared'
@@ -201,8 +202,8 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
   // ── Effects ──────────────────────────────────────────────────────────────────
 
   useEffect(() => {
-    const t = setTimeout(() => fetchSuppliers(), search ? 300 : 0)
-    return () => clearTimeout(t)
+    const timer = setTimeout(() => fetchSuppliers(), search ? 300 : 0)
+    return () => clearTimeout(timer)
   }, [fetchSuppliers, search])
 
   // ── Modal controls ───────────────────────────────────────────────────────────
@@ -294,7 +295,7 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
-      showSuccess(isEdit ? (isAr ? 'تم التعديل ✓' : 'Modifié ✓') : (isAr ? 'تم الإضافة ✓' : 'Ajouté ✓'))
+      showSuccess(isEdit ? (t(isAr, 'common.editedOk')) : (t(isAr, 'common.addedOk')))
       setFormOpen(false)
       await fetchSuppliers()
     } catch (err: unknown) {
@@ -342,7 +343,7 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
   // Type B/C — paiement avec traçabilité téléphones
   async function handlePaymentBC() {
     if (!selected || !payMontant || parseFloat(payMontant) <= 0) {
-      showError(isAr ? 'أدخل مبلغاً صحيحاً' : 'Montant invalide')
+      showError(t(isAr, 'common.invalidAmount'))
       return
     }
     setSubmitting(true)
@@ -718,7 +719,7 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
                           <div className="grid grid-cols-2 gap-2">
                             <div>
                               <p className="text-[10px] text-[#B0ADA6] uppercase tracking-wider font-bold mb-1">
-                                {isAr ? 'المبلغ (درهم) *' : 'Montant (MAD) *'}
+                                {t(isAr, 'common.amountMad')}
                               </p>
                               <input
                                 type="number" min={0} step={0.01}
@@ -731,7 +732,7 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
                             </div>
                             <div>
                               <p className="text-[10px] text-[#B0ADA6] uppercase tracking-wider font-bold mb-1">
-                                {isAr ? 'التاريخ' : 'Date'}
+                                {t(isAr, 'common.date')}
                               </p>
                               <input
                                 type="date"
@@ -743,7 +744,7 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
                           </div>
                           <div>
                             <p className="text-[10px] text-[#B0ADA6] uppercase tracking-wider font-bold mb-1">
-                              {isAr ? 'ملاحظات' : 'Notes'}
+                              {t(isAr, 'common.notes')}
                             </p>
                             <input
                               type="text"
@@ -757,11 +758,11 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
                             <Btn variant="primary" onClick={handlePaymentBC} loading={submitting}
                               disabled={!payMontant}
                               style={{ backgroundColor: primary } as React.CSSProperties}>
-                              {isAr ? 'تأكيد' : 'Confirmer'}
+                              {t(isAr, 'common.confirm')}
                             </Btn>
                             <Btn variant="secondary"
                               onClick={() => { setShowPayForm(false); setPayMontant(''); setPayNotes('') }}>
-                              {isAr ? 'إلغاء' : 'Annuler'}
+                              {t(isAr, 'common.cancel')}
                             </Btn>
                           </div>
                         </div>
@@ -779,14 +780,14 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
                   <div className="flex items-center gap-3 p-3 bg-[#F8F7F4] rounded-xl">
                     <Phone className="w-4 h-4 text-[#B0ADA6] flex-shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs text-[#B0ADA6]">{isAr ? 'الهاتف' : 'Téléphone'}</p>
+                      <p className="text-xs text-[#B0ADA6]">{t(isAr, 'common.phoneField')}</p>
                       <p className="text-sm font-medium text-[#1A1A1A]">{selected.telephone}</p>
                     </div>
                     <div className="flex gap-2 flex-shrink-0">
                       <a href={`tel:${selected.telephone}`}
                          className="text-xs font-bold py-1 px-3 rounded-lg"
                          style={{ backgroundColor: `${primary}15`, color: primary }}>
-                        {isAr ? 'اتصال' : 'Appeler'}
+                        {t(isAr, 'common.call')}
                       </a>
                       <a href={`https://wa.me/212${selected.telephone.replace(/^0/, '')}`}
                          target="_blank" rel="noopener noreferrer"
@@ -860,13 +861,13 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
             {/* ── SHARED — Actions ── */}
             <div className="flex gap-3 pt-2 border-t border-[#E8E5DE]">
               <Btn variant="secondary" className="flex-1" onClick={closeDetail}>
-                {isAr ? 'إغلاق' : 'Fermer'}
+                {t(isAr, 'common.close')}
               </Btn>
               <Btn variant="primary" className="flex-1"
                 onClick={() => openEdit(selected)}
                 style={{ backgroundColor: primary } as React.CSSProperties}>
                 <Edit2 className="w-4 h-4" />
-                {isAr ? 'تعديل' : 'Modifier'}
+                {t(isAr, 'common.edit')}
               </Btn>
             </div>
 
@@ -896,7 +897,7 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
             </select>
           </Field>
 
-          <Field label={isAr ? 'الاسم' : 'Nom'} required>
+          <Field label={t(isAr, 'common.name')} required>
             <input type="text" className={inputClass} autoFocus
               placeholder={isAr ? 'اسم الشركة أو الشخص...' : 'Société ou nom...'}
               value={form.nom}
@@ -904,7 +905,7 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
           </Field>
 
           <div className="grid grid-cols-2 gap-3">
-            <Field label={isAr ? 'الهاتف' : 'Téléphone'}>
+            <Field label={t(isAr, 'common.phoneField')}>
               <input type="tel" className={inputClass} placeholder="06XXXXXXXX"
                 value={form.telephone}
                 onChange={e => setForm(f => ({ ...f, telephone: e.target.value }))} />
@@ -922,18 +923,18 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
               onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
           </Field>
 
-          <Field label={isAr ? 'الفئة' : 'Catégorie'}>
+          <Field label={t(isAr, 'common.category')}>
             <select className={selectClass}
               value={form.categorie}
               onChange={e => setForm(f => ({ ...f, categorie: e.target.value }))}>
-              <option value="">{isAr ? 'اختر...' : 'Choisir...'}</option>
+              <option value="">{t(isAr, 'common.chooseEllipsis')}</option>
               {supplierCats.map((c: any) => (
                 <option key={c.ar} value={c.ar}>{isAr ? c.ar : c.fr}</option>
               ))}
             </select>
           </Field>
 
-          <Field label={isAr ? 'ملاحظات' : 'Notes'}>
+          <Field label={t(isAr, 'common.notes')}>
             <textarea className={`${inputClass} resize-none text-sm`} rows={2}
               value={form.notes}
               onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
@@ -942,13 +943,13 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
           <div className="flex gap-3 justify-end pt-2">
             <Btn variant="secondary"
               onClick={() => { setFormOpen(false); setEditSupplier(null) }}>
-              {isAr ? 'إلغاء' : 'Annuler'}
+              {t(isAr, 'common.cancel')}
             </Btn>
             <Btn variant="primary" onClick={handleSubmit} loading={submitting}
               style={{ backgroundColor: primary } as React.CSSProperties}>
               {editSupplier
-                ? (isAr ? 'حفظ التعديلات' : 'Enregistrer')
-                : (isAr ? 'إضافة' : 'Ajouter')}
+                ? (t(isAr, 'common.saveEditsShort'))
+                : (t(isAr, 'common.add'))}
             </Btn>
           </div>
         </div>

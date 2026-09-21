@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useUser } from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
+import { t } from '@/lib/i18n/t'
 import { formatDate } from '@/lib/utils'
 import { PageHeader, Modal, Field, inputClass, selectClass, Btn, EmptyState, SkeletonRow } from '@/components/shared'
 import { showSuccess, showError } from '@/lib/utils/toasts'
@@ -173,7 +174,7 @@ export default function BZGChangelogPage() {
                 <Btn variant="primary" onClick={() => setFormOpen(true)}
                   style={{ backgroundColor: '#6366F1' } as React.CSSProperties}>
                   <Plus className="w-4 h-4" />
-                  {isAr ? 'إضافة' : 'Ajouter'}
+                  {t(isAr, 'common.add')}
                 </Btn>
               }
             />
@@ -270,7 +271,7 @@ export default function BZGChangelogPage() {
               value={form.title} onChange={e => setF('title', e.target.value)} />
           </Field>
 
-          <Field label={isAr ? 'الوصف' : 'Description'}>
+          <Field label={t(isAr, 'common.description')}>
             <textarea className={`${inputClass} resize-none`} rows={3}
               placeholder={isAr ? 'تفاصيل التغيير...' : 'Détails du changement...'}
               value={form.description} onChange={e => setF('description', e.target.value)} />
@@ -280,7 +281,7 @@ export default function BZGChangelogPage() {
             <Field label={isAr ? 'الوحدة المتأثرة' : 'Module concerné'}>
               <select className={selectClass} value={form.affected_module}
                 onChange={e => setF('affected_module', e.target.value)}>
-                <option value="">{isAr ? 'اختر...' : 'Choisir...'}</option>
+                <option value="">{t(isAr, 'common.chooseEllipsis')}</option>
                 {MODULES.map(m => <option key={m} value={m}>{m}</option>)}
               </select>
             </Field>
@@ -305,11 +306,11 @@ export default function BZGChangelogPage() {
           <div className="flex gap-3 justify-end pt-2">
             <Btn variant="secondary"
               onClick={() => { setFormOpen(false); setForm({ ...EMPTY_FORM, author: user?.display_name ?? '' }) }}>
-              {isAr ? 'إلغاء' : 'Annuler'}
+              {t(isAr, 'common.cancel')}
             </Btn>
             <Btn variant="primary" onClick={handleSubmit} loading={submitting}
               style={{ backgroundColor: '#6366F1' } as React.CSSProperties}>
-              {isAr ? 'إضافة' : 'Ajouter'}
+              {t(isAr, 'common.add')}
             </Btn>
           </div>
         </div>

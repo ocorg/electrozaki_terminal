@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createUntypedClient, createClient } from '@/lib/supabase/server'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
+import { escapeLike } from '@/lib/utils/validation'
 
 type UserProfile = { display_name: string } | null
 
@@ -38,9 +39,12 @@ export async function GET(request: NextRequest) {
   else if (statut)  query = query.eq('statut', statut)
   if (source)       query = query.eq('source', source)
   if (demand_type)  query = query.eq('demand_type', demand_type)
-  if (search)       query = query.or(
-    `nom.ilike.%${search}%,telephone.ilike.%${search}%,model.ilike.%${search}%,marque.ilike.%${search}%`
-  )
+  if (search) {
+    const safeSearch = escapeLike(search)
+    query = query.or(
+      `nom.ilike.%${safeSearch}%,telephone.ilike.%${safeSearch}%,model.ilike.%${safeSearch}%,marque.ilike.%${safeSearch}%`
+    )
+  }
 
   const { data, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

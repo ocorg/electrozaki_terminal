@@ -2,6 +2,21 @@ import { createClient, createUntypedClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 
+interface SourceAccessory {
+  acc_id:                 string
+  quantite:               number
+  nom:                    string
+  categorie:              string
+  marque:                 string | null
+  compatible_with:        string | null
+  barcode:                string | null
+  prix_achat:             number | null
+  prix_vente_recommande:  number | null
+  prix_vente_minimum:     number | null
+  seuil_alerte:           number
+  store_id:               string | null
+}
+
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createUntypedClient()
@@ -54,13 +69,35 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Source et destination identiques' }, { status: 400 })
     }
 
+    // Accessories are the only device_type that can move a PARTIAL quantity (phones/laptops
+    // are unique serialized items — always the whole thing, qty 1). Validate up front so we
+    // never log a movement record for a transfer that can't actually be applied.
+    let srcAcc: SourceAccessory | null = null
+    let movedQty = 1
+    if (body.device_type === 'إكسسوار') {
+      const { data: acc } = await supabase
+        .from('accessories')
+        .select('acc_id, quantite, nom, categorie, marque, compatible_with, barcode, prix_achat, prix_vente_recommande, prix_vente_minimum, seuil_alerte, store_id')
+        .eq('acc_id', body.device_id)
+        .single() as { data: SourceAccessory | null }
+      if (!acc) return NextResponse.json({ error: 'Accessoire introuvable' }, { status: 404 })
+      srcAcc = acc
+      movedQty = Math.max(1, Math.floor(Number(body.quantity) || 1))
+      if (movedQty > (acc.quantite ?? 0)) {
+        return NextResponse.json(
+          { error: `Quantité insuffisante — disponible : ${acc.quantite ?? 0}` },
+          { status: 400 }
+        )
+      }
+    }
+
     // Create movement record
     const { data, error } = await supabase
       .from('stock_movements')
       .insert({
         device_type:   body.device_type,
         device_id:     body.device_id,
-        quantity:      body.quantity ?? 1,
+        quantity:      movedQty,
         from_location: body.from_location,
         to_location:   body.to_location,
         external_name: body.external_name ?? null,
@@ -80,17 +117,15 @@ export async function POST(request: NextRequest) {
     // Update device location
     const deviceTable = body.device_type === 'هاتف' ? 'phones'
       : body.device_type === 'لابتوب' ? 'laptops'
-      : body.device_type === 'إكسسوار' ? 'accessories'
-      : null
+      : null // accessories are handled separately below (quantity-aware split/merge)
 
-    const deviceIdCol = body.device_type === 'هاتف' ? 'phone_id'
-      : body.device_type === 'لابتوب' ? 'laptop_id'
-      : 'acc_id'
+    const deviceIdCol = body.device_type === 'هاتف' ? 'phone_id' : 'laptop_id'
+
+    const toLocation  = body.to_location  as string
+    const toStoreId   = (body.to_store_id as string | null) ?? null
 
     if (deviceTable) {
-      const reason      = (body.reason      as string) ?? 'Transfert'
-      const toLocation  = body.to_location  as string
-      const toStoreId   = (body.to_store_id as string | null) ?? null
+      const reason = (body.reason as string) ?? 'Transfert'
 
       const deviceUpdate: Record<string, unknown> = {
         location:   toLocation,
@@ -115,6 +150,66 @@ export async function POST(request: NextRequest) {
         .from(deviceTable)
         .update(deviceUpdate)
         .eq(deviceIdCol, body.device_id)
+    } else if (srcAcc) {
+      const destStoreId = toStoreId ?? srcAcc.store_id
+      const isFullMove   = movedQty >= srcAcc.quantite
+
+      if (isFullMove) {
+        // Moving everything — relocate the existing row in place, same as before.
+        await supabase
+          .from('accessories')
+          .update({ location: toLocation, store_id: destStoreId, updated_by: user.id })
+          .eq('acc_id', srcAcc.acc_id)
+      } else {
+        // Partial move: decrement the source, then merge into a matching row already at
+        // the destination (same SKU there) or create one — never silently relocate the
+        // whole record, or the source location would lose stock it's still holding.
+        await supabase
+          .from('accessories')
+          .update({ quantite: srcAcc.quantite - movedQty, updated_by: user.id })
+          .eq('acc_id', srcAcc.acc_id)
+
+        let destQuery = supabase
+          .from('accessories')
+          .select('acc_id, quantite')
+          .eq('location', toLocation)
+          .eq('is_deleted', false)
+          .eq('nom', srcAcc.nom)
+          .eq('categorie', srcAcc.categorie)
+          .neq('acc_id', srcAcc.acc_id)
+        destQuery = destStoreId ? destQuery.eq('store_id', destStoreId) : destQuery.is('store_id', null)
+        destQuery = srcAcc.marque ? destQuery.eq('marque', srcAcc.marque) : destQuery.is('marque', null)
+
+        const { data: destMatch } = await destQuery.maybeSingle() as
+          { data: { acc_id: string; quantite: number } | null }
+
+        if (destMatch) {
+          await supabase
+            .from('accessories')
+            .update({ quantite: destMatch.quantite + movedQty, updated_by: user.id })
+            .eq('acc_id', destMatch.acc_id)
+        } else {
+          await supabase
+            .from('accessories')
+            .insert({
+              nom:                   srcAcc.nom,
+              categorie:             srcAcc.categorie,
+              marque:                srcAcc.marque,
+              compatible_with:       srcAcc.compatible_with,
+              barcode:               srcAcc.barcode,
+              prix_achat:            srcAcc.prix_achat,
+              prix_vente_recommande: srcAcc.prix_vente_recommande,
+              prix_vente_minimum:    srcAcc.prix_vente_minimum,
+              seuil_alerte:          srcAcc.seuil_alerte,
+              quantite:              movedQty,
+              location:              toLocation,
+              store_id:              destStoreId,
+              is_deleted:            false,
+              created_by:            user.id,
+              updated_by:            user.id,
+            })
+        }
+      }
     }
 
     await logActivity({

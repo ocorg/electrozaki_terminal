@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Modal, Btn } from '@/components/shared'
 import { useLanguageStore } from '@/lib/stores/language'
+import { t } from '@/lib/i18n/t'
 import { formatMAD } from '@/lib/utils'
 import { Loader2, RotateCcw, AlertTriangle } from 'lucide-react'
 import { showSuccess, showError } from '@/lib/utils/toasts'
@@ -128,14 +129,17 @@ export default function RetourModal({
   }
 
   // Human-readable label: resolved name first, typed fallback second
-  function deviceLabel(t: Transaction): string {
-    if (deviceNames[t.device_id]) return deviceNames[t.device_id]
-    const type = t.device_type === 'هاتف'
-      ? (isAr ? 'هاتف' : 'Téléphone')
-      : t.device_type === 'إكسسوار'
-      ? (isAr ? 'إكسسوار' : 'Accessoire')
-      : (isAr ? 'لابتوب' : 'Laptop')
-    return `${type} — ${t.device_id}`
+  // NB: parameter is named `txn`, not `t` — this file also imports the i18n `t()` helper,
+  // and shadowing it with a Transaction parameter here previously caused a real bug
+  // (a translation-string ternary was rewritten to call the Transaction object as a function).
+  function deviceLabel(txn: Transaction): string {
+    if (deviceNames[txn.device_id]) return deviceNames[txn.device_id]
+    const type = txn.device_type === 'هاتف'
+      ? (t(isAr, 'common.phoneNoun'))
+      : txn.device_type === 'إكسسوار'
+      ? t(isAr, 'common.accessory')
+      : (t(isAr, 'common.laptop'))
+    return `${type} — ${txn.device_id}`
   }
 
   return (
@@ -209,7 +213,7 @@ export default function RetourModal({
               <span className="font-bold truncate">{deviceLabel(selected)}</span>
               <span className="text-[#6B6860]">Réf.</span>
               <span className="font-mono text-xs text-[#B0ADA6]">{selected.txn_id}</span>
-              <span className="text-[#6B6860]">{isAr ? 'العميل' : 'Client'}</span>
+              <span className="text-[#6B6860]">{t(isAr, 'common.client')}</span>
               <span className="font-bold">{selected.clients?.nom ?? '—'}</span>
               <span className="text-[#6B6860]">{isAr ? 'المبلغ المُسترد' : 'Montant à rembourser'}</span>
               <span className="font-bold text-red-600">- {formatMAD(selected.prix_vente)}</span>
@@ -235,7 +239,7 @@ export default function RetourModal({
         {/* Actions */}
         <div className="flex gap-3 justify-end">
           <Btn variant="secondary" onClick={onClose}>
-            {isAr ? 'إلغاء' : 'Annuler'}
+            {t(isAr, 'common.cancel')}
           </Btn>
           <button
             onClick={handleVoid}

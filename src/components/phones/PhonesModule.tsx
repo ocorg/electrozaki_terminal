@@ -1,7 +1,9 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import { useUser } from '@/lib/hooks/useUser'
+import { useEscapeKey } from '@/lib/hooks/useEscapeKey'
 import { useLanguageStore } from '@/lib/stores/language'
+import { t } from '@/lib/i18n/t'
 import { usePortal } from '@/lib/context/portal'
 import { formatMAD, formatDate, getWarrantyFlag, computePromoPrice } from '@/lib/utils'
 import { StatusBadge, BatteryBar, EmptyState, SkeletonRow, PageHeader, Btn, Modal, Field, inputClass, selectClass } from '@/components/shared'
@@ -41,6 +43,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
   const [labelProduct,  setLabelProduct]  = useState<LabelProduct | null>(null)
   const [confirmDelete,  setConfirmDelete]  = useState<string | null>(null)
   const [creditPhone,    setCreditPhone]    = useState<Phone | null>(null)
+  useEscapeKey(() => setCreditPhone(null), creditPhone != null)
   const [deleting,       setDeleting]       = useState(false)
   const [openProspects,  setOpenProspects]  = useState<Prospect[]>([])
   const [suppliers,      setSuppliers]      = useState<{ supplier_id: string; nom: string; type_fournisseur: string }[]>([])
@@ -64,7 +67,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
-      showSuccess(isAr ? 'تم التعديل ✓' : 'Modifié ✓')
+      showSuccess(t(isAr, 'common.editedOk'))
       setEditingId(null)
       fetchCatalog()
     } catch (err: unknown) {
@@ -84,7 +87,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
-      showSuccess(isAr ? 'تم الحذف ✓' : 'Supprimé ✓')
+      showSuccess(t(isAr, 'common.deletedOk'))
       fetchCatalog()
     } catch (err: unknown) {
       showError((err as Error).message)
@@ -172,8 +175,8 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
   }, [storeId, filterStatus, filterMarque, filterLocation, filterStorage, filterPromo, search])
 
   useEffect(() => {
-    const t = setTimeout(() => fetchPhones(), search ? 300 : 0)
-    return () => clearTimeout(t)
+    const timer = setTimeout(() => fetchPhones(), search ? 300 : 0)
+    return () => clearTimeout(timer)
   }, [fetchPhones, search])
 
   function openAdd() { setEditPhone(null); setFormOpen(true) }
@@ -184,7 +187,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
       setPhones(prev => prev.filter(p => p.phone_id !== phone_id))
-      showSuccess(isAr ? 'تم الحذف ✓' : 'Supprimé ✓')
+      showSuccess(t(isAr, 'common.deletedOk'))
       setConfirmDelete(null)
     } catch (err: unknown) {
       showError((err as Error).message)
@@ -385,7 +388,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
               <button onClick={clearFilters}
                 className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 transition-colors ml-auto">
                 <X className="w-3 h-3" />
-                {isAr ? 'مسح الكل' : 'Effacer tout'}
+                {t(isAr, 'common.clearAll')}
               </button>
             )}
           </div>
@@ -413,8 +416,8 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
             <span>IMEI</span>
             <span>{isAr ? 'الذاكرة / RAM' : 'Stockage / RAM'}</span>
             <span>{isAr ? 'البطارية' : 'Batterie'}</span>
-            <span>{isAr ? 'الموقع' : 'Emplacement'}</span>
-            <span>{isAr ? 'الحالة' : 'Statut'}</span>
+            <span>{t(isAr, 'common.location')}</span>
+            <span>{t(isAr, 'common.status')}</span>
             <span>{isAr ? 'السعر' : 'Prix vente'}</span>
             <span />
           </div>
@@ -428,7 +431,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
               icon={<Smartphone className="w-7 h-7" />}
               title={isAr ? 'لا توجد هواتف' : 'Aucun téléphone'}
               description={hasFilters
-                ? (isAr ? 'لا توجد نتائج لهذه التصفية' : 'Aucun résultat pour ces filtres')
+                ? (t(isAr, 'common.noResultsFiltered'))
                 : (isAr ? 'أضف أول هاتف للمخزون' : 'Ajoutez le premier téléphone')}
               action={!hasFilters
                 ? <Btn variant="primary" onClick={openAdd} style={{ backgroundColor: primary } as React.CSSProperties}>
@@ -468,9 +471,9 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                         <p className="text-sm font-medium text-[#1A1A1A] truncate">{deviceName}</p>
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <p className="text-xs text-[#B0ADA6]">
-                            {phone.condition === 'جديد' ? (isAr ? 'جديد' : 'Neuf')
-                              : phone.condition === 'مستعمل' ? (isAr ? 'مستعمل' : 'Occasion')
-                              : (isAr ? 'معطوب' : 'Défectueux')}
+                            {phone.condition === 'جديد' ? (t(isAr, 'common.new'))
+                              : phone.condition === 'مستعمل' ? (t(isAr, 'common.used'))
+                              : (t(isAr, 'common.damaged'))}
                             {phone.couleur ? ` · ${phone.couleur}` : ''}
                             {warrantyFlag && <span className="ml-1">{warrantyFlag}</span>}
                           </p>
@@ -555,7 +558,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                       <span className="text-xs text-[#6B6860] truncate">
                         {phone.location === 'Magasin Principal' ? (isAr ? 'المحل الرئيسي' : 'Principal')
                           : phone.location === 'Magasin Secondaire' ? (isAr ? 'المحل الثاني' : 'Secondaire')
-                          : (isAr ? 'خارجي' : 'Externe')}
+                          : (t(isAr, 'common.external'))}
                       </span>
                     </div>
 
@@ -766,29 +769,25 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
       </div>
 
       {/* Delete confirmation */}
-      {confirmDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
-            <p className="text-base font-bold text-[#1A1A1A] mb-2">
-              {isAr ? 'تأكيد الحذف' : 'Confirmer la suppression'}
-            </p>
-            <p className="text-sm text-[#6B6860] mb-6">
-              {isAr ? 'هذا الإجراء لا يمكن التراجع عنه.' : 'Cette action est irréversible.'}
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button onClick={() => setConfirmDelete(null)}
-                className="px-4 py-2 rounded-xl border border-[#E8E5DE] text-sm text-[#6B6860] hover:bg-[#F8F7F4] transition-all">
-                {isAr ? 'إلغاء' : 'Annuler'}
-              </button>
-              <button onClick={() => handleDelete(confirmDelete)} disabled={deleting}
-                className="px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-medium hover:bg-red-600 transition-all disabled:opacity-50 flex items-center gap-2">
-                {deleting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                {isAr ? 'حذف' : 'Supprimer'}
-              </button>
-            </div>
-          </div>
+      <Modal
+        open={!!confirmDelete}
+        onClose={() => setConfirmDelete(null)}
+        title={t(isAr, 'common.confirmDelete')}
+        size="sm"
+        closeLabel={t(isAr, 'common.close')}
+      >
+        <p className="text-sm text-[#6B6860] mb-6">
+          {t(isAr, 'common.irreversible')}
+        </p>
+        <div className="flex gap-3 justify-end">
+          <Btn variant="secondary" onClick={() => setConfirmDelete(null)}>
+            {t(isAr, 'common.cancel')}
+          </Btn>
+          <Btn variant="danger" onClick={() => confirmDelete && handleDelete(confirmDelete)} loading={deleting}>
+            {t(isAr, 'common.delete')}
+          </Btn>
         </div>
-      )}
+      </Modal>
 
       {/* Label generator */}
       {labelProduct && (
@@ -811,8 +810,10 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
 
       {/* Modal crédit / avance */}
       {creditPhone && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-md bg-[#0F0F0F] border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
+        <div role="dialog" aria-modal="true" aria-label="Crédit / avance"
+             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+             onClick={() => setCreditPhone(null)}>
+          <div className="w-full max-w-md bg-[#0F0F0F] border border-white/10 rounded-2xl overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
             {/* En-tête */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
               <div className="flex items-center gap-3">
@@ -828,6 +829,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
               </div>
               <button
                 onClick={() => setCreditPhone(null)}
+                aria-label="Fermer"
                 className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-all"
               >
                 <X className="w-4 h-4" />
@@ -914,7 +916,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                   disabled={catSaving || !catForm.marque || !catForm.model || !catForm.couleur}
                   className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#1A1A1A] text-white text-xs font-bold hover:bg-[#333] transition-all disabled:opacity-40">
                   {catSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
-                  {isAr ? 'إضافة' : 'Ajouter'}
+                  {t(isAr, 'common.add')}
                 </button>
               </div>
 
@@ -934,7 +936,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                   </div>
                 ) : filtered.length === 0 ? (
                   <p className="text-center text-xs text-[#B0ADA6] py-6">
-                    {isAr ? 'لا توجد نتائج' : 'Aucun résultat'}
+                    {t(isAr, 'common.noResults')}
                   </p>
                 ) : Object.entries(grouped).map(([brand, items]) => (
                   <div key={brand}>
@@ -964,11 +966,11 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                               <button onClick={updateCatalogEntry} disabled={catSaving}
                                 className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#1A1A1A] text-white text-xs font-bold disabled:opacity-40">
                                 {catSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
-                                {isAr ? 'حفظ' : 'Sauver'}
+                                {t(isAr, 'common.saveAlt')}
                               </button>
                               <button onClick={() => setEditingId(null)}
                                 className="px-3 py-1.5 rounded-lg border border-[#E8E5DE] text-xs text-[#6B6860] hover:bg-white transition-all">
-                                {isAr ? 'إلغاء' : 'Annuler'}
+                                {t(isAr, 'common.cancel')}
                               </button>
                             </div>
                           </div>

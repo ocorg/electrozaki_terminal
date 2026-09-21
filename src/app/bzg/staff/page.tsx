@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useLanguageStore } from '@/lib/stores/language'
+import { t } from '@/lib/i18n/t'
 import { PageHeader, SkeletonRow, EmptyState } from '@/components/shared'
 import { Users, RefreshCw, LogIn, LogOut, Calendar } from 'lucide-react'
 
@@ -142,8 +143,8 @@ export default function BZGStaffPage() {
                                 <p className="text-sm font-bold text-[#1A1A1A]">{latest.user_name}</p>
                                 <p className={`text-xs font-medium ${isIn ? 'text-emerald-600' : 'text-slate-500'}`}>
                                   {isIn
-                                    ? (isAr ? 'حاضر' : 'Présent')
-                                    : (isAr ? 'غادر' : 'Sorti')}
+                                    ? (t(isAr, 'common.present'))
+                                    : (t(isAr, 'common.exited'))}
                                   {' · '}
                                   {new Date(latest.punched_at).toLocaleTimeString('fr-FR', {
                                     hour: '2-digit', minute: '2-digit',

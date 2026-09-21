@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useUser } from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
+import { t } from '@/lib/i18n/t'
 import { usePortal } from '@/lib/context/portal'
 import { formatDate } from '@/lib/utils'
 import { Modal, Field, inputClass, selectClass, Btn, PageHeader, EmptyState, SkeletonRow } from '@/components/shared'
@@ -58,6 +59,7 @@ const REASON_LABELS_AR: Record<string, string> = {
 const EMPTY_FORM = {
   device_type:    'هاتف' as DeviceType,
   device_id:      '',
+  quantity:       '1',
   from_location:  'Magasin Principal' as LocationType,
   to_location:    'Magasin Secondaire' as LocationType,
   from_store_id:  '',
@@ -120,6 +122,10 @@ export default function MovementsModule({ storeId }: MovementsModuleProps) {
       showError(isAr ? 'المصدر والوجهة متطابقان' : 'Source et destination identiques')
       return
     }
+    if (form.device_type === 'إكسسوار' && (!form.quantity || Number(form.quantity) < 1)) {
+      showError(isAr ? 'الكمية يجب أن تكون 1 على الأقل' : 'La quantité doit être au moins 1')
+      return
+    }
     setSubmitting(true)
     try {
       const res  = await fetch('/api/movements', {
@@ -129,6 +135,7 @@ export default function MovementsModule({ storeId }: MovementsModuleProps) {
           store_id:      form.is_inter_store ? form.from_store_id : storeId,
           device_type:   form.device_type,
           device_id:     form.device_id,
+          quantity:      form.device_type === 'إكسسوار' ? Number(form.quantity) : 1,
           from_location: form.from_location,
           to_location:   form.to_location,
           from_store_id: form.is_inter_store ? form.from_store_id : null,
@@ -182,7 +189,7 @@ export default function MovementsModule({ storeId }: MovementsModuleProps) {
                 <Btn variant="primary" onClick={() => setFormOpen(true)}
                   style={{ backgroundColor: primary } as React.CSSProperties}>
                   <Plus className="w-4 h-4" />
-                  {isAr ? 'تسجيل حركة' : 'Nouveau transfert'}
+                  {t(isAr, 'common.newTransfer')}
                 </Btn>
               )}
             </div>
@@ -232,7 +239,7 @@ export default function MovementsModule({ storeId }: MovementsModuleProps) {
                 ? <Btn variant="primary" onClick={() => setFormOpen(true)}
                     style={{ backgroundColor: primary } as React.CSSProperties}>
                     <Plus className="w-4 h-4" />
-                    {isAr ? 'تسجيل حركة' : 'Nouveau transfert'}
+                    {t(isAr, 'common.newTransfer')}
                   </Btn>
                 : undefined
               }
@@ -296,6 +303,7 @@ export default function MovementsModule({ storeId }: MovementsModuleProps) {
                               ...EMPTY_FORM,
                               device_type:   mov.device_type,
                               device_id:     mov.device_id,
+                              quantity:      String(mov.quantity ?? 1),
                               from_location: mov.to_location,
                               to_location:   mov.from_location,
                               reason:        'Retour',
@@ -330,8 +338,8 @@ export default function MovementsModule({ storeId }: MovementsModuleProps) {
           <Field label={isAr ? 'نوع الجهاز' : 'Type d\'appareil'} required>
             <select className={selectClass} value={form.device_type}
               onChange={e => setF('device_type', e.target.value)}>
-              <option value="هاتف">{isAr ? 'هاتف' : 'Téléphone'}</option>
-              <option value="لابتوب">{isAr ? 'لابتوب' : 'Laptop'}</option>
+              <option value="هاتف">{t(isAr, 'common.phoneNoun')}</option>
+              <option value="لابتوب">{t(isAr, 'common.laptop')}</option>
               <option value="إكسسوار">{isAr ? 'إكسسوار' : 'Accessoire'}</option>
             </select>
           </Field>
@@ -350,6 +358,16 @@ export default function MovementsModule({ storeId }: MovementsModuleProps) {
               />
             </div>
           </Field>
+
+          {/* Quantity — accessories only; phones/laptops are unique serialized items (always 1) */}
+          {form.device_type === 'إكسسوار' && (
+            <Field label={t(isAr, 'common.quantity')} required
+                   hint={isAr ? 'عدد الوحدات المراد نقلها' : 'Nombre d\'unités à transférer'}>
+              <input type="number" min="1" step="1" className={inputClass}
+                value={form.quantity}
+                onChange={e => setF('quantity', e.target.value)} />
+            </Field>
+          )}
 
               <Field label={isAr ? 'نوع النقل' : 'Type de transfert'}>
               <div className="flex gap-2">
@@ -423,11 +441,11 @@ export default function MovementsModule({ storeId }: MovementsModuleProps) {
             </select>
           </Field>
 
-          <Field label={isAr ? 'ملاحظات' : 'Notes'}>
+          <Field label={t(isAr, 'common.notes')}>
             <textarea className={`${inputClass} resize-none text-sm`} rows={2}
               value={form.notes}
               onChange={e => setF('notes', e.target.value)}
-              placeholder={isAr ? 'ملاحظة...' : 'Note...'} />
+              placeholder={t(isAr, 'common.notePlaceholder')} />
           </Field>
 
           {/* Preview */}
@@ -452,7 +470,7 @@ export default function MovementsModule({ storeId }: MovementsModuleProps) {
           <div className="flex gap-3 justify-end pt-2">
             <Btn variant="secondary"
               onClick={() => { setFormOpen(false); setForm({ ...EMPTY_FORM }) }}>
-              {isAr ? 'إلغاء' : 'Annuler'}
+              {t(isAr, 'common.cancel')}
             </Btn>
             <Btn variant="primary" onClick={handleSubmit} loading={submitting}
               style={{ backgroundColor: primary } as React.CSSProperties}>

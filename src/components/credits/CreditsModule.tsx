@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useUser } from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
+import { t } from '@/lib/i18n/t'
 import { formatMAD, formatDate } from '@/lib/utils'
 import { Modal, Field, inputClass, selectClass, PageHeader, EmptyState, SkeletonRow } from '@/components/shared'
 import { showSuccess, showError } from '@/lib/utils/toasts'
@@ -133,7 +134,7 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
       setShowClientDrop(false)
       return
     }
-    const t = setTimeout(async () => {
+    const timer = setTimeout(async () => {
       try {
         const res  = await fetch(`/api/clients?search=${encodeURIComponent(clientSearch)}&store_id=${storeId}`)
         const json = await res.json()
@@ -141,20 +142,20 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
         setShowClientDrop(true)
       } catch { setClientSuggestions([]) }
     }, 200)
-    return () => clearTimeout(t)
+    return () => clearTimeout(timer)
   }, [clientSearch, storeId])
 
   // ── Client autocomplete for link modal ────────────────────
   useEffect(() => {
     if (!linkSearch.trim() || linkSearch.length < 1) { setLinkSuggestions([]); return }
-    const t = setTimeout(async () => {
+    const timer = setTimeout(async () => {
       try {
         const res  = await fetch(`/api/clients?search=${encodeURIComponent(linkSearch)}&store_id=${storeId}`)
         const json = await res.json()
         setLinkSuggestions(json.data || [])
       } catch { setLinkSuggestions([]) }
     }, 200)
-    return () => clearTimeout(t)
+    return () => clearTimeout(timer)
   }, [linkSearch, storeId])
 
   // ── Record payment ────────────────────────────────────────
@@ -186,7 +187,7 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
-      showSuccess(isAr ? 'تم تسجيل الدفع ✓' : 'Paiement enregistré ✓')
+      showSuccess(t(isAr, 'common.paymentRecorded'))
       setPayTarget(null)
       setPayForm({ montant: '', payment_method: 'نقد', payment_ref: '', notes: '' })
       await fetchCredits()
@@ -275,7 +276,7 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
-      showSuccess(isAr ? 'تم تسجيل الدفع ✓' : 'Paiement enregistré ✓')
+      showSuccess(t(isAr, 'common.paymentRecorded'))
       setImportPayTarget(null)
       setImportPayForm({ montant: '', payment_method: 'نقد', payment_ref: '', notes: '' })
       await fetchImports()
@@ -375,8 +376,8 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
                 {/* Table header */}
                 <div className="hidden sm:grid grid-cols-4 gap-4 px-5 py-3 bg-[#F8F7F4]">
                   {[
-                    isAr ? 'العميل' : 'Client',
-                    isAr ? 'الهاتف' : 'Téléphone',
+                    t(isAr, 'common.client'),
+                    t(isAr, 'common.phoneField'),
                     isAr ? 'الرصيد المستحق' : 'Solde dû',
                     '',
                   ].map((h, i) => (
@@ -443,7 +444,7 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#B0ADA6]" />
                       <input
                         className={`${inputClass} pl-9`}
-                        placeholder={isAr ? 'بحث عن عميل...' : 'Rechercher un client...'}
+                        placeholder={t(isAr, 'common.searchClient')}
                         value={clientSearch}
                         onChange={e => setClientSearch(e.target.value)}
                         onBlur={() => setTimeout(() => setShowClientDrop(false), 150)}
@@ -470,7 +471,7 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
                     </div>
                   </Field>
                 ) : (
-                  <Field label={isAr ? 'الاسم *' : 'Nom *'}>
+                  <Field label={t(isAr, 'common.nameRequired')}>
                     <input className={inputClass}
                       placeholder={isAr ? 'اسم العميل' : 'Nom du client'}
                       value={importForm.client_name_free}
@@ -479,7 +480,7 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
                 )}
 
                 {!importForm.useExisting && (
-                  <Field label={isAr ? 'الهاتف' : 'Téléphone'}>
+                  <Field label={t(isAr, 'common.phoneField')}>
                     <input className={inputClass} type="tel"
                       placeholder="06XXXXXXXX"
                       value={importForm.client_phone_free}
@@ -508,7 +509,7 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
                     onChange={e => setImportForm(f => ({ ...f, description: e.target.value }))} />
                 </Field>
 
-                <Field label={isAr ? 'ملاحظات' : 'Notes'}>
+                <Field label={t(isAr, 'common.notes')}>
                   <input className={inputClass}
                     placeholder={isAr ? 'ملاحظات إضافية' : 'Notes internes'}
                     value={importForm.notes}
@@ -520,7 +521,7 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
                 className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#1A1A1A] text-white text-sm font-bold hover:bg-[#333] transition-all disabled:opacity-50">
                 <Plus className="w-4 h-4" />
                 {submitting
-                  ? (isAr ? 'جارٍ الحفظ...' : 'Enregistrement...')
+                  ? (t(isAr, 'common.saving'))
                   : (isAr ? 'حفظ الدين' : 'Enregistrer le crédit')}
               </button>
             </div>
@@ -625,7 +626,7 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
               </p>
             </div>
 
-            <Field label={isAr ? 'المبلغ المحصل (درهم) *' : 'Montant encaissé (MAD) *'}>
+            <Field label={t(isAr, 'common.amountCollected')}>
               <input className={inputClass} type="number" min="0" step="0.01"
                 inputMode="decimal"
                 value={payForm.montant}
@@ -633,16 +634,16 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
                 autoFocus />
             </Field>
 
-            <Field label={isAr ? 'طريقة الدفع' : 'Méthode de paiement'}>
+            <Field label={t(isAr, 'common.paymentMethod')}>
               <select className={selectClass} value={payForm.payment_method}
                 onChange={e => setPayForm(f => ({ ...f, payment_method: e.target.value as 'نقد' | 'تحويل' }))}>
-                <option value="نقد">{isAr ? 'نقداً' : 'Espèces'}</option>
-                <option value="تحويل">{isAr ? 'تحويل بنكي' : 'Virement'}</option>
+                <option value="نقد">{t(isAr, 'common.cashAdverbial')}</option>
+                <option value="تحويل">{t(isAr, 'common.bankTransfer')}</option>
               </select>
             </Field>
 
             {payForm.payment_method === 'تحويل' && (
-              <Field label={isAr ? 'مرجع التحويل *' : 'Référence virement *'}>
+              <Field label={t(isAr, 'common.transferReference')}>
                 <input className={inputClass}
                   placeholder="REF-..."
                   value={payForm.payment_ref}
@@ -650,9 +651,9 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
               </Field>
             )}
 
-            <Field label={isAr ? 'ملاحظات' : 'Notes'}>
+            <Field label={t(isAr, 'common.notes')}>
               <input className={inputClass}
-                placeholder={isAr ? 'ملاحظات...' : 'Notes...'}
+                placeholder={t(isAr, 'common.notesPlaceholder')}
                 value={payForm.notes}
                 onChange={e => setPayForm(f => ({ ...f, notes: e.target.value }))} />
             </Field>
@@ -660,11 +661,11 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
             <div className="flex gap-3 pt-2">
               <button onClick={() => setPayTarget(null)}
                 className="flex-1 py-2.5 rounded-xl border border-[#E8E5DE] text-sm font-bold text-[#6B6860] hover:bg-[#F8F7F4] transition-all">
-                {isAr ? 'إلغاء' : 'Annuler'}
+                {t(isAr, 'common.cancel')}
               </button>
               <button onClick={submitPayment} disabled={submitting}
                 className="flex-1 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 transition-all disabled:opacity-50">
-                {submitting ? '...' : (isAr ? 'تأكيد الدفع' : 'Confirmer')}
+                {submitting ? '...' : (t(isAr, 'common.confirmPayment'))}
               </button>
             </div>
           </div>
@@ -696,41 +697,41 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
                 </p>
               )}
             </div>
-            <Field label={isAr ? 'المبلغ المحصل (درهم) *' : 'Montant encaissé (MAD) *'}>
+            <Field label={t(isAr, 'common.amountCollected')}>
               <input className={inputClass} type="number" min="0" step="0.01"
                 inputMode="decimal"
                 value={importPayForm.montant}
                 onChange={e => setImportPayForm(f => ({ ...f, montant: e.target.value }))}
                 autoFocus />
             </Field>
-            <Field label={isAr ? 'طريقة الدفع' : 'Méthode de paiement'}>
+            <Field label={t(isAr, 'common.paymentMethod')}>
               <select className={selectClass} value={importPayForm.payment_method}
                 onChange={e => setImportPayForm(f => ({ ...f, payment_method: e.target.value as 'نقد' | 'تحويل' }))}>
-                <option value="نقد">{isAr ? 'نقداً' : 'Espèces'}</option>
-                <option value="تحويل">{isAr ? 'تحويل بنكي' : 'Virement'}</option>
+                <option value="نقد">{t(isAr, 'common.cashAdverbial')}</option>
+                <option value="تحويل">{t(isAr, 'common.bankTransfer')}</option>
               </select>
             </Field>
             {importPayForm.payment_method === 'تحويل' && (
-              <Field label={isAr ? 'مرجع التحويل *' : 'Référence virement *'}>
+              <Field label={t(isAr, 'common.transferReference')}>
                 <input className={inputClass} placeholder="REF-..."
                   value={importPayForm.payment_ref}
                   onChange={e => setImportPayForm(f => ({ ...f, payment_ref: e.target.value }))} />
               </Field>
             )}
-            <Field label={isAr ? 'ملاحظات' : 'Notes'}>
+            <Field label={t(isAr, 'common.notes')}>
               <input className={inputClass}
-                placeholder={isAr ? 'ملاحظات...' : 'Notes...'}
+                placeholder={t(isAr, 'common.notesPlaceholder')}
                 value={importPayForm.notes}
                 onChange={e => setImportPayForm(f => ({ ...f, notes: e.target.value }))} />
             </Field>
             <div className="flex gap-3 pt-2">
               <button onClick={() => setImportPayTarget(null)}
                 className="flex-1 py-2.5 rounded-xl border border-[#E8E5DE] text-sm font-bold text-[#6B6860] hover:bg-[#F8F7F4] transition-all">
-                {isAr ? 'إلغاء' : 'Annuler'}
+                {t(isAr, 'common.cancel')}
               </button>
               <button onClick={submitImportPayment} disabled={submitting}
                 className="flex-1 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 transition-all disabled:opacity-50">
-                {submitting ? '...' : (isAr ? 'تأكيد الدفع' : 'Confirmer')}
+                {submitting ? '...' : (t(isAr, 'common.confirmPayment'))}
               </button>
             </div>
           </div>
@@ -753,7 +754,7 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#B0ADA6]" />
               <input className={`${inputClass} pl-9`}
-                placeholder={isAr ? 'بحث عن عميل...' : 'Rechercher un client...'}
+                placeholder={t(isAr, 'common.searchClient')}
                 value={linkSearch}
                 onChange={e => setLinkSearch(e.target.value)}
                 autoFocus />

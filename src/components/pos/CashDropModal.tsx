@@ -1,6 +1,8 @@
 'use client'
 import { useState } from 'react'
 import { showSuccess, showError } from '@/lib/utils/toasts'
+import { Modal, Field, Btn, inputClass } from '@/components/shared'
+import { t } from '@/lib/i18n/t'
 
 interface Props {
   open:    boolean
@@ -14,8 +16,6 @@ export default function CashDropModal({ open, onClose, storeId, isAr, primary }:
   const [amount,     setAmount]     = useState('')
   const [reason,     setReason]     = useState('')
   const [submitting, setSubmitting] = useState(false)
-
-  if (!open) return null
 
   function handleClose() { setAmount(''); setReason(''); onClose() }
 
@@ -37,50 +37,44 @@ export default function CashDropModal({ open, onClose, storeId, isAr, primary }:
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
-        <p className="text-sm font-bold text-[#1A1A1A]">
-          {isAr ? 'إيداع نقدي' : 'Encaissement manuel'}
-        </p>
-        <div className="space-y-3">
-          <div>
-            <label className="text-xs font-bold text-[#6B6860] uppercase tracking-widest block mb-1">
-              {isAr ? 'المبلغ (درهم) *' : 'Montant (MAD) *'}
-            </label>
-            <input
-              type="number"
-              className="w-full px-3 py-2.5 text-sm border border-[#E8E5DE] rounded-xl focus:outline-none focus:border-emerald-400"
-              placeholder="0.00"
-              value={amount}
-              onChange={e => setAmount(e.target.value)}
-              autoFocus
-            />
-          </div>
-          <div>
-            <label className="text-xs font-bold text-[#6B6860] uppercase tracking-widest block mb-1">
-              {isAr ? 'السبب *' : 'Motif *'}
-            </label>
-            <input
-              type="text"
-              className="w-full px-3 py-2.5 text-sm border border-[#E8E5DE] rounded-xl focus:outline-none focus:border-emerald-400"
-              placeholder={isAr ? 'مثال: دفع دين قديم' : 'Ex: remboursement dette ancienne'}
-              value={reason}
-              onChange={e => setReason(e.target.value)}
-            />
-          </div>
-        </div>
+    <Modal open={open} onClose={handleClose} title={t(isAr, 'common.manualCashDeposit')} size="sm"
+           closeLabel={t(isAr, 'common.close')}>
+      <div className="space-y-4">
+        <Field label={t(isAr, 'common.amountMad')}>
+          <input
+            type="number"
+            className={inputClass}
+            placeholder="0.00"
+            value={amount}
+            onChange={e => setAmount(e.target.value)}
+            autoFocus
+          />
+        </Field>
+        <Field label={isAr ? 'السبب *' : 'Motif *'}>
+          <input
+            type="text"
+            className={inputClass}
+            placeholder={isAr ? 'مثال: دفع دين قديم' : 'Ex: remboursement dette ancienne'}
+            value={reason}
+            onChange={e => setReason(e.target.value)}
+          />
+        </Field>
         <div className="flex gap-2 pt-1">
-          <button type="button" onClick={handleClose}
-            className="flex-1 py-2.5 rounded-xl text-sm font-bold border border-[#E8E5DE] text-[#6B6860] hover:bg-[#F8F7F4] transition-all">
-            {isAr ? 'إلغاء' : 'Annuler'}
-          </button>
-          <button type="button" disabled={submitting || !amount || !reason.trim()} onClick={handleSubmit}
-            className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-40"
-            style={{ backgroundColor: primary }}>
-            {submitting ? '...' : (isAr ? 'تأكيد' : 'Confirmer')}
-          </button>
+          <Btn variant="secondary" className="flex-1" onClick={handleClose}>
+            {t(isAr, 'common.cancel')}
+          </Btn>
+          <Btn
+            variant="primary"
+            className="flex-1"
+            disabled={!amount || !reason.trim()}
+            loading={submitting}
+            onClick={handleSubmit}
+            style={{ backgroundColor: primary }}
+          >
+            {t(isAr, 'common.confirm')}
+          </Btn>
         </div>
       </div>
-    </div>
+    </Modal>
   )
 }

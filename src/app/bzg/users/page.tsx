@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useUser } from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
+import { t } from '@/lib/i18n/t'
 import { formatDate } from '@/lib/utils'
 import { PageHeader, SkeletonRow, Modal, Field, inputClass, selectClass, Btn } from '@/components/shared'
 import { showSuccess, showError } from '@/lib/utils/toasts'
@@ -348,7 +349,7 @@ export default function BZGUsersPage() {
                 onChange={e => setCreateForm(p => ({ ...p, email: e.target.value }))} />
             </Field>
 
-            <Field label={isAr ? 'الاسم الكامل' : 'Nom complet'} required>
+            <Field label={t(isAr, 'common.fullName')} required>
               <input type="text" className={inputClass} placeholder="Prénom Nom"
                 value={createForm.full_name}
                 onChange={e => setCreateForm(p => ({ ...p, full_name: e.target.value }))} />
@@ -373,7 +374,7 @@ export default function BZGUsersPage() {
               </div>
             </Field>
 
-            <Field label={isAr ? 'الدور' : 'Rôle'} required>
+            <Field label={t(isAr, 'common.role')} required>
               <select className={selectClass} value={createForm.role}
                 onChange={e => handleCreateRoleChange(e.target.value)}>
                 <option value="staff">Staff</option>
@@ -387,7 +388,7 @@ export default function BZGUsersPage() {
               </select>
             </Field>
 
-            <Field label={isAr ? 'المتجر المخصص' : 'Magasin assigné'}>
+            <Field label={t(isAr, 'common.assignedStore')}>
               <select className={selectClass} value={createForm.store_id}
                 onChange={e => setCreateForm(p => ({ ...p, store_id: e.target.value }))}>
                 <option value="">{isAr ? 'بدون تخصيص' : 'Aucun / Tous les magasins'}</option>
@@ -398,7 +399,7 @@ export default function BZGUsersPage() {
             <div className="flex items-center justify-between p-3 bg-[#F8F7F4] rounded-xl">
               <div>
                 <p className="text-sm font-medium text-[#1A1A1A]">
-                  {isAr ? 'تقييد بالمتجر' : 'Verrouillé au magasin'}
+                  {t(isAr, 'common.storeLocked')}
                 </p>
                 <p className="text-xs text-[#6B6860] mt-0.5">
                   {isAr ? 'إعادة توجيه مباشرة بدون اختيار' : 'Auto-activé pour les rôles staff'}
@@ -415,7 +416,7 @@ export default function BZGUsersPage() {
             <div className="flex items-center justify-between p-3 bg-[#F8F7F4] rounded-xl">
               <div>
                 <p className="text-sm font-medium text-[#1A1A1A]">
-                  {isAr ? 'الحساب نشط' : 'Compte actif'}
+                  {t(isAr, 'common.accountActive')}
                 </p>
               </div>
               <button
@@ -428,7 +429,7 @@ export default function BZGUsersPage() {
 
             <div className="flex gap-3 justify-end pt-2">
               <Btn variant="secondary" onClick={() => setCreateOpen(false)}>
-                {isAr ? 'إلغاء' : 'Annuler'}
+                {t(isAr, 'common.cancel')}
               </Btn>
               <Btn variant="primary" onClick={handleCreate} loading={creating}
                 style={{ backgroundColor: '#6366F1' } as React.CSSProperties}>
@@ -454,7 +455,7 @@ export default function BZGUsersPage() {
                 onChange={e => setForm(p => ({ ...p, display_name: e.target.value }))} />
             </Field>
 
-            <Field label={isAr ? 'الدور' : 'Rôle'} required>
+            <Field label={t(isAr, 'common.role')} required>
               <select className={selectClass} value={form.role}
                 onChange={e => setForm(p => ({ ...p, role: e.target.value }))}
                 disabled={self?.role !== 'owner'}>
@@ -464,7 +465,7 @@ export default function BZGUsersPage() {
               </select>
             </Field>
 
-            <Field label={isAr ? 'المتجر المخصص' : 'Magasin assigné'}>
+            <Field label={t(isAr, 'common.assignedStore')}>
               <select className={selectClass} value={form.store_id}
                 onChange={e => setForm(p => ({ ...p, store_id: e.target.value }))}>
                 <option value="">{isAr ? 'بدون تخصيص' : 'Aucun (flottant)'}</option>
@@ -475,7 +476,7 @@ export default function BZGUsersPage() {
             <div className="flex items-center justify-between p-3 bg-[#F8F7F4] rounded-xl">
               <div>
                 <p className="text-sm font-medium text-[#1A1A1A]">
-                  {isAr ? 'تقييد بالمتجر' : 'Verrouillé au magasin'}
+                  {t(isAr, 'common.storeLocked')}
                 </p>
                 <p className="text-xs text-[#6B6860] mt-0.5">
                   {isAr ? 'لا يمكنه الوصول لمتاجر أخرى' : 'Redirigé directement sans sélection'}
@@ -492,7 +493,7 @@ export default function BZGUsersPage() {
             <div className="flex items-center justify-between p-3 bg-[#F8F7F4] rounded-xl">
               <div>
                 <p className="text-sm font-medium text-[#1A1A1A]">
-                  {isAr ? 'الحساب نشط' : 'Compte actif'}
+                  {t(isAr, 'common.accountActive')}
                 </p>
                 <p className="text-xs text-[#6B6860] mt-0.5">
                   {isAr ? 'إلغاء التفعيل يمنع تسجيل الدخول' : 'Désactiver bloque la connexion'}
@@ -508,11 +509,11 @@ export default function BZGUsersPage() {
 
             <div className="flex gap-3 justify-end pt-2">
               <Btn variant="secondary" onClick={() => setEditUser(null)}>
-                {isAr ? 'إلغاء' : 'Annuler'}
+                {t(isAr, 'common.cancel')}
               </Btn>
               <Btn variant="primary" onClick={handleSave} loading={submitting}
                 style={{ backgroundColor: '#6366F1' } as React.CSSProperties}>
-                {isAr ? 'حفظ التغييرات' : 'Enregistrer'}
+                {t(isAr, 'common.saveChangesShort')}
               </Btn>
             </div>
           </div>

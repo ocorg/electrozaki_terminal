@@ -62,7 +62,11 @@ export async function POST(
       )
     }
 
-    const montantRestant = Number(credit.montant_total) - Number(credit.montant_paye)
+    // Cash obligation excludes the trade-in value already credited at creation — must match
+    // the same formula used in POST /api/phone-credits (cashObligation), or a credit with a
+    // reprise never reaches "solde" without the customer overpaying in cash by the reprise amount.
+    const cashObligation = Number(credit.montant_total) - (credit.has_reprise ? Number(credit.reprise_valeur ?? 0) : 0)
+    const montantRestant = cashObligation - Number(credit.montant_paye)
     if (montant > montantRestant + 0.01) {
       return NextResponse.json(
         { error: `Versement trop élevé — reste dû : ${montantRestant.toFixed(2)} DH` },
@@ -90,7 +94,7 @@ export async function POST(
 
     // ── Mettre à jour montant_paye ──
     const newMontantPaye = Number(credit.montant_paye) + montant
-    const isFullyPaid    = newMontantPaye >= Number(credit.montant_total) - 0.01
+    const isFullyPaid    = newMontantPaye >= cashObligation - 0.01
 
     const { error: updateErr } = await (supabase as any)
       .from('phone_credit_sales')

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import { Toaster } from 'sonner'
 import FetchInterceptor from '@/components/shared/FetchInterceptor'
+import HtmlLangSync from '@/components/shared/HtmlLangSync'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
@@ -33,6 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className={`${inter.variable} font-body bg-ez-black text-ez-text antialiased`}>
         <FetchInterceptor />
+        <HtmlLangSync />
         {children}
         <Toaster
           position="top-right"

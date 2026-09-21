@@ -27,6 +27,11 @@ export function computeFariq(prixVente: number, avance = 0, valeurEchange = 0): 
   return prixVente - avance - valeurEchange
 }
 
+/** Round to 2 decimal places (currency-safe) */
+export function round2(n: number): number {
+  return Math.round(n * 100) / 100
+}
+
 /** Compute STATUT_PAIEMENT */
 export function computeStatutPaiement(fariq: number): '✅ مسدد' | '🔵 متبقي' | '⚠️ زيادة دفع' {
   if (fariq === 0) return '✅ مسدد'

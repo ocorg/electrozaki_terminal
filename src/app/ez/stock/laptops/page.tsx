@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useUser } from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
+import { t } from '@/lib/i18n/t'
 import { usePortal } from '@/lib/context/portal'
 import { formatMAD, formatDate, getWarrantyFlag } from '@/lib/utils'
 import { StatusBadge, BatteryBar, EmptyState, SkeletonRow, PageHeader, Btn, Modal, Field, inputClass, selectClass } from '@/components/shared'
@@ -55,8 +56,8 @@ export default function EZLaptopsPage() {
   }, [search, filterStatus])
 
   useEffect(() => {
-    const t = setTimeout(() => fetchLaptops(), search ? 300 : 0)
-    return () => clearTimeout(t)
+    const timer = setTimeout(() => fetchLaptops(), search ? 300 : 0)
+    return () => clearTimeout(timer)
   }, [fetchLaptops, search])
 
   function set(field: keyof Laptop, value: unknown) {
@@ -69,7 +70,7 @@ export default function EZLaptopsPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!form.marque || !form.model) {
-      showError(isAr ? 'الماركة والموديل مطلوبان' : 'Marque et modèle obligatoires')
+      showError(t(isAr, 'common.brandModelRequired'))
       return
     }
     setSubmitting(true)
@@ -83,7 +84,7 @@ export default function EZLaptopsPage() {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
-      showSuccess(isEdit ? (isAr ? 'تم التعديل ✓' : 'Modifié ✓') : (isAr ? 'تم الإضافة ✓' : 'Ajouté ✓'))
+      showSuccess(isEdit ? (t(isAr, 'common.editedOk')) : (t(isAr, 'common.addedOk')))
       setFormOpen(false)
       await fetchLaptops()
     } catch (err: unknown) {
@@ -126,7 +127,7 @@ export default function EZLaptopsPage() {
           </div>
           <select className="text-sm border border-[#E8E5DE] rounded-xl px-3 py-2.5 bg-white text-[#6B6860] focus:outline-none"
             value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-            <option value="">{isAr ? 'كل الحالات' : 'Tous statuts'}</option>
+            <option value="">{t(isAr, 'common.allStatuses')}</option>
             {STATUSES.map(s => <option key={s} value={s}>{isAr ? s : STATUS_LABELS[s]}</option>)}
           </select>
         </div>
@@ -140,7 +141,7 @@ export default function EZLaptopsPage() {
             <EmptyState icon={<LaptopIcon className="w-7 h-7" />}
               title={isAr ? 'لا توجد لابتوبات' : 'Aucun laptop'}
               action={<Btn variant="primary" onClick={openAdd} style={{ backgroundColor: primary } as React.CSSProperties}>
-                <Plus className="w-4 h-4" />{isAr ? 'إضافة' : 'Ajouter'}
+                <Plus className="w-4 h-4" />{t(isAr, 'common.add')}
               </Btn>} />
           ) : (
             <div className="divide-y divide-[#F2F0EB]">
@@ -197,35 +198,35 @@ export default function EZLaptopsPage() {
         size="lg">
         <form onSubmit={handleSubmit} className="space-y-4" dir={isAr ? 'rtl' : 'ltr'}>
           <div className="grid grid-cols-2 gap-4">
-            <Field label={isAr ? 'المصدر' : 'Source'} required>
+            <Field label={t(isAr, 'common.source')} required>
               <select className={selectClass} value={form.source || ''} onChange={e => set('source', e.target.value as DeviceSource)}>
                 <option value="Fournisseur">Fournisseur</option>
                 <option value="Reprise">Reprise</option>
                 <option value="Échange">Échange</option>
               </select>
             </Field>
-            <Field label={isAr ? 'الحالة' : 'Condition'} required>
+            <Field label={t(isAr, 'common.deviceCondition')} required>
               <select className={selectClass} value={form.condition || ''} onChange={e => set('condition', e.target.value as DeviceCondition)}>
-                <option value="جديد">{isAr ? 'جديد' : 'Neuf'}</option>
-                <option value="مستعمل">{isAr ? 'مستعمل' : 'Occasion'}</option>
-                <option value="معطوب">{isAr ? 'معطوب' : 'Défectueux'}</option>
+                <option value="جديد">{t(isAr, 'common.new')}</option>
+                <option value="مستعمل">{t(isAr, 'common.used')}</option>
+                <option value="معطوب">{t(isAr, 'common.damaged')}</option>
               </select>
             </Field>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <Field label={isAr ? 'الماركة' : 'Marque'} required>
+            <Field label={t(isAr, 'common.brand')} required>
               <select className={selectClass} value={form.marque || ''} onChange={e => set('marque', e.target.value)}>
-                <option value="">{isAr ? 'اختر...' : 'Choisir...'}</option>
+                <option value="">{t(isAr, 'common.chooseEllipsis')}</option>
                 {MARQUES.map(m => <option key={m} value={m}>{m}</option>)}
               </select>
             </Field>
-            <Field label={isAr ? 'الموديل' : 'Modèle'} required>
+            <Field label={t(isAr, 'common.model')} required>
               <input type="text" className={inputClass} placeholder="MacBook Pro 14, ThinkPad X1..."
                 value={form.model || ''} onChange={e => set('model', e.target.value)} />
             </Field>
           </div>
           <div className="grid grid-cols-3 gap-4">
-            <Field label={isAr ? 'السعة' : 'Stockage'}>
+            <Field label={t(isAr, 'common.storage')}>
               <select className={selectClass} value={form.stockage || ''} onChange={e => set('stockage', e.target.value)}>
                 <option value="">—</option>
                 {STOCKAGES.map(s => <option key={s} value={s}>{s}</option>)}
@@ -253,16 +254,16 @@ export default function EZLaptopsPage() {
             </Field>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <Field label={isAr ? 'الحالة في المخزون' : 'Statut'}>
+            <Field label={t(isAr, 'common.stockStatus')}>
               <select className={selectClass} value={form.status || 'متوفر'} onChange={e => set('status', e.target.value)}>
                 {STATUSES.map(s => <option key={s} value={s}>{isAr ? s : STATUS_LABELS[s]}</option>)}
               </select>
             </Field>
-            <Field label={isAr ? 'الموقع' : 'Emplacement'}>
+            <Field label={t(isAr, 'common.location')}>
               <select className={selectClass} value={form.location || 'Magasin Principal'} onChange={e => set('location', e.target.value as LocationType)}>
-                <option value="Magasin Principal">{isAr ? 'المحل الرئيسي' : 'Magasin Principal'}</option>
-                <option value="Magasin Secondaire">{isAr ? 'المحل الثاني' : 'Magasin Secondaire'}</option>
-                <option value="Externe">{isAr ? 'خارجي' : 'Externe'}</option>
+                <option value="Magasin Principal">{t(isAr, 'common.mainStore')}</option>
+                <option value="Magasin Secondaire">{t(isAr, 'common.secondaryStore')}</option>
+                <option value="Externe">{t(isAr, 'common.external')}</option>
               </select>
             </Field>
           </div>
@@ -273,9 +274,9 @@ export default function EZLaptopsPage() {
               </p>
               <div className="grid grid-cols-3 gap-4">
                 {[
-                  { label: isAr ? 'سعر الشراء' : 'Prix achat', field: 'prix_achat' as keyof Laptop },
+                  { label: t(isAr, 'common.purchasePrice'), field: 'prix_achat' as keyof Laptop },
                   { label: isAr ? 'السعر المقترح' : 'Prix recommandé', field: 'prix_vente_recommande' as keyof Laptop },
-                  { label: isAr ? 'السعر الأدنى' : 'Prix minimum', field: 'prix_vente_minimum' as keyof Laptop },
+                  { label: t(isAr, 'common.minPrice'), field: 'prix_vente_minimum' as keyof Laptop },
                 ].map(f => (
                   <Field key={f.field} label={f.label}>
                     <input type="number" min={0} step={0.01} className={inputClass} placeholder="0.00"
@@ -295,11 +296,11 @@ export default function EZLaptopsPage() {
           )}
           <div className="flex gap-3 justify-end pt-2 border-t border-[#E8E5DE]">
             <Btn variant="secondary" type="button" onClick={() => setFormOpen(false)}>
-              {isAr ? 'إلغاء' : 'Annuler'}
+              {t(isAr, 'common.cancel')}
             </Btn>
             <Btn variant="primary" type="submit" loading={submitting}
               style={{ backgroundColor: primary } as React.CSSProperties}>
-              {editLaptop ? (isAr ? 'حفظ' : 'Enregistrer') : (isAr ? 'إضافة' : 'Ajouter')}
+              {editLaptop ? (t(isAr, 'common.save')) : (t(isAr, 'common.add'))}
             </Btn>
           </div>
         </form>

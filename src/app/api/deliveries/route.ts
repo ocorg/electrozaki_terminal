@@ -187,6 +187,18 @@ export async function PATCH(request: NextRequest) {
       .eq('id', user.id)
       .single() as { data: { display_name: string; role: string } | null }
 
+    // The whole Deliveries UI is manager/owner-gated client-side, but this endpoint had no
+    // matching server-side check — a staff-role user could call it directly with statut
+    // 'annule'/'retour' and void the linked transaction (removing it from every revenue/
+    // caisse total) without the manager/owner approval that /api/transactions/void enforces
+    // for every other way of voiding a sale. Mirrors the check already on POST above.
+    if (!['manager', 'owner'].includes(profile?.role ?? '')) {
+      return NextResponse.json(
+        { error: 'Manager ou propriétaire requis' },
+        { status: 403 }
+      )
+    }
+
     const body = await request.json()
     const { delivery_id, statut, notes } = body
 

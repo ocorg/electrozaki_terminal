@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useUser } from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
+import { t } from '@/lib/i18n/t'
 import { usePortal } from '@/lib/context/portal'
 import { formatMAD, formatDate } from '@/lib/utils'
 import { Modal, Field, inputClass, Btn, PageHeader, EmptyState, SkeletonRow } from '@/components/shared'
@@ -91,8 +92,8 @@ export default function ClientsModule({ storeId }: ClientsModuleProps) {
   }, [storeId, search])
 
   useEffect(() => {
-    const t = setTimeout(() => fetchClients(), search ? 300 : 0)
-    return () => clearTimeout(t)
+    const timer = setTimeout(() => fetchClients(), search ? 300 : 0)
+    return () => clearTimeout(timer)
   }, [fetchClients, search])
 
   function openAdd() {
@@ -184,7 +185,7 @@ export default function ClientsModule({ storeId }: ClientsModuleProps) {
               <Btn variant="primary" onClick={openAdd}
                 style={{ backgroundColor: primary } as React.CSSProperties}>
                 <Plus className="w-4 h-4" />
-                {isAr ? 'عميل جديد' : 'Nouveau client'}
+                {t(isAr, 'common.newClient')}
               </Btn>
             </div>
           }
@@ -237,7 +238,7 @@ export default function ClientsModule({ storeId }: ClientsModuleProps) {
               icon={<Users className="w-7 h-7" />}
               title={isAr ? 'لا يوجد عملاء' : 'Aucun client'}
               description={search
-                ? (isAr ? 'لا توجد نتائج' : 'Aucun résultat')
+                ? (t(isAr, 'common.noResults'))
                 : (isAr ? 'أضف أول عميل' : 'Ajoutez le premier client')}
               action={
                 !search
@@ -288,7 +289,7 @@ export default function ClientsModule({ storeId }: ClientsModuleProps) {
                     )}
                     {(client.solde_impaye ?? 0) > 0 && (
                       <p className="text-xs text-amber-600 font-medium">
-                        {isAr ? 'متبقي' : 'Reste'}: {formatMAD(client.solde_impaye ?? 0)}
+                        {t(isAr, 'common.remaining')}: {formatMAD(client.solde_impaye ?? 0)}
                       </p>
                     )}
                   </div>
@@ -316,7 +317,7 @@ export default function ClientsModule({ storeId }: ClientsModuleProps) {
               {[
                 { label: isAr ? 'رقم الأعمال' : 'CA total',          value: formatMAD(selected.total_ca ?? 0), icon: TrendingUp, color: primary },
                 { label: isAr ? 'عدد المشتريات' : 'Achats',           value: '—',                              icon: ShoppingCart, color: '#10B981' },
-                { label: isAr ? 'الإصلاحات' : 'Réparations',          value: String(selected.total_reparations ?? 0), icon: Wrench, color: '#F59E0B' },
+                { label: t(isAr, 'common.repairs'),          value: String(selected.total_reparations ?? 0), icon: Wrench, color: '#F59E0B' },
               ].map(k => {
                 const Icon = k.icon
                 return (
@@ -340,7 +341,7 @@ export default function ClientsModule({ storeId }: ClientsModuleProps) {
                 <a href={`tel:${selected.telephone}`}
                   className="ml-auto text-xs font-bold py-1 px-3 rounded-lg"
                   style={{ backgroundColor: `${primary}15`, color: primary }}>
-                  {isAr ? 'اتصال' : 'Appeler'}
+                  {t(isAr, 'common.call')}
                 </a>
               </div>
 
@@ -348,7 +349,7 @@ export default function ClientsModule({ storeId }: ClientsModuleProps) {
                 <div className="flex items-center gap-3 p-3 bg-[#F8F7F4] rounded-xl">
                   <Phone className="w-4 h-4 text-[#B0ADA6] flex-shrink-0" />
                   <div>
-                    <p className="text-xs text-[#B0ADA6]">{isAr ? 'هاتف ثانوي' : 'Tél. secondaire'}</p>
+                    <p className="text-xs text-[#B0ADA6]">{t(isAr, 'common.secondaryPhone')}</p>
                     <p className="text-sm font-medium text-[#1A1A1A]">{selected.telephone_2}</p>
                   </div>
                 </div>
@@ -368,7 +369,7 @@ export default function ClientsModule({ storeId }: ClientsModuleProps) {
                 <div className="flex items-center gap-3 p-3 bg-[#F8F7F4] rounded-xl">
                   <MapPin className="w-4 h-4 text-[#B0ADA6] flex-shrink-0" />
                   <div>
-                    <p className="text-xs text-[#B0ADA6]">{isAr ? 'العنوان' : 'Adresse'}</p>
+                    <p className="text-xs text-[#B0ADA6]">{t(isAr, 'common.address')}</p>
                     <p className="text-sm font-medium text-[#1A1A1A]">{selected.adresse}</p>
                   </div>
                 </div>
@@ -376,7 +377,7 @@ export default function ClientsModule({ storeId }: ClientsModuleProps) {
 
               {selected.notes && (
                 <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl">
-                  <p className="text-xs text-amber-700 font-bold mb-1">{isAr ? 'ملاحظات' : 'Notes'}</p>
+                  <p className="text-xs text-amber-700 font-bold mb-1">{t(isAr, 'common.notes')}</p>
                   <p className="text-sm text-amber-800">{selected.notes}</p>
                 </div>
               )}
@@ -388,7 +389,7 @@ export default function ClientsModule({ storeId }: ClientsModuleProps) {
                 {(['txns', 'repairs'] as const).map(tab => (
                   <button key={tab} onClick={() => setHistoryTab(tab)}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${historyTab === tab ? 'border-[#C9A440] bg-[#C9A440] text-white' : 'border-[#E8E5DE] bg-white text-[#6B6860]'}`}>
-                    {tab === 'txns' ? (isAr ? 'المشتريات' : 'Achats') : (isAr ? 'الإصلاحات' : 'Réparations')}
+                    {tab === 'txns' ? (isAr ? 'المشتريات' : 'Achats') : (t(isAr, 'common.repairs'))}
                   </button>
                 ))}
               </div>
@@ -397,7 +398,7 @@ export default function ClientsModule({ storeId }: ClientsModuleProps) {
                 <div className="py-4 text-center text-xs text-[#B0ADA6]">Chargement...</div>
               ) : historyTab === 'txns' ? (
                 clientTxns.length === 0 ? (
-                  <p className="text-xs text-[#B0ADA6] py-2">{isAr ? 'لا توجد معاملات' : 'Aucune transaction'}</p>
+                  <p className="text-xs text-[#B0ADA6] py-2">{t(isAr, 'common.noTransactions')}</p>
                 ) : (
                   <div className="space-y-2 max-h-48 overflow-y-auto">
                     {clientTxns.map((t: any) => (
@@ -459,7 +460,7 @@ export default function ClientsModule({ storeId }: ClientsModuleProps) {
             {/* Actions */}
             <div className="flex gap-3 pt-2 border-t border-[#E8E5DE]">
               <Btn variant="secondary" className="flex-1" onClick={() => setSelected(null)}>
-                {isAr ? 'إغلاق' : 'Fermer'}
+                {t(isAr, 'common.close')}
               </Btn>
               <Btn
                 variant="primary"
@@ -468,7 +469,7 @@ export default function ClientsModule({ storeId }: ClientsModuleProps) {
                 style={{ backgroundColor: primary } as React.CSSProperties}
               >
                 <Edit2 className="w-4 h-4" />
-                {isAr ? 'تعديل' : 'Modifier'}
+                {t(isAr, 'common.edit')}
               </Btn>
             </div>
           </div>
@@ -481,23 +482,23 @@ export default function ClientsModule({ storeId }: ClientsModuleProps) {
         onClose={() => { setFormOpen(false); setForm({ ...EMPTY_FORM }); setEditClient(null) }}
         title={editClient
           ? (isAr ? 'تعديل العميل' : 'Modifier le client')
-          : (isAr ? 'عميل جديد' : 'Nouveau client')}
+          : (t(isAr, 'common.newClient'))}
         size="sm"
       >
         <div className="space-y-4" dir={isAr ? 'rtl' : 'ltr'}>
-          <Field label={isAr ? 'الاسم الكامل' : 'Nom complet'} required>
+          <Field label={t(isAr, 'common.fullName')} required>
             <input type="text" className={inputClass}
               placeholder={isAr ? 'محمد أحمد...' : 'Prénom Nom...'}
               value={form.nom} onChange={e => setF('nom', e.target.value)} autoFocus />
           </Field>
 
           <div className="grid grid-cols-2 gap-3">
-            <Field label={isAr ? 'الهاتف' : 'Téléphone'} required>
+            <Field label={t(isAr, 'common.phoneField')} required>
               <input type="tel" className={inputClass}
                 placeholder="06XXXXXXXX"
                 value={form.telephone} onChange={e => setF('telephone', e.target.value.replace(/\D/g, '').slice(0, 10))} maxLength={10} />
             </Field>
-            <Field label={isAr ? 'هاتف ثانوي' : 'Tél. secondaire'}>
+            <Field label={t(isAr, 'common.secondaryPhone')}>
               <input type="tel" className={inputClass}
                 placeholder="06XXXXXXXX"
                 value={form.telephone_2} onChange={e => setF('telephone_2', e.target.value.replace(/\D/g, '').slice(0, 10))} maxLength={10} />
@@ -510,28 +511,28 @@ export default function ClientsModule({ storeId }: ClientsModuleProps) {
               value={form.email} onChange={e => setF('email', e.target.value)} />
           </Field>
 
-          <Field label={isAr ? 'العنوان' : 'Adresse'}>
+          <Field label={t(isAr, 'common.address')}>
             <input type="text" className={inputClass}
               placeholder={isAr ? 'مكناس، شارع...' : 'Meknès, rue...'}
               value={form.adresse} onChange={e => setF('adresse', e.target.value)} />
           </Field>
 
-          <Field label={isAr ? 'ملاحظات' : 'Notes'}>
+          <Field label={t(isAr, 'common.notes')}>
             <textarea className={`${inputClass} resize-none text-sm`} rows={2}
               value={form.notes} onChange={e => setF('notes', e.target.value)}
-              placeholder={isAr ? 'ملاحظة...' : 'Note...'} />
+              placeholder={t(isAr, 'common.notePlaceholder')} />
           </Field>
 
           <div className="flex gap-3 justify-end pt-2">
             <Btn variant="secondary"
               onClick={() => { setFormOpen(false); setForm({ ...EMPTY_FORM }); setEditClient(null) }}>
-              {isAr ? 'إلغاء' : 'Annuler'}
+              {t(isAr, 'common.cancel')}
             </Btn>
             <Btn variant="primary" onClick={handleSubmit} loading={submitting}
               style={{ backgroundColor: primary } as React.CSSProperties}>
               {editClient
-                ? (isAr ? 'حفظ التعديلات' : 'Enregistrer')
-                : (isAr ? 'إضافة' : 'Ajouter')}
+                ? (t(isAr, 'common.saveEditsShort'))
+                : (t(isAr, 'common.add'))}
             </Btn>
           </div>
         </div>

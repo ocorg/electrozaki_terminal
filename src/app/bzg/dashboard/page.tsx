@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useUser } from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
+import { t } from '@/lib/i18n/t'
 import { formatMAD, formatDate } from '@/lib/utils'
 import { EmptyState, SkeletonRow } from '@/components/shared'
 import {
@@ -101,7 +102,7 @@ export default function BZGDashboard() {
   }
 
   async function rejectEOD(caisseId: string) {
-    const note = prompt(isAr ? 'سبب الرفض:' : 'Motif du rejet :')
+    const note = prompt(t(isAr, 'common.rejectionReason'))
     if (!note || note.trim().length < 3) return
     setApproving(caisseId)
     try {
@@ -155,7 +156,7 @@ export default function BZGDashboard() {
           className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm border bg-white hover:bg-[#F5F3FF] transition-all disabled:opacity-50"
           style={{ borderColor: '#C4B5FD', color: '#6B6860' }}>
           <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-          {isAr ? 'تحديث' : 'Actualiser'}
+          {t(isAr, 'common.refresh')}
         </button>
       </div>
 
@@ -164,7 +165,7 @@ export default function BZGDashboard() {
         {[
           { label: isAr ? 'إجمالي اليوم' : 'Total du jour', value: formatMAD(totalCaToday), icon: TrendingUp, color: '#6366F1' },
           { label: isAr ? 'إجمالي الشهر' : 'Total du mois', value: formatMAD(totalCaMonth),  icon: TrendingUp, color: '#6366F1' },
-          { label: isAr ? 'إصلاحات نشطة' : 'Réparations actives', value: String(totalRepairs), icon: Wrench, color: '#F59E0B' },
+          { label: t(isAr, 'common.activeRepairs'), value: String(totalRepairs), icon: Wrench, color: '#F59E0B' },
         ].map(kpi => {
           const Icon = kpi.icon
           return (
@@ -187,9 +188,9 @@ export default function BZGDashboard() {
           const snap = snapshots.find(s => s.store_id === store.id)
           const caisseLabel = !snap ? '—'
             : snap.caisse_status === 'none'        ? (isAr ? 'لم تفتح' : 'Non ouverte')
-            : snap.caisse_status === 'open'        ? (isAr ? 'مفتوحة' : 'Ouverte')
+            : snap.caisse_status === 'open'        ? (t(isAr, 'common.openStatus'))
             : snap.caisse_status === 'pending_eod' ? (isAr ? 'في انتظار الموافقة' : 'En attente')
-            : (isAr ? 'مغلقة' : 'Clôturée')
+            : (t(isAr, 'common.closedStatus'))
           const caisseColor = !snap ? '#B0ADA6'
             : snap.caisse_status === 'open'        ? '#10B981'
             : snap.caisse_status === 'pending_eod' ? '#F59E0B'
@@ -212,7 +213,7 @@ export default function BZGDashboard() {
                 {[
                   { label: isAr ? 'اليوم' : "Aujourd'hui", value: snap ? formatMAD(snap.ca_today) : '—' },
                   { label: isAr ? 'الشهر' : 'Ce mois',     value: snap ? formatMAD(snap.ca_month) : '—' },
-                  { label: isAr ? 'الإصلاحات' : 'Réparations', value: snap ? String(snap.active_repairs) : '—' },
+                  { label: t(isAr, 'common.repairs'), value: snap ? String(snap.active_repairs) : '—' },
                   { label: isAr ? 'صندوق الدفع' : 'Caisse', value: caisseLabel, valueColor: caisseColor },
                 ].map(cell => (
                   <div key={cell.label} className="bg-white px-4 py-3">
@@ -267,7 +268,7 @@ export default function BZGDashboard() {
                       </div>
                       <div className="text-right">
                         <p className="text-xs text-[#6B6860]">
-                          {isAr ? 'الفرق' : 'Écart'}
+                          {t(isAr, 'common.gap')}
                         </p>
                         <p className={`font-bold text-sm ${!eod.ecart || eod.ecart === 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                           {eod.ecart != null ? formatMAD(eod.ecart) : '—'}
@@ -291,7 +292,7 @@ export default function BZGDashboard() {
                         className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-all disabled:opacity-50"
                       >
                         <CheckCircle className="w-4 h-4" />
-                        {isAr ? 'موافقة' : 'Approuver'}
+                        {t(isAr, 'common.approve')}
                       </button>
                       <button
                         onClick={() => rejectEOD(eod.caisse_id)}
@@ -299,7 +300,7 @@ export default function BZGDashboard() {
                         className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-medium bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 transition-all disabled:opacity-50"
                       >
                         <XCircle className="w-4 h-4" />
-                        {isAr ? 'رفض' : 'Rejeter'}
+                        {t(isAr, 'common.reject')}
                       </button>
                     </div>
                   </div>
@@ -340,7 +341,7 @@ export default function BZGDashboard() {
                     </div>
                     <div className="text-right flex-shrink-0">
                       <p className={`text-xs font-bold ${isIn ? 'text-emerald-600' : 'text-slate-500'}`}>
-                        {isIn ? (isAr ? 'حاضر' : 'Présent') : (isAr ? 'غادر' : 'Sorti')}
+                        {isIn ? (t(isAr, 'common.present')) : (t(isAr, 'common.exited'))}
                       </p>
                       <p className="text-xs text-[#B0ADA6]">
                         {new Date(p.punched_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}

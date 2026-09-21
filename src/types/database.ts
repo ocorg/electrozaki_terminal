@@ -180,6 +180,7 @@ export interface Transaction {
   client_id?:           string | null
   type_operation:       OperationType
   txn_original_id?:     string | null
+  qty?:                 number | null
   prix_vente:           number
   date_vente:           string
   avance?:              number | null
@@ -331,7 +332,7 @@ export interface Caisse {
   solde_theorique?:  number | null
   solde_reel?:       number | null
   ecart?:            number | null
-  payment_breakdown?: { cash: number; transfer: number; credit: number } | null
+  payment_breakdown?: { cash: number; transfer: number; credit: number; reprises?: number } | null
   status:            CaisseStatus
   eod_submitted_at?: string | null
   approved_by?:      string | null
@@ -494,6 +495,36 @@ export interface CreditImport {
   notes?:       string | null
   created_at:   string
   created_by?:  string | null
+}
+
+// Repayment against a client's ad-hoc credit balance (src/app/api/credits/route.ts) —
+// distinct from phone_credit_payments (installment-plan repayments on a specific phone sale).
+export interface CreditPayment {
+  payment_id:      string
+  client_id:       string
+  store_id?:       string | null
+  txn_id?:         string | null
+  montant:         number
+  payment_method:  PaymentMethod
+  payment_ref?:    string | null
+  notes?:          string | null
+  collected_by?:   string | null
+  created_at:      string
+  created_by?:     string | null
+}
+
+// Repayment against an imported legacy credit balance (src/app/api/credit-imports/payments/route.ts)
+export interface CreditImportPayment {
+  payment_id:      string
+  import_id:       string
+  store_id?:       string | null
+  montant:         number
+  payment_method:  PaymentMethod
+  payment_ref?:    string | null
+  notes?:          string | null
+  date_paiement:   string
+  created_at:      string
+  created_by?:     string | null
 }
 
 export interface EzDocument {
@@ -660,6 +691,16 @@ export interface Database {
         Row:    CreditImport
         Insert: Partial<CreditImport>
         Update: Partial<CreditImport>
+      }
+      credit_payments: {
+        Row:    CreditPayment
+        Insert: Partial<CreditPayment>
+        Update: Partial<CreditPayment>
+      }
+      credit_import_payments: {
+        Row:    CreditImportPayment
+        Insert: Partial<CreditImportPayment>
+        Update: Partial<CreditImportPayment>
       }
       ez_documents: {
         Row:    EzDocument

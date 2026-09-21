@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { showSuccess, showError } from '@/lib/utils/toasts'
+import { t } from '@/lib/i18n/t'
 
 export interface ExchangePanelState {
   txn_id:                  string
@@ -81,12 +82,12 @@ export default function ExchangeIntakePanel({ exchangePanel, storeId, isAr, onSu
       </p>
       <div className="grid grid-cols-2 gap-3 mb-3">
         <div>
-          <label className="text-xs text-amber-700 font-medium">{isAr ? 'الماركة' : 'Marque'}</label>
+          <label className="text-xs text-amber-700 font-medium">{t(isAr, 'common.brand')}</label>
           <input className="w-full mt-1 border border-amber-200 rounded-lg px-3 py-2 text-sm bg-white"
             value={form.marque} onChange={e => setForm(p => ({ ...p, marque: e.target.value }))} />
         </div>
         <div>
-          <label className="text-xs text-amber-700 font-medium">{isAr ? 'الموديل' : 'Modèle'} *</label>
+          <label className="text-xs text-amber-700 font-medium">{t(isAr, 'common.model')} *</label>
           <input className="w-full mt-1 border border-amber-200 rounded-lg px-3 py-2 text-sm bg-white"
             value={form.modele} onChange={e => setForm(p => ({ ...p, modele: e.target.value }))} />
         </div>

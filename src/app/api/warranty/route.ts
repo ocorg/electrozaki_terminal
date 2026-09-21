@@ -30,11 +30,12 @@ export async function GET(request: Request) {
 
     // ── Résolution IMEI → txn_id ─────────────────────────────────────────────
     if (imei && !resolvedTxnId) {
+      // IMEI is unique per physical device — no store_id filter needed (and hardcoding one
+      // here silently broke warranty lookups for any store other than EZ-001).
       const { data: phoneRaw } = await supabase
         .from('phones')
         .select('phone_id')
         .eq('imei', imei.trim())
-        .eq('store_id', 'EZ-001')
         .maybeSingle()
 
       const phone = phoneRaw as { phone_id: string } | null

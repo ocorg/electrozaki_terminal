@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useUser } from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
+import { t } from '@/lib/i18n/t'
 import { usePortal } from '@/lib/context/portal'
 import { formatMAD, formatDate, getBusinessDate, fetchWithRetry } from '@/lib/utils'
 import { Btn, Field, inputClass, Modal } from '@/components/shared'
@@ -128,7 +129,7 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
   async function handleBOD() {
     const amount = parseFloat(bodAmount)
     if (isNaN(amount) || amount < 0) {
-      showError(isAr ? 'أدخل مبلغاً صحيحاً' : 'Montant invalide')
+      showError(t(isAr, 'common.invalidAmount'))
       return
     }
     setSubmitting(true)
@@ -154,7 +155,7 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
   async function handleEOD() {
     const amount = parseFloat(eodAmount)
     if (isNaN(amount) || amount < 0) {
-      showError(isAr ? 'أدخل مبلغاً صحيحاً' : 'Montant invalide')
+      showError(t(isAr, 'common.invalidAmount'))
       return
     }
     if (!caisse?.caisse_id) return
@@ -253,7 +254,7 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
 
             <div className="flex gap-3 justify-end pt-2">
               <Btn variant="secondary" onClick={() => setBodOpen(false)}>
-                {isAr ? 'إلغاء' : 'Annuler'}
+                {t(isAr, 'common.cancel')}
               </Btn>
               <button
                 onClick={handleBOD}
@@ -294,7 +295,7 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
           </p>
           {caisse.eod_submitted_at && (
             <p className="text-xs text-[#B0ADA6] mt-2">
-              {isAr ? 'أرسل في' : 'Soumis le'}{' '}
+              {t(isAr, 'common.submittedAt')}{' '}
               {new Date(caisse.eod_submitted_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
             </p>
           )}
@@ -302,19 +303,20 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
 
         {/* Summary */}
         <div className="bg-white border border-[#E8E5DE] rounded-2xl p-5 space-y-3">
-          <SummaryRow label={isAr ? 'مبلغ الافتتاح' : 'Ouverture'}       value={formatMAD(caisse.ouverture)}          />
-          <SummaryRow label={isAr ? 'إجمالي المبيعات' : 'Total ventes'}          value={formatMAD(caisse.total_ventes)}      color="text-emerald-600" />
-          <SummaryRow label={isAr ? 'إجمالي الإصلاحات' : 'Total réparations'}    value={formatMAD(caisse.total_reparations)} color="text-emerald-600" />
+          <SummaryRow label={t(isAr, 'common.openingAmount')}       value={formatMAD(caisse.ouverture)}          />
+          <SummaryRow label={t(isAr, 'common.totalSales')}          value={formatMAD(caisse.total_ventes)}      color="text-emerald-600" />
+          <SummaryRow label={t(isAr, 'common.totalRepairs')}    value={formatMAD(caisse.total_reparations)} color="text-emerald-600" />
           {caisse.total_cash_drops > 0 && (
-            <SummaryRow label={isAr ? 'إيداعات نقدية' : 'Encaissements manuels'} value={formatMAD(caisse.total_cash_drops)} color="text-emerald-600" />
+            <SummaryRow label={t(isAr, 'common.manualCashDeposits')} value={formatMAD(caisse.total_cash_drops)} color="text-emerald-600" />
           )}
-          <SummaryRow label={isAr ? 'إجمالي المصاريف' : 'Total dépenses'}        value={formatMAD(caisse.total_depenses)}    color="text-red-500" />
+          <SummaryRow label={t(isAr, 'common.totalExpenses')}        value={formatMAD(caisse.total_depenses)}    color="text-red-500" />
+          {caisse.payment_breakdown && <PaymentBreakdownMini isAr={isAr} breakdown={caisse.payment_breakdown} />}
           <div className="border-t border-[#E8E5DE] pt-3">
-            <SummaryRow label={isAr ? 'الرصيد المتوقع' : 'Solde théorique'} value={formatMAD(caisse.solde_theorique)} bold />
-            <SummaryRow label={isAr ? 'الرصيد الفعلي' : 'Solde réel'}       value={formatMAD(caisse.solde_reel ?? 0)} bold />
+            <SummaryRow label={t(isAr, 'common.theoreticalBalance')} value={formatMAD(caisse.solde_theorique)} bold />
+            <SummaryRow label={t(isAr, 'common.actualBalance')}       value={formatMAD(caisse.solde_reel ?? 0)} bold />
             {caisse.ecart != null && (
               <SummaryRow
-                label={isAr ? 'الفرق' : 'Écart'}
+                label={t(isAr, 'common.gap')}
                 value={formatMAD(caisse.ecart)}
                 bold
                 color={caisse.ecart === 0 ? 'text-emerald-600' : 'text-red-500'}
@@ -356,19 +358,20 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
         </div>
 
         <div className="bg-white border border-[#E8E5DE] rounded-2xl p-5 space-y-3">
-          <SummaryRow label={isAr ? 'مبلغ الافتتاح' : 'Ouverture'}          value={formatMAD(caisse.ouverture)} />
-          <SummaryRow label={isAr ? 'إجمالي المبيعات' : 'Total ventes'}          value={formatMAD(caisse.total_ventes)}      color="text-emerald-600" />
-          <SummaryRow label={isAr ? 'إجمالي الإصلاحات' : 'Total réparations'}    value={formatMAD(caisse.total_reparations)} color="text-emerald-600" />
+          <SummaryRow label={t(isAr, 'common.openingAmount')}          value={formatMAD(caisse.ouverture)} />
+          <SummaryRow label={t(isAr, 'common.totalSales')}          value={formatMAD(caisse.total_ventes)}      color="text-emerald-600" />
+          <SummaryRow label={t(isAr, 'common.totalRepairs')}    value={formatMAD(caisse.total_reparations)} color="text-emerald-600" />
           {caisse.total_cash_drops > 0 && (
-            <SummaryRow label={isAr ? 'إيداعات نقدية' : 'Encaissements manuels'} value={formatMAD(caisse.total_cash_drops)} color="text-emerald-600" />
+            <SummaryRow label={t(isAr, 'common.manualCashDeposits')} value={formatMAD(caisse.total_cash_drops)} color="text-emerald-600" />
           )}
-          <SummaryRow label={isAr ? 'إجمالي المصاريف' : 'Total dépenses'}        value={formatMAD(caisse.total_depenses)}    color="text-red-500" />
+          <SummaryRow label={t(isAr, 'common.totalExpenses')}        value={formatMAD(caisse.total_depenses)}    color="text-red-500" />
+          {caisse.payment_breakdown && <PaymentBreakdownMini isAr={isAr} breakdown={caisse.payment_breakdown} />}
           <div className="border-t border-[#E8E5DE] pt-3">
-            <SummaryRow label={isAr ? 'الرصيد المتوقع' : 'Solde théorique'}   value={formatMAD(caisse.solde_theorique)} bold />
-            <SummaryRow label={isAr ? 'الرصيد الفعلي' : 'Solde réel'}         value={formatMAD(caisse.solde_reel ?? 0)} bold />
+            <SummaryRow label={t(isAr, 'common.theoreticalBalance')}   value={formatMAD(caisse.solde_theorique)} bold />
+            <SummaryRow label={t(isAr, 'common.actualBalance')}         value={formatMAD(caisse.solde_reel ?? 0)} bold />
             {caisse.ecart != null && (
               <SummaryRow
-                label={isAr ? 'الفرق' : 'Écart'}
+                label={t(isAr, 'common.gap')}
                 value={formatMAD(caisse.ecart)}
                 bold
                 color={caisse.ecart === 0 ? 'text-emerald-600' : 'text-red-500'}
@@ -409,7 +412,7 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
           style={{ borderColor: `${primary}40`, color: '#6B6860' }}
         >
           <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-          {isAr ? 'تحديث' : 'Actualiser'}
+          {t(isAr, 'common.refresh')}
         </button>
       </div>
 
@@ -429,7 +432,7 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
       <div className="grid grid-cols-3 gap-3">
         {[
           {
-            label:  isAr ? 'إجمالي المبيعات' : 'Total ventes',
+            label:  isAr ? 'إجمالي المبيعات (كل الطرق)' : 'Total ventes (toutes méthodes)',
             value:  caisse.total_ventes,
             count:  `${caisse.nb_transactions} op.`,
             icon:   TrendingUp,
@@ -437,14 +440,14 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
             bg:     '#F0FDF4',
           },
           {
-            label:  isAr ? 'إجمالي الإصلاحات' : 'Total réparations',
+            label:  t(isAr, 'common.totalRepairs'),
             value:  caisse.total_reparations,
             icon:   Wrench,
             color:  '#F59E0B',
             bg:     '#FFFBEB',
           },
           {
-            label:  isAr ? 'إجمالي المصاريف' : 'Total dépenses',
+            label:  t(isAr, 'common.totalExpenses'),
             value:  caisse.total_depenses,
             icon:   Receipt,
             color:  '#EF4444',
@@ -476,9 +479,9 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
           </p>
           <div className="grid grid-cols-3 gap-3">
             {[
-              { label: isAr ? 'نقد' : 'Espèces',   value: caisse.payment_breakdown.cash },
-              { label: isAr ? 'تحويل' : 'Virement', value: caisse.payment_breakdown.transfer },
-              { label: isAr ? 'تسبيق' : 'Avances',  value: caisse.payment_breakdown.credit },
+              { label: t(isAr, 'common.cash'),   value: caisse.payment_breakdown.cash },
+              { label: t(isAr, 'common.transfer'), value: caisse.payment_breakdown.transfer },
+              { label: t(isAr, 'common.advances'),  value: caisse.payment_breakdown.credit },
             ].map(row => (
               <div key={row.label} className="text-center p-3 bg-[#F8F7F4] rounded-xl">
                 <p className="text-xs text-[#6B6860] mb-1">{row.label}</p>
@@ -522,8 +525,8 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
             </p>
             <p className="text-xs text-[#B0ADA6] mt-1">
               {isAr
-                ? `${formatMAD(caisse.ouverture)} + ${formatMAD(caisse.total_ventes)} + ${formatMAD(caisse.total_reparations)}${caisse.total_cash_drops > 0 ? ` + ${formatMAD(caisse.total_cash_drops)}` : ''} - ${formatMAD(caisse.total_depenses)}`
-                : `${formatMAD(caisse.ouverture)} + ventes + rép. - dépenses`}
+                ? `${formatMAD(caisse.ouverture)} + ${formatMAD(caisse.payment_breakdown?.cash ?? 0)} (نقد فقط) + ${formatMAD(caisse.total_reparations)} - ${formatMAD(caisse.total_depenses)}`
+                : `${formatMAD(caisse.ouverture)} + ${formatMAD(caisse.payment_breakdown?.cash ?? 0)} (espèces) + rép. - dépenses`}
             </p>
           </div>
           <ArrowUp className="w-8 h-8 opacity-20" style={{ color: primary }} />
@@ -586,7 +589,7 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
                 ? 'bg-blue-50 border-blue-200 text-blue-700'
                 : 'bg-red-50 border-red-200 text-red-600'
             }`}>
-              <span>{isAr ? 'الفرق' : 'Écart'}</span>
+              <span>{t(isAr, 'common.gap')}</span>
               <span>
                 {ecartPreview > 0 ? '+' : ''}{formatMAD(ecartPreview)}
                 {' '}
@@ -599,7 +602,7 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
             </div>
           )}
 
-          <Field label={isAr ? 'ملاحظات (اختياري)' : 'Notes (optionnel)'}>
+          <Field label={t(isAr, 'common.notesOptional')}>
             <textarea
               className={`${inputClass} resize-none text-sm`}
               rows={2}
@@ -611,7 +614,7 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
 
           <div className="flex gap-3 justify-end pt-1">
             <Btn variant="secondary" onClick={() => { setEodOpen(false); setEodAmount(''); setEodNotes('') }}>
-              {isAr ? 'إلغاء' : 'Annuler'}
+              {t(isAr, 'common.cancel')}
             </Btn>
             <Btn
               variant="primary"
@@ -636,6 +639,28 @@ function SummaryRow({
     <div className="flex items-center justify-between py-1">
       <span className={`text-sm ${bold ? 'font-bold text-[#1A1A1A]' : 'text-[#6B6860]'}`}>{label}</span>
       <span className={`text-sm font-bold ${color || (bold ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]')}`}>{value}</span>
+    </div>
+  )
+}
+
+// ── Sub-component: compact payment method split (cash vs transfer vs credit due) ──
+// Shown on pending/closed caisses so a manager can tell WHY solde théorique ≠ total ventes
+// (i.e. how much of the day's revenue was cash vs. transfer, at a glance).
+function PaymentBreakdownMini({
+  isAr, breakdown,
+}: { isAr: boolean; breakdown: { cash: number; transfer: number; credit: number } }) {
+  return (
+    <div className="grid grid-cols-3 gap-2 pt-1 pb-1">
+      {[
+        { label: t(isAr, 'common.cash'),    value: breakdown.cash },
+        { label: t(isAr, 'common.transfer'), value: breakdown.transfer },
+        { label: isAr ? 'آجل متبقي' : 'Crédit dû', value: breakdown.credit },
+      ].map(row => (
+        <div key={row.label} className="text-center p-2 bg-[#F8F7F4] rounded-lg">
+          <p className="text-[10px] text-[#6B6860] mb-0.5">{row.label}</p>
+          <p className="text-xs font-bold text-[#1A1A1A]">{formatMAD(row.value)}</p>
+        </div>
+      ))}
     </div>
   )
 }

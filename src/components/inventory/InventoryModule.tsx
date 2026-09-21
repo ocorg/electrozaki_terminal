@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { usePortal } from '@/lib/context/portal'
+import { useEscapeKey } from '@/lib/hooks/useEscapeKey'
 import type { InventorySession, InventorySessionItem, InventoryResultat } from '@/types/database'
 
 // ── Types internes ─────────────────────────────────────────
@@ -61,6 +62,7 @@ export default function InventoryModule({ role }: { role: string }) {
   const [activeTab,       setActiveTab]       = useState<InventoryResultat>('manquant')
   const [showConfirm,     setShowConfirm]     = useState(false)
   const [cameraOk,        setCameraOk]        = useState(true)
+  useEscapeKey(() => setShowConfirm(false), showConfirm)
 
   // Refs — pour éviter les closures périmées dans la boucle BarcodeDetector
   const videoRef          = useRef<HTMLVideoElement>(null)
@@ -553,8 +555,10 @@ export default function InventoryModule({ role }: { role: string }) {
 
       {/* Modal confirmation clôture */}
       {showConfirm && (
-        <div className="fixed inset-0 bg-black/75 flex items-end sm:items-center justify-center z-50 p-4">
-          <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-6 w-full max-w-sm">
+        <div role="dialog" aria-modal="true" aria-label="Clôturer la session"
+             className="fixed inset-0 bg-black/75 flex items-end sm:items-center justify-center z-50 p-4"
+             onClick={() => setShowConfirm(false)}>
+          <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
             <h3 className="text-white font-bold text-lg mb-2" style={{ fontFamily: 'Barlow Condensed, sans-serif' }}>
               CLÔTURER LA SESSION ?
             </h3>

@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import ComboBox from '@/components/phones/ComboBox'
 import { usePhoneCatalog } from '@/lib/hooks/usePhoneCatalog'
+import { useEscapeKey } from '@/lib/hooks/useEscapeKey'
 
 // ── Types ───────────────────────────────────────────────────────────
 interface CreditSale {
@@ -544,9 +545,11 @@ function NewCreditModal({
   const serieOptions = seriesFor(form.reprise_marque ?? '')
   const modelOptions = modelsFor(form.reprise_marque ?? '', form.reprise_serie ?? '')
 
+  useEscapeKey(onClose, true)
+
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-      <div className="w-full max-w-md bg-[#111] border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
+    <div role="dialog" aria-modal="true" aria-label="Nouvelle vente à crédit" className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={onClose}>
+      <div className="w-full max-w-md bg-[#111] border border-white/10 rounded-2xl overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
 
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
@@ -554,7 +557,7 @@ function NewCreditModal({
             <CreditCard className="w-5 h-5 text-[#C9A440]" />
             <h3 className="font-semibold text-white">Nouvelle vente à crédit</h3>
           </div>
-          <button onClick={onClose} className="text-white/40 hover:text-white transition-colors">
+          <button onClick={onClose} aria-label="Fermer" className="text-white/40 hover:text-white transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -846,16 +849,18 @@ function PaymentModal({
   const restant  = credit.montant_restant
   const willFill = montant >= restant - 0.01 && montant > 0
 
+  useEscapeKey(onClose, true)
+
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-      <div className="w-full max-w-sm bg-[#111] border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
+    <div role="dialog" aria-modal="true" aria-label="Ajouter un versement" className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={onClose}>
+      <div className="w-full max-w-sm bg-[#111] border border-white/10 rounded-2xl overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
 
         <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
           <div>
             <h3 className="font-semibold text-white">Ajouter un versement</h3>
             <p className="text-xs text-white/40 mt-0.5">{credit.client_name} · {credit.credit_id}</p>
           </div>
-          <button onClick={onClose} className="text-white/40 hover:text-white transition-colors">
+          <button onClick={onClose} aria-label="Fermer" className="text-white/40 hover:text-white transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -965,9 +970,11 @@ function DischargeResultModal({
   onClose:         () => void
   onGoToDocuments: () => void
 }) {
+  useEscapeKey(onClose, true)
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-      <div className="w-full max-w-sm bg-[#111] border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
+    <div role="dialog" aria-modal="true" aria-label="Crédit soldé" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={onClose}>
+      <div className="w-full max-w-sm bg-[#111] border border-white/10 rounded-2xl overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
 
         <div className="px-5 py-5 border-b border-white/10">
           <div className="flex items-center gap-3">
