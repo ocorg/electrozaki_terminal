@@ -1,12 +1,11 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { signIn, getSession } from 'next-auth/react'
 import { Eye, EyeOff, Loader2 } from 'lucide-react'
 
 export default function LoginPage() {
   const router   = useRouter()
-  const supabase = createClient()
 
   const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
@@ -23,29 +22,18 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
 
-    const { error: authError } = await supabase.auth.signInWithPassword({ email, password })
+    const result = await signIn('credentials', { email, password, redirect: false })
 
-    if (authError) {
-      setError('Email ou mot de passe incorrect')
+    if (result?.error) {
+      setError(result.code === 'inactive'
+        ? 'Compte désactivé. Contactez votre administrateur.'
+        : 'Email ou mot de passe incorrect')
       setLoading(false)
       return
     }
 
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { setError('Erreur de session'); setLoading(false); return }
-
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('role, store_id, store_locked, is_active')
-      .eq('id', user.id)
-      .single<{ role: string; store_id: string | null; store_locked: boolean; is_active: boolean }>()
-
-    if (!profile || !profile.is_active) {
-      await supabase.auth.signOut()
-      setError('Compte désactivé. Contactez votre administrateur.')
-      setLoading(false)
-      return
-    }
+    const profile = (await getSession())?.user
+    if (!profile) { setError('Erreur de session'); setLoading(false); return }
 
     // Staff locked to a store → skip portal selection entirely
     if (profile.store_locked && profile.store_id) {

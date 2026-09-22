@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { signOut } from 'next-auth/react'
 import { useUser } from '@/lib/hooks/useUser'
 import { usePortal } from '@/lib/context/portal'
 import {
@@ -75,7 +75,6 @@ interface PortalSidebarProps {
 export default function PortalSidebar({ onClose, collapsed = false, onCollapsedChange }: PortalSidebarProps) {
   const pathname    = usePathname() ?? ''
   const router      = useRouter()
-  const supabase    = createClient()
   const { user }    = useUser()
   const portal      = usePortal()
   const { language, setLanguage } = useLanguageStore()
@@ -89,7 +88,7 @@ export default function PortalSidebar({ onClose, collapsed = false, onCollapsedC
   )
 
   async function handleLogout() {
-    await supabase.auth.signOut()
+    await signOut({ redirect: false })
     router.push('/login')
   }
 

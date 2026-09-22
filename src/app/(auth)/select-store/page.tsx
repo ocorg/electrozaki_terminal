@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { signOut } from 'next-auth/react'
 import { useUser } from '@/lib/hooks/useUser'
 import { Loader2, LogOut } from 'lucide-react'
 
@@ -29,7 +29,6 @@ const PORTALS = [
 
 export default function SelectStorePage() {
   const router   = useRouter()
-  const supabase = createClient()
   const { user, loading } = useUser()
   const [loggingOut, setLoggingOut] = useState(false)
 
@@ -45,7 +44,7 @@ export default function SelectStorePage() {
 
   async function handleLogout() {
     setLoggingOut(true)
-    await supabase.auth.signOut()
+    await signOut({ redirect: false })
     router.push('/login')
   }
 

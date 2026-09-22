@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import { Toaster } from 'sonner'
 import FetchInterceptor from '@/components/shared/FetchInterceptor'
 import HtmlLangSync from '@/components/shared/HtmlLangSync'
+import AuthProvider from '@/components/shared/AuthProvider'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
@@ -35,7 +36,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={`${inter.variable} font-body bg-ez-black text-ez-text antialiased`}>
         <FetchInterceptor />
         <HtmlLangSync />
-        {children}
+        <AuthProvider>{children}</AuthProvider>
         <Toaster
           position="top-right"
           richColors={false}
