@@ -6,7 +6,8 @@ import { formatMAD, formatDate } from '@/lib/utils'
 import { t } from '@/lib/i18n/t'
 import { PageHeader, SkeletonRow, EmptyState, StatusBadge, Modal, Field, Btn } from '@/components/shared'
 import { useUser } from '@/lib/hooks/useUser'
-import { createClient } from '@/lib/supabase/client'
+import { codeLabel } from '@/lib/codes'
+import type { OperationType, PaymentMethod } from '@/types/database'
 import {
   ShoppingCart, RefreshCw, Calendar, X,
   ChevronDown, ChevronUp, Ban, AlertTriangle
@@ -34,13 +35,6 @@ interface Transaction {
   created_at:      string
 }
 
-const OP_LABELS_FR: Record<string, string> = {
-  'بيع': 'Vente', 'إستبدال': 'Échange', 'تسبيق': 'Avance', 'Retour': 'Retour',
-}
-const PAY_LABELS_FR: Record<string, string> = {
-  'نقد': 'Espèces', 'تحويل': 'Virement', 'تسبيق': 'Avance',
-  'إستبدال': 'Échange', 'مختلط': 'Mixte',
-}
 
 interface StoreRef { id: string; name: string; color: string }
 
@@ -79,11 +73,13 @@ export default function TransactionsListPage({ scope, storeId, title }: Transact
   // added store shows up automatically (a hardcoded list here previously required a code change).
   useEffect(() => {
     if (scope !== 'all') return
-    const supabase = createClient()
-    ;(supabase as any).from('stores').select('store_id,name,theme_color').eq('is_active', true) // eslint-disable-line @typescript-eslint/no-explicit-any
-      .then(({ data }: { data: { store_id: string; name: string; theme_color: string }[] | null }) => {
-        if (data?.length) setStores(data.map(s => ({ id: s.store_id, name: s.name, color: s.theme_color })))
+    fetch('/api/stores')
+      .then(r => r.json())
+      .then(({ data }: { data?: { store_id: string; name: string; theme_color: string; is_active: boolean }[] }) => {
+        const active = (data ?? []).filter(s => s.is_active)
+        if (active.length) setStores(active.map(s => ({ id: s.store_id, name: s.name, color: s.theme_color })))
       })
+      .catch(() => {})
   }, [scope])
 
   async function handleVoid() {
@@ -134,12 +130,12 @@ export default function TransactionsListPage({ scope, storeId, title }: Transact
   useEffect(() => { fetchTransactions() }, [fetchTransactions])
 
   const totalCA     = transactions.reduce((s, t) => s + (t.prix_vente ?? 0), 0)
-  const totalVentes = transactions.filter(t => t.type_operation === 'بيع').length
+  const totalVentes = transactions.filter(t => t.type_operation === 'vente').length
   // Third KPI differs by scope: EZ tracks open avances, BZG tracks échanges — matches
   // what each page showed before consolidation.
   const totalTertiary = scope === 'store'
     ? transactions.filter(t => (t.fariq ?? 0) > 0).length
-    : transactions.filter(t => t.type_operation === 'إستبدال').length
+    : transactions.filter(t => t.type_operation === 'echange').length
   const tertiaryLabel = scope === 'store'
     ? (isAr ? 'تسبيقات مفتوحة' : 'Avances ouvertes')
     : (isAr ? 'استبدالات' : 'Échanges')
@@ -217,8 +213,8 @@ export default function TransactionsListPage({ scope, storeId, title }: Transact
             className="text-sm border border-[#E8E5DE] rounded-xl px-3 py-2 bg-white text-[#6B6860] focus:outline-none focus:border-[#C9A440] transition-all"
           >
             <option value="">{t(isAr, 'common.allTypes')}</option>
-            <option value="بيع">{t(isAr, 'common.sale')}</option>
-            <option value="إستبدال">{isAr ? 'استبدال' : 'Échange'}</option>
+            <option value="vente">{t(isAr, 'common.sale')}</option>
+            <option value="echange">{isAr ? 'استبدال' : 'Échange'}</option>
             <option value="Retour">{t(isAr, 'common.returnNoun')}</option>
           </select>
 
@@ -288,9 +284,9 @@ export default function TransactionsListPage({ scope, storeId, title }: Transact
                             </>
                           )}
                           <span>·</span>
-                          <span>{isAr ? txn.type_operation : (OP_LABELS_FR[txn.type_operation] ?? txn.type_operation)}</span>
+                          <span>{codeLabel('operation_type', txn.type_operation as OperationType, isAr ? 'ar' : 'fr')}</span>
                           <span>·</span>
-                          <span>{isAr ? txn.payment_method : (PAY_LABELS_FR[txn.payment_method] ?? txn.payment_method)}</span>
+                          <span>{codeLabel('payment_method', txn.payment_method as PaymentMethod, isAr ? 'ar' : 'fr')}</span>
                         </div>
                       </div>
 
@@ -298,7 +294,7 @@ export default function TransactionsListPage({ scope, storeId, title }: Transact
                       <div className="text-right flex-shrink-0">
                         <p className="text-sm font-bold text-[#1A1A1A]">{formatMAD(txn.prix_vente)}</p>
                         {txn.statut_paiement && (
-                          <StatusBadge status={txn.statut_paiement} size="sm" />
+                          <StatusBadge domain="payment_status" code={txn.statut_paiement} size="sm" lang={isAr ? 'ar' : 'fr'} />
                         )}
                       </div>
 

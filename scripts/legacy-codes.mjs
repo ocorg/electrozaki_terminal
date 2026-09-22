@@ -104,6 +104,3 @@ export const MODULE_TABLES = {
   inventaire: ['inventory_sessions', 'inventory_session_items'],
 }
 
-export function slugify(label) {
-  return label.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
-}

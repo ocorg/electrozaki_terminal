@@ -32,11 +32,11 @@ export function round2(n: number): number {
   return Math.round(n * 100) / 100
 }
 
-/** Compute STATUT_PAIEMENT */
-export function computeStatutPaiement(fariq: number): '✅ مسدد' | '🔵 متبقي' | '⚠️ زيادة دفع' {
-  if (fariq === 0) return '✅ مسدد'
-  if (fariq > 0)  return '🔵 متبقي'
-  return '⚠️ زيادة دفع'
+/** Compute STATUT_PAIEMENT (a payment_status code, see src/lib/codes.ts) */
+export function computeStatutPaiement(fariq: number): 'solde' | 'reste' | 'trop_percu' {
+  if (fariq === 0) return 'solde'
+  if (fariq > 0)  return 'reste'
+  return 'trop_percu'
 }
 
 /** Compute WARRANTY_EXPIRY: start + N calendar months (not × 30 days). */

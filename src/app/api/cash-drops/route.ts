@@ -1,65 +1,58 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createUntypedClient } from '@/lib/supabase/server'
+import { NextRequest } from 'next/server'
+import { prisma } from '@/lib/db'
+import { json, handleError, requireUser, requireActiveUser, dateOnly, todayDate, HttpError } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
+import { notifyCaisseChange } from '@/lib/realtime'
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createUntypedClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
-
+    const user = await requireActiveUser()
     const body = await request.json() as { amount: number; reason: string; store_id: string }
-    if (!body.amount || body.amount <= 0) return NextResponse.json({ error: 'Montant invalide' }, { status: 400 })
-    if (!body.reason?.trim()) return NextResponse.json({ error: 'Motif requis' }, { status: 400 })
+    const amount = Number(body.amount)
+    if (!(amount > 0)) throw new HttpError(400, 'Montant invalide')
+    if (!body.reason?.trim()) throw new HttpError(400, 'Motif requis')
 
-    const { data, error } = await supabase
-      .from('cash_drops')
-      .insert({
+    const data = await prisma.cash_drops.create({
+      data: {
         store_id:   body.store_id,
-        amount:     body.amount,
+        amount,
         reason:     body.reason.trim(),
-        date:       new Date().toISOString().split('T')[0],
+        date:       todayDate(),
         created_by: user.id,
-      })
-      .select()
-      .single()
-
-    if (error) throw error
+      },
+    })
 
     await logActivity({
       user_id:     user.id,
-      user_name:   user.email ?? '',
-      action_type: 'INSERT',
-      module:      'cash_drops',
+      user_name:   user.display_name,
+      action_type: 'creation',
+      module:      'encaissements_manuels',
       record_id:   data.drop_id,
       store_id:    body.store_id,
       after_state: data,
       ip_address:  getIpFromRequest(request),
     })
+    await notifyCaisseChange(body.store_id)
 
-    return NextResponse.json({ data })
-  } catch (err: unknown) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
+    return json({ data })
+  } catch (err) {
+    return handleError(err, 'POST /api/cash-drops')
   }
 }
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createUntypedClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+    await requireUser()
+    const { searchParams } = new URL(request.url)
+    const store_id = searchParams.get('store_id')
+    const date     = searchParams.get('date')
 
-    const store_id = new URL(request.url).searchParams.get('store_id')
-    const date     = new URL(request.url).searchParams.get('date')
-
-    let query = supabase.from('cash_drops').select('*').order('created_at', { ascending: false })
-    if (store_id) query = query.eq('store_id', store_id)
-    if (date)     query = query.eq('date', date)
-
-    const { data, error } = await query
-    if (error) throw error
-    return NextResponse.json({ data: data || [] })
-  } catch (err: unknown) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
+    const data = await prisma.cash_drops.findMany({
+      where:   { ...(store_id && { store_id }), ...(date && { date: dateOnly(date) }) },
+      orderBy: { created_at: 'desc' },
+    })
+    return json({ data })
+  } catch (err) {
+    return handleError(err, 'GET /api/cash-drops')
   }
 }

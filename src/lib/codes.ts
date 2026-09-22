@@ -149,6 +149,12 @@ export const CODES = {
     alerte:     { fr: 'Stock faible', ar: 'تحذير' },
     disponible: { fr: 'Disponible',  ar: 'متوفر' },
   },
+  // Computed from prix_vente / avance / valeur_echange, not stored.
+  payment_status: {
+    solde:      { fr: 'Soldé',         ar: 'مسدد' },
+    reste:      { fr: 'Solde restant', ar: 'متبقي' },
+    trop_percu: { fr: 'Trop payé',     ar: 'زيادة دفع' },
+  },
   category_type: {
     accessoire:  { fr: 'Accessoire',  ar: 'إكسسوار' },
     depense:     { fr: 'Dépense',     ar: 'مصروف' },
@@ -202,6 +208,11 @@ export function codeLabel<D extends CodeDomain>(domain: D, code: Code<D> | null 
   if (!code) return ''
   const entry = (CODES[domain] as Labels)[code]
   return entry ? entry[lang] : code
+}
+
+// 'Tête de chargeur' → 'tete_de_chargeur' (used for user-created categories).
+export function toCode(label: string): string {
+  return label.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
 }
 
 export function codeOptions<D extends CodeDomain>(domain: D, lang: Lang): { value: Code<D>; label: string }[] {

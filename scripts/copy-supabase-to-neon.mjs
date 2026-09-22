@@ -9,8 +9,8 @@
 //   node scripts/copy-supabase-to-neon.mjs
 import 'dotenv/config'
 import pg from 'pg'
-import { LEGACY, COLUMN_DOMAINS, CATEGORY_COLUMNS, EXTRA_CATEGORIES, MODULE_TABLES, SNAPSHOT_FIELDS, slugify } from './legacy-codes.mjs'
-import { CODES } from '../src/lib/codes.ts'
+import { LEGACY, COLUMN_DOMAINS, CATEGORY_COLUMNS, EXTRA_CATEGORIES, MODULE_TABLES, SNAPSHOT_FIELDS } from './legacy-codes.mjs'
+import { CODES, toCode } from '../src/lib/codes.ts'
 
 const { Client, types } = pg
 
@@ -85,7 +85,7 @@ async function buildCategories() {
     try { list = JSON.parse(rows.find((r) => r.key === settingsKey)?.value ?? '[]') } catch {}
     list = list.map((it) => (typeof it === 'string' ? { fr: it, ar: it } : it))
     list.push(...EXTRA_CATEGORIES.filter((e) => e.type === type))
-    list.forEach((it, i) => categories.push({ code: slugify(it.fr), type, label_fr: it.fr, label_ar: it.ar, sort_order: i }))
+    list.forEach((it, i) => categories.push({ code: toCode(it.fr), type, label_fr: it.fr, label_ar: it.ar, sort_order: i }))
   }
   const dup = categories.map((c) => c.code).filter((c, i, all) => all.indexOf(c) !== i)
   if (dup.length) throw new Error(`duplicate category codes: ${dup.join(', ')}`)

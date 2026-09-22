@@ -7,6 +7,7 @@ import { usePortal } from '@/lib/context/portal'
 import { formatMAD, formatDate, getBusinessDate, fetchWithRetry } from '@/lib/utils'
 import { Btn, Field, inputClass, Modal } from '@/components/shared'
 import { showSuccess, showError } from '@/lib/utils/toasts'
+import { useCaisseRealtime } from '@/lib/hooks/useCaisseRealtime'
 import {
   Vault, TrendingUp, Receipt, Wrench,
   CheckCircle, Clock, XCircle, RefreshCw,
@@ -24,7 +25,7 @@ interface CaisseData {
   solde_theorique:         number
   solde_reel:              number | null
   ecart:                   number | null
-  status:                  'open' | 'pending_eod' | 'closed'
+  status:                  'ouverte' | 'en_attente_cloture' | 'cloturee'
   payment_breakdown:       { cash: number; transfer: number; credit: number; reprises?: number }
   nb_transactions:         number
   // Champs optionnels — présents uniquement dans la vue live (GET open)
@@ -63,8 +64,9 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
 
   const today = getBusinessDate()
 
-  const fetchCaisse = useCallback(async () => {
-    setLoading(true)
+  // silent: live refresh from Pusher — update the figures without the loading state
+  const fetchCaisse = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true)
     try {
       const bizDate = getBusinessDate()
       let res  = await fetch(`/api/caisse?store_id=${storeId}&date=${bizDate}`)
@@ -77,7 +79,7 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
         const prevDate = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}-${String(prev.getDate()).padStart(2, '0')}`
         const res2  = await fetch(`/api/caisse?store_id=${storeId}&date=${prevDate}`)
         const json2 = await res2.json()
-        if (json2.data?.status === 'open') json = json2
+        if (json2.data?.status === 'ouverte') json = json2
       }
 
       setCaisse(json.data ?? null)
@@ -90,41 +92,7 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
 
   useEffect(() => { fetchCaisse() }, [fetchCaisse])
 
-  // Realtime subscription — replaces 60-second polling
-  useEffect(() => {
-    const { createClient: createBrowserClient } = require('@/lib/supabase/client')
-    const supabase = createBrowserClient()
-
-    const channel = supabase
-      .channel(`caisse-realtime-${storeId}`)
-      .on('postgres_changes', {
-        event:  '*',
-        schema: 'public',
-        table:  'caisse',
-        filter: `store_id=eq.${storeId}`,
-      }, () => { fetchCaisse() })
-      .on('postgres_changes', {
-        event:  '*',
-        schema: 'public',
-        table:  'transactions',
-        filter: `store_id=eq.${storeId}`,
-      }, () => { fetchCaisse() })
-      .on('postgres_changes', {
-        event:  '*',
-        schema: 'public',
-        table:  'expenses',
-        filter: `store_id=eq.${storeId}`,
-      }, () => { fetchCaisse() })
-      .on('postgres_changes', {
-        event:  '*',
-        schema: 'public',
-        table:  'reparations',
-        filter: `store_id=eq.${storeId}`,
-      }, () => { fetchCaisse() })
-      .subscribe()
-
-    return () => { supabase.removeChannel(channel) }
-  }, [storeId, fetchCaisse])
+  useCaisseRealtime(storeId, () => fetchCaisse({ silent: true }))
 
   async function handleBOD() {
     const amount = parseFloat(bodAmount)
@@ -278,7 +246,7 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
   }
 
   // ── Pending EOD — waiting for manager approval ────────────
-  if (caisse.status === 'pending_eod') {
+  if (caisse.status === 'en_attente_cloture') {
     return (
       <div className="p-6 max-w-lg mx-auto" dir={isAr ? 'rtl' : 'ltr'}>
         <div className="text-center py-10">
@@ -342,7 +310,7 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
   }
 
   // ── Closed ─────────────────────────────────────────────────
-  if (caisse.status === 'closed') {
+  if (caisse.status === 'cloturee') {
     return (
       <div className="p-6 max-w-lg mx-auto" dir={isAr ? 'rtl' : 'ltr'}>
         <div className="text-center py-8">
@@ -406,7 +374,7 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
           </p>
         </div>
         <button
-          onClick={fetchCaisse}
+          onClick={() => fetchCaisse()}
           disabled={loading}
           className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm border bg-white transition-all disabled:opacity-50"
           style={{ borderColor: `${primary}40`, color: '#6B6860' }}
@@ -496,7 +464,7 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
               <div className="flex items-center gap-2">
                 <RefreshCw className="w-3.5 h-3.5 text-blue-500" />
                 <span className="text-xs font-medium text-blue-700">
-                  {isAr ? 'مبادلات (غير نقدي)' : 'Reprises (non-cash)'}
+                  {isAr ? 'مبادلات (غير نقدي)' : 'Reprises (hors espèces)'}
                 </span>
                 {(caisse.nb_reprises ?? 0) > 0 && (
                   <span className="text-[10px] text-blue-400">

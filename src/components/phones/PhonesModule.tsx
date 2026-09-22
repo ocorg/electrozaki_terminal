@@ -564,7 +564,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
 
                     {/* Status */}
                     <div className="min-w-0 overflow-hidden">
-                      <StatusBadge status={phone.status} lang={isAr ? 'ar' : 'fr'} />
+                      <StatusBadge domain="device_status" code={phone.status} lang={isAr ? 'ar' : 'fr'} />
                     </div>
 
                     {/* Prix de vente — visible à tous les rôles */}
@@ -675,7 +675,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-[#1A1A1A] truncate">{deviceName}</p>
                       <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                        <StatusBadge status={phone.status} lang={isAr ? 'ar' : 'fr'} size="sm" />
+                        <StatusBadge domain="device_status" code={phone.status} lang={isAr ? 'ar' : 'fr'} size="sm" />
                         {phone.stockage && (
                           <span className="text-[10px] font-mono text-[#6B6860]">{phone.stockage}</span>
                         )}

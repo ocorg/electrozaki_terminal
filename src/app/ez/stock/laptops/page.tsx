@@ -173,7 +173,7 @@ export default function EZLaptopsPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3 flex-shrink-0">
-                      <StatusBadge status={laptop.status} lang={isAr ? 'ar' : 'fr'} />
+                      <StatusBadge domain="device_status" code={laptop.status} lang={isAr ? 'ar' : 'fr'} />
                       {canFinancials && laptop.prix_vente_recommande && (
                         <p className="text-sm font-bold" style={{ color: primary }}>
                           {formatMAD(laptop.prix_vente_recommande)}

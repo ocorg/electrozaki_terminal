@@ -1,72 +1,99 @@
-import { createUntypedClient } from '@/lib/supabase/server'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
+import type { category_type, Prisma } from '@prisma/client'
+import { prisma } from '@/lib/db'
+import { json, handleError, requireUser, requireActiveUser, HttpError, MANAGERS } from '@/lib/api'
+import { toCode } from '@/lib/codes'
 
-export interface CategoryItem { fr: string; ar: string }
-type CatType = 'accessories' | 'expenses' | 'suppliers'
-const VALID_TYPES: CatType[] = ['accessories', 'expenses', 'suppliers']
+export interface CategoryItem { code: string; fr: string; ar: string }
+type CatGroup = 'accessories' | 'expenses' | 'suppliers'
 
-function parse(value: string | null | undefined): CategoryItem[] {
-  try {
-    const parsed = JSON.parse(value ?? '')
-    if (!Array.isArray(parsed) || parsed.length === 0) return []
-    if (typeof parsed[0] === 'string') return (parsed as string[]).map(s => ({ fr: s, ar: s }))
-    return parsed as CategoryItem[]
-  } catch { return [] }
+const GROUP_TYPE: Record<CatGroup, category_type> = {
+  accessories: 'accessoire',
+  expenses:    'depense',
+  suppliers:   'fournisseur',
 }
 
 export async function GET() {
   try {
-    const supabase = await createUntypedClient()
-    const { data, error } = await supabase
-      .from('settings')
-      .select('key, value')
-      .in('key', ['categories_accessories', 'categories_expenses', 'categories_suppliers'])
-      .is('store_id', null) as { data: { key: string; value: string }[] | null; error: unknown }
-
-    if (error) throw error
-
-    const get = (key: string) => data?.find(r => r.key === key)?.value
-    return NextResponse.json({
-      accessories: parse(get('categories_accessories')),
-      expenses:    parse(get('categories_expenses')),
-      suppliers:   parse(get('categories_suppliers')),
+    await requireUser()
+    const rows = await prisma.categories.findMany({ orderBy: [{ type: 'asc' }, { sort_order: 'asc' }] })
+    const group = (type: category_type): CategoryItem[] =>
+      rows.filter(r => r.type === type).map(r => ({ code: r.code, fr: r.label_fr, ar: r.label_ar }))
+    return json({
+      accessories: group('accessoire'),
+      expenses:    group('depense'),
+      suppliers:   group('fournisseur'),
     })
-  } catch (err: unknown) {
-    return NextResponse.json(
-      { error: (err as Error).message },
-      { status: 500 }
-    )
+  } catch (err) {
+    return handleError(err, 'GET /api/categories')
   }
 }
 
+async function freeCode(tx: Prisma.TransactionClient, label: string) {
+  const base = toCode(label) || 'categorie'
+  for (let n = 1; ; n++) {
+    const code = n === 1 ? base : `${base}_${n}`
+    if (!(await tx.categories.findUnique({ where: { code } }))) return code
+  }
+}
+
+// POST { type, categories: [{ code?, fr, ar }] } — saves the full ordered list for one group.
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createUntypedClient()
-    const body: { type: CatType; categories: CategoryItem[] } = await request.json()
+    await requireActiveUser(MANAGERS)
+    const body: { type: CatGroup; categories: Partial<CategoryItem>[] } = await request.json()
 
-    if (!VALID_TYPES.includes(body.type))
-      return NextResponse.json({ error: 'Type invalide' }, { status: 400 })
+    const type = GROUP_TYPE[body.type]
+    if (!type) throw new HttpError(400, 'Type invalide')
+    if (!Array.isArray(body.categories) || body.categories.length === 0) {
+      throw new HttpError(400, 'Au moins une catégorie requise')
+    }
+    if (body.categories.some(c => !c.fr?.trim() || !c.ar?.trim())) {
+      throw new HttpError(400, 'Chaque catégorie doit avoir un nom FR et AR')
+    }
 
-    if (!Array.isArray(body.categories) || body.categories.length === 0)
-      return NextResponse.json({ error: 'Au moins une catégorie requise' }, { status: 400 })
+    const saved = await prisma.$transaction(async (tx) => {
+      const existing = await tx.categories.findMany({ where: { type } })
+      const kept = new Set<string>()
 
-    if (body.categories.some(c => !c.fr?.trim() || !c.ar?.trim()))
-      return NextResponse.json({ error: 'Chaque catégorie doit avoir un nom FR et AR' }, { status: 400 })
+      for (let i = 0; i < body.categories.length; i++) {
+        const c = body.categories[i]
+        const labels = { label_fr: c.fr!.trim(), label_ar: c.ar!.trim(), sort_order: i }
+        if (c.code && existing.some(e => e.code === c.code)) {
+          await tx.categories.update({ where: { code: c.code }, data: labels })
+          kept.add(c.code)
+        } else {
+          const code = await freeCode(tx, labels.label_fr)
+          await tx.categories.create({ data: { code, type, ...labels } })
+          kept.add(code)
+        }
+      }
 
-    const key = `categories_${body.type}`
+      const removed = existing.filter(e => !kept.has(e.code))
+      if (removed.length) {
+        const codes = removed.map(r => r.code)
+        const where = { categorie: { in: codes } }
+        const [acc, exp, sup] = await Promise.all([
+          tx.accessories.findMany({ where, select: { categorie: true }, distinct: ['categorie'] }),
+          tx.expenses.findMany({ where, select: { categorie: true }, distinct: ['categorie'] }),
+          tx.suppliers.findMany({ where, select: { categorie: true }, distinct: ['categorie'] }),
+        ])
+        const inUse = new Set([...acc, ...exp, ...sup].map(r => r.categorie))
+        if (inUse.size) {
+          const names = removed.filter(r => inUse.has(r.code)).map(r => r.label_fr).join(', ')
+          throw new HttpError(409, `Catégorie encore utilisée, impossible de la supprimer : ${names}`)
+        }
+        await tx.categories.deleteMany({ where: { code: { in: codes } } })
+      }
 
-    await supabase.from('settings').delete().eq('key', key).is('store_id', null)
-
-    const { error } = await supabase.from('settings').insert({
-      key,
-      value:      JSON.stringify(body.categories),
-      store_id:   null,
-      updated_at: new Date().toISOString(),
+      return tx.categories.findMany({ where: { type }, orderBy: { sort_order: 'asc' } })
     })
-    if (error) throw error
 
-    return NextResponse.json({ status: 'success', categories: body.categories })
-  } catch (err: unknown) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
+    return json({
+      status: 'success',
+      categories: saved.map(r => ({ code: r.code, fr: r.label_fr, ar: r.label_ar })),
+    })
+  } catch (err) {
+    return handleError(err, 'POST /api/categories')
   }
 }

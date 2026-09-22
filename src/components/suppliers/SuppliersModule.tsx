@@ -178,7 +178,7 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
       } else {
         // B/C : sold phones from this supplier (for payment traceability)
         const res  = await fetch(
-          `/api/phones?fournisseur_id=${supplier.supplier_id}&status=${encodeURIComponent('مباع')}&store_id=${storeId}`
+          `/api/phones?fournisseur_id=${supplier.supplier_id}&status=vendu&store_id=${storeId}`
         )
         const json = await res.json()
         const rows: PhoneRow[] = (json.data || []).map((p: any) => ({

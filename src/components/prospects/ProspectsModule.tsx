@@ -78,7 +78,7 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
 
   // Fetch available phones once for stock-matching
   useEffect(() => {
-    fetch(`/api/phones?store_id=${storeId}&status=متوفر`)
+    fetch(`/api/phones?store_id=${storeId}&status=disponible`)
       .then(r => r.json())
       .then(json => setAvailablePhones(json.data || []))
       .catch(() => {})

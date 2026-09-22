@@ -662,7 +662,7 @@ export default function EZDashboard() {
                         {formatMAD(collected(txn))}
                       </p>
                     )}
-                    <StatusBadge status={txn.type_operation} lang={isAr ? 'ar' : 'fr'} />
+                    <StatusBadge domain="operation_type" code={txn.type_operation} lang={isAr ? 'ar' : 'fr'} />
                   </div>
                 </div>
               ))}

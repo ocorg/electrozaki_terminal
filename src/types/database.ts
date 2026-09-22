@@ -1,27 +1,28 @@
 // ============================================================
-//  BZG GROUP — Supabase Database Types
-//  Matches live schema exactly — update here after every SQL migration
+//  BZG GROUP — shapes of the rows the API returns to screens
+//  Fixed values are French codes — see src/lib/codes.ts for labels
 // ============================================================
+import type { Code } from '@/lib/codes'
 
 // ─── Enums ───────────────────────────────────────────────────
-export type UserRole         = 'employe' | 'gerant' | 'proprietaire'
-export type DeviceSource     = 'Fournisseur' | 'Reprise' | 'Échange'
-export type DeviceCondition  = 'جديد' | 'مستعمل' | 'معطوب'
-export type DeviceStatus     = 'متوفر' | 'مباع' | 'إستبدال' | 'إصلاح' | 'en_transfert' | 'en_livraison' | 'حجز'
-export type LocationType     = 'Magasin Principal' | 'Magasin Secondaire' | 'Externe'
-export type OperationType    = 'بيع' | 'إستبدال' | 'تسبيق' | 'Retour'
-export type PaymentMethod    = 'نقد' | 'تحويل' | 'تسبيق' | 'إستبدال' | 'مختلط' | 'آجل'
-export type RepairStatus     = 'معلق' | 'قيد الإصلاح' | 'جاهز' | 'تم الاستلام'
-export type MovementReason   = 'Transfert' | 'Réparation Externe' | 'Retour' | 'Prêt'
-export type DeviceType       = 'هاتف' | 'لابتوب' | 'إكسسوار'
-// These are now open strings — values are managed via BZG Settings → Catégories
+export type UserRole         = Code<'user_role'>
+export type DeviceSource     = Code<'device_source'>
+export type DeviceCondition  = Code<'device_condition'>
+export type DeviceStatus     = Code<'device_status'>
+export type LocationType     = Code<'location_type'>
+export type OperationType    = Code<'operation_type'>
+export type PaymentMethod    = Code<'payment_method'>
+export type RepairStatus     = Code<'repair_status'>
+export type MovementReason   = Code<'movement_reason'>
+export type DeviceType       = Code<'device_type'>
+// Category codes — values are managed via BZG Settings → Catégories (categories table)
 export type AccCategory      = string
 export type SupplierCategory = string
 export type ExpenseCategory  = string
-export type CaisseStatus     = 'open' | 'pending_eod' | 'closed'
-export type PunchType        = 'in' | 'out'
-export type ActionType       = 'INSERT' | 'UPDATE' | 'DELETE' | 'VOID' | 'LOGIN' | 'LOGOUT' | 'OVERRIDE' | 'EOD_SUBMIT' | 'EOD_APPROVE' | 'EOD_REJECT' | 'PUNCH_IN' | 'PUNCH_OUT'
-export type LogModule        = 'phones' | 'laptops' | 'accessories' | 'transactions' | 'reparations' | 'clients' | 'suppliers' | 'supplier_payments' | 'expenses' | 'caisse' | 'stock_movements' | 'users' | 'settings' | 'auth' | 'attendance' | 'changelog' | 'repairs/parts' | 'cash_drops' | 'credits' | 'credit_imports' | 'prospects' | 'inventaire'
+export type CaisseStatus     = Code<'caisse_status'>
+export type PunchType        = Code<'punch_type'>
+export type ActionType       = Code<'log_action'>
+export type LogModule        = Code<'log_module'>
 
 // ─── Interfaces ───────────────────────────────────────────────
 
@@ -210,7 +211,7 @@ export interface Transaction {
   updated_at:           string
   updated_by?:          string | null
   fariq?:               number
-  statut_paiement?:     '✅ مسدد' | '🔵 متبقي' | '⚠️ زيادة دفع'
+  statut_paiement?:     Code<'payment_status'>
 }
 
 export interface Reparation {

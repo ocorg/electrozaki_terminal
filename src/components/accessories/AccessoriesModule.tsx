@@ -407,7 +407,8 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
 
                   {/* Status */}
                   <StatusBadge
-                    status={acc.status_computed ?? (acc.quantite === 0 ? 'نفذ' : 'متوفر')}
+                    domain="stock_level"
+                    code={acc.status_computed ?? (acc.quantite === 0 ? 'epuise' : 'disponible')}
                     lang={isAr ? 'ar' : 'fr'}
                   />
 
@@ -464,7 +465,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
                     <p className="text-sm font-medium text-[#1A1A1A] truncate">{acc.nom}</p>
                     <div className="flex items-center gap-2 mt-0.5">
                       <span className="text-xs text-[#B0ADA6]">{getCatLabel(acc.categorie)}</span>
-                      <StatusBadge status={acc.status_computed ?? 'متوفر'} size="sm" />
+                      <StatusBadge domain="stock_level" code={acc.status_computed ?? 'disponible'} size="sm" />
                     </div>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
