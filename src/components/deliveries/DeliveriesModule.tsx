@@ -368,7 +368,7 @@ export default function DeliveriesModule({ storeId }: DeliveriesModuleProps) {
     setDragging(null)
   }
 
-  if (!['manager', 'owner'].includes(user?.role ?? '')) {
+  if (!['gerant', 'proprietaire'].includes(user?.role ?? '')) {
     return (
       <div className="p-6 text-sm text-[#6B6860]">
         Accès réservé aux managers et propriétaires.

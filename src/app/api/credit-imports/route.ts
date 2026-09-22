@@ -141,7 +141,7 @@ export async function DELETE(request: NextRequest) {
       .eq('id', user.id)
       .single() as { data: { display_name: string; role: string } | null }
 
-    if (profile?.role !== 'owner') {
+    if (profile?.role !== 'proprietaire') {
       return NextResponse.json({ error: 'Réservé au propriétaire' }, { status: 403 })
     }
 

@@ -60,7 +60,7 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
   const portal       = usePortal()
   const isAr         = language === 'ar'
   const primary      = portal.primaryColor
-  const canDelete    = role === 'manager' || role === 'owner'
+  const canDelete    = role === 'gerant' || role === 'proprietaire'
 
   const { brands, modelsFor } = usePhoneCatalog()
 

@@ -1,8 +1,8 @@
 // Source of truth for the database schema.
 // Not expressible here, so they live in prisma/migrations SQL: CHECK constraints
 // (incl. the allowed values of former enum columns), sequences, SQL functions,
-// triggers and views. Former Postgres enums with Arabic/accented values are
-// plain String columns so the app keeps receiving the exact stored values.
+// triggers and views. Fixed values are enums of short French codes; screens show
+// the French/Arabic labels from src/lib/codes.ts.
 
 generator client {
   provider        = "prisma-client-js"
@@ -11,6 +11,227 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+// ── Fixed values: French codes, labels in src/lib/codes.ts ──
+
+enum device_status {
+  disponible
+  vendu
+  echange
+  en_reparation
+  en_livraison
+  en_transfert
+  reserve
+}
+
+enum device_condition {
+  neuf
+  occasion
+  defectueux
+}
+
+enum device_source {
+  fournisseur
+  reprise
+  echange
+}
+
+enum device_type {
+  telephone
+  laptop
+  accessoire
+}
+
+enum location_type {
+  magasin_principal
+  magasin_secondaire
+  externe
+}
+
+enum movement_reason {
+  transfert
+  reparation_externe
+  retour
+  pret
+}
+
+enum operation_type {
+  vente
+  echange
+  avance
+  retour
+}
+
+enum payment_method {
+  especes
+  virement
+  avance
+  echange
+  mixte
+  credit
+}
+
+enum repair_status {
+  en_attente
+  en_cours
+  pret
+  recupere
+}
+
+enum user_role {
+  employe
+  gerant
+  proprietaire
+}
+
+enum caisse_status {
+  ouverte
+  en_attente_cloture
+  cloturee
+}
+
+enum punch_type {
+  entree
+  sortie
+}
+
+enum delivery_status {
+  confirmation_en_cours
+  attente_avance
+  prepare
+  en_transit
+  livre
+  annule
+  retour
+}
+
+enum payment_scenario {
+  avance_totale
+  avance_partielle
+  paiement_livraison
+}
+
+enum credit_status {
+  en_cours
+  solde
+  annule
+}
+
+enum supplier_payment_type {
+  reglement_a
+  avance_a
+  paiement_b
+}
+
+enum warranty_event_type {
+  ouverture_sav
+  cloture_sav
+}
+
+enum inventory_status {
+  en_cours
+  terminee
+}
+
+enum inventory_result {
+  trouve
+  manquant
+  non_enregistre
+  hors_perimetre
+  en_attente
+}
+
+enum prospect_source {
+  tiktok
+  instagram
+  whatsapp
+  en_magasin
+  autre
+}
+
+enum prospect_status {
+  nouveau
+  contacte
+  converti
+  perdu
+}
+
+enum prospect_demand {
+  budget
+  modele
+}
+
+enum promo_type {
+  valeur
+  pourcentage
+}
+
+enum reprise_etat {
+  bon
+  moyen
+  mauvais
+}
+
+enum category_type {
+  accessoire
+  depense
+  fournisseur
+}
+
+enum log_action {
+  creation
+  modification
+  suppression
+  connexion
+  deconnexion
+  derogation
+  soumission_cloture
+  validation_cloture
+  rejet_cloture
+  pointage_entree
+  pointage_sortie
+  creation_utilisateur
+  annulation
+}
+
+enum log_module {
+  telephones
+  laptops
+  accessoires
+  transactions
+  reparations
+  pieces_reparation
+  clients
+  fournisseurs
+  paiements_fournisseurs
+  depenses
+  caisse
+  encaissements_manuels
+  mouvements_stock
+  utilisateurs
+  parametres
+  authentification
+  pointage
+  journal_modifications
+  credits
+  credits_importes
+  prospects
+  inventaire
+}
+
+model categories {
+  code        String        @id
+  type        category_type
+  label_fr    String
+  label_ar    String
+  sort_order  Int           @default(0)
+  created_at  DateTime      @default(now()) @db.Timestamptz(6)
+  accessories accessories[]
+  expenses    expenses[]
+  suppliers   suppliers[]
+
+  @@index([type, sort_order])
 }
 
 model accessories {
@@ -26,7 +247,7 @@ model accessories {
   quantite                            Int            @default(0)
   seuil_alerte                        Int            @default(5)
   fournisseur_id                      String?
-  location                            String         @default("Magasin Principal")
+  location                            location_type  @default(magasin_principal)
   image_url                           String?
   created_at                          DateTime       @default(now()) @db.Timestamptz(6)
   created_by                          String?        @db.Uuid
@@ -38,6 +259,7 @@ model accessories {
   suppliers                           suppliers?     @relation(fields: [fournisseur_id], references: [supplier_id], onDelete: NoAction, onUpdate: NoAction)
   stores                              stores?        @relation(fields: [store_id], references: [store_id], onDelete: NoAction, onUpdate: NoAction)
   users_accessories_updated_byTousers user_profiles? @relation("accessories_updated_byTousers", fields: [updated_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  category                            categories     @relation(fields: [categorie], references: [code], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([quantite, seuil_alerte], map: "idx_accessories_low_stock")
   @@index([store_id], map: "idx_accessories_store")
@@ -48,8 +270,8 @@ model activity_log {
   store_id     String?
   user_id      String?        @db.Uuid
   user_name    String
-  action_type  String
-  module       String
+  action_type  log_action
+  module       log_module
   record_id    String?
   before_state Json?
   after_state  Json?
@@ -82,7 +304,7 @@ model caisse {
   created_at                      DateTime       @default(now()) @db.Timestamptz(6)
   created_by                      String?        @db.Uuid
   store_id                        String?
-  status                          String         @default("open")
+  status                          caisse_status  @default(ouverte)
   eod_submitted_at                DateTime?      @db.Timestamptz(6)
   approved_by                     String?        @db.Uuid
   approved_at                     DateTime?      @db.Timestamptz(6)
@@ -141,7 +363,7 @@ model credit_import_payments {
   import_id      String
   store_id       String?
   montant        Decimal        @db.Decimal(12, 2)
-  payment_method String         @default("نقد")
+  payment_method payment_method @default(especes)
   payment_ref    String?
   notes          String?
   date_paiement  DateTime       @default(dbgenerated("CURRENT_DATE")) @db.Date
@@ -165,7 +387,7 @@ model credit_imports {
   created_at             DateTime?                @default(now()) @db.Timestamptz(6)
   created_by             String?                  @db.Uuid
   montant_paye           Decimal                  @default(0) @db.Decimal(12, 2)
-  statut                 String                   @default("en_cours")
+  statut                 credit_status            @default(en_cours)
   credit_import_payments credit_import_payments[]
   clients                clients?                 @relation(fields: [client_id], references: [client_id], onDelete: NoAction, onUpdate: NoAction)
   users                  user_profiles?           @relation("credit_imports_created_byTouser_profiles", fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -178,7 +400,7 @@ model credit_payments {
   store_id       String?
   txn_id         String?
   montant        Decimal        @db.Decimal
-  payment_method String
+  payment_method payment_method
   payment_ref    String?
   notes          String?
   collected_by   String?        @db.Uuid
@@ -198,13 +420,13 @@ model deliveries {
   client_name          String
   client_phone         String
   client_address       String
-  payment_scenario     String
+  payment_scenario     payment_scenario
   montant_total        Decimal          @db.Decimal
   montant_avance       Decimal?         @default(0) @db.Decimal
   montant_restant      Decimal?         @default(dbgenerated("(montant_total - montant_avance)")) @db.Decimal
-  payment_method       String?
+  payment_method       payment_method?
   payment_ref          String?
-  statut               String           @default("confirmation_encours")
+  statut               delivery_status  @default(confirmation_en_cours)
   notes                String?
   caisse_entry_created Boolean?         @default(false)
   created_at           DateTime?        @default(now()) @db.Timestamptz(6)
@@ -220,7 +442,7 @@ model deliveries {
 model delivery_items {
   item_id       String        @id @default(dbgenerated("('DELI-'::text || lpad((nextval('delivery_items_seq'::regclass))::text, 4, '0'::text))"))
   delivery_id   String?
-  device_type   String
+  device_type   device_type
   device_id     String
   txn_id        String?
   label_printed Boolean?      @default(false)
@@ -248,6 +470,7 @@ model expenses {
   suppliers                        suppliers?     @relation(fields: [fournisseur_id], references: [supplier_id], onDelete: NoAction, onUpdate: NoAction)
   stores                           stores?        @relation(fields: [store_id], references: [store_id], onDelete: NoAction, onUpdate: NoAction)
   users_expenses_updated_byTousers user_profiles? @relation("expenses_updated_byTousers", fields: [updated_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  category                         categories     @relation(fields: [categorie], references: [code], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([store_id], map: "idx_expenses_store")
 }
@@ -296,8 +519,8 @@ model inventory_session_items {
   phone_id           String?
   imei               String
   phone_label        String?
-  phone_status       String?
-  resultat           String             @default("en_attente")
+  phone_status       device_status?
+  resultat           inventory_result   @default(en_attente)
   scanned_at         DateTime?          @db.Timestamptz(6)
   inventory_sessions inventory_sessions @relation(fields: [session_id], references: [session_id], onDelete: Cascade, onUpdate: NoAction)
 
@@ -312,7 +535,7 @@ model inventory_sessions {
   created_by              String?                   @db.Uuid
   started_at              DateTime                  @default(now()) @db.Timestamptz(6)
   completed_at            DateTime?                 @db.Timestamptz(6)
-  statut                  String                    @default("en_cours")
+  statut                  inventory_status          @default(en_cours)
   snapshot_count          Int                       @default(0)
   inventory_session_items inventory_session_items[]
   users                   user_profiles?            @relation("inventory_sessions_created_byTouser_profiles", fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -322,12 +545,12 @@ model inventory_sessions {
 }
 
 model laptops {
-  laptop_id                       String         @id @default(dbgenerated("('LAP-'::text || lpad((nextval('laptops_seq'::regclass))::text, 4, '0'::text))"))
-  serial                          String?        @unique
-  source                          String
+  laptop_id                       String           @id @default(dbgenerated("('LAP-'::text || lpad((nextval('laptops_seq'::regclass))::text, 4, '0'::text))"))
+  serial                          String?          @unique
+  source                          device_source
   fournisseur_id                  String?
   txn_ref_id                      String?
-  condition                       String
+  condition                       device_condition
   marque                          String
   model                           String
   processeur                      String?
@@ -338,26 +561,26 @@ model laptops {
   battery_level                   Int?
   couleur                         String?
   description                     String?
-  prix_achat                      Decimal?       @db.Decimal(10, 2)
-  prix_vente_recommande           Decimal?       @db.Decimal(10, 2)
-  prix_vente_minimum              Decimal?       @db.Decimal(10, 2)
-  warranty_months                 Int?           @default(6)
-  status                          String         @default("متوفر")
-  location                        String         @default("Magasin Principal")
-  date_entree                     DateTime?      @default(dbgenerated("CURRENT_DATE")) @db.Date
+  prix_achat                      Decimal?         @db.Decimal(10, 2)
+  prix_vente_recommande           Decimal?         @db.Decimal(10, 2)
+  prix_vente_minimum              Decimal?         @db.Decimal(10, 2)
+  warranty_months                 Int?             @default(6)
+  status                          device_status    @default(disponible)
+  location                        location_type    @default(magasin_principal)
+  date_entree                     DateTime?        @default(dbgenerated("CURRENT_DATE")) @db.Date
   notes                           String?
   image_url                       String?
-  created_at                      DateTime       @default(now()) @db.Timestamptz(6)
-  created_by                      String?        @db.Uuid
-  updated_at                      DateTime       @default(now()) @db.Timestamptz(6)
-  updated_by                      String?        @db.Uuid
+  created_at                      DateTime         @default(now()) @db.Timestamptz(6)
+  created_by                      String?          @db.Uuid
+  updated_at                      DateTime         @default(now()) @db.Timestamptz(6)
+  updated_by                      String?          @db.Uuid
   store_id                        String?
-  is_deleted                      Boolean        @default(false)
-  transactions                    transactions?  @relation(fields: [txn_ref_id], references: [txn_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_laptops_txn_ref")
-  users_laptops_created_byTousers user_profiles? @relation("laptops_created_byTousers", fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  suppliers                       suppliers?     @relation(fields: [fournisseur_id], references: [supplier_id], onDelete: NoAction, onUpdate: NoAction)
-  stores                          stores?        @relation(fields: [store_id], references: [store_id], onDelete: NoAction, onUpdate: NoAction)
-  users_laptops_updated_byTousers user_profiles? @relation("laptops_updated_byTousers", fields: [updated_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  is_deleted                      Boolean          @default(false)
+  transactions                    transactions?    @relation(fields: [txn_ref_id], references: [txn_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_laptops_txn_ref")
+  users_laptops_created_byTousers user_profiles?   @relation("laptops_created_byTousers", fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  suppliers                       suppliers?       @relation(fields: [fournisseur_id], references: [supplier_id], onDelete: NoAction, onUpdate: NoAction)
+  stores                          stores?          @relation(fields: [store_id], references: [store_id], onDelete: NoAction, onUpdate: NoAction)
+  users_laptops_updated_byTousers user_profiles?   @relation("laptops_updated_byTousers", fields: [updated_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([location], map: "idx_laptops_location")
   @@index([status], map: "idx_laptops_status")
@@ -380,7 +603,7 @@ model phone_credit_payments {
   payment_id         String             @id @default(dbgenerated("next_credit_payment_id()"))
   credit_id          String
   montant            Decimal            @db.Decimal(10, 2)
-  payment_method     String
+  payment_method     payment_method
   date_paiement      DateTime           @default(dbgenerated("CURRENT_DATE")) @db.Date
   notes              String?
   store_id           String?
@@ -402,7 +625,7 @@ model phone_credit_sales {
   client_cin                                    String?
   montant_total                                 Decimal                 @db.Decimal(10, 2)
   montant_paye                                  Decimal                 @default(0) @db.Decimal(10, 2)
-  statut                                        String                  @default("en_cours")
+  statut                                        credit_status           @default(en_cours)
   phone_remis                                   Boolean                 @default(false)
   notes                                         String?
   store_id                                      String?
@@ -417,7 +640,7 @@ model phone_credit_sales {
   reprise_model                                 String?
   reprise_valeur                                Decimal?                @db.Decimal(10, 2)
   reprise_imei                                  String?
-  reprise_etat                                  String                  @default("bon")
+  reprise_etat                                  reprise_etat            @default(bon)
   reprise_remise                                Boolean                 @default(false)
   reprise_remise_at                             DateTime?               @db.Timestamptz(6)
   reprise_phone_id                              String?
@@ -434,10 +657,10 @@ model phone_credit_sales {
 model phones {
   phone_id                       String               @id @default(dbgenerated("('PHO-'::text || lpad((nextval('phones_seq'::regclass))::text, 4, '0'::text))"))
   imei                           String?              @unique
-  source                         String
+  source                         device_source
   fournisseur_id                 String?
   txn_ref_id                     String?
-  condition                      String
+  condition                      device_condition
   marque                         String
   serie                          String?
   type                           String?
@@ -453,8 +676,8 @@ model phones {
   prix_vente_recommande          Decimal?             @db.Decimal(10, 2)
   prix_vente_minimum             Decimal?             @db.Decimal(10, 2)
   warranty_months                Int?                 @default(6)
-  status                         String               @default("متوفر")
-  location                       String               @default("Magasin Principal")
+  status                         device_status        @default(disponible)
+  location                       location_type        @default(magasin_principal)
   date_entree                    DateTime?            @default(dbgenerated("CURRENT_DATE")) @db.Date
   image_url                      String?
   created_at                     DateTime             @default(now()) @db.Timestamptz(6)
@@ -466,7 +689,7 @@ model phones {
   is_damaged                     Boolean?             @default(false)
   damage_notes                   String?
   replaced_components            Json?                @default("[]")
-  promo_type                     String?
+  promo_type                     promo_type?
   promo_montant                  Decimal?             @db.Decimal
   settled_at                     DateTime?            @db.Timestamptz(6)
   settled_by                     String?              @db.Uuid
@@ -498,23 +721,23 @@ model platform_changelog {
 }
 
 model prospects {
-  prospect_id String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  prospect_id String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   store_id    String
   nom         String
   telephone   String?
-  source      String    @default("En magasin")
-  demand_type String    @default("modele")
+  source      prospect_source @default(en_magasin)
+  demand_type prospect_demand @default(modele)
   marque      String?
   model       String?
   stockage    String?
-  budget_max  Decimal?  @db.Decimal
+  budget_max  Decimal?        @db.Decimal
   notes       String?
-  statut      String    @default("Nouveau")
-  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+  statut      prospect_status @default(nouveau)
+  created_at  DateTime?       @default(now()) @db.Timestamptz(6)
   created_by  String?
-  updated_at  DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime?       @default(now()) @db.Timestamptz(6)
   updated_by  String?
-  is_deleted  Boolean?  @default(false)
+  is_deleted  Boolean?        @default(false)
 
   @@index([statut], map: "idx_prospects_statut")
   @@index([store_id], map: "idx_prospects_store_id")
@@ -532,7 +755,7 @@ model reparations {
   cout_reparation                     Decimal?            @default(0) @db.Decimal(10, 2)
   avance_rep                          Decimal?            @default(0) @db.Decimal(10, 2)
   date_avance_rep                     DateTime?           @db.Date
-  statut                              String              @default("معلق")
+  statut                              repair_status       @default(en_attente)
   date_depot                          DateTime            @default(dbgenerated("CURRENT_DATE")) @db.Date
   date_prevue                         DateTime?           @db.Date
   date_livraison                      DateTime?           @db.Date
@@ -593,7 +816,7 @@ model staff_attendance {
   store_id      String
   user_id       String        @db.Uuid
   user_name     String
-  punch_type    String
+  punch_type    punch_type
   punched_at    DateTime      @default(now()) @db.Timestamptz(6)
   date          DateTime      @default(dbgenerated("CURRENT_DATE")) @db.Date
   notes         String?
@@ -607,27 +830,27 @@ model staff_attendance {
 }
 
 model stock_movements {
-  movement_id                                  String         @id @default(dbgenerated("('MOV-'::text || lpad((nextval('movements_seq'::regclass))::text, 4, '0'::text))"))
-  device_type                                  String
+  movement_id                                  String          @id @default(dbgenerated("('MOV-'::text || lpad((nextval('movements_seq'::regclass))::text, 4, '0'::text))"))
+  device_type                                  device_type
   device_id                                    String
-  quantity                                     Int            @default(1)
-  from_location                                String
-  to_location                                  String
+  quantity                                     Int             @default(1)
+  from_location                                location_type
+  to_location                                  location_type
   external_name                                String?
-  reason                                       String         @default("Transfert")
+  reason                                       movement_reason @default(transfert)
   notes                                        String?
-  moved_by                                     String?        @db.Uuid
-  moved_at                                     DateTime       @default(now()) @db.Timestamptz(6)
-  created_at                                   DateTime       @default(now()) @db.Timestamptz(6)
-  created_by                                   String?        @db.Uuid
+  moved_by                                     String?         @db.Uuid
+  moved_at                                     DateTime        @default(now()) @db.Timestamptz(6)
+  created_at                                   DateTime        @default(now()) @db.Timestamptz(6)
+  created_by                                   String?         @db.Uuid
   store_id                                     String?
   from_store_id                                String?
   to_store_id                                  String?
-  users_stock_movements_created_byTousers      user_profiles? @relation("stock_movements_created_byTousers", fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  stores_stock_movements_from_store_idTostores stores?        @relation("stock_movements_from_store_idTostores", fields: [from_store_id], references: [store_id], onDelete: NoAction, onUpdate: NoAction)
-  users_stock_movements_moved_byTousers        user_profiles? @relation("stock_movements_moved_byTousers", fields: [moved_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  stores_stock_movements_store_idTostores      stores?        @relation("stock_movements_store_idTostores", fields: [store_id], references: [store_id], onDelete: NoAction, onUpdate: NoAction)
-  stores_stock_movements_to_store_idTostores   stores?        @relation("stock_movements_to_store_idTostores", fields: [to_store_id], references: [store_id], onDelete: NoAction, onUpdate: NoAction)
+  users_stock_movements_created_byTousers      user_profiles?  @relation("stock_movements_created_byTousers", fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  stores_stock_movements_from_store_idTostores stores?         @relation("stock_movements_from_store_idTostores", fields: [from_store_id], references: [store_id], onDelete: NoAction, onUpdate: NoAction)
+  users_stock_movements_moved_byTousers        user_profiles?  @relation("stock_movements_moved_byTousers", fields: [moved_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  stores_stock_movements_store_idTostores      stores?         @relation("stock_movements_store_idTostores", fields: [store_id], references: [store_id], onDelete: NoAction, onUpdate: NoAction)
+  stores_stock_movements_to_store_idTostores   stores?         @relation("stock_movements_to_store_idTostores", fields: [to_store_id], references: [store_id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([device_id], map: "idx_movements_device_id")
 }
@@ -667,26 +890,26 @@ model stores {
 }
 
 model supplier_payments {
-  payment_id                                String         @id @default(dbgenerated("('PMT-'::text || lpad((nextval('payments_seq'::regclass))::text, 4, '0'::text))"))
+  payment_id                                String                @id @default(dbgenerated("('PMT-'::text || lpad((nextval('payments_seq'::regclass))::text, 4, '0'::text))"))
   supplier_id                               String
-  montant                                   Decimal        @db.Decimal(10, 2)
-  payment_method                            String         @default("نقد")
+  montant                                   Decimal               @db.Decimal(10, 2)
+  payment_method                            payment_method        @default(especes)
   payment_ref                               String?
   facture_ref                               String?
-  date_paiement                             DateTime       @default(dbgenerated("CURRENT_DATE")) @db.Date
+  date_paiement                             DateTime              @default(dbgenerated("CURRENT_DATE")) @db.Date
   notes                                     String?
-  created_at                                DateTime       @default(now()) @db.Timestamptz(6)
-  created_by                                String?        @db.Uuid
-  updated_at                                DateTime       @default(now()) @db.Timestamptz(6)
-  updated_by                                String?        @db.Uuid
+  created_at                                DateTime              @default(now()) @db.Timestamptz(6)
+  created_by                                String?               @db.Uuid
+  updated_at                                DateTime              @default(now()) @db.Timestamptz(6)
+  updated_by                                String?               @db.Uuid
   store_id                                  String?
-  payment_type                              String         @default("PAIEMENT_B")
-  is_deleted                                Boolean        @default(false)
-  phone_ids                                 String[]       @default([])
-  users_supplier_payments_created_byTousers user_profiles? @relation("supplier_payments_created_byTousers", fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  stores                                    stores?        @relation(fields: [store_id], references: [store_id], onDelete: NoAction, onUpdate: NoAction)
-  suppliers                                 suppliers      @relation(fields: [supplier_id], references: [supplier_id], onDelete: NoAction, onUpdate: NoAction)
-  users_supplier_payments_updated_byTousers user_profiles? @relation("supplier_payments_updated_byTousers", fields: [updated_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  payment_type                              supplier_payment_type @default(paiement_b)
+  is_deleted                                Boolean               @default(false)
+  phone_ids                                 String[]              @default([])
+  users_supplier_payments_created_byTousers user_profiles?        @relation("supplier_payments_created_byTousers", fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  stores                                    stores?               @relation(fields: [store_id], references: [store_id], onDelete: NoAction, onUpdate: NoAction)
+  suppliers                                 suppliers             @relation(fields: [supplier_id], references: [supplier_id], onDelete: NoAction, onUpdate: NoAction)
+  users_supplier_payments_updated_byTousers user_profiles?        @relation("supplier_payments_updated_byTousers", fields: [updated_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model suppliers {
@@ -713,20 +936,21 @@ model suppliers {
   users_suppliers_created_byTousers user_profiles?      @relation("suppliers_created_byTousers", fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
   stores                            stores?             @relation(fields: [store_id], references: [store_id], onDelete: NoAction, onUpdate: NoAction)
   users_suppliers_updated_byTousers user_profiles?      @relation("suppliers_updated_byTousers", fields: [updated_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  category                          categories?         @relation(fields: [categorie], references: [code], onDelete: Restrict, onUpdate: Cascade)
 }
 
 model transactions {
   txn_id                                String            @id @default(dbgenerated("('TXN-'::text || lpad((nextval('transactions_seq'::regclass))::text, 4, '0'::text))"))
-  device_type                           String
+  device_type                           device_type
   device_id                             String
   client_id                             String?
-  type_operation                        String
+  type_operation                        operation_type
   txn_original_id                       String?
   prix_vente                            Decimal           @db.Decimal(10, 2)
   date_vente                            DateTime          @default(dbgenerated("CURRENT_DATE")) @db.Date
   avance                                Decimal?          @default(0) @db.Decimal(10, 2)
   date_avance                           DateTime?         @db.Date
-  payment_method                        String
+  payment_method                        payment_method
   montant_especes                       Decimal?          @default(0) @db.Decimal(10, 2)
   montant_carte                         Decimal?          @default(0) @db.Decimal(10, 2)
   montant_rendu                         Decimal?          @default(0) @db.Decimal(10, 2)
@@ -783,7 +1007,7 @@ model user_profiles {
   email                                                      String                   @unique
   password_hash                                              String?
   display_name                                               String
-  role                                                       user_role                @default(staff)
+  role                                                       user_role                @default(employe)
   override_pin                                               String?
   is_active                                                  Boolean                  @default(true)
   created_at                                                 DateTime                 @default(now()) @db.Timestamptz(6)
@@ -837,27 +1061,21 @@ model user_profiles {
 }
 
 model warranty_events {
-  event_id     String         @id @default(dbgenerated("('WEV-'::text || lpad((nextval('warranty_events_seq'::regclass))::text, 4, '0'::text))"))
-  store_id     String         @default("EZ-001")
+  event_id     String              @id @default(dbgenerated("('WEV-'::text || lpad((nextval('warranty_events_seq'::regclass))::text, 4, '0'::text))"))
+  store_id     String              @default("EZ-001")
   txn_id       String
   facture_ref  String
   sav_doc_id   String?
   sav_ref      String?
-  event_type   String
-  event_date   DateTime       @default(dbgenerated("CURRENT_DATE")) @db.Date
+  event_type   warranty_event_type
+  event_date   DateTime            @default(dbgenerated("CURRENT_DATE")) @db.Date
   notes        String?
-  created_at   DateTime       @default(now()) @db.Timestamptz(6)
-  created_by   String?        @db.Uuid
-  users        user_profiles? @relation("warranty_events_created_byTouser_profiles", fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  ez_documents ez_documents?  @relation(fields: [sav_doc_id], references: [doc_id], onDelete: NoAction, onUpdate: NoAction)
-  transactions transactions   @relation(fields: [txn_id], references: [txn_id], onDelete: NoAction, onUpdate: NoAction)
+  created_at   DateTime            @default(now()) @db.Timestamptz(6)
+  created_by   String?             @db.Uuid
+  users        user_profiles?      @relation("warranty_events_created_byTouser_profiles", fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  ez_documents ez_documents?       @relation(fields: [sav_doc_id], references: [doc_id], onDelete: NoAction, onUpdate: NoAction)
+  transactions transactions        @relation(fields: [txn_id], references: [txn_id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([facture_ref], map: "idx_warranty_events_facture_ref")
   @@index([txn_id], map: "idx_warranty_events_txn_id")
-}
-
-enum user_role {
-  staff
-  manager
-  owner
 }

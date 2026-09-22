@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
         data: { display_name: string; store_id: string | null; role: string } | null
       }
 
-    if (!['manager', 'owner'].includes(profile?.role ?? '')) {
+    if (!['gerant', 'proprietaire'].includes(profile?.role ?? '')) {
       return NextResponse.json(
         { error: 'Manager ou propriétaire requis' },
         { status: 403 }
@@ -192,7 +192,7 @@ export async function PATCH(request: NextRequest) {
     // 'annule'/'retour' and void the linked transaction (removing it from every revenue/
     // caisse total) without the manager/owner approval that /api/transactions/void enforces
     // for every other way of voiding a sale. Mirrors the check already on POST above.
-    if (!['manager', 'owner'].includes(profile?.role ?? '')) {
+    if (!['gerant', 'proprietaire'].includes(profile?.role ?? '')) {
       return NextResponse.json(
         { error: 'Manager ou propriétaire requis' },
         { status: 403 }

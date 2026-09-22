@@ -15,7 +15,7 @@ export async function GET() {
       .eq('id', user.id)
       .single() as { data: { role: string } | null }
 
-    if (!['manager', 'owner'].includes(self?.role ?? '')) {
+    if (!['gerant', 'proprietaire'].includes(self?.role ?? '')) {
       return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
     }
 
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
       .eq('id', user.id)
       .single() as { data: { role: string; display_name: string } | null }
 
-    if (!['manager', 'owner'].includes(self?.role ?? '')) {
+    if (!['gerant', 'proprietaire'].includes(self?.role ?? '')) {
       return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
     }
 
@@ -75,13 +75,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Role allowlist
-    const ALLOWED_ROLES = ['staff', 'manager', 'owner']
+    const ALLOWED_ROLES = ['employe', 'gerant', 'proprietaire']
     if (!ALLOWED_ROLES.includes(role)) {
       return NextResponse.json({ error: 'Rôle invalide' }, { status: 400 })
     }
 
     // Manager cannot create owner accounts
-    if (self?.role === 'manager' && role === 'owner') {
+    if (self?.role === 'gerant' && role === 'proprietaire') {
       return NextResponse.json({ error: 'Accès refusé: un manager ne peut pas créer un compte owner' }, { status: 403 })
     }
 
@@ -168,7 +168,7 @@ export async function PATCH(request: NextRequest) {
       .eq('id', user.id)
       .single() as { data: { role: string; display_name: string } | null }
 
-    if (!['manager', 'owner'].includes(self?.role ?? '')) {
+    if (!['gerant', 'proprietaire'].includes(self?.role ?? '')) {
       return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
     }
 
@@ -177,13 +177,13 @@ export async function PATCH(request: NextRequest) {
     if (!id) return NextResponse.json({ error: 'id requis' }, { status: 400 })
 
     // Prevent non-owner from editing owner accounts
-    if (self?.role === 'manager') {
+    if (self?.role === 'gerant') {
       const { data: target } = await supabase
         .from('user_profiles')
         .select('role')
         .eq('id', id)
         .single() as { data: { role: string } | null }
-      if (target?.role === 'owner') {
+      if (target?.role === 'proprietaire') {
         return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
       }
     }

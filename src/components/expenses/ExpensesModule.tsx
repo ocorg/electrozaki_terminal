@@ -60,7 +60,7 @@ export default function ExpensesModule({ storeId }: ExpensesModuleProps) {
   const portal       = usePortal()
   const isAr         = language === 'ar'
   const primary      = portal.primaryColor
-  const canDelete    = user?.role === 'manager' || user?.role === 'owner'
+  const canDelete    = user?.role === 'gerant' || user?.role === 'proprietaire'
 
   const [expenses, setExpenses]     = useState<Expense[]>([])
   const [loading, setLoading]       = useState(true)

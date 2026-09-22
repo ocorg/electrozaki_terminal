@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
       .eq('id', user.id)
       .single() as { data: { role: string } | null }
 
-    const isPrivileged = ['manager', 'owner'].includes(callerProfile?.role ?? '')
+    const isPrivileged = ['gerant', 'proprietaire'].includes(callerProfile?.role ?? '')
     const columns = isPrivileged
       ? '*'
       : 'phone_id,imei,source,fournisseur_id,txn_ref_id,condition,marque,serie,type,couleur,model,stockage,battery_level,ram,description,icloud_compte,prix_vente_recommande,prix_vente_minimum,warranty_months,status,location,date_entree,image_url,created_at,updated_at,store_id,replaced_components,is_damaged,damage_notes,promo_type,promo_montant'
@@ -221,7 +221,7 @@ export async function DELETE(request: NextRequest) {
       .eq('id', user.id)
       .single() as { data: { display_name: string; role: string; store_id: string | null } | null }
 
-    if (!['manager', 'owner'].includes(profile?.role ?? '')) {
+    if (!['gerant', 'proprietaire'].includes(profile?.role ?? '')) {
       return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
     }
 

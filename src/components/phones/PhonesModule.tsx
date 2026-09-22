@@ -33,7 +33,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
   const portal       = usePortal()
   const isAr         = language === 'ar'
   const primary      = portal.primaryColor
-  const canSeeFinancials = user?.role === 'manager' || user?.role === 'owner'
+  const canSeeFinancials = user?.role === 'gerant' || user?.role === 'proprietaire'
 
   const [phones, setPhones]           = useState<Phone[]>([])
   const [loading, setLoading]         = useState(true)
@@ -987,7 +987,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                                 className="p-1.5 rounded-lg text-[#B0ADA6] hover:text-[#C9A440] hover:bg-amber-50 transition-all">
                                 <Edit2 className="w-3.5 h-3.5" />
                               </button>
-                              {user?.role === 'owner' && (
+                              {user?.role === 'proprietaire' && (
                                 <button onClick={() => deleteCatalogEntry(item.catalog_id)}
                                   disabled={catDeleting === item.catalog_id}
                                   className="p-1.5 rounded-lg text-[#B0ADA6] hover:text-red-500 hover:bg-red-50 transition-all">

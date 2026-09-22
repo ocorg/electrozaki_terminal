@@ -57,7 +57,7 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
   const isAr     = language === 'ar'
   const primary  = portal.primaryColor
   const isEdit   = !!phone
-  const canSeeFinancials = role === 'manager' || role === 'owner'
+  const canSeeFinancials = role === 'gerant' || role === 'proprietaire'
 
   const { brands, seriesFor, modelsFor, couleursFor, addEntry, loading: catalogLoading } = usePhoneCatalog()
 

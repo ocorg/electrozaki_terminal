@@ -71,7 +71,7 @@ export default auth(async (request) => {
       }
     }
 
-    if (pathname.startsWith('/bzg') && !['manager', 'owner'].includes(user.role)) {
+    if (pathname.startsWith('/bzg') && !['gerant', 'proprietaire'].includes(user.role)) {
       return NextResponse.redirect(new URL('/select-store', request.url))
     }
 

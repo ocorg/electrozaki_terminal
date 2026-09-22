@@ -17,9 +17,9 @@ export default async function InventoryPage() {
     .maybeSingle()
   const profile = profileRaw as { role: string; store_id: string } | null
 
-  if (profile?.role !== 'manager' && profile?.role !== 'owner') {
+  if (profile?.role !== 'gerant' && profile?.role !== 'proprietaire') {
     redirect('/ez/dashboard')
   }
 
-  return <InventoryModule role={profile?.role ?? 'staff'} />
+  return <InventoryModule role={profile?.role ?? 'employe'} />
 }

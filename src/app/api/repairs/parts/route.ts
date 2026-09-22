@@ -76,7 +76,7 @@ export async function DELETE(request: NextRequest) {
       .eq('id', user.id)
       .single() as { data: { display_name: string; role: string } | null }
 
-    if (!['manager', 'owner'].includes(profile?.role ?? '')) {
+    if (!['gerant', 'proprietaire'].includes(profile?.role ?? '')) {
       return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
     }
 

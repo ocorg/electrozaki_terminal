@@ -21,7 +21,7 @@ export async function POST(
     .maybeSingle()
   const profile = profileRaw as { role: string; store_id: string } | null
 
-  if (profile?.role !== 'manager' && profile?.role !== 'owner') {
+  if (profile?.role !== 'gerant' && profile?.role !== 'proprietaire') {
     return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
   }
 

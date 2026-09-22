@@ -150,7 +150,7 @@ export default function EZDashboard() {
   const { language } = useLanguageStore()
   const supabase     = createClient()
   const isAr         = language === 'ar'
-  const canFin       = user?.role === 'manager' || user?.role === 'owner'
+  const canFin       = user?.role === 'gerant' || user?.role === 'proprietaire'
 
   const [period,   setPeriod]   = useState<Period>('month')
   const [data,     setData]     = useState<DashboardData | null>(null)

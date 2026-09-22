@@ -71,7 +71,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
   const portal       = usePortal()
   const isAr         = language === 'ar'
   const primary      = portal.primaryColor
-  const canFinancials = user?.role === 'manager' || user?.role === 'owner'
+  const canFinancials = user?.role === 'gerant' || user?.role === 'proprietaire'
 
   const [accessories, setAccessories] = useState<Accessory[]>([])
   const [loading, setLoading]         = useState(true)

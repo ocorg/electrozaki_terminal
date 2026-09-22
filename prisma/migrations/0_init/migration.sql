@@ -1,8 +1,9 @@
 -- Baseline ported from Supabase (public schema).
--- Tables/indexes/FKs come from schema.prisma; everything below that Prisma
--- can't express (sequences, CHECKs, functions, triggers, views) is copied
--- verbatim from the Supabase catalog. Supabase-only pieces (auth.users FKs,
--- RLS policies, auth.uid() helpers) are intentionally not ported.
+-- Enums/tables/indexes/FKs come from schema.prisma; sequences, CHECKs,
+-- functions, triggers and views are copied from the Supabase catalog with
+-- stored values translated to French codes (scripts/legacy-codes.mjs).
+-- Supabase-only pieces (auth.users FKs, RLS policies, auth.uid() helpers)
+-- are intentionally not ported.
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -65,13 +66,13 @@ BEGIN
     notes
   )
   VALUES (
-    'phone',
+    'telephone',
     p_phone_id,
     p_client_id,
-    'Vente',
+    'vente',
     p_prix_vente,
     p_date_vente,
-    p_payment_method::text,
+    p_payment_method::payment_method,
     p_warranty_start,
     p_warranty_expiry,
     p_facture_ref,
@@ -84,7 +85,7 @@ BEGIN
   -- 2. Mark the phone as sold
   UPDATE phones
   SET
-    status     = 'مباع',
+    status     = 'vendu',
     updated_at = NOW(),
     updated_by = p_created_by
   WHERE phone_id = p_phone_id;
@@ -169,10 +170,10 @@ BEGIN
     WHERE txn_id = p_txn_id
     ORDER BY event_date ASC, event_type ASC
   LOOP
-    IF ev.event_type = 'SAV_OPEN' THEN
+    IF ev.event_type = 'ouverture_sav' THEN
       open_date := ev.event_date;
 
-    ELSIF ev.event_type = 'SAV_CLOSE' AND open_date IS NOT NULL THEN
+    ELSIF ev.event_type = 'cloture_sav' AND open_date IS NOT NULL THEN
       -- Add the number of days the phone was held
       total_extension := total_extension + (ev.event_date - open_date);
       open_date := NULL;
@@ -253,11 +254,11 @@ BEGIN
   FROM credit_imports
   WHERE import_id = NEW.import_id;
 
-  v_statut := CASE WHEN v_paye >= v_total THEN 'soldé' ELSE 'en_cours' END;
+  v_statut := CASE WHEN v_paye >= v_total THEN 'solde' ELSE 'en_cours' END;
 
   UPDATE credit_imports
   SET montant_paye = v_paye,
-      statut       = v_statut
+      statut       = v_statut::credit_status
   WHERE import_id  = NEW.import_id;
 
   RETURN NEW;
@@ -294,7 +295,7 @@ DECLARE
 BEGIN
   SELECT id INTO v_user_id
   FROM user_profiles
-  WHERE role IN ('manager', 'owner')
+  WHERE role IN ('gerant', 'proprietaire')
     AND is_active = TRUE
     AND override_pin = crypt(p_pin, override_pin)
   LIMIT 1;
@@ -306,7 +307,97 @@ $function$;
 CREATE SCHEMA IF NOT EXISTS "public";
 
 -- CreateEnum
-CREATE TYPE "user_role" AS ENUM ('staff', 'manager', 'owner');
+CREATE TYPE "device_status" AS ENUM ('disponible', 'vendu', 'echange', 'en_reparation', 'en_livraison', 'en_transfert', 'reserve');
+
+-- CreateEnum
+CREATE TYPE "device_condition" AS ENUM ('neuf', 'occasion', 'defectueux');
+
+-- CreateEnum
+CREATE TYPE "device_source" AS ENUM ('fournisseur', 'reprise', 'echange');
+
+-- CreateEnum
+CREATE TYPE "device_type" AS ENUM ('telephone', 'laptop', 'accessoire');
+
+-- CreateEnum
+CREATE TYPE "location_type" AS ENUM ('magasin_principal', 'magasin_secondaire', 'externe');
+
+-- CreateEnum
+CREATE TYPE "movement_reason" AS ENUM ('transfert', 'reparation_externe', 'retour', 'pret');
+
+-- CreateEnum
+CREATE TYPE "operation_type" AS ENUM ('vente', 'echange', 'avance', 'retour');
+
+-- CreateEnum
+CREATE TYPE "payment_method" AS ENUM ('especes', 'virement', 'avance', 'echange', 'mixte', 'credit');
+
+-- CreateEnum
+CREATE TYPE "repair_status" AS ENUM ('en_attente', 'en_cours', 'pret', 'recupere');
+
+-- CreateEnum
+CREATE TYPE "user_role" AS ENUM ('employe', 'gerant', 'proprietaire');
+
+-- CreateEnum
+CREATE TYPE "caisse_status" AS ENUM ('ouverte', 'en_attente_cloture', 'cloturee');
+
+-- CreateEnum
+CREATE TYPE "punch_type" AS ENUM ('entree', 'sortie');
+
+-- CreateEnum
+CREATE TYPE "delivery_status" AS ENUM ('confirmation_en_cours', 'attente_avance', 'prepare', 'en_transit', 'livre', 'annule', 'retour');
+
+-- CreateEnum
+CREATE TYPE "payment_scenario" AS ENUM ('avance_totale', 'avance_partielle', 'paiement_livraison');
+
+-- CreateEnum
+CREATE TYPE "credit_status" AS ENUM ('en_cours', 'solde', 'annule');
+
+-- CreateEnum
+CREATE TYPE "supplier_payment_type" AS ENUM ('reglement_a', 'avance_a', 'paiement_b');
+
+-- CreateEnum
+CREATE TYPE "warranty_event_type" AS ENUM ('ouverture_sav', 'cloture_sav');
+
+-- CreateEnum
+CREATE TYPE "inventory_status" AS ENUM ('en_cours', 'terminee');
+
+-- CreateEnum
+CREATE TYPE "inventory_result" AS ENUM ('trouve', 'manquant', 'non_enregistre', 'hors_perimetre', 'en_attente');
+
+-- CreateEnum
+CREATE TYPE "prospect_source" AS ENUM ('tiktok', 'instagram', 'whatsapp', 'en_magasin', 'autre');
+
+-- CreateEnum
+CREATE TYPE "prospect_status" AS ENUM ('nouveau', 'contacte', 'converti', 'perdu');
+
+-- CreateEnum
+CREATE TYPE "prospect_demand" AS ENUM ('budget', 'modele');
+
+-- CreateEnum
+CREATE TYPE "promo_type" AS ENUM ('valeur', 'pourcentage');
+
+-- CreateEnum
+CREATE TYPE "reprise_etat" AS ENUM ('bon', 'moyen', 'mauvais');
+
+-- CreateEnum
+CREATE TYPE "category_type" AS ENUM ('accessoire', 'depense', 'fournisseur');
+
+-- CreateEnum
+CREATE TYPE "log_action" AS ENUM ('creation', 'modification', 'suppression', 'connexion', 'deconnexion', 'derogation', 'soumission_cloture', 'validation_cloture', 'rejet_cloture', 'pointage_entree', 'pointage_sortie', 'creation_utilisateur', 'annulation');
+
+-- CreateEnum
+CREATE TYPE "log_module" AS ENUM ('telephones', 'laptops', 'accessoires', 'transactions', 'reparations', 'pieces_reparation', 'clients', 'fournisseurs', 'paiements_fournisseurs', 'depenses', 'caisse', 'encaissements_manuels', 'mouvements_stock', 'utilisateurs', 'parametres', 'authentification', 'pointage', 'journal_modifications', 'credits', 'credits_importes', 'prospects', 'inventaire');
+
+-- CreateTable
+CREATE TABLE "categories" (
+    "code" TEXT NOT NULL,
+    "type" "category_type" NOT NULL,
+    "label_fr" TEXT NOT NULL,
+    "label_ar" TEXT NOT NULL,
+    "sort_order" INTEGER NOT NULL DEFAULT 0,
+    "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "categories_pkey" PRIMARY KEY ("code")
+);
 
 -- CreateTable
 CREATE TABLE "accessories" (
@@ -322,7 +413,7 @@ CREATE TABLE "accessories" (
     "quantite" INTEGER NOT NULL DEFAULT 0,
     "seuil_alerte" INTEGER NOT NULL DEFAULT 5,
     "fournisseur_id" TEXT,
-    "location" TEXT NOT NULL DEFAULT 'Magasin Principal',
+    "location" "location_type" NOT NULL DEFAULT 'magasin_principal',
     "image_url" TEXT,
     "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "created_by" UUID,
@@ -340,8 +431,8 @@ CREATE TABLE "activity_log" (
     "store_id" TEXT,
     "user_id" UUID,
     "user_name" TEXT NOT NULL,
-    "action_type" TEXT NOT NULL,
-    "module" TEXT NOT NULL,
+    "action_type" "log_action" NOT NULL,
+    "module" "log_module" NOT NULL,
     "record_id" TEXT,
     "before_state" JSONB,
     "after_state" JSONB,
@@ -370,7 +461,7 @@ CREATE TABLE "caisse" (
     "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "created_by" UUID,
     "store_id" TEXT,
-    "status" TEXT NOT NULL DEFAULT 'open',
+    "status" "caisse_status" NOT NULL DEFAULT 'ouverte',
     "eod_submitted_at" TIMESTAMPTZ(6),
     "approved_by" UUID,
     "approved_at" TIMESTAMPTZ(6),
@@ -419,7 +510,7 @@ CREATE TABLE "credit_import_payments" (
     "import_id" TEXT NOT NULL,
     "store_id" TEXT,
     "montant" DECIMAL(12,2) NOT NULL,
-    "payment_method" TEXT NOT NULL DEFAULT 'نقد',
+    "payment_method" "payment_method" NOT NULL DEFAULT 'especes',
     "payment_ref" TEXT,
     "notes" TEXT,
     "date_paiement" DATE NOT NULL DEFAULT CURRENT_DATE,
@@ -443,7 +534,7 @@ CREATE TABLE "credit_imports" (
     "created_at" TIMESTAMPTZ(6) DEFAULT CURRENT_TIMESTAMP,
     "created_by" UUID,
     "montant_paye" DECIMAL(12,2) NOT NULL DEFAULT 0,
-    "statut" TEXT NOT NULL DEFAULT 'en_cours',
+    "statut" "credit_status" NOT NULL DEFAULT 'en_cours',
 
     CONSTRAINT "credit_imports_pkey" PRIMARY KEY ("import_id")
 );
@@ -455,7 +546,7 @@ CREATE TABLE "credit_payments" (
     "store_id" TEXT,
     "txn_id" TEXT,
     "montant" DECIMAL NOT NULL,
-    "payment_method" TEXT NOT NULL,
+    "payment_method" "payment_method" NOT NULL,
     "payment_ref" TEXT,
     "notes" TEXT,
     "collected_by" UUID,
@@ -473,13 +564,13 @@ CREATE TABLE "deliveries" (
     "client_name" TEXT NOT NULL,
     "client_phone" TEXT NOT NULL,
     "client_address" TEXT NOT NULL,
-    "payment_scenario" TEXT NOT NULL,
+    "payment_scenario" "payment_scenario" NOT NULL,
     "montant_total" DECIMAL NOT NULL,
     "montant_avance" DECIMAL DEFAULT 0,
     "montant_restant" DECIMAL GENERATED ALWAYS AS ((montant_total - montant_avance)) STORED,
-    "payment_method" TEXT,
+    "payment_method" "payment_method",
     "payment_ref" TEXT,
-    "statut" TEXT NOT NULL DEFAULT 'confirmation_encours',
+    "statut" "delivery_status" NOT NULL DEFAULT 'confirmation_en_cours',
     "notes" TEXT,
     "caisse_entry_created" BOOLEAN DEFAULT false,
     "created_at" TIMESTAMPTZ(6) DEFAULT CURRENT_TIMESTAMP,
@@ -495,7 +586,7 @@ CREATE TABLE "deliveries" (
 CREATE TABLE "delivery_items" (
     "item_id" TEXT NOT NULL DEFAULT ('DELI-'::text || lpad((nextval('delivery_items_seq'::regclass))::text, 4, '0'::text)),
     "delivery_id" TEXT,
-    "device_type" TEXT NOT NULL,
+    "device_type" "device_type" NOT NULL,
     "device_id" TEXT NOT NULL,
     "txn_id" TEXT,
     "label_printed" BOOLEAN DEFAULT false,
@@ -559,8 +650,8 @@ CREATE TABLE "inventory_session_items" (
     "phone_id" TEXT,
     "imei" TEXT NOT NULL,
     "phone_label" TEXT,
-    "phone_status" TEXT,
-    "resultat" TEXT NOT NULL DEFAULT 'en_attente',
+    "phone_status" "device_status",
+    "resultat" "inventory_result" NOT NULL DEFAULT 'en_attente',
     "scanned_at" TIMESTAMPTZ(6),
 
     CONSTRAINT "inventory_session_items_pkey" PRIMARY KEY ("item_id")
@@ -573,7 +664,7 @@ CREATE TABLE "inventory_sessions" (
     "created_by" UUID,
     "started_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "completed_at" TIMESTAMPTZ(6),
-    "statut" TEXT NOT NULL DEFAULT 'en_cours',
+    "statut" "inventory_status" NOT NULL DEFAULT 'en_cours',
     "snapshot_count" INTEGER NOT NULL DEFAULT 0,
 
     CONSTRAINT "inventory_sessions_pkey" PRIMARY KEY ("session_id")
@@ -583,10 +674,10 @@ CREATE TABLE "inventory_sessions" (
 CREATE TABLE "laptops" (
     "laptop_id" TEXT NOT NULL DEFAULT ('LAP-'::text || lpad((nextval('laptops_seq'::regclass))::text, 4, '0'::text)),
     "serial" TEXT,
-    "source" TEXT NOT NULL,
+    "source" "device_source" NOT NULL,
     "fournisseur_id" TEXT,
     "txn_ref_id" TEXT,
-    "condition" TEXT NOT NULL,
+    "condition" "device_condition" NOT NULL,
     "marque" TEXT NOT NULL,
     "model" TEXT NOT NULL,
     "processeur" TEXT,
@@ -601,8 +692,8 @@ CREATE TABLE "laptops" (
     "prix_vente_recommande" DECIMAL(10,2),
     "prix_vente_minimum" DECIMAL(10,2),
     "warranty_months" INTEGER DEFAULT 6,
-    "status" TEXT NOT NULL DEFAULT 'متوفر',
-    "location" TEXT NOT NULL DEFAULT 'Magasin Principal',
+    "status" "device_status" NOT NULL DEFAULT 'disponible',
+    "location" "location_type" NOT NULL DEFAULT 'magasin_principal',
     "date_entree" DATE DEFAULT CURRENT_DATE,
     "notes" TEXT,
     "image_url" TEXT,
@@ -634,7 +725,7 @@ CREATE TABLE "phone_credit_payments" (
     "payment_id" TEXT NOT NULL DEFAULT next_credit_payment_id(),
     "credit_id" TEXT NOT NULL,
     "montant" DECIMAL(10,2) NOT NULL,
-    "payment_method" TEXT NOT NULL,
+    "payment_method" "payment_method" NOT NULL,
     "date_paiement" DATE NOT NULL DEFAULT CURRENT_DATE,
     "notes" TEXT,
     "store_id" TEXT,
@@ -653,7 +744,7 @@ CREATE TABLE "phone_credit_sales" (
     "client_cin" TEXT,
     "montant_total" DECIMAL(10,2) NOT NULL,
     "montant_paye" DECIMAL(10,2) NOT NULL DEFAULT 0,
-    "statut" TEXT NOT NULL DEFAULT 'en_cours',
+    "statut" "credit_status" NOT NULL DEFAULT 'en_cours',
     "phone_remis" BOOLEAN NOT NULL DEFAULT false,
     "notes" TEXT,
     "store_id" TEXT,
@@ -668,7 +759,7 @@ CREATE TABLE "phone_credit_sales" (
     "reprise_model" TEXT,
     "reprise_valeur" DECIMAL(10,2),
     "reprise_imei" TEXT,
-    "reprise_etat" TEXT NOT NULL DEFAULT 'bon',
+    "reprise_etat" "reprise_etat" NOT NULL DEFAULT 'bon',
     "reprise_remise" BOOLEAN NOT NULL DEFAULT false,
     "reprise_remise_at" TIMESTAMPTZ(6),
     "reprise_phone_id" TEXT,
@@ -680,10 +771,10 @@ CREATE TABLE "phone_credit_sales" (
 CREATE TABLE "phones" (
     "phone_id" TEXT NOT NULL DEFAULT ('PHO-'::text || lpad((nextval('phones_seq'::regclass))::text, 4, '0'::text)),
     "imei" TEXT,
-    "source" TEXT NOT NULL,
+    "source" "device_source" NOT NULL,
     "fournisseur_id" TEXT,
     "txn_ref_id" TEXT,
-    "condition" TEXT NOT NULL,
+    "condition" "device_condition" NOT NULL,
     "marque" TEXT NOT NULL,
     "serie" TEXT,
     "type" TEXT,
@@ -699,8 +790,8 @@ CREATE TABLE "phones" (
     "prix_vente_recommande" DECIMAL(10,2),
     "prix_vente_minimum" DECIMAL(10,2),
     "warranty_months" INTEGER DEFAULT 6,
-    "status" TEXT NOT NULL DEFAULT 'متوفر',
-    "location" TEXT NOT NULL DEFAULT 'Magasin Principal',
+    "status" "device_status" NOT NULL DEFAULT 'disponible',
+    "location" "location_type" NOT NULL DEFAULT 'magasin_principal',
     "date_entree" DATE DEFAULT CURRENT_DATE,
     "image_url" TEXT,
     "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -712,7 +803,7 @@ CREATE TABLE "phones" (
     "is_damaged" BOOLEAN DEFAULT false,
     "damage_notes" TEXT,
     "replaced_components" JSONB DEFAULT '[]',
-    "promo_type" TEXT,
+    "promo_type" "promo_type",
     "promo_montant" DECIMAL,
     "settled_at" TIMESTAMPTZ(6),
     "settled_by" UUID,
@@ -741,14 +832,14 @@ CREATE TABLE "prospects" (
     "store_id" TEXT NOT NULL,
     "nom" TEXT NOT NULL,
     "telephone" TEXT,
-    "source" TEXT NOT NULL DEFAULT 'En magasin',
-    "demand_type" TEXT NOT NULL DEFAULT 'modele',
+    "source" "prospect_source" NOT NULL DEFAULT 'en_magasin',
+    "demand_type" "prospect_demand" NOT NULL DEFAULT 'modele',
     "marque" TEXT,
     "model" TEXT,
     "stockage" TEXT,
     "budget_max" DECIMAL,
     "notes" TEXT,
-    "statut" TEXT NOT NULL DEFAULT 'Nouveau',
+    "statut" "prospect_status" NOT NULL DEFAULT 'nouveau',
     "created_at" TIMESTAMPTZ(6) DEFAULT CURRENT_TIMESTAMP,
     "created_by" TEXT,
     "updated_at" TIMESTAMPTZ(6) DEFAULT CURRENT_TIMESTAMP,
@@ -771,7 +862,7 @@ CREATE TABLE "reparations" (
     "cout_reparation" DECIMAL(10,2) DEFAULT 0,
     "avance_rep" DECIMAL(10,2) DEFAULT 0,
     "date_avance_rep" DATE,
-    "statut" TEXT NOT NULL DEFAULT 'معلق',
+    "statut" "repair_status" NOT NULL DEFAULT 'en_attente',
     "date_depot" DATE NOT NULL DEFAULT CURRENT_DATE,
     "date_prevue" DATE,
     "date_livraison" DATE,
@@ -822,7 +913,7 @@ CREATE TABLE "staff_attendance" (
     "store_id" TEXT NOT NULL,
     "user_id" UUID NOT NULL,
     "user_name" TEXT NOT NULL,
-    "punch_type" TEXT NOT NULL,
+    "punch_type" "punch_type" NOT NULL,
     "punched_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "date" DATE NOT NULL DEFAULT CURRENT_DATE,
     "notes" TEXT,
@@ -834,13 +925,13 @@ CREATE TABLE "staff_attendance" (
 -- CreateTable
 CREATE TABLE "stock_movements" (
     "movement_id" TEXT NOT NULL DEFAULT ('MOV-'::text || lpad((nextval('movements_seq'::regclass))::text, 4, '0'::text)),
-    "device_type" TEXT NOT NULL,
+    "device_type" "device_type" NOT NULL,
     "device_id" TEXT NOT NULL,
     "quantity" INTEGER NOT NULL DEFAULT 1,
-    "from_location" TEXT NOT NULL,
-    "to_location" TEXT NOT NULL,
+    "from_location" "location_type" NOT NULL,
+    "to_location" "location_type" NOT NULL,
     "external_name" TEXT,
-    "reason" TEXT NOT NULL DEFAULT 'Transfert',
+    "reason" "movement_reason" NOT NULL DEFAULT 'transfert',
     "notes" TEXT,
     "moved_by" UUID,
     "moved_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -873,7 +964,7 @@ CREATE TABLE "supplier_payments" (
     "payment_id" TEXT NOT NULL DEFAULT ('PMT-'::text || lpad((nextval('payments_seq'::regclass))::text, 4, '0'::text)),
     "supplier_id" TEXT NOT NULL,
     "montant" DECIMAL(10,2) NOT NULL,
-    "payment_method" TEXT NOT NULL DEFAULT 'نقد',
+    "payment_method" "payment_method" NOT NULL DEFAULT 'especes',
     "payment_ref" TEXT,
     "facture_ref" TEXT,
     "date_paiement" DATE NOT NULL DEFAULT CURRENT_DATE,
@@ -883,7 +974,7 @@ CREATE TABLE "supplier_payments" (
     "updated_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_by" UUID,
     "store_id" TEXT,
-    "payment_type" TEXT NOT NULL DEFAULT 'PAIEMENT_B',
+    "payment_type" "supplier_payment_type" NOT NULL DEFAULT 'paiement_b',
     "is_deleted" BOOLEAN NOT NULL DEFAULT false,
     "phone_ids" TEXT[] DEFAULT ARRAY[]::TEXT[],
 
@@ -914,16 +1005,16 @@ CREATE TABLE "suppliers" (
 -- CreateTable
 CREATE TABLE "transactions" (
     "txn_id" TEXT NOT NULL DEFAULT ('TXN-'::text || lpad((nextval('transactions_seq'::regclass))::text, 4, '0'::text)),
-    "device_type" TEXT NOT NULL,
+    "device_type" "device_type" NOT NULL,
     "device_id" TEXT NOT NULL,
     "client_id" TEXT,
-    "type_operation" TEXT NOT NULL,
+    "type_operation" "operation_type" NOT NULL,
     "txn_original_id" TEXT,
     "prix_vente" DECIMAL(10,2) NOT NULL,
     "date_vente" DATE NOT NULL DEFAULT CURRENT_DATE,
     "avance" DECIMAL(10,2) DEFAULT 0,
     "date_avance" DATE,
-    "payment_method" TEXT NOT NULL,
+    "payment_method" "payment_method" NOT NULL,
     "montant_especes" DECIMAL(10,2) DEFAULT 0,
     "montant_carte" DECIMAL(10,2) DEFAULT 0,
     "montant_rendu" DECIMAL(10,2) DEFAULT 0,
@@ -963,7 +1054,7 @@ CREATE TABLE "user_profiles" (
     "email" TEXT NOT NULL,
     "password_hash" TEXT,
     "display_name" TEXT NOT NULL,
-    "role" "user_role" NOT NULL DEFAULT 'staff',
+    "role" "user_role" NOT NULL DEFAULT 'employe',
     "override_pin" TEXT,
     "is_active" BOOLEAN NOT NULL DEFAULT true,
     "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -983,7 +1074,7 @@ CREATE TABLE "warranty_events" (
     "facture_ref" TEXT NOT NULL,
     "sav_doc_id" TEXT,
     "sav_ref" TEXT,
-    "event_type" TEXT NOT NULL,
+    "event_type" "warranty_event_type" NOT NULL,
     "event_date" DATE NOT NULL DEFAULT CURRENT_DATE,
     "notes" TEXT,
     "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -991,6 +1082,9 @@ CREATE TABLE "warranty_events" (
 
     CONSTRAINT "warranty_events_pkey" PRIMARY KEY ("event_id")
 );
+
+-- CreateIndex
+CREATE INDEX "categories_type_sort_order_idx" ON "categories"("type", "sort_order");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "accessories_barcode_key" ON "accessories"("barcode");
@@ -1185,6 +1279,9 @@ ALTER TABLE "accessories" ADD CONSTRAINT "accessories_store_id_fkey" FOREIGN KEY
 ALTER TABLE "accessories" ADD CONSTRAINT "accessories_updated_by_fkey" FOREIGN KEY ("updated_by") REFERENCES "user_profiles"("id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 -- AddForeignKey
+ALTER TABLE "accessories" ADD CONSTRAINT "accessories_categorie_fkey" FOREIGN KEY ("categorie") REFERENCES "categories"("code") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "activity_log" ADD CONSTRAINT "activity_log_store_id_fkey" FOREIGN KEY ("store_id") REFERENCES "stores"("store_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 -- AddForeignKey
@@ -1273,6 +1370,9 @@ ALTER TABLE "expenses" ADD CONSTRAINT "expenses_store_id_fkey" FOREIGN KEY ("sto
 
 -- AddForeignKey
 ALTER TABLE "expenses" ADD CONSTRAINT "expenses_updated_by_fkey" FOREIGN KEY ("updated_by") REFERENCES "user_profiles"("id") ON DELETE NO ACTION ON UPDATE NO ACTION;
+
+-- AddForeignKey
+ALTER TABLE "expenses" ADD CONSTRAINT "expenses_categorie_fkey" FOREIGN KEY ("categorie") REFERENCES "categories"("code") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "ez_documents" ADD CONSTRAINT "ez_documents_client_id_fkey" FOREIGN KEY ("client_id") REFERENCES "clients"("client_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
@@ -1410,6 +1510,9 @@ ALTER TABLE "suppliers" ADD CONSTRAINT "suppliers_store_id_fkey" FOREIGN KEY ("s
 ALTER TABLE "suppliers" ADD CONSTRAINT "suppliers_updated_by_fkey" FOREIGN KEY ("updated_by") REFERENCES "user_profiles"("id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 -- AddForeignKey
+ALTER TABLE "suppliers" ADD CONSTRAINT "suppliers_categorie_fkey" FOREIGN KEY ("categorie") REFERENCES "categories"("code") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "transactions" ADD CONSTRAINT "transactions_client_id_fkey" FOREIGN KEY ("client_id") REFERENCES "clients"("client_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 -- AddForeignKey
@@ -1442,48 +1545,19 @@ ALTER TABLE "warranty_events" ADD CONSTRAINT "warranty_events_sav_doc_id_fkey" F
 -- AddForeignKey
 ALTER TABLE "warranty_events" ADD CONSTRAINT "warranty_events_txn_id_fkey" FOREIGN KEY ("txn_id") REFERENCES "transactions"("txn_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 
--- Allowed values of former Postgres enums (columns are now TEXT)
-ALTER TABLE "public"."accessories" ADD CONSTRAINT "accessories_location_allowed" CHECK ("location" IN ('Magasin Principal', 'Magasin Secondaire', 'Externe'));
-ALTER TABLE "public"."deliveries" ADD CONSTRAINT "deliveries_payment_method_allowed" CHECK ("payment_method" IN ('نقد', 'تحويل', 'تسبيق', 'إستبدال', 'مختلط', 'آجل'));
-ALTER TABLE "public"."delivery_items" ADD CONSTRAINT "delivery_items_device_type_allowed" CHECK ("device_type" IN ('هاتف', 'لابتوب', 'إكسسوار'));
-ALTER TABLE "public"."laptops" ADD CONSTRAINT "laptops_source_allowed" CHECK ("source" IN ('Fournisseur', 'Reprise', 'Échange'));
-ALTER TABLE "public"."laptops" ADD CONSTRAINT "laptops_condition_allowed" CHECK ("condition" IN ('جديد', 'مستعمل', 'معطوب'));
-ALTER TABLE "public"."laptops" ADD CONSTRAINT "laptops_status_allowed" CHECK ("status" IN ('متوفر', 'مباع', 'إستبدال', 'إصلاح', 'en_livraison', 'en_transfert', 'حجز'));
-ALTER TABLE "public"."laptops" ADD CONSTRAINT "laptops_location_allowed" CHECK ("location" IN ('Magasin Principal', 'Magasin Secondaire', 'Externe'));
-ALTER TABLE "public"."phones" ADD CONSTRAINT "phones_source_allowed" CHECK ("source" IN ('Fournisseur', 'Reprise', 'Échange'));
-ALTER TABLE "public"."phones" ADD CONSTRAINT "phones_condition_allowed" CHECK ("condition" IN ('جديد', 'مستعمل', 'معطوب'));
-ALTER TABLE "public"."phones" ADD CONSTRAINT "phones_status_allowed" CHECK ("status" IN ('متوفر', 'مباع', 'إستبدال', 'إصلاح', 'en_livraison', 'en_transfert', 'حجز'));
-ALTER TABLE "public"."phones" ADD CONSTRAINT "phones_location_allowed" CHECK ("location" IN ('Magasin Principal', 'Magasin Secondaire', 'Externe'));
-ALTER TABLE "public"."reparations" ADD CONSTRAINT "reparations_statut_allowed" CHECK ("statut" IN ('معلق', 'جاهز'));
-ALTER TABLE "public"."stock_movements" ADD CONSTRAINT "stock_movements_device_type_allowed" CHECK ("device_type" IN ('هاتف', 'لابتوب', 'إكسسوار'));
-ALTER TABLE "public"."stock_movements" ADD CONSTRAINT "stock_movements_from_location_allowed" CHECK ("from_location" IN ('Magasin Principal', 'Magasin Secondaire', 'Externe'));
-ALTER TABLE "public"."stock_movements" ADD CONSTRAINT "stock_movements_to_location_allowed" CHECK ("to_location" IN ('Magasin Principal', 'Magasin Secondaire', 'Externe'));
-ALTER TABLE "public"."stock_movements" ADD CONSTRAINT "stock_movements_reason_allowed" CHECK ("reason" IN ('Transfert', 'Réparation Externe', 'Retour', 'Prêt'));
-ALTER TABLE "public"."supplier_payments" ADD CONSTRAINT "supplier_payments_payment_method_allowed" CHECK ("payment_method" IN ('نقد', 'تحويل', 'تسبيق', 'إستبدال', 'مختلط', 'آجل'));
-ALTER TABLE "public"."transactions" ADD CONSTRAINT "transactions_device_type_allowed" CHECK ("device_type" IN ('هاتف', 'لابتوب', 'إكسسوار'));
-ALTER TABLE "public"."transactions" ADD CONSTRAINT "transactions_type_operation_allowed" CHECK ("type_operation" IN ('بيع', 'إستبدال', 'تسبيق', 'Retour'));
-ALTER TABLE "public"."transactions" ADD CONSTRAINT "transactions_payment_method_allowed" CHECK ("payment_method" IN ('نقد', 'تحويل', 'تسبيق', 'إستبدال', 'مختلط', 'آجل'));
-
 -- CHECK constraints
 ALTER TABLE "public"."suppliers" ADD CONSTRAINT "suppliers_type_fournisseur_check" CHECK ((type_fournisseur = ANY (ARRAY['A'::text, 'B'::text, 'C'::text, 'D'::text])));
 ALTER TABLE "public"."phones" ADD CONSTRAINT "phones_battery_level_check" CHECK (((battery_level >= 0) AND (battery_level <= 100)));
 ALTER TABLE "public"."laptops" ADD CONSTRAINT "laptops_battery_level_check" CHECK (((battery_level >= 0) AND (battery_level <= 100)));
-ALTER TABLE "public"."supplier_payments" ADD CONSTRAINT "supplier_payments_payment_type_check" CHECK ((payment_type = ANY (ARRAY['REGLEMENT_A'::text, 'AVANCE_A'::text, 'PAIEMENT_B'::text])));
-ALTER TABLE "public"."caisse" ADD CONSTRAINT "caisse_status_check" CHECK ((status = ANY (ARRAY['open'::text, 'pending_eod'::text, 'closed'::text])));
-ALTER TABLE "public"."staff_attendance" ADD CONSTRAINT "staff_attendance_punch_type_check" CHECK ((punch_type = ANY (ARRAY['in'::text, 'out'::text])));
-ALTER TABLE "public"."deliveries" ADD CONSTRAINT "deliveries_payment_scenario_check" CHECK ((payment_scenario = ANY (ARRAY['full_advance'::text, 'partial_advance'::text, 'on_delivery'::text])));
-ALTER TABLE "public"."deliveries" ADD CONSTRAINT "deliveries_statut_check" CHECK ((statut = ANY (ARRAY['confirmation_encours'::text, 'attente_avance'::text, 'prepare'::text, 'en_transit'::text, 'livre'::text, 'annule'::text, 'retour'::text])));
 ALTER TABLE "public"."cash_drops" ADD CONSTRAINT "cash_drops_amount_check" CHECK ((amount > (0)::numeric));
 ALTER TABLE "public"."credit_payments" ADD CONSTRAINT "credit_payments_montant_check" CHECK ((montant > (0)::numeric));
 ALTER TABLE "public"."credit_imports" ADD CONSTRAINT "credit_imports_montant_du_check" CHECK ((montant_du > (0)::numeric));
-ALTER TABLE "public"."credit_imports" ADD CONSTRAINT "credit_imports_statut_check" CHECK ((statut = ANY (ARRAY['en_cours'::text, 'soldé'::text])));
+ALTER TABLE "public"."credit_imports" ADD CONSTRAINT "credit_imports_statut_check" CHECK ("statut" IN ('en_cours', 'solde'));
 ALTER TABLE "public"."ez_documents" ADD CONSTRAINT "ez_documents_doc_type_check" CHECK ((doc_type = ANY (ARRAY['FAC'::text, 'RCH'::text, 'ECH'::text, 'PEC'::text, 'RST'::text])));
-ALTER TABLE "public"."warranty_events" ADD CONSTRAINT "warranty_events_event_type_check" CHECK ((event_type = ANY (ARRAY['SAV_OPEN'::text, 'SAV_CLOSE'::text])));
 ALTER TABLE "public"."phone_credit_sales" ADD CONSTRAINT "phone_credit_sales_montant_paye_check" CHECK ((montant_paye >= (0)::numeric));
 ALTER TABLE "public"."phone_credit_sales" ADD CONSTRAINT "phone_credit_sales_montant_total_check" CHECK ((montant_total > (0)::numeric));
-ALTER TABLE "public"."phone_credit_sales" ADD CONSTRAINT "phone_credit_sales_statut_check" CHECK ((statut = ANY (ARRAY['en_cours'::text, 'solde'::text, 'annule'::text])));
 ALTER TABLE "public"."phone_credit_payments" ADD CONSTRAINT "phone_credit_payments_montant_check" CHECK ((montant > (0)::numeric));
-ALTER TABLE "public"."phone_credit_payments" ADD CONSTRAINT "phone_credit_payments_payment_method_check" CHECK ((payment_method = ANY (ARRAY['نقد'::text, 'تحويل'::text])));
+ALTER TABLE "public"."phone_credit_payments" ADD CONSTRAINT "phone_credit_payments_payment_method_check" CHECK ("payment_method" IN ('especes', 'virement'));
 ALTER TABLE "public"."credit_import_payments" ADD CONSTRAINT "credit_import_payments_montant_check" CHECK ((montant > (0)::numeric));
 
 -- Triggers
@@ -1526,9 +1600,9 @@ SELECT acc_id,
     updated_at,
     updated_by,
         CASE
-            WHEN quantite <= 0 THEN 'نفذ'::text
-            WHEN quantite <= seuil_alerte THEN 'تحذير'::text
-            ELSE 'متوفر'::text
+            WHEN quantite <= 0 THEN 'epuise'::text
+            WHEN quantite <= seuil_alerte THEN 'alerte'::text
+            ELSE 'disponible'::text
         END AS status_computed,
     quantite <= seuil_alerte AS is_low_stock
    FROM accessories
@@ -1557,8 +1631,8 @@ SELECT c.client_id,
             sum(transactions.prix_vente) AS total_ca,
             sum(
                 CASE
-                    WHEN transactions.payment_method = 'إستبدال'::text THEN 0::numeric
-                    WHEN transactions.payment_method = 'آجل'::text THEN GREATEST(transactions.prix_vente - COALESCE(transactions.valeur_echange, 0::numeric), 0::numeric)
+                    WHEN transactions.payment_method = 'echange'::payment_method THEN 0::numeric
+                    WHEN transactions.payment_method = 'credit'::payment_method THEN GREATEST(transactions.prix_vente - COALESCE(transactions.valeur_echange, 0::numeric), 0::numeric)
                     WHEN transactions.avance > 0::numeric THEN GREATEST(transactions.prix_vente - transactions.avance - COALESCE(transactions.valeur_echange, 0::numeric), 0::numeric)
                     ELSE 0::numeric
                 END) AS total_impaye
@@ -1598,10 +1672,10 @@ SELECT supplier_id,
     is_deleted,
     COALESCE(( SELECT count(*)::integer AS count
            FROM phones p
-          WHERE p.fournisseur_id = s.supplier_id AND p.status = 'متوفر'::text AND p.is_deleted = false), 0) AS nb_en_stock,
+          WHERE p.fournisseur_id = s.supplier_id AND p.status = 'disponible'::device_status AND p.is_deleted = false), 0) AS nb_en_stock,
     COALESCE(( SELECT count(*)::integer AS count
            FROM phones p
-          WHERE p.fournisseur_id = s.supplier_id AND p.status = 'مباع'::text AND p.is_deleted = false), 0) AS nb_vendus,
+          WHERE p.fournisseur_id = s.supplier_id AND p.status = 'vendu'::device_status AND p.is_deleted = false), 0) AS nb_vendus,
     COALESCE(( SELECT sum(p.prix_achat) AS sum
            FROM phones p
           WHERE p.fournisseur_id = s.supplier_id AND p.is_deleted = false), 0::numeric) AS total_achats,
@@ -1622,9 +1696,9 @@ SELECT supplier_id,
                  LEFT JOIN LATERAL ( SELECT COALESCE(sum(ez_documents.montant), 0::numeric) AS montant
                        FROM ez_documents
                       WHERE ez_documents.doc_type = 'ECH'::text AND ez_documents.linked_doc_ref = fac.doc_ref) ech ON fac.doc_id IS NOT NULL
-              WHERE p.fournisseur_id = s.supplier_id AND p.status = 'مباع'::text AND p.settled_at IS NOT NULL AND p.is_deleted = false), 0::numeric) + COALESCE(( SELECT sum(sp.montant) AS sum
+              WHERE p.fournisseur_id = s.supplier_id AND p.status = 'vendu'::device_status AND p.settled_at IS NOT NULL AND p.is_deleted = false), 0::numeric) + COALESCE(( SELECT sum(sp.montant) AS sum
                FROM supplier_payments sp
-              WHERE sp.supplier_id = s.supplier_id AND sp.payment_type = 'AVANCE_A'::text AND sp.is_deleted = false), 0::numeric)
+              WHERE sp.supplier_id = s.supplier_id AND sp.payment_type = 'avance_a'::supplier_payment_type AND sp.is_deleted = false), 0::numeric)
             ELSE COALESCE(( SELECT sum(sp.montant) AS sum
                FROM supplier_payments sp
               WHERE sp.supplier_id = s.supplier_id AND sp.is_deleted = false), 0::numeric)
@@ -1646,7 +1720,7 @@ SELECT supplier_id,
                  LEFT JOIN LATERAL ( SELECT COALESCE(sum(ez_documents.montant), 0::numeric) AS montant
                        FROM ez_documents
                       WHERE ez_documents.doc_type = 'ECH'::text AND ez_documents.linked_doc_ref = fac.doc_ref) ech ON fac.doc_id IS NOT NULL
-              WHERE p.fournisseur_id = s.supplier_id AND p.status = 'مباع'::text AND p.settled_at IS NULL AND p.is_deleted = false), 0::numeric)
+              WHERE p.fournisseur_id = s.supplier_id AND p.status = 'vendu'::device_status AND p.settled_at IS NULL AND p.is_deleted = false), 0::numeric)
             ELSE COALESCE(( SELECT sum(p.prix_achat) AS sum
                FROM phones p
               WHERE p.fournisseur_id = s.supplier_id AND p.is_deleted = false), 0::numeric) - COALESCE(( SELECT sum(sp.montant) AS sum
@@ -1670,13 +1744,13 @@ SELECT supplier_id,
                  LEFT JOIN LATERAL ( SELECT COALESCE(sum(ez_documents.montant), 0::numeric) AS montant
                        FROM ez_documents
                       WHERE ez_documents.doc_type = 'ECH'::text AND ez_documents.linked_doc_ref = fac.doc_ref) ech ON fac.doc_id IS NOT NULL
-              WHERE p.fournisseur_id = s.supplier_id AND p.status = 'مباع'::text AND p.settled_at IS NOT NULL AND p.is_deleted = false), 0::numeric)
+              WHERE p.fournisseur_id = s.supplier_id AND p.status = 'vendu'::device_status AND p.settled_at IS NOT NULL AND p.is_deleted = false), 0::numeric)
             ELSE NULL::numeric
         END AS a_montant_vendu_regle,
         CASE
             WHEN type_fournisseur = 'A'::text THEN COALESCE(( SELECT sum(p.prix_achat) AS sum
                FROM phones p
-              WHERE p.fournisseur_id = s.supplier_id AND p.status = 'متوفر'::text AND p.is_deleted = false), 0::numeric)
+              WHERE p.fournisseur_id = s.supplier_id AND p.status = 'disponible'::device_status AND p.is_deleted = false), 0::numeric)
             ELSE NULL::numeric
         END AS a_montant_en_stock
    FROM suppliers s
@@ -1711,7 +1785,7 @@ SELECT p.phone_id,
      LEFT JOIN LATERAL ( SELECT COALESCE(sum(ez_documents.montant), 0::numeric) AS montant
            FROM ez_documents
           WHERE ez_documents.doc_type = 'ECH'::text AND ez_documents.linked_doc_ref = fac.doc_ref) ech ON fac.doc_id IS NOT NULL
-  WHERE p.status = 'مباع'::text AND p.settled_at IS NULL AND p.is_deleted = false;
+  WHERE p.status = 'vendu'::device_status AND p.settled_at IS NULL AND p.is_deleted = false;
 
 CREATE VIEW "public"."phone_credits_summary" AS
 SELECT pcs.credit_id,

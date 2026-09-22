@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
       .single() as { data: { display_name: string; store_id: string | null; role: string } | null }
 
     // Only manager/owner can move stock
-    if (!['manager', 'owner'].includes(profile?.role ?? '')) {
+    if (!['gerant', 'proprietaire'].includes(profile?.role ?? '')) {
       return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
     }
 

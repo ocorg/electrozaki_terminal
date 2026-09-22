@@ -116,7 +116,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
   const primary      = portal.primaryColor
   // canSeeAchat : seuls manager/owner voient prix_achat et la marge
   // prix_vente_recommandé visible à tous les rôles (staff inclus)
-  const canSeeAchat = user?.role === 'manager' || user?.role === 'owner'
+  const canSeeAchat = user?.role === 'gerant' || user?.role === 'proprietaire'
 
   const [search,    setSearch]    = useState('')
   const [results,   setResults]   = useState<DeviceResult[]>([])
@@ -291,7 +291,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
     const item = cart.find(c => c._id === id)
     if (!item) return
     const min = (item as Phone).prix_vente_minimum
-    if (isBelowMinimum(prix, min) && user?.role === 'staff') {
+    if (isBelowMinimum(prix, min) && user?.role === 'employe') {
       setOverrideItem({ ...item, prix_vente_saisi: prix })
       setOverrideOpen(true)
     }

@@ -19,7 +19,7 @@ export async function GET() {
       .eq('id', user.id)
       .single() as { data: { role: string } | null }
 
-    if (!['manager', 'owner'].includes(profile?.role ?? '')) {
+    if (!['gerant', 'proprietaire'].includes(profile?.role ?? '')) {
       return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
     }
 
@@ -53,7 +53,7 @@ export async function PATCH(request: NextRequest) {
       .eq('id', user.id)
       .single() as { data: { display_name: string; role: string } | null }
 
-    if (profile?.role !== 'owner') {
+    if (profile?.role !== 'proprietaire') {
       return NextResponse.json(
         { error: 'Seul le propriétaire peut modifier le statut des boutiques' },
         { status: 403 }

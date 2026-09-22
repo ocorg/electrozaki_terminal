@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { signOut } from 'next-auth/react'
 import { useUser } from '@/lib/hooks/useUser'
+import { codeLabel } from '@/lib/codes'
 import { Loader2, LogOut } from 'lucide-react'
 
 const PORTALS = [
@@ -74,7 +75,7 @@ export default function SelectStorePage() {
             Bienvenue, {user?.display_name}
           </h1>
           <p className="text-sm text-[#6B6860] mt-1 capitalize">
-            {user?.role === 'owner' ? 'Propriétaire' : 'Manager'} · Choisissez un portail
+            {codeLabel('user_role', user?.role, 'fr')} · Choisissez un portail
           </p>
         </div>
 

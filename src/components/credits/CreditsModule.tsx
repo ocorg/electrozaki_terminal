@@ -317,7 +317,7 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
     }
   }
 
-  const isOwner   = user?.role === 'owner'
+  const isOwner   = user?.role === 'proprietaire'
   const totalDue  = credits.reduce((s, c) => s + c.solde_impaye, 0)
 
   return (

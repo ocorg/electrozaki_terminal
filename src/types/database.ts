@@ -4,7 +4,7 @@
 // ============================================================
 
 // ─── Enums ───────────────────────────────────────────────────
-export type UserRole         = 'staff' | 'manager' | 'owner'
+export type UserRole         = 'employe' | 'gerant' | 'proprietaire'
 export type DeviceSource     = 'Fournisseur' | 'Reprise' | 'Échange'
 export type DeviceCondition  = 'جديد' | 'مستعمل' | 'معطوب'
 export type DeviceStatus     = 'متوفر' | 'مباع' | 'إستبدال' | 'إصلاح' | 'en_transfert' | 'en_livraison' | 'حجز'

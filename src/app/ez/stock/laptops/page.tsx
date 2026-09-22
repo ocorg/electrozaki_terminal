@@ -30,7 +30,7 @@ export default function EZLaptopsPage() {
   const portal       = usePortal()
   const isAr         = language === 'ar'
   const primary      = portal.primaryColor
-  const canFinancials = user?.role === 'manager' || user?.role === 'owner'
+  const canFinancials = user?.role === 'gerant' || user?.role === 'proprietaire'
 
   const [laptops, setLaptops]   = useState<Laptop[]>([])
   const [loading, setLoading]   = useState(true)

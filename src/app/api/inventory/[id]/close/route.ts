@@ -18,7 +18,7 @@ export async function PATCH(
     .maybeSingle()
   const profile = profileRaw as { role: string; store_id: string; display_name: string } | null
 
-  if (profile?.role !== 'manager' && profile?.role !== 'owner') {
+  if (profile?.role !== 'gerant' && profile?.role !== 'proprietaire') {
     return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
   }
 

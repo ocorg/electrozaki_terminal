@@ -73,7 +73,7 @@ export default function TransactionsListPage({ scope, storeId, title }: Transact
   const [voidReason, setVoidReason] = useState('')
   const [voiding, setVoiding]       = useState(false)
 
-  const canVoid = user?.role === 'manager' || user?.role === 'owner'
+  const canVoid = user?.role === 'gerant' || user?.role === 'proprietaire'
 
   // Store list is only needed for the cross-store dot/filter — fetched live so a newly
   // added store shows up automatically (a hardcoded list here previously required a code change).

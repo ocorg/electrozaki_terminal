@@ -94,7 +94,7 @@ export default function MovementsModule({ storeId }: MovementsModuleProps) {
   const [submitting, setSubmitting] = useState(false)
   const [search, setSearch]         = useState('')
 
-  const canMove = user?.role === 'manager' || user?.role === 'owner'
+  const canMove = user?.role === 'gerant' || user?.role === 'proprietaire'
 
   const fetchMovements = useCallback(async () => {
     setLoading(true)

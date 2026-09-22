@@ -17,7 +17,7 @@ export async function PATCH(request: NextRequest) {
       .eq('id', user.id)
       .single() as { data: { role: string; display_name: string; store_id: string | null } | null }
 
-    if (!['manager', 'owner'].includes(profile?.role ?? '')) {
+    if (!['gerant', 'proprietaire'].includes(profile?.role ?? '')) {
       return NextResponse.json({ error: 'Accès refusé — rôle manager ou owner requis' }, { status: 403 })
     }
 

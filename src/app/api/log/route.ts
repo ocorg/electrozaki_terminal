@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
       .eq('id', user.id)
       .single<{ role: string }>()
 
-    if (!profile || !['manager', 'owner'].includes(profile.role)) {
+    if (!profile || !['gerant', 'proprietaire'].includes(profile.role)) {
       return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
     }
 
