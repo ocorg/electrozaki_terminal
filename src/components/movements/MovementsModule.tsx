@@ -14,6 +14,7 @@ import {
   MapPin, Clock, Smartphone, Laptop, Package,
   ArrowRight, Search, X, RotateCcw
 } from 'lucide-react'
+import { codeLabel } from '@/lib/codes'
 
 interface Movement {
   movement_id:   string
@@ -30,50 +31,27 @@ interface Movement {
   created_at:    string
 }
 
-const LOCATIONS: LocationType[] = ['Magasin Principal', 'Magasin Secondaire', 'Externe']
-const REASONS:   MovementReason[] = ['Transfert', 'Réparation Externe', 'Retour', 'Prêt']
-
-const LOCATION_LABELS_FR: Record<string, string> = {
-  'Magasin Principal':  'Magasin Principal',
-  'Magasin Secondaire': 'Magasin Secondaire',
-  'Externe':            'Externe',
-}
-const LOCATION_LABELS_AR: Record<string, string> = {
-  'Magasin Principal':  'المحل الرئيسي',
-  'Magasin Secondaire': 'المحل الثاني',
-  'Externe':            'خارجي',
-}
-const REASON_LABELS_FR: Record<string, string> = {
-  'Transfert':          'Transfert',
-  'Réparation Externe': 'Réparation Externe',
-  'Retour':             'Retour',
-  'Prêt':               'Prêt',
-}
-const REASON_LABELS_AR: Record<string, string> = {
-  'Transfert':          'نقل',
-  'Réparation Externe': 'إصلاح خارجي',
-  'Retour':             'إرجاع',
-  'Prêt':               'إعارة',
-}
+const LOCATIONS: LocationType[] = ['magasin_principal', 'magasin_secondaire', 'externe']
+const REASONS:   MovementReason[] = ['transfert', 'reparation_externe', 'retour', 'pret']
 
 const EMPTY_FORM = {
-  device_type:    'هاتف' as DeviceType,
+  device_type:    'telephone' as DeviceType,
   device_id:      '',
   quantity:       '1',
-  from_location:  'Magasin Principal' as LocationType,
-  to_location:    'Magasin Secondaire' as LocationType,
+  from_location:  'magasin_principal' as LocationType,
+  to_location:    'magasin_secondaire' as LocationType,
   from_store_id:  '',
   to_store_id:    '',
   is_inter_store: false,
-  reason:         'Transfert' as MovementReason,
+  reason:         'transfert' as MovementReason,
   external_name:  '',
   notes:          '',
 }
 
 const DEVICE_ICONS: Record<string, React.ComponentType<React.SVGProps<SVGSVGElement>>> = {
-  'هاتف':    Smartphone,
-  'لابتوب':  Laptop,
-  'إكسسوار': Package,
+  telephone:  Smartphone,
+  laptop:     Laptop,
+  accessoire: Package,
 }
 
 interface MovementsModuleProps {
@@ -122,7 +100,7 @@ export default function MovementsModule({ storeId }: MovementsModuleProps) {
       showError(isAr ? 'المصدر والوجهة متطابقان' : 'Source et destination identiques')
       return
     }
-    if (form.device_type === 'إكسسوار' && (!form.quantity || Number(form.quantity) < 1)) {
+    if (form.device_type === 'accessoire' && (!form.quantity || Number(form.quantity) < 1)) {
       showError(isAr ? 'الكمية يجب أن تكون 1 على الأقل' : 'La quantité doit être au moins 1')
       return
     }
@@ -135,7 +113,7 @@ export default function MovementsModule({ storeId }: MovementsModuleProps) {
           store_id:      form.is_inter_store ? form.from_store_id : storeId,
           device_type:   form.device_type,
           device_id:     form.device_id,
-          quantity:      form.device_type === 'إكسسوار' ? Number(form.quantity) : 1,
+          quantity:      form.device_type === 'accessoire' ? Number(form.quantity) : 1,
           from_location: form.from_location,
           to_location:   form.to_location,
           from_store_id: form.is_inter_store ? form.from_store_id : null,
@@ -163,10 +141,10 @@ export default function MovementsModule({ storeId }: MovementsModuleProps) {
   )
 
   function locLabel(loc: string) {
-    return isAr ? LOCATION_LABELS_AR[loc] ?? loc : LOCATION_LABELS_FR[loc] ?? loc
+    return codeLabel('location_type', loc as LocationType, isAr ? 'ar' : 'fr')
   }
   function reasonLabel(r: string) {
-    return isAr ? REASON_LABELS_AR[r] ?? r : REASON_LABELS_FR[r] ?? r
+    return codeLabel('movement_reason', r as MovementReason, isAr ? 'ar' : 'fr')
   }
 
   return (
@@ -296,7 +274,7 @@ export default function MovementsModule({ storeId }: MovementsModuleProps) {
                       </div>
 
                       {/* Raccourci retour — visible uniquement pour les mouvements non-retour */}
-                      {canMove && mov.reason !== 'Retour' && (
+                      {canMove && mov.reason !== 'retour' && (
                         <button
                           onClick={() => {
                             setForm({
@@ -306,7 +284,7 @@ export default function MovementsModule({ storeId }: MovementsModuleProps) {
                               quantity:      String(mov.quantity ?? 1),
                               from_location: mov.to_location,
                               to_location:   mov.from_location,
-                              reason:        'Retour',
+                              reason:        'retour',
                               notes:         `Retour — ${mov.movement_id}`,
                             })
                             setFormOpen(true)
@@ -338,9 +316,9 @@ export default function MovementsModule({ storeId }: MovementsModuleProps) {
           <Field label={isAr ? 'نوع الجهاز' : 'Type d\'appareil'} required>
             <select className={selectClass} value={form.device_type}
               onChange={e => setF('device_type', e.target.value)}>
-              <option value="هاتف">{t(isAr, 'common.phoneNoun')}</option>
-              <option value="لابتوب">{t(isAr, 'common.laptop')}</option>
-              <option value="إكسسوار">{isAr ? 'إكسسوار' : 'Accessoire'}</option>
+              <option value="telephone">{t(isAr, 'common.phoneNoun')}</option>
+              <option value="laptop">{t(isAr, 'common.laptop')}</option>
+              <option value="accessoire">{isAr ? 'إكسسوار' : 'Accessoire'}</option>
             </select>
           </Field>
 
@@ -360,7 +338,7 @@ export default function MovementsModule({ storeId }: MovementsModuleProps) {
           </Field>
 
           {/* Quantity — accessories only; phones/laptops are unique serialized items (always 1) */}
-          {form.device_type === 'إكسسوار' && (
+          {form.device_type === 'accessoire' && (
             <Field label={t(isAr, 'common.quantity')} required
                    hint={isAr ? 'عدد الوحدات المراد نقلها' : 'Nombre d\'unités à transférer'}>
               <input type="number" min="1" step="1" className={inputClass}
@@ -423,7 +401,7 @@ export default function MovementsModule({ storeId }: MovementsModuleProps) {
           </div>
 
           {/* External name — shown when destination is Externe */}
-          {form.to_location === 'Externe' && (
+          {form.to_location === 'externe' && (
             <Field label={isAr ? 'اسم الجهة الخارجية' : 'Nom de la destination externe'}>
               <input type="text" className={inputClass}
                 placeholder={isAr ? 'اسم المحل، التقني...' : 'Atelier, technicien...'}
@@ -460,7 +438,7 @@ export default function MovementsModule({ storeId }: MovementsModuleProps) {
                 {' → '}
                 <span className="font-bold" style={{ color: primary }}>
                   {locLabel(form.to_location)}
-                  {form.to_location === 'Externe' && form.external_name
+                  {form.to_location === 'externe' && form.external_name
                     ? ` (${form.external_name})` : ''}
                 </span>
               </p>

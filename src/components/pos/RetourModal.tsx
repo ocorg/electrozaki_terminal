@@ -1,12 +1,12 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { Modal, Btn } from '@/components/shared'
 import { useLanguageStore } from '@/lib/stores/language'
 import { t } from '@/lib/i18n/t'
 import { formatMAD } from '@/lib/utils'
 import { Loader2, RotateCcw, AlertTriangle } from 'lucide-react'
 import { showSuccess, showError } from '@/lib/utils/toasts'
+import { codeLabel, type Code } from '@/lib/codes'
 
 interface Transaction {
   txn_id:         string
@@ -33,7 +33,6 @@ export default function RetourModal({
 }: RetourModalProps) {
   const { language } = useLanguageStore()
   const isAr   = language === 'ar'
-  const supabase = createClient()
 
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [deviceNames,  setDeviceNames]  = useState<Record<string, string>>({})
@@ -148,7 +147,7 @@ export default function RetourModal({
                     {t.txn_id} · {t.clients?.nom ?? (isAr ? 'عميل عابر' : 'Comptoir')}
                   </p>
                   <p className="text-xs text-[#B0ADA6]">
-                    {t.date_vente} · {t.payment_method}
+                    {t.date_vente} · {codeLabel('payment_method', t.payment_method as Code<'payment_method'>, isAr ? 'ar' : 'fr')}
                   </p>
                 </div>
                 <p className="text-sm font-bold flex-shrink-0" style={{ color: primary }}>

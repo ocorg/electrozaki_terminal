@@ -9,6 +9,7 @@
 //   node scripts/copy-supabase-to-neon.mjs
 import 'dotenv/config'
 import pg from 'pg'
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
 import { LEGACY, COLUMN_DOMAINS, CATEGORY_COLUMNS, EXTRA_CATEGORIES, MODULE_TABLES, SNAPSHOT_FIELDS } from './legacy-codes.mjs'
 import { CODES, toCode } from '../src/lib/codes.ts'
 
@@ -42,6 +43,35 @@ const SKIP_COLUMNS = { settings: ['id'] }
 // The category lists move out of `settings` into the `categories` table.
 const CATEGORY_SETTINGS_KEYS = Object.values(CATEGORY_COLUMNS).map((c) => c.settingsKey)
 const SOURCE_WHERE = { settings: `t.key not in (${CATEGORY_SETTINGS_KEYS.map((k) => `'${k}'`).join(', ')})` }
+
+// ── Storage: Supabase bucket files → R2 under legacy/<bucket>/<path> ──
+// postgres.<ref>@… → https://<ref>.supabase.co
+const projectRef = decodeURIComponent(new URL(source).username).split('.')[1]
+const SUPABASE_PUBLIC = `https://${projectRef}.supabase.co/storage/v1/object/public/`
+const R2_LEGACY = `${process.env.R2_PUBLIC_URL}/legacy/`
+
+async function copyStorage() {
+  const r2 = new S3Client({
+    region:      'auto',
+    endpoint:    `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+    credentials: { accessKeyId: process.env.R2_ACCESS_KEY_ID, secretAccessKey: process.env.R2_SECRET_ACCESS_KEY },
+  })
+  const { rows } = await src.query(`select o.bucket_id, o.name, o.metadata->>'mimetype' as type
+    from storage.objects o join storage.buckets b on b.id = o.bucket_id where b.public`)
+  for (const { bucket_id, name, type } of rows) {
+    const path = `${bucket_id}/${name}`
+    const res = await fetch(SUPABASE_PUBLIC + path.split('/').map(encodeURIComponent).join('/'))
+    if (!res.ok) throw new Error(`download failed (${res.status}): ${path}`)
+    await r2.send(new PutObjectCommand({
+      Bucket: process.env.R2_BUCKET, Key: `legacy/${path}`,
+      Body: Buffer.from(await res.arrayBuffer()), ContentType: type ?? undefined,
+    }))
+  }
+  return rows.length
+}
+
+// Links to Supabase storage now point at the R2 copies
+const rewriteUrls = (v) => (typeof v === 'string' && v.includes(SUPABASE_PUBLIC) ? v.split(SUPABASE_PUBLIC).join(R2_LEGACY) : v)
 
 const unknown = new Map()
 const noteUnknown = (what) => unknown.set(what, (unknown.get(what) ?? 0) + 1)
@@ -141,7 +171,7 @@ function makeTranslator(categoryLookup, categories) {
       }
       return node
     }
-    return JSON.stringify(fix(JSON.parse(json)))
+    return rewriteUrls(JSON.stringify(fix(JSON.parse(json))))
   }
 
   // Sentences the old app composed from Arabic values → same sentence in French.
@@ -165,7 +195,7 @@ function makeTranslator(categoryLookup, categories) {
       row.after_state = translateSnapshot(row.after_state, row.module)
       row.notes = translateNote(row.notes)
     }
-    for (const c of columns) row[c] = translateValue(table, c, row[c], true)
+    for (const c of columns) row[c] = rewriteUrls(translateValue(table, c, row[c], true))
     return row
   }
 }
@@ -196,6 +226,7 @@ async function copyTable(table, translate) {
 await src.connect()
 await dst.connect()
 try {
+  const files = await copyStorage()
   const tables = await tablesInFkOrder()
   const { categories, lookup } = await buildCategories()
   const translate = makeTranslator(lookup, categories)
@@ -241,7 +272,7 @@ try {
   await dst.query('commit')
   const total = Object.values(copied).reduce((a, b) => a + b, 0)
   for (const [t, n] of Object.entries(copied)) if (n) console.log(`${t.padEnd(26)} ${n}`)
-  console.log(`\n${total} rows across ${tables.length} tables, ${seqs.length} sequences synced. Counts verified.`)
+  console.log(`\n${total} rows across ${tables.length} tables, ${seqs.length} sequences synced, ${files} files copied to R2. Counts verified.`)
 } catch (err) {
   await dst.query('rollback').catch(() => {})
   console.error('Copy failed, Neon left unchanged:', err.message)

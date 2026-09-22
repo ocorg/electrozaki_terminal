@@ -215,7 +215,7 @@ export default function TransactionsListPage({ scope, storeId, title }: Transact
             <option value="">{t(isAr, 'common.allTypes')}</option>
             <option value="vente">{t(isAr, 'common.sale')}</option>
             <option value="echange">{isAr ? 'استبدال' : 'Échange'}</option>
-            <option value="Retour">{t(isAr, 'common.returnNoun')}</option>
+            <option value="retour">{t(isAr, 'common.returnNoun')}</option>
           </select>
 
           {(filterOp || filterStore) && (

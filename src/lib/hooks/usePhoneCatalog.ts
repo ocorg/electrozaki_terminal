@@ -1,6 +1,5 @@
 'use client'
-import { useState, useEffect, useCallback, useRef } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useState, useEffect, useCallback } from 'react'
 
 export interface CatalogEntry {
   catalog_id: string
@@ -35,22 +34,15 @@ function stripBrandPrefix(serie: string, model: string): string {
 }
 
 export function usePhoneCatalog(): CatalogState {
-  const supabase = useRef(createClient()).current
   const [catalog, setCatalog] = useState<CatalogEntry[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    async function load() {
-      const { data, error } = await supabase
-        .from('phone_catalog')
-        .select('*')
-        .order('marque')
-        .order('model')
-      if (data && data.length > 0) setCatalog(data)
-      if (error) console.error('[usePhoneCatalog]', error.message)
-      setLoading(false)
-    }
-    load()
+    fetch('/api/phones/catalog')
+      .then(r => r.json())
+      .then(json => { if (json.data?.length) setCatalog(json.data) })
+      .catch(err => console.error('[usePhoneCatalog]', err))
+      .finally(() => setLoading(false))
   }, [])
 
   const brands = Array.from(new Set(catalog.map(e => e.marque))).sort()
@@ -87,17 +79,16 @@ export function usePhoneCatalog(): CatalogState {
     )
     if (exists) return
 
-    const { data, error } = await supabase
-      .from('phone_catalog')
-      .insert(entry as never)
-      .select()
-      .single()
-
-    if (!error && data) {
-      // Optimistically add to local state
+    const res = await fetch('/api/phones/catalog', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(entry),
+    })
+    if (res.ok) {
+      const { data } = await res.json()
       setCatalog(prev => [...prev, data])
     }
-  }, [catalog, supabase])
+  }, [catalog])
 
   return { brands, seriesFor, modelsFor, couleursFor, addEntry, loading }
 }

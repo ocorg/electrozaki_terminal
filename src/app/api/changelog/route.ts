@@ -1,77 +1,37 @@
-import { createClient, createUntypedClient } from '@/lib/supabase/server'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
+import { prisma } from '@/lib/db'
+import { json, handleError, requireUser, requireActiveUser, dateOnly, todayDate, HttpError, MANAGERS } from '@/lib/api'
 
 export async function GET() {
   try {
-    const supabase      = await createUntypedClient()
-    const typedSupabase = await createClient()
-    const { data: { user } } = await typedSupabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
-
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single() as { data: { role: string } | null }
-
-    if (!['gerant', 'proprietaire'].includes(profile?.role ?? '')) {
-      return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
-    }
-
-    const { data, error } = await supabase
-      .from('platform_changelog')
-      .select('*')
-      .order('changed_at', { ascending: false })
-      .order('created_at', { ascending: false })
-
-    if (error) throw error
-    return NextResponse.json({ data })
-  } catch (err: unknown) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
+    const user = await requireUser()
+    if (!MANAGERS.includes(user.role)) throw new HttpError(403, 'Accès refusé')
+    const data = await prisma.platform_changelog.findMany({ orderBy: [{ changed_at: 'desc' }, { created_at: 'desc' }] })
+    return json({ data })
+  } catch (err) {
+    return handleError(err, 'GET /api/changelog')
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase      = await createUntypedClient()
-    const typedSupabase = await createClient()
-    const { data: { user } } = await typedSupabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
-
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('role, display_name')
-      .eq('id', user.id)
-      .single() as { data: { role: string; display_name: string } | null }
-
-    if (!['gerant', 'proprietaire'].includes(profile?.role ?? '')) {
-      return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
-    }
-
+    const user = await requireActiveUser(MANAGERS)
     const body = await request.json()
-    if (!body.title || !body.author) {
-      return NextResponse.json({ error: 'title et author requis' }, { status: 400 })
-    }
+    if (!body.title || !body.author) throw new HttpError(400, 'title et author requis')
 
-    const { data, error } = await supabase
-      .from('platform_changelog')
-      .insert({
+    const data = await prisma.platform_changelog.create({
+      data: {
         title:           body.title,
         description:     body.description     || null,
         affected_module: body.affected_module || null,
         version_tag:     body.version_tag     || null,
         author:          body.author,
-        changed_at:      body.changed_at      || new Date().toISOString().split('T')[0],
+        changed_at:      dateOnly(body.changed_at) ?? todayDate(),
         created_by:      user.id,
-      })
-      .select()
-      .single() as { data: Record<string, unknown> | null; error: unknown }
-
-    if (error) throw error
-    if (!data) throw new Error('No data returned')
-
-    return NextResponse.json({ data }, { status: 201 })
-  } catch (err: unknown) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
+      },
+    })
+    return json({ data }, { status: 201 })
+  } catch (err) {
+    return handleError(err, 'POST /api/changelog')
   }
 }

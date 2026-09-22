@@ -1,86 +1,60 @@
-import { createClient, createUntypedClient } from '@/lib/supabase/server'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
+import type { punch_type } from '@prisma/client'
+import { prisma } from '@/lib/db'
+import { json, handleError, requireUser, requireActiveUser, dateOnly, todayDate, HttpError } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createUntypedClient()
+    await requireUser()
     const { searchParams } = new URL(request.url)
     const store_id = searchParams.get('store_id')
-    const date     = searchParams.get('date') || new Date().toISOString().split('T')[0]
-    const all      = searchParams.get('all') // for BZG view
+    const date     = dateOnly(searchParams.get('date')) ?? todayDate()
+    const all      = searchParams.get('all') // BZG view: every store
 
-    let query = supabase
-      .from('staff_attendance')
-      .select('*')
-      .eq('date', date)
-      .order('punched_at', { ascending: false })
-
-    if (store_id && !all) query = query.eq('store_id', store_id)
-
-    const { data, error } = await query
-    if (error) throw error
-    return NextResponse.json({ data })
-  } catch (err: unknown) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
+    const data = await prisma.staff_attendance.findMany({
+      where:   { date, ...(store_id && !all && { store_id }) },
+      orderBy: { punched_at: 'desc' },
+    })
+    return json({ data })
+  } catch (err) {
+    return handleError(err, 'GET /api/attendance')
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase      = await createUntypedClient()
-    const typedSupabase = await createClient()
-    const { data: { user } } = await typedSupabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
-
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('display_name, store_id')
-      .eq('id', user.id)
-      .single() as { data: { display_name: string; store_id: string | null } | null }
-
+    const user = await requireActiveUser()
     const body = await request.json()
-    const store_id   = body.store_id ?? profile?.store_id
-    const punch_type = body.punch_type as 'in' | 'out'
-    const today      = new Date().toISOString().split('T')[0]
+    const store_id = body.store_id ?? user.store_id
+    const punch    = body.punch_type as punch_type
+    if (!store_id) throw new HttpError(400, 'store_id manquant')
+    if (punch !== 'entree' && punch !== 'sortie') throw new HttpError(400, 'punch_type invalide')
 
-    if (!store_id) {
-      return NextResponse.json({ error: 'store_id manquant' }, { status: 400 })
-    }
-    if (!['in', 'out'].includes(punch_type)) {
-      return NextResponse.json({ error: 'punch_type invalide' }, { status: 400 })
-    }
-
-    const { data, error } = await supabase
-      .from('staff_attendance')
-      .insert({
+    const data = await prisma.staff_attendance.create({
+      data: {
         store_id,
         user_id:    user.id,
-        user_name:  profile?.display_name ?? '—',
-        punch_type,
-        punched_at: new Date().toISOString(),
-        date:       today,
+        user_name:  user.display_name,
+        punch_type: punch,
+        punched_at: new Date(),
+        date:       todayDate(),
         notes:      body.notes || null,
-        created_at: new Date().toISOString(),
-      })
-      .select()
-      .single() as { data: Record<string, unknown> | null; error: unknown }
-
-    if (error) throw error
-    if (!data) throw new Error('No data returned')
+      },
+    })
 
     await logActivity({
       store_id,
       user_id:     user.id,
-      user_name:   profile?.display_name ?? '—',
-      action_type: punch_type === 'in' ? 'PUNCH_IN' : 'PUNCH_OUT',
-      module:      'attendance',
-      record_id:   data.attendance_id as string,
+      user_name:   user.display_name,
+      action_type: punch === 'entree' ? 'pointage_entree' : 'pointage_sortie',
+      module:      'pointage',
+      record_id:   data.attendance_id,
       ip_address:  getIpFromRequest(request),
     })
 
-    return NextResponse.json({ data }, { status: 201 })
-  } catch (err: unknown) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
+    return json({ data }, { status: 201 })
+  } catch (err) {
+    return handleError(err, 'POST /api/attendance')
   }
 }

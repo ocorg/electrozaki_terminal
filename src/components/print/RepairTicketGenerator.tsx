@@ -1,8 +1,9 @@
 'use client'
 import { formatMAD, formatDate } from '@/lib/utils'
+import { codeLabel, type Code } from '@/lib/codes'
 
 interface RepairPart {
-  nom_piece:    string
+  description:  string
   fournisseur?: string
   cout:         number
 }
@@ -59,7 +60,7 @@ export async function generateRepairTicketPDF(r: RepairTicketProps): Promise<voi
   if (r.date_prevue) row('Date prévue:', formatDate(r.date_prevue))
 
   // Statut badge inline
-  text(`Statut: ${r.statut}`, 20, 10, true)
+  text(`Statut: ${codeLabel('repair_status', r.statut as Code<'repair_status'>, 'fr')}`, 20, 10, true)
   y += 7
   hline()
 
@@ -105,7 +106,7 @@ export async function generateRepairTicketPDF(r: RepairTicketProps): Promise<voi
   if (r.parts && r.parts.length > 0) {
     text('PIÈCES UTILISÉES', 20, 10, true); y += 6
     for (const p of r.parts) {
-      text(`• ${p.nom_piece}${p.fournisseur ? ` (${p.fournisseur})` : ''}`, 22, 9)
+      text(`• ${p.description}${p.fournisseur ? ` (${p.fournisseur})` : ''}`, 22, 9)
       text(formatMAD(p.cout), 190, 9, false, 'right')
       y += 5
     }

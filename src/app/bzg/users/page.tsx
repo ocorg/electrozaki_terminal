@@ -7,6 +7,8 @@ import { formatDate } from '@/lib/utils'
 import { PageHeader, SkeletonRow, Modal, Field, inputClass, selectClass, Btn } from '@/components/shared'
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import { codeLabel } from '@/lib/codes'
+import type { UserRole } from '@/types/database'
+import { uploadFile } from '@/lib/upload'
 import { Users, Shield, Edit2, CheckCircle, XCircle, RefreshCw, Plus, Eye, EyeOff } from 'lucide-react'
 
 interface UserProfile {
@@ -72,19 +74,7 @@ export default function BZGUsersPage() {
 
     setUploadingAvatarFor(userId)
     try {
-      const { createClient: createBrowserClient } = await import('@/lib/supabase/client')
-      const supabase = createBrowserClient()
-
-      const ext  = file.name.split('.').pop() ?? 'jpg'
-      const path = `avatars/${userId}/${Date.now()}.${ext}`
-
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(path, file, { upsert: true, contentType: file.type })
-
-      if (uploadError) throw uploadError
-
-      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path)
+      const publicUrl = await uploadFile(file, 'avatars')
 
       const res = await fetch('/api/users', {
         method:  'PATCH',
@@ -291,7 +281,7 @@ export default function BZGUsersPage() {
                           )}
                         </p>
                         <span className={`inline-flex items-center border rounded-lg px-2 py-0.5 text-[10px] font-bold tracking-wide ${ROLE_STYLES[u.role] ?? ''}`}>
-                          {u.role}
+                          {codeLabel('user_role', u.role as UserRole, isAr ? 'ar' : 'fr')}
                         </span>
                       </div>
                       <div className="flex items-center gap-3 mt-0.5">

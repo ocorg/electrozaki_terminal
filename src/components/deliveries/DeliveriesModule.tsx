@@ -36,7 +36,7 @@ interface Delivery {
 
 // ─── Constants ────────────────────────────────────────────────
 const COLUMNS = [
-  { key: 'confirmation_encours', label: 'En confirmation', color: '#6B6860', terminal: false },
+  { key: 'confirmation_en_cours', label: 'En confirmation', color: '#6B6860', terminal: false },
   { key: 'attente_avance',       label: "Att. avance",     color: '#F59E0B', terminal: false },
   { key: 'prepare',              label: 'Préparé',         color: '#3B82F6', terminal: false },
   { key: 'en_transit',           label: 'En transit',      color: '#8B5CF6', terminal: false },
@@ -46,22 +46,22 @@ const COLUMNS = [
 ]
 
 const SCENARIO_SHORT: Record<string, string> = {
-  full_advance:    '100% avance',
-  partial_advance: 'Avance partielle',
-  on_delivery:     'À la livraison',
+  avance_totale:    '100% avance',
+  avance_partielle: 'Avance partielle',
+  paiement_livraison:     'À la livraison',
 }
 
 const EMPTY_FORM = {
   client_name:      '',
   client_phone:     '',
   client_address:   '',
-  payment_scenario: 'on_delivery',
+  payment_scenario: 'paiement_livraison',
   montant_total:    '',
   montant_avance:   '0',
-  payment_method:   'نقد',
+  payment_method:   'especes',
   payment_ref:      '',
   notes:            '',
-  device_type:      'هاتف',
+  device_type:      'telephone',
   device_id:        '',
 }
 
@@ -687,9 +687,9 @@ export default function DeliveriesModule({ storeId }: DeliveriesModuleProps) {
                 value={form.payment_scenario}
                 onChange={e => setForm(p => ({ ...p, payment_scenario: e.target.value }))}
               >
-                <option value="full_advance">100% à la création</option>
-                <option value="partial_advance">Avance + reste à la livraison</option>
-                <option value="on_delivery">Paiement à la livraison</option>
+                <option value="avance_totale">100% à la création</option>
+                <option value="avance_partielle">Avance + reste à la livraison</option>
+                <option value="paiement_livraison">Paiement à la livraison</option>
               </select>
             </div>
 
@@ -718,7 +718,7 @@ export default function DeliveriesModule({ storeId }: DeliveriesModuleProps) {
               />
             </div>
 
-            {form.payment_scenario !== 'on_delivery' && (
+            {form.payment_scenario !== 'paiement_livraison' && (
               <div>
                 <label className="text-xs font-bold text-[#6B6860] uppercase tracking-widest block mb-1">
                   Avance reçue (MAD)
@@ -743,8 +743,8 @@ export default function DeliveriesModule({ storeId }: DeliveriesModuleProps) {
                   value={form.device_type}
                   onChange={e => setForm(p => ({ ...p, device_type: e.target.value }))}
                 >
-                  <option value="هاتف">Téléphone</option>
-                  <option value="لابتوب">Laptop</option>
+                  <option value="telephone">Téléphone</option>
+                  <option value="laptop">Laptop</option>
                 </select>
                 <input
                   className={inputClass}

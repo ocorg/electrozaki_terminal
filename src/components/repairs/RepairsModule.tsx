@@ -27,7 +27,7 @@ const COLUMNS: {
   icon:     React.ComponentType<{ className?: string }>
 }[] = [
   {
-    status:  'معلق',
+    status:  'en_attente',
     labelFr: 'En attente',
     labelAr: 'معلق',
     color:   'text-amber-700',
@@ -37,7 +37,7 @@ const COLUMNS: {
     icon:    Clock,
   },
   {
-    status:  'قيد الإصلاح',
+    status:  'en_cours',
     labelFr: 'En cours',
     labelAr: 'قيد الإصلاح',
     color:   'text-blue-700',
@@ -47,7 +47,7 @@ const COLUMNS: {
     icon:    Wrench,
   },
   {
-    status:  'جاهز',
+    status:  'pret',
     labelFr: 'Prêt',
     labelAr: 'جاهز',
     color:   'text-emerald-700',
@@ -57,7 +57,7 @@ const COLUMNS: {
     icon:    CheckCircle,
   },
   {
-    status:  'تم الاستلام',
+    status:  'recupere',
     labelFr: 'Récupéré',
     labelAr: 'تم الاستلام',
     color:   'text-slate-500',
@@ -212,7 +212,7 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
 
   // ── Status progression ────────────────────────────────────
   function getNextStatus(current: RepairStatus): RepairStatus | null {
-    const order: RepairStatus[] = ['معلق', 'قيد الإصلاح', 'جاهز', 'تم الاستلام']
+    const order: RepairStatus[] = ['en_attente', 'en_cours', 'pret', 'recupere']
     const idx = order.indexOf(current)
     return idx < order.length - 1 ? order[idx + 1] : null
   }
@@ -223,7 +223,7 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
     setStatusLoading(rep.rep_id)
     try {
       const updates: Record<string, unknown> = { rep_id: rep.rep_id, statut: next }
-      if (next === 'تم الاستلام') {
+      if (next === 'recupere') {
         updates.date_livraison = new Date().toISOString().split('T')[0]
       }
       const res  = await fetch('/api/repairs', {
@@ -287,7 +287,7 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
           technicien:        form.technicien        || null,
           technicien_id:     form.technicien_id     || null,
           date_prevue:       form.date_prevue       || null,
-          statut:            'معلق',
+          statut:            'en_attente',
           date_depot:        new Date().toISOString().split('T')[0],
           notes:             form.notes             || null,
         }),
@@ -311,7 +311,7 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
     return acc
   }, {} as Record<RepairStatus, RepairWithExtras[]>)
 
-  const activeCount = repairs.filter(r => r.statut !== 'تم الاستلام').length
+  const activeCount = repairs.filter(r => r.statut !== 'recupere').length
 
   return (
     <div className="flex flex-col h-full overflow-hidden animate-fade-in" dir={isAr ? 'rtl' : 'ltr'}>
@@ -416,7 +416,7 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
                       items.map(rep => {
                         const nextStatus = getNextStatus(rep.statut)
                         const isOverdue  = rep.date_prevue && rep.date_prevue < new Date().toISOString().split('T')[0]
-                          && rep.statut !== 'تم الاستلام'
+                          && rep.statut !== 'recupere'
 
                         return (
                           <div
@@ -628,7 +628,7 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
             )}
 
             {/* WhatsApp notification hint */}
-            {detailRep.statut === 'جاهز' && detailRep.clients && (() => {
+            {detailRep.statut === 'pret' && detailRep.clients && (() => {
               const phone = detailRep.clients!.telephone.replace(/^0/, '')
               const name  = detailRep.clients!.nom
               const device = `${detailRep.marque ?? ''} ${detailRep.model}`.trim()

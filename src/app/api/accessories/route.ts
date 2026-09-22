@@ -1,198 +1,128 @@
-import { createClient, createUntypedClient } from '@/lib/supabase/server'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
+import type { Prisma } from '@prisma/client'
+import { prisma } from '@/lib/db'
+import { json, handleError, requireUser, requireActiveUser, requireFields, pickInput, columnsOf, HttpError, MANAGERS } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
-import { escapeLike } from '@/lib/utils/validation'
+
+const EDITABLE = columnsOf('accessories', ['acc_id'])
+
+// Same rule as the accessories_with_status view
+const stockLevel = (a: { quantite: number; seuil_alerte: number }) =>
+  a.quantite <= 0 ? 'epuise' : a.quantite <= a.seuil_alerte ? 'alerte' : 'disponible'
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase      = await createUntypedClient()
-    const typedSupabase = await createClient()
-    const { data: { user } } = await typedSupabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
-
+    await requireUser()
     const { searchParams } = new URL(request.url)
     const store_id  = searchParams.get('store_id')
-    const search    = searchParams.get('search')
+    const search    = searchParams.get('search')?.trim()
     const categorie = searchParams.get('categorie')
     const low_stock = searchParams.get('low_stock')
+    if (!store_id) throw new HttpError(400, 'store_id requis')
 
-    if (!store_id) return NextResponse.json({ error: 'store_id requis' }, { status: 400 })
-
-    let query = supabase
-      .from('accessories_with_status')
-      .select('*')
-      .eq('store_id', store_id)
-      .eq('is_deleted', false)
-      .order('created_at', { ascending: false })
-
-    if (categorie)  query = query.eq('categorie', categorie)
-    if (low_stock === 'true') query = query.eq('is_low_stock', true)
-    if (search) {
-      const safeSearch = escapeLike(search)
-      query = query.or(
-        `nom.ilike.%${safeSearch}%,marque.ilike.%${safeSearch}%,barcode.ilike.%${safeSearch}%`
-      )
+    const where: Prisma.accessoriesWhereInput = {
+      store_id,
+      is_deleted: false,
+      ...(categorie && { categorie }),
+      ...(low_stock === 'true' && { quantite: { lte: prisma.accessories.fields.seuil_alerte } }),
+      ...(search && { OR: ['nom', 'marque', 'barcode'].map(f => ({ [f]: { contains: search, mode: 'insensitive' } })) }),
     }
+    const rows = await prisma.accessories.findMany({ where, orderBy: { created_at: 'desc' } })
 
-    const { data, error } = await query
-    if (error) throw error
-    return NextResponse.json({ data })
-  } catch (err: unknown) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
+    const data = rows.map(a => ({ ...a, status_computed: stockLevel(a), is_low_stock: a.quantite <= a.seuil_alerte }))
+    return json({ data })
+  } catch (err) {
+    return handleError(err, 'GET /api/accessories')
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase      = await createUntypedClient()
-    const typedSupabase = await createClient()
-    const { data: { user } } = await typedSupabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
-
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('display_name, store_id')
-      .eq('id', user.id)
-      .single() as { data: { display_name: string; store_id: string | null } | null }
-
+    const user = await requireActiveUser()
     const body = await request.json()
-    if (!body.nom || !body.categorie) {
-      return NextResponse.json({ error: 'nom et categorie requis' }, { status: 400 })
-    }
+    requireFields(body, ['nom', 'categorie'])
 
-    const { data, error } = await supabase
-      .from('accessories')
-      .insert({
-        ...body,
-        store_id:   body.store_id ?? profile?.store_id ?? null,
-        is_deleted: false,
+    const data = await prisma.accessories.create({
+      data: {
+        ...(pickInput('accessories', body, EDITABLE) as Prisma.accessoriesUncheckedCreateInput),
+        store_id:   body.store_id ?? user.store_id ?? null,
         created_by: user.id,
         updated_by: user.id,
-      })
-      .select()
-      .single() as { data: Record<string, unknown> | null; error: unknown }
-
-    if (error) throw error
-    if (!data) throw new Error('No data returned')
+      },
+    })
 
     await logActivity({
-      store_id:    data.store_id as string ?? null,
+      store_id:    data.store_id,
       user_id:     user.id,
-      user_name:   profile?.display_name ?? '—',
-      action_type: 'INSERT',
-      module:      'accessories',
-      record_id:   data.acc_id as string,
+      user_name:   user.display_name,
+      action_type: 'creation',
+      module:      'accessoires',
+      record_id:   data.acc_id,
       after_state: data,
       ip_address:  getIpFromRequest(request),
     })
 
-    return NextResponse.json({ data }, { status: 201 })
-  } catch (err: unknown) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
+    return json({ data }, { status: 201 })
+  } catch (err) {
+    return handleError(err, 'POST /api/accessories')
   }
 }
 
 export async function PATCH(request: NextRequest) {
   try {
-    const supabase      = await createUntypedClient()
-    const typedSupabase = await createClient()
-    const { data: { user } } = await typedSupabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
-
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('display_name')
-      .eq('id', user.id)
-      .single() as { data: { display_name: string } | null }
-
+    const user = await requireActiveUser()
     const body = await request.json()
-    const { acc_id, ...updates } = body
-    if (!acc_id) return NextResponse.json({ error: 'acc_id requis' }, { status: 400 })
+    const acc_id = body.acc_id as string | undefined
+    if (!acc_id) throw new HttpError(400, 'acc_id requis')
 
-    const { data: before } = await supabase
-      .from('accessories')
-      .select('*')
-      .eq('acc_id', acc_id)
-      .single() as { data: Record<string, unknown> | null }
-
-    const { data, error } = await supabase
-      .from('accessories')
-      .update({ ...updates, updated_by: user.id })
-      .eq('acc_id', acc_id)
-      .select()
-      .single() as { data: Record<string, unknown> | null; error: unknown }
-
-    if (error) throw error
-    if (!data) throw new Error('No data returned')
+    const before = await prisma.accessories.findUniqueOrThrow({ where: { acc_id } })
+    const data = await prisma.accessories.update({
+      where: { acc_id },
+      data:  { ...pickInput('accessories', body, EDITABLE), updated_by: user.id },
+    })
 
     await logActivity({
-      store_id:     data.store_id as string ?? null,
+      store_id:     data.store_id,
       user_id:      user.id,
-      user_name:    profile?.display_name ?? '—',
-      action_type:  'UPDATE',
-      module:       'accessories',
+      user_name:    user.display_name,
+      action_type:  'modification',
+      module:       'accessoires',
       record_id:    acc_id,
-      before_state: before ?? null,
+      before_state: before,
       after_state:  data,
       ip_address:   getIpFromRequest(request),
     })
 
-    return NextResponse.json({ data })
-  } catch (err: unknown) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
+    return json({ data })
+  } catch (err) {
+    return handleError(err, 'PATCH /api/accessories')
   }
 }
 
 export async function DELETE(request: NextRequest) {
   try {
-    const supabase      = await createUntypedClient()
-    const typedSupabase = await createClient()
-    const { data: { user } } = await typedSupabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+    const user = await requireActiveUser(MANAGERS)
+    const acc_id = new URL(request.url).searchParams.get('acc_id')
+    if (!acc_id) throw new HttpError(400, 'acc_id requis')
 
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('display_name, role')
-      .eq('id', user.id)
-      .single() as { data: { display_name: string; role: string } | null }
+    const before = await prisma.accessories.findUnique({ where: { acc_id } })
+    if (!before) throw new HttpError(404, 'Accessoire introuvable')
 
-    if (!['gerant', 'proprietaire'].includes(profile?.role ?? '')) {
-      return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
-    }
-
-    const { searchParams } = new URL(request.url)
-    const acc_id = searchParams.get('acc_id')
-    if (!acc_id) return NextResponse.json({ error: 'acc_id requis' }, { status: 400 })
-
-    const { data: before } = await supabase
-      .from('accessories')
-      .select('*')
-      .eq('acc_id', acc_id)
-      .single() as { data: Record<string, unknown> | null }
-
-    if (!before) return NextResponse.json({ error: 'Accessoire introuvable' }, { status: 404 })
-
-    const { error } = await supabase
-      .from('accessories')
-      .update({ is_deleted: true, updated_by: user.id, updated_at: new Date().toISOString() })
-      .eq('acc_id', acc_id)
-
-    if (error) throw error
+    await prisma.accessories.update({ where: { acc_id }, data: { is_deleted: true, updated_by: user.id } })
 
     await logActivity({
-      store_id:     before.store_id as string ?? null,
+      store_id:     before.store_id,
       user_id:      user.id,
-      user_name:    profile?.display_name ?? '—',
-      action_type:  'DELETE',
-      module:       'accessories',
+      user_name:    user.display_name,
+      action_type:  'suppression',
+      module:       'accessoires',
       record_id:    acc_id,
       before_state: before,
-      after_state:  null,
       ip_address:   getIpFromRequest(request),
     })
 
-    return NextResponse.json({ status: 'success' })
-  } catch (err: unknown) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
+    return json({ status: 'success' })
+  } catch (err) {
+    return handleError(err, 'DELETE /api/accessories')
   }
 }

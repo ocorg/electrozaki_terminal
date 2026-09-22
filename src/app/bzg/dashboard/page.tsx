@@ -35,7 +35,7 @@ interface StoreSnapshot {
   ca_month:       number
   nb_ventes:      number
   active_repairs: number
-  caisse_status:  'open' | 'pending_eod' | 'closed' | 'none'
+  caisse_status:  'ouverte' | 'en_attente_cloture' | 'cloturee' | 'none'
   caisse_id?:     string
 }
 
@@ -53,7 +53,7 @@ interface PendingEOD {
 interface StaffPunch {
   user_name:  string
   store_id:   string
-  punch_type: 'in' | 'out'
+  punch_type: 'entree' | 'sortie'
   punched_at: string
 }
 
@@ -188,13 +188,13 @@ export default function BZGDashboard() {
           const snap = snapshots.find(s => s.store_id === store.id)
           const caisseLabel = !snap ? '—'
             : snap.caisse_status === 'none'        ? (isAr ? 'لم تفتح' : 'Non ouverte')
-            : snap.caisse_status === 'open'        ? (t(isAr, 'common.openStatus'))
-            : snap.caisse_status === 'pending_eod' ? (isAr ? 'في انتظار الموافقة' : 'En attente')
+            : snap.caisse_status === 'ouverte'        ? (t(isAr, 'common.openStatus'))
+            : snap.caisse_status === 'en_attente_cloture' ? (isAr ? 'في انتظار الموافقة' : 'En attente')
             : (t(isAr, 'common.closedStatus'))
           const caisseColor = !snap ? '#B0ADA6'
-            : snap.caisse_status === 'open'        ? '#10B981'
-            : snap.caisse_status === 'pending_eod' ? '#F59E0B'
-            : snap.caisse_status === 'closed'      ? '#6B6860'
+            : snap.caisse_status === 'ouverte'        ? '#10B981'
+            : snap.caisse_status === 'en_attente_cloture' ? '#F59E0B'
+            : snap.caisse_status === 'cloturee'      ? '#6B6860'
             : '#B0ADA6'
 
           return (
@@ -329,7 +329,7 @@ export default function BZGDashboard() {
             <div className="divide-y divide-[#F2F0EB]">
               {staffLatest.map(p => {
                 const store = STORES.find(s => s.id === p.store_id)
-                const isIn  = p.punch_type === 'in'
+                const isIn  = p.punch_type === 'entree'
                 return (
                   <div key={p.user_name} className="flex items-center gap-4 px-5 py-3">
                     <div className={`w-2 h-2 rounded-full flex-shrink-0 ${isIn ? 'bg-emerald-500' : 'bg-slate-300'}`} />

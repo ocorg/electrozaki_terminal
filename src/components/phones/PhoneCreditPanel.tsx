@@ -11,6 +11,7 @@ import {
 import ComboBox from '@/components/phones/ComboBox'
 import { usePhoneCatalog } from '@/lib/hooks/usePhoneCatalog'
 import { useEscapeKey } from '@/lib/hooks/useEscapeKey'
+import { codeLabel, type Code } from '@/lib/codes'
 
 // ── Types ───────────────────────────────────────────────────────────
 interface CreditSale {
@@ -44,7 +45,7 @@ interface CreditSale {
 interface CreditPayment {
   payment_id:     string
   montant:        number
-  payment_method: 'نقد' | 'تحويل'
+  payment_method: 'especes' | 'virement'
   date_paiement:  string
   notes:          string | null
 }
@@ -107,7 +108,7 @@ export default function PhoneCreditPanel({
   const CREDIT_FORM_EMPTY: CreditForm = {
     client_name: '', client_tel: '', client_cin: '',
     montant_total: '', avance_initiale: '0',
-    payment_method: 'نقد', phone_remis: false, notes: '',
+    payment_method: 'especes', phone_remis: false, notes: '',
     has_reprise: false,
     reprise_marque: '', reprise_serie: '', reprise_model: '',
     reprise_valeur: '', reprise_imei: '',
@@ -118,7 +119,7 @@ export default function PhoneCreditPanel({
   const [dischargeWarning, setDischargeWarning] = useState<string | null>(null)
 
   const [paymentForm, setPaymentForm] = useState<PaymentForm>({
-    montant: '', payment_method: 'نقد',
+    montant: '', payment_method: 'especes',
     date_paiement: new Date().toISOString().split('T')[0], notes: '',
   })
 
@@ -228,7 +229,7 @@ export default function PhoneCreditPanel({
       if (!res.ok) throw new Error(json.error)
       toast.success(`+${montant.toLocaleString('fr-MA')} DH enregistré`)
       setShowPaymentModal(false)
-      setPaymentForm({ montant: '', payment_method: 'نقد', date_paiement: new Date().toISOString().split('T')[0], notes: '' })
+      setPaymentForm({ montant: '', payment_method: 'especes', date_paiement: new Date().toISOString().split('T')[0], notes: '' })
       await fetchCredit()
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Erreur')
@@ -290,7 +291,7 @@ export default function PhoneCreditPanel({
     )
   }
 
-  const isAvailable  = phoneStatus === 'متوفر'
+  const isAvailable  = phoneStatus === 'disponible'
   const hasCredit    = !!credit
   const isFullyPaid  = hasCredit && credit.pct_paye >= 99.9
   const canDischarge = isFullyPaid && !credit.discharged_at && credit.statut === 'en_cours'
@@ -389,7 +390,7 @@ export default function PhoneCreditPanel({
             <p className="text-xs text-white/60">
               {[credit.reprise_marque, credit.reprise_model].filter(Boolean).join(' ')}
               {credit.reprise_imei ? ` · IMEI ${credit.reprise_imei}` : ''}
-              {credit.reprise_etat ? ` · ${credit.reprise_etat}` : ''}
+              {credit.reprise_etat ? ` · ${codeLabel('reprise_etat', credit.reprise_etat as Code<'reprise_etat'>, 'fr')}` : ''}
             </p>
             <div className="flex items-center justify-between">
               <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
@@ -438,7 +439,7 @@ export default function PhoneCreditPanel({
               {payments.map((p) => (
                 <div key={p.payment_id} className="flex items-center justify-between px-4 py-2.5">
                   <div className="flex items-center gap-2.5">
-                    {p.payment_method === 'نقد'
+                    {p.payment_method === 'especes'
                       ? <Banknote className="w-3.5 h-3.5 text-green-400/70" />
                       : <Landmark  className="w-3.5 h-3.5 text-blue-400/70" />
                     }
@@ -447,7 +448,7 @@ export default function PhoneCreditPanel({
                         day: '2-digit', month: 'short', year: 'numeric',
                       })}
                     </span>
-                    <span className="text-xs text-white/30">{p.payment_method}</span>
+                    <span className="text-xs text-white/30">{codeLabel('payment_method', p.payment_method as Code<'payment_method'>, 'fr')}</span>
                   </div>
                   <span className="text-sm font-semibold text-white">
                     +{Number(p.montant).toLocaleString('fr-MA')} DH
@@ -621,8 +622,8 @@ function NewCreditModal({
                   onChange={(e) => setForm((f) => ({ ...f, payment_method: e.target.value }))}
                   className="bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-[#C9A440]/50"
                 >
-                  <option value="نقد">نقد — Espèces</option>
-                  <option value="تحويل">تحويل — Virement</option>
+                  <option value="especes">نقد — Espèces</option>
+                  <option value="virement">تحويل — Virement</option>
                 </select>
               </div>
             </div>
@@ -905,7 +906,7 @@ function PaymentModal({
 
           {/* Méthode */}
           <div className="grid grid-cols-2 gap-2">
-            {(['نقد', 'تحويل'] as const).map((method) => (
+            {(['especes', 'virement'] as const).map((method) => (
               <button
                 key={method}
                 onClick={() => setForm((f) => ({ ...f, payment_method: method }))}
@@ -915,7 +916,7 @@ function PaymentModal({
                     : 'border-white/10 bg-white/5 text-white/50 hover:border-white/20'
                 }`}
               >
-                {method === 'نقد'
+                {method === 'especes'
                   ? <><Banknote className="w-4 h-4" /> Espèces</>
                   : <><Landmark  className="w-4 h-4" /> Virement</>
                 }

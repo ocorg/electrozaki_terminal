@@ -1,39 +1,20 @@
-import { createClient, createUntypedClient } from '@/lib/supabase/server'
-import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/db'
+import { json, handleError, requireUser } from '@/lib/api'
 
-export async function GET(request: NextRequest) {
+// Suggests the next EZ-ACC-###### code after the highest existing one.
+export async function GET() {
   try {
-    const supabase      = await createUntypedClient()
-    const typedSupabase = await createClient()
-    const { data: { user } } = await typedSupabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
-
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('store_id')
-      .eq('id', user.id)
-      .single() as { data: { store_id: string | null } | null }
-
-    const prefix  = 'EZ-ACC-'
-
-    // Find the highest existing sequence number for this prefix
-    const { data: rows } = await supabase
-      .from('accessories')
-      .select('acc_id')
-      .ilike('acc_id', `${prefix}%`)
-      .order('acc_id', { ascending: false })
-      .limit(1) as { data: { acc_id: string }[] | null }
-
-    let nextSeq = 1
-    if (rows && rows.length > 0) {
-      const lastId = rows[0].acc_id  // e.g. "EZ-ACC-000042"
-      const lastNum = parseInt(lastId.replace(prefix, ''), 10)
-      if (!isNaN(lastNum)) nextSeq = lastNum + 1
-    }
-
-    const barcode = `${prefix}${String(nextSeq).padStart(6, '0')}`
-    return NextResponse.json({ status: 'success', barcode })
-  } catch (err: unknown) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
+    await requireUser()
+    const prefix = 'EZ-ACC-'
+    const last = await prisma.accessories.findFirst({
+      where:   { acc_id: { startsWith: prefix } },
+      orderBy: { acc_id: 'desc' },
+      select:  { acc_id: true },
+    })
+    const lastNum = last ? parseInt(last.acc_id.slice(prefix.length), 10) : 0
+    const barcode = `${prefix}${String((Number.isNaN(lastNum) ? 0 : lastNum) + 1).padStart(6, '0')}`
+    return json({ status: 'success', barcode })
+  } catch (err) {
+    return handleError(err, 'GET /api/accessories/generate-barcode')
   }
 }

@@ -1,6 +1,5 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { useUser } from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
 import { t } from '@/lib/i18n/t'
@@ -69,8 +68,8 @@ function collected(t: TxnRow): number {
   const pv = t.prix_vente     || 0
   const av = t.avance         || 0
   const ve = t.valeur_echange || 0
-  if (t.payment_method === 'آجل')     return av               // deferred: only avance collected now
-  if (t.type_operation === 'إستبدال') return pv - ve          // exchange: deduct trade-in
+  if (t.payment_method === 'credit')   return av               // deferred: only avance collected now
+  if (t.type_operation === 'echange')  return pv - ve          // exchange: deduct trade-in
   const isPartial = av > 0 && (pv - av - ve) > 0
   return isPartial ? av : pv                                   // partial تسبيق → avance; full → full price
 }
@@ -148,7 +147,6 @@ function ChartTip({
 export default function EZDashboard() {
   const { user }     = useUser()
   const { language } = useLanguageStore()
-  const supabase     = createClient()
   const isAr         = language === 'ar'
   const canFin       = user?.role === 'gerant' || user?.role === 'proprietaire'
 
@@ -166,69 +164,21 @@ export default function EZDashboard() {
   async function fetchDashboard() {
     setLoading(true)
     try {
-      const today = new Date().toISOString().split('T')[0]
       const { start } = periodDates(period)
 
-      // ── Parallel primary fetches ───────────────────────────
-      const [pTxn, rTxn, repR, stockR, credR, expR] = await Promise.all([
-        // Period transactions — filtered server-side
-        supabase.from('transactions')
-          .select('txn_id, device_id, device_type, type_operation, prix_vente, avance, valeur_echange, payment_method, date_vente')
-          .eq('store_id', STORE_ID).eq('voided', false)
-          .gte('date_vente', start).lte('date_vente', today),
+      // One round trip: the server runs every query in parallel (costs only for managers)
+      const { end } = periodDates(period)
+      const res  = await fetch(`/api/dashboard?store_id=${STORE_ID}&start=${start}&end=${end}`)
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error)
 
-        // Last 8 for the feed (always, regardless of period)
-        supabase.from('transactions')
-          .select('txn_id, device_id, device_type, type_operation, prix_vente, avance, valeur_echange, payment_method, date_vente, clients(nom)')
-          .eq('store_id', STORE_ID).eq('voided', false)
-          .order('created_at', { ascending: false }).limit(8),
-
-        // Active repairs
-        supabase.from('reparations')
-          .select('rep_id, statut').eq('store_id', STORE_ID).neq('statut', 'تم الاستلام'),
-
-        // Accessories for low-stock
-        supabase.from('accessories')
-          .select('acc_id, nom, quantite, seuil_alerte').eq('store_id', STORE_ID).eq('is_deleted', false),
-
-        // Open credits (partial + deferred)
-        supabase.from('transactions')
-          .select('txn_id, prix_vente, avance, valeur_echange, payment_method')
-          .eq('store_id', STORE_ID).eq('voided', false)
-          .or('avance.gt.0,payment_method.eq.آجل'),
-
-        // Expenses in period (for net profit)
-        supabase.from('expenses')
-          .select('montant, date').eq('store_id', STORE_ID).eq('is_deleted', false)
-          .gte('date', start).lte('date', today),
-      ])
-
-      const periodTxns = (pTxn.data   || []) as TxnRow[]
-      const recentRaw  = (rTxn.data   || []) as Record<string, unknown>[]
-      const repairs    = (repR.data   || []) as Record<string, unknown>[]
-      const accs       = (stockR.data || []) as Record<string, unknown>[]
-      const credits    = (credR.data  || []) as Record<string, unknown>[]
-      const exps       = (expR.data   || []) as { montant: number; date: string }[]
-
-      // ── Cost map for gross/net profit (owner/manager only) ──
-      let costMap: Record<string, number> = {}
-      if (canFin && periodTxns.length > 0) {
-        const pIds = Array.from(new Set(periodTxns.filter(t => t.device_type === 'هاتف').map(t => t.device_id)))
-        const aIds = Array.from(new Set(periodTxns.filter(t => t.device_type === 'إكسسوار').map(t => t.device_id)))
-        const lIds = Array.from(new Set(periodTxns.filter(t => t.device_type === 'لابتوب').map(t => t.device_id)))
-
-        const [pr, ar, lr] = await Promise.all([
-          pIds.length > 0 ? supabase.from('phones').select('phone_id, prix_achat').in('phone_id', pIds) : { data: [] },
-          aIds.length > 0 ? supabase.from('accessories').select('acc_id, prix_achat').in('acc_id', aIds) : { data: [] },
-          lIds.length > 0 ? supabase.from('laptops').select('laptop_id, prix_achat').in('laptop_id', lIds) : { data: [] },
-        ])
-        for (const p of (pr.data || []) as { phone_id: string; prix_achat: number }[])
-          costMap[p.phone_id]  = p.prix_achat ?? 0
-        for (const a of (ar.data || []) as { acc_id: string; prix_achat: number }[])
-          costMap[a.acc_id]    = a.prix_achat ?? 0
-        for (const l of (lr.data || []) as { laptop_id: string; prix_achat: number }[])
-          costMap[l.laptop_id] = l.prix_achat ?? 0
-      }
+      const periodTxns = (json.periodTxns  || []) as TxnRow[]
+      const recentRaw  = (json.recent      || []) as Record<string, unknown>[]
+      const repairs    = (json.repairs     || []) as Record<string, unknown>[]
+      const accs       = (json.accessories || []) as Record<string, unknown>[]
+      const credits    = (json.credits     || []) as Record<string, unknown>[]
+      const exps       = (json.expenses    || []) as { montant: number; date: string }[]
+      const costMap: Record<string, number> = canFin ? (json.costMap || {}) : {}
 
       // ── KPI calculations ────────────────────────────────────
       const ca        = periodTxns.reduce((s, t) => s + collected(t), 0)
@@ -243,10 +193,10 @@ export default function EZDashboard() {
       const breakdown = { cash: 0, transfer: 0, credit: 0, mixed: 0 }
       for (const t of periodTxns) {
         const v = collected(t)
-        if      (t.payment_method === 'نقد')    breakdown.cash     += v
-        else if (t.payment_method === 'تحويل')  breakdown.transfer += v
-        else if (t.payment_method === 'تسبيق')  breakdown.credit   += v
-        else if (t.payment_method === 'مختلط')  breakdown.mixed    += v
+        if      (t.payment_method === 'especes')  breakdown.cash     += v
+        else if (t.payment_method === 'virement') breakdown.transfer += v
+        else if (t.payment_method === 'avance')   breakdown.credit   += v
+        else if (t.payment_method === 'mixte')    breakdown.mixed    += v
       }
 
       // ── Repairs ──────────────────────────────────────────────
@@ -266,14 +216,14 @@ export default function EZDashboard() {
         const pv = (c.prix_vente as number) || 0
         const av = (c.avance    as number) || 0
         const ve = (c.valeur_echange as number) || 0
-        return c.payment_method === 'آجل' || (pv - av - ve) > 0
+        return c.payment_method === 'credit' || (pv - av - ve) > 0
       }).length
 
       // ── Recent transactions ──────────────────────────────────
       const recent_txns: RecentTxn[] = recentRaw.map(t => ({
         txn_id:         t.txn_id         as string,
         device_id:      t.device_id      as string,
-        device_type:    t.device_type    as string || 'هاتف',
+        device_type:    t.device_type    as string || 'telephone',
         type_operation: t.type_operation as string,
         prix_vente:     t.prix_vente     as number,
         avance:         (t.avance        as number) || 0,
@@ -685,9 +635,9 @@ export default function EZDashboard() {
             </div>
             <div className="p-4 space-y-2">
               {[
-                { status: 'معلق',        label: isAr ? 'معلق'        : 'En attente', color: '#F59E0B' },
-                { status: 'قيد الإصلاح', label: isAr ? 'قيد الإصلاح' : 'En cours',   color: '#3B82F6' },
-                { status: 'جاهز',        label: isAr ? 'جاهز'        : 'Prêt',       color: '#10B981' },
+                { status: 'en_attente',        label: isAr ? 'معلق'        : 'En attente', color: '#F59E0B' },
+                { status: 'en_cours', label: isAr ? 'قيد الإصلاح' : 'En cours',   color: '#3B82F6' },
+                { status: 'pret',        label: isAr ? 'جاهز'        : 'Prêt',       color: '#10B981' },
               ].map(row => (
                 <div key={row.status} className="flex items-center justify-between py-1">
                   <div className="flex items-center gap-2">

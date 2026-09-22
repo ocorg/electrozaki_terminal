@@ -1,149 +1,80 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient, createUntypedClient } from '@/lib/supabase/server'
-import { logActivity }               from '@/lib/utils/logger'
+import { NextRequest } from 'next/server'
+import { prisma } from '@/lib/db'
+import { json, handleError, requireUser, requireActiveUser, HttpError, MANAGERS } from '@/lib/api'
+import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
+import { phoneLabel, countByResult } from '@/lib/inventory'
 
 // ── GET /api/inventory — liste des sessions avec compteurs ──
 export async function GET(req: NextRequest) {
-  const supabase      = await createUntypedClient()
-  const typedSupabase = await createClient()
-  const { data: { user } } = await typedSupabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  try {
+    const user = await requireUser()
+    if (!MANAGERS.includes(user.role)) throw new HttpError(403, 'Accès refusé')
+    const storeId = user.store_id ?? new URL(req.url).searchParams.get('store_id')
+    if (!storeId) throw new HttpError(400, 'store_id introuvable')
 
-  const { data: profileRaw } = await supabase
-    .from('user_profiles')
-    .select('role, store_id')
-    .eq('id', user.id)
-    .maybeSingle()
-  const profile = profileRaw as { role: string; store_id: string } | null
-
-  if (profile?.role !== 'gerant' && profile?.role !== 'proprietaire') {
-    return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
+    const sessions = await prisma.inventory_sessions.findMany({
+      where:   { store_id: storeId },
+      include: { inventory_session_items: { select: { resultat: true } } },
+      orderBy: { started_at: 'desc' },
+      take:    30,
+    })
+    return json({
+      sessions: sessions.map(({ inventory_session_items, ...s }) => ({ ...s, counts: countByResult(inventory_session_items) })),
+    })
+  } catch (err) {
+    return handleError(err, 'GET /api/inventory')
   }
-
-  const storeId = profile.store_id ?? new URL(req.url).searchParams.get('store_id')
-  if (!storeId) return NextResponse.json({ error: 'store_id introuvable' }, { status: 400 })
-
-  const { data: sessions, error } = await supabase
-    .from('inventory_sessions')
-    .select('*, inventory_session_items(resultat)')
-    .eq('store_id', storeId)
-    .order('started_at', { ascending: false })
-    .limit(30)
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-
-  const enriched = (sessions ?? []).map((s: any) => {
-    const nestedItems = s.inventory_session_items as { resultat: string }[]
-    const counts = nestedItems.reduce((acc: Record<string, number>, i) => {
-      acc[i.resultat] = (acc[i.resultat] ?? 0) + 1
-      return acc
-    }, {})
-    const { inventory_session_items: _, ...session } = s
-    return { ...session, counts }
-  })
-
-  return NextResponse.json({ sessions: enriched })
 }
 
 // ── POST /api/inventory — démarrer une nouvelle session ──
 export async function POST(req: NextRequest) {
-  const supabase      = await createUntypedClient()
-  const typedSupabase = await createClient()
-  const { data: { user } } = await typedSupabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  try {
+    const user = await requireActiveUser(MANAGERS)
+    const body = await req.json().catch(() => ({}))
+    const storeId = user.store_id ?? body.store_id ?? null
+    if (!storeId) throw new HttpError(400, 'store_id introuvable')
 
-  const { data: profileRaw } = await supabase
-    .from('user_profiles')
-    .select('role, store_id, display_name')
-    .eq('id', user.id)
-    .maybeSingle()
-  const profile = profileRaw as { role: string; store_id: string; display_name: string } | null
+    const session = await prisma.$transaction(async (tx) => {
+      const existing = await tx.inventory_sessions.findFirst({ where: { store_id: storeId, statut: 'en_cours' }, select: { session_id: true } })
+      if (existing) throw new HttpError(409, 'Une vérification est déjà en cours')
 
-  if (profile?.role !== 'gerant' && profile?.role !== 'proprietaire') {
-    return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
-  }
+      // Snapshot of the phones expected in the shop
+      const phones = (await tx.phones.findMany({
+        where:  { store_id: storeId, is_deleted: false, status: { notIn: ['vendu', 'en_livraison'] } },
+        select: { phone_id: true, imei: true, marque: true, model: true, status: true },
+      })).filter(p => p.imei)
 
-  const body = await req.json().catch(() => ({}))
-  const storeId = profile.store_id ?? body.store_id ?? null
-  if (!storeId) return NextResponse.json({ error: 'store_id introuvable' }, { status: 400 })
-
-  // Bloquer si une session est déjà en cours
-  const { data: existing } = await supabase
-    .from('inventory_sessions')
-    .select('session_id')
-    .eq('store_id', storeId)
-    .eq('statut', 'en_cours')
-    .maybeSingle()
-
-  if (existing) {
-    return NextResponse.json(
-      { error: 'Une vérification est déjà en cours', session_id: existing.session_id },
-      { status: 409 }
-    )
-  }
-
-  // Snapshot des téléphones en périmètre — filtrage côté PostgREST (enum cast fiable)
-  const { data: phones, error: phonesError } = await supabase
-    .from('phones')
-    .select('phone_id, imei, marque, model, status')
-    .eq('store_id', storeId)
-    .eq('is_deleted', false)
-    .neq('status', 'مباع')
-    .neq('status', 'en_livraison')
-
-  if (phonesError) return NextResponse.json({ error: phonesError.message }, { status: 500 })
-
-  const phoneList = ((phones ?? []) as any[]).filter(p => p.imei)
-
-  // Créer la session
-  const { data: session, error: sessionError } = await supabase
-    .from('inventory_sessions')
-    .insert({
-      store_id:       storeId,
-      created_by:     user.id,
-      snapshot_count: phoneList.length,
-      statut:         'en_cours',
-    })
-    .select()
-    .single()
-
-  if (sessionError) return NextResponse.json({ error: sessionError.message }, { status: 500 })
-
-  // Insérer les articles de session
-  if (phoneList.length > 0) {
-    const items = phoneList.map((p) => {
-      const marque      = (p.marque ?? '').trim()
-      const model       = (p.model  ?? '').trim()
-      const cleanModel  = model.replace(/\s*\d+(GB|TB)\s*$/i, '').trim()
-      const phone_label = cleanModel.toLowerCase().startsWith(marque.toLowerCase())
-        ? cleanModel
-        : `${marque} ${cleanModel}`.trim()
-
-      return {
-        session_id:   session.session_id,
-        phone_id:     p.phone_id,
-        imei:         p.imei,
-        phone_label,
-        phone_status: p.status,
-        resultat:     'en_attente',
+      const session = await tx.inventory_sessions.create({
+        data: { store_id: storeId, created_by: user.id, snapshot_count: phones.length, statut: 'en_cours' },
+      })
+      if (phones.length) {
+        await tx.inventory_session_items.createMany({
+          data: phones.map(p => ({
+            session_id:   session.session_id,
+            phone_id:     p.phone_id,
+            imei:         p.imei!,
+            phone_label:  phoneLabel(p.marque, p.model),
+            phone_status: p.status,
+            resultat:     'en_attente' as const,
+          })),
+        })
       }
+      return session
     })
 
-    const { error: itemsError } = await supabase
-      .from('inventory_session_items')
-      .insert(items)
+    await logActivity({
+      user_id:     user.id,
+      store_id:    storeId,
+      user_name:   user.display_name,
+      module:      'inventaire',
+      action_type: 'creation',
+      record_id:   session.session_id,
+      ip_address:  getIpFromRequest(req),
+      after_state: { session_id: session.session_id, snapshot_count: session.snapshot_count },
+    })
 
-    if (itemsError) return NextResponse.json({ error: itemsError.message }, { status: 500 })
+    return json({ session })
+  } catch (err) {
+    return handleError(err, 'POST /api/inventory')
   }
-
-  await logActivity({
-    user_id:     user.id,
-    store_id:    storeId,
-    user_name:   profile.display_name,
-    module:      'inventaire' as any,
-    action_type: 'INSERT',
-    after_state: { session_id: session.session_id, snapshot_count: phoneList.length },
-  })
-
-  return NextResponse.json({ session })
 }

@@ -1,4 +1,5 @@
-import { createAdminClient } from '@/lib/supabase/server'
+import { prisma } from '@/lib/db'
+import { requireUser, HttpError } from '@/lib/api'
 import { NextRequest, NextResponse } from 'next/server'
 
 // In-process rate limit: 5 attempts per IP per 60 seconds.
@@ -20,6 +21,7 @@ function checkPinRateLimit(ip: string): boolean {
 
 export async function POST(request: NextRequest) {
   try {
+    await requireUser()
     const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? '0.0.0.0'
     if (!checkPinRateLimit(ip)) {
       return NextResponse.json(
@@ -33,16 +35,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ authorized: false, error: 'PIN invalide' }, { status: 400 })
     }
 
-    const supabase = createAdminClient()
+    // Database function: bcrypt-compares the PIN with active managers'/owners' override_pin
+    const [{ user_id }] = await prisma.$queryRaw<{ user_id: string | null }[]>`SELECT verify_override_pin(${String(pin)}) AS user_id`
 
-    // Call the DB function that checks bcrypt hash
-    const { data, error } = await supabase
-      .rpc('verify_override_pin', { p_pin: pin } as any)
-
-    if (error) throw error
-
-    return NextResponse.json({ authorized: !!data, user_id: data || null })
+    return NextResponse.json({ authorized: !!user_id, user_id })
   } catch (err: unknown) {
-    return NextResponse.json({ authorized: false, error: (err as Error).message }, { status: 500 })
+    if (err instanceof HttpError) return NextResponse.json({ authorized: false, error: err.message }, { status: err.status })
+    console.error('[POST /api/auth/verify-override]', err)
+    return NextResponse.json({ authorized: false, error: 'Erreur serveur' }, { status: 500 })
   }
 }

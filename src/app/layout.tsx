@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import { Toaster } from 'sonner'
-import FetchInterceptor from '@/components/shared/FetchInterceptor'
 import HtmlLangSync from '@/components/shared/HtmlLangSync'
 import AuthProvider from '@/components/shared/AuthProvider'
 import './globals.css'
@@ -34,7 +33,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
       </head>
       <body className={`${inter.variable} font-body bg-ez-black text-ez-text antialiased`}>
-        <FetchInterceptor />
         <HtmlLangSync />
         <AuthProvider>{children}</AuthProvider>
         <Toaster

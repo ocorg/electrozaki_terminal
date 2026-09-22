@@ -19,19 +19,28 @@ export async function GET() {
   }
 }
 
-// ── PATCH — toggle is_active ──────────────────────────────────
+// ── PATCH — store details (manager/owner) or is_active (owner only) ──
 export async function PATCH(request: NextRequest) {
   try {
-    const user = await requireActiveUser()
-    if (user.role !== 'proprietaire') {
-      throw new HttpError(403, 'Seul le propriétaire peut modifier le statut des boutiques')
+    const user = await requireActiveUser(MANAGERS)
+    const { store_id, is_active, name, theme_color, address, phone } = await request.json()
+    if (!store_id) throw new HttpError(400, 'store_id requis')
+    if (is_active !== undefined) {
+      if (user.role !== 'proprietaire') throw new HttpError(403, 'Seul le propriétaire peut modifier le statut des boutiques')
+      if (typeof is_active !== 'boolean') throw new HttpError(400, 'is_active invalide')
     }
 
-    const { store_id, is_active } = await request.json()
-    if (!store_id || typeof is_active !== 'boolean') throw new HttpError(400, 'store_id et is_active requis')
-
     const before = await prisma.stores.findUniqueOrThrow({ where: { store_id } })
-    const data   = await prisma.stores.update({ where: { store_id }, data: { is_active } })
+    const data   = await prisma.stores.update({
+      where: { store_id },
+      data: {
+        ...(is_active   !== undefined && { is_active }),
+        ...(name        !== undefined && { name }),
+        ...(theme_color !== undefined && { theme_color }),
+        ...(address     !== undefined && { address: address || null }),
+        ...(phone       !== undefined && { phone: phone || null }),
+      },
+    })
 
     await logActivity({
       store_id,
@@ -43,7 +52,9 @@ export async function PATCH(request: NextRequest) {
       before_state: before,
       after_state:  data,
       ip_address:   getIpFromRequest(request),
-      notes:        `Boutique ${store_id} ${is_active ? 'activée' : 'désactivée'}`,
+      notes:        is_active === undefined
+        ? `Boutique ${store_id} modifiée`
+        : `Boutique ${store_id} ${is_active ? 'activée' : 'désactivée'}`,
     })
 
     return json({ data })

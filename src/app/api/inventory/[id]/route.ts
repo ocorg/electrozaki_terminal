@@ -1,44 +1,23 @@
-import { NextRequest, NextResponse }         from 'next/server'
-import { createClient, createUntypedClient } from '@/lib/supabase/server'
+import { NextRequest } from 'next/server'
+import { prisma } from '@/lib/db'
+import { json, handleError, requireUser, HttpError, MANAGERS } from '@/lib/api'
 
-export async function GET(
-  _req: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  const supabase      = await createUntypedClient()
-  const typedSupabase = await createClient()
-  const { data: { user } } = await typedSupabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const user = await requireUser()
+    if (!MANAGERS.includes(user.role)) throw new HttpError(403, 'Accès refusé')
 
-  const { data: profileRaw } = await supabase
-    .from('user_profiles')
-    .select('role, store_id')
-    .eq('id', user.id)
-    .maybeSingle()
-  const profile = profileRaw as { role: string; store_id: string } | null
+    const session = await prisma.inventory_sessions.findFirst({
+      where: { session_id: params.id, ...(user.store_id && { store_id: user.store_id }) },
+    })
+    if (!session) throw new HttpError(404, 'Session introuvable')
 
-  if (profile?.role !== 'gerant' && profile?.role !== 'proprietaire') {
-    return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
+    const items = await prisma.inventory_session_items.findMany({
+      where:   { session_id: params.id },
+      orderBy: { scanned_at: { sort: 'desc', nulls: 'last' } },
+    })
+    return json({ session, items })
+  } catch (err) {
+    return handleError(err, 'GET /api/inventory/[id]')
   }
-
-  let sessionQuery = supabase
-    .from('inventory_sessions')
-    .select('*')
-    .eq('session_id', params.id)
-  if (profile.store_id) sessionQuery = sessionQuery.eq('store_id', profile.store_id)
-  const { data: session, error: sessionError } = await sessionQuery.maybeSingle()
-
-  if (sessionError || !session) {
-    return NextResponse.json({ error: 'Session introuvable' }, { status: 404 })
-  }
-
-  const { data: items, error: itemsError } = await supabase
-    .from('inventory_session_items')
-    .select('*')
-    .eq('session_id', params.id)
-    .order('scanned_at', { ascending: false, nullsFirst: false })
-
-  if (itemsError) return NextResponse.json({ error: itemsError.message }, { status: 500 })
-
-  return NextResponse.json({ session, items: items ?? [] })
 }

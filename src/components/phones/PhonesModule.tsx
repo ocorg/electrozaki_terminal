@@ -18,10 +18,12 @@ import {
   Smartphone, Edit2, MapPin, Shield,
   ChevronDown, X, Eye, EyeOff, Trash2, Loader2, BookOpen, Check, CreditCard
 } from 'lucide-react'
+import { codeLabel } from '@/lib/codes'
+import type { DeviceStatus } from '@/types/database'
 
-const STATUSES = ['متوفر', 'حجز', 'مباع', 'إستبدال', 'إصلاح', 'en_livraison', 'en_transfert']
+const STATUSES = ['disponible', 'reserve', 'vendu', 'echange', 'en_reparation', 'en_livraison', 'en_transfert'] as const
 const MARQUES  = ['Apple', 'Samsung', 'Xiaomi', 'Redmi', 'Huawei', 'Oppo', 'Realme']
-const LOCATIONS = ['Magasin Principal', 'Magasin Secondaire', 'Externe']
+const LOCATIONS = ['magasin_principal', 'magasin_secondaire', 'externe']
 
 interface PhonesModuleProps {
   storeId: string
@@ -213,26 +215,13 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
     return acc
   }, {} as Record<string, number>)
 
-    const STATUS_LABELS_FR: Record<string, string> = {
-    'متوفر':        'Disponible',
-    'حجز':          'Réservé',
-    'مباع':         'Vendu',
-    'إستبدال':      'Échangé',
-    'إصلاح':        'Réparation',
-    'en_livraison': 'En livraison',
-    'en_transfert': 'En transfert',
-  }
-  // Libellés AR pour les statuts à clé non-arabe
-  const STATUS_LABELS_AR: Record<string, string> = {
-    'en_livraison': 'في التوصيل',
-    'en_transfert': 'في النقل',
-  }
-    const STATUS_COLORS: Record<string, string> = {
-    'متوفر':        '#10B981',
-    'حجز':          '#C9A440',
-    'مباع':         '#6B6860',
-    'إستبدال':      '#3B82F6',
-    'إصلاح':        '#F59E0B',
+  const statusLabel = (s: string) => codeLabel('device_status', s as DeviceStatus, isAr ? 'ar' : 'fr')
+  const STATUS_COLORS: Record<string, string> = {
+    'disponible':    '#10B981',
+    'reserve':       '#C9A440',
+    'vendu':         '#6B6860',
+    'echange':       '#3B82F6',
+    'en_reparation': '#F59E0B',
     'en_livraison': '#8B5CF6',   // violet — en cours de livraison client
     'en_transfert': '#F97316',   // orange — sorti du magasin temporairement
   }
@@ -335,7 +324,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                 >
                   <span className="w-1.5 h-1.5 rounded-full"
                         style={{ backgroundColor: STATUS_COLORS[s] }} />
-                  {isAr ? (STATUS_LABELS_AR[s] ?? s) : STATUS_LABELS_FR[s]}
+                  {statusLabel(s)}
                   {counts[s] > 0 && <span className="opacity-60">({counts[s]})</span>}
                 </button>
               ))}
@@ -399,7 +388,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
           {STATUSES.map(s => (
             <div key={s} className="flex items-center gap-1.5 text-xs text-[#6B6860]">
               <span className="w-2 h-2 rounded-full" style={{ backgroundColor: STATUS_COLORS[s] }} />
-              {counts[s]} {isAr ? (STATUS_LABELS_AR[s] ?? s) : STATUS_LABELS_FR[s]}
+              {counts[s]} {statusLabel(s)}
             </div>
           ))}
         </div>
@@ -471,8 +460,8 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                         <p className="text-sm font-medium text-[#1A1A1A] truncate">{deviceName}</p>
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <p className="text-xs text-[#B0ADA6]">
-                            {phone.condition === 'جديد' ? (t(isAr, 'common.new'))
-                              : phone.condition === 'مستعمل' ? (t(isAr, 'common.used'))
+                            {phone.condition === 'neuf' ? (t(isAr, 'common.new'))
+                              : phone.condition === 'occasion' ? (t(isAr, 'common.used'))
                               : (t(isAr, 'common.damaged'))}
                             {phone.couleur ? ` · ${phone.couleur}` : ''}
                             {warrantyFlag && <span className="ml-1">{warrantyFlag}</span>}
@@ -556,8 +545,8 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                     <div className="flex items-center gap-1.5">
                       <MapPin className="w-3 h-3 text-[#B0ADA6] flex-shrink-0" />
                       <span className="text-xs text-[#6B6860] truncate">
-                        {phone.location === 'Magasin Principal' ? (isAr ? 'المحل الرئيسي' : 'Principal')
-                          : phone.location === 'Magasin Secondaire' ? (isAr ? 'المحل الثاني' : 'Secondaire')
+                        {phone.location === 'magasin_principal' ? (isAr ? 'المحل الرئيسي' : 'Principal')
+                          : phone.location === 'magasin_secondaire' ? (isAr ? 'المحل الثاني' : 'Secondaire')
                           : (t(isAr, 'common.external'))}
                       </span>
                     </div>
@@ -614,7 +603,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                           marque:        phone.marque,
                           model:         phone.model,
                           category:      'Téléphone',
-                          type:          phone.condition === 'جديد' ? 'Neuf' : phone.condition === 'مستعمل' ? 'Occasion' : 'Défectueux',
+                          type:          phone.condition === 'neuf' ? 'Neuf' : phone.condition === 'occasion' ? 'Occasion' : 'Défectueux',
                           imei:          phone.imei          ?? undefined,
                           couleur:       phone.couleur       ?? undefined,
                           stockage:      phone.stockage      ?? undefined,
@@ -635,7 +624,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                       >
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
-                      {(['متوفر', 'حجز', 'مباع'] as string[]).includes(phone.status) && (
+                      {(['disponible', 'reserve', 'vendu'] as string[]).includes(phone.status) && (
                         <button
                           onClick={() => setCreditPhone(phone)}
                           className="flex items-center justify-center w-8 h-8 rounded-lg text-[#B0ADA6] hover:text-[#C9A440] hover:bg-[#FAF5E8] transition-all"
@@ -747,7 +736,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                         {formatMAD(phone.prix_vente_recommande)}
                       </p>
                     )}
-                    {(['متوفر', 'حجز', 'مباع'] as string[]).includes(phone.status) && (
+                    {(['disponible', 'reserve', 'vendu'] as string[]).includes(phone.status) && (
                       <button
                         onClick={(e) => { e.stopPropagation(); setCreditPhone(phone) }}
                         className="p-1.5 rounded-lg text-[#B0ADA6] hover:text-[#C9A440] hover:bg-[#FAF5E8] transition-all flex-shrink-0"

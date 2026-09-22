@@ -93,9 +93,9 @@ export interface ReplacedComponent {
   condition: 'original' | 'standard'
 }
 
-export type ProspectStatus   = 'Nouveau' | 'Contacté' | 'Converti' | 'Perdu'
-export type ProspectDemand   = 'modele' | 'budget'
-export type ProspectSource   = 'TikTok' | 'Instagram' | 'WhatsApp' | 'En magasin' | 'Autre'
+export type ProspectStatus   = Code<'prospect_status'>
+export type ProspectDemand   = Code<'prospect_demand'>
+export type ProspectSource   = Code<'prospect_source'>
 
 export interface Prospect {
   prospect_id:  string
@@ -170,7 +170,7 @@ export interface Accessory {
   created_by?:            string | null
   updated_at:             string
   updated_by?:            string | null
-  status_computed?:       'متوفر' | 'تحذير' | 'نفذ'
+  status_computed?:       Code<'stock_level'>
   is_low_stock?:          boolean
 }
 
@@ -412,12 +412,7 @@ export interface PlatformChangelog {
 }
 
 // ── Inventory ──────────────────────────────────────────────
-export type InventoryResultat =
-  | 'en_attente'
-  | 'trouvé'
-  | 'manquant'
-  | 'non_enregistré'
-  | 'hors_périmètre'
+export type InventoryResultat = Code<'inventory_result'>
 
 export interface InventorySession {
   session_id:     string
@@ -425,7 +420,7 @@ export interface InventorySession {
   created_by:     string
   started_at:     string
   completed_at:   string | null
-  statut:         'en_cours' | 'terminée'
+  statut:         Code<'inventory_status'>
   snapshot_count: number
 }
 
@@ -557,173 +552,4 @@ export interface WarrantyEvent {
   notes?:      string | null
   created_at:  string
   created_by?: string | null
-}
-
-// ─── Database shape for typed Supabase client ─────────────────
-export interface Database {
-  public: {
-    Tables: {
-      phone_catalog: {
-        Row:    { catalog_id: string; marque: string; serie: string; type: string; model: string; couleur: string; created_at: string }
-        Insert: { catalog_id?: string; marque: string; serie: string; type: string; model: string; couleur: string; created_at?: string }
-        Update: { catalog_id?: string; marque?: string; serie?: string; type?: string; model?: string; couleur?: string; created_at?: string }
-      }
-      stores: {
-        Row:    Store
-        Insert: Partial<Store>
-        Update: Partial<Store>
-      }
-      user_profiles: {
-        Row:    UserProfile
-        Insert: Partial<UserProfile>
-        Update: Partial<UserProfile>
-      }
-      phones: {
-        Row:    Phone
-        Insert: Partial<Phone>
-        Update: Partial<Phone>
-      }
-      laptops: {
-        Row:    Laptop
-        Insert: Partial<Laptop>
-        Update: Partial<Laptop>
-      }
-      accessories: {
-        Row:    Accessory
-        Insert: Partial<Accessory>
-        Update: Partial<Accessory>
-      }
-      transactions: {
-        Row:    Transaction
-        Insert: Partial<Transaction>
-        Update: Partial<Transaction>
-      }
-      reparations: {
-        Row:    Reparation
-        Insert: Partial<Reparation>
-        Update: Partial<Reparation>
-      }
-      reparations_parts: {
-        Row:    ReparationPart
-        Insert: Partial<ReparationPart>
-        Update: Partial<ReparationPart>
-      }
-      clients: {
-        Row:    Client
-        Insert: Partial<Client>
-        Update: Partial<Client>
-      }
-      suppliers: {
-        Row:    Supplier
-        Insert: Partial<Supplier>
-        Update: Partial<Supplier>
-      }
-      supplier_payments: {
-        Row:    SupplierPayment
-        Insert: Partial<SupplierPayment>
-        Update: Partial<SupplierPayment>
-      }
-      expenses: {
-        Row:    Expense
-        Insert: Partial<Expense>
-        Update: Partial<Expense>
-      }
-      caisse: {
-        Row:    Caisse
-        Insert: Partial<Caisse>
-        Update: Partial<Caisse>
-      }
-      stock_movements: {
-        Row:    StockMovement
-        Insert: Partial<StockMovement>
-        Update: Partial<StockMovement>
-      }
-      settings: {
-        Row:    Setting
-        Insert: Partial<Setting>
-        Update: Partial<Setting>
-      }
-      activity_log: {
-        Row:    ActivityLog
-        Insert: Partial<ActivityLog>
-        Update: Partial<ActivityLog>
-      }
-      staff_attendance: {
-        Row:    StaffAttendance
-        Insert: Partial<StaffAttendance>
-        Update: Partial<StaffAttendance>
-      }
-      platform_changelog: {
-        Row:    PlatformChangelog
-        Insert: Partial<PlatformChangelog>
-        Update: Partial<PlatformChangelog>
-      }
-      prospects: {
-        Row:    Prospect
-        Insert: Partial<Prospect>
-        Update: Partial<Prospect>
-      }
-      inventory_sessions: {
-        Row:    InventorySession
-        Insert: Partial<InventorySession>
-        Update: Partial<InventorySession>
-      }
-      inventory_session_items: {
-        Row:    InventorySessionItem
-        Insert: Partial<InventorySessionItem>
-        Update: Partial<InventorySessionItem>
-      }
-      cash_drops: {
-        Row:    CashDrop
-        Insert: Partial<CashDrop>
-        Update: Partial<CashDrop>
-      }
-      phone_credit_sales: {
-        Row:    PhoneCreditSale
-        Insert: Partial<PhoneCreditSale>
-        Update: Partial<PhoneCreditSale>
-      }
-      phone_credit_payments: {
-        Row:    PhoneCreditPayment
-        Insert: Partial<PhoneCreditPayment>
-        Update: Partial<PhoneCreditPayment>
-      }
-      credit_imports: {
-        Row:    CreditImport
-        Insert: Partial<CreditImport>
-        Update: Partial<CreditImport>
-      }
-      credit_payments: {
-        Row:    CreditPayment
-        Insert: Partial<CreditPayment>
-        Update: Partial<CreditPayment>
-      }
-      credit_import_payments: {
-        Row:    CreditImportPayment
-        Insert: Partial<CreditImportPayment>
-        Update: Partial<CreditImportPayment>
-      }
-      ez_documents: {
-        Row:    EzDocument
-        Insert: Partial<EzDocument>
-        Update: Partial<EzDocument>
-      }
-      warranty_events: {
-        Row:    WarrantyEvent
-        Insert: Partial<WarrantyEvent>
-        Update: Partial<WarrantyEvent>
-      }
-    }
-    Views: {
-  client_summary:          { Row: Client }
-  supplier_summary:        { Row: Supplier }
-  accessories_with_status: { Row: Accessory & { status_computed: string; is_low_stock: boolean } }
-}
-Functions: {
-  get_user_role:        { Args: Record<never, never>; Returns: string }
-  get_user_store:       { Args: Record<never, never>; Returns: string }
-  verify_override_pin:  { Args: { p_pin: string };    Returns: string | null }
-  get_dashboard_kpis:   { Args: { p_store_id: string }; Returns: { ca_today: number; nb_ventes_today: number; ca_month: number; nb_ventes_month: number; total_credit_open: number }[] }
-    }
-  }
 }

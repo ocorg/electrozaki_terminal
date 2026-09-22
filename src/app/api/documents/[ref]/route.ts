@@ -1,36 +1,14 @@
-import { NextResponse } from 'next/server'
-import { createClient, createUntypedClient } from '@/lib/supabase/server'
+import { prisma } from '@/lib/db'
+import { json, handleError, requireUser, HttpError } from '@/lib/api'
 
-// ── GET /api/documents/[ref] ──────────────────────────────────────────────────
-// Retourne un document unique par sa doc_ref (ex: EZ-2025-000001).
-
-export async function GET(
-  _request: Request,
-  { params }: { params: { ref: string } }
-) {
+// GET /api/documents/[ref] — a single document by its doc_ref (e.g. EZ-2025-000001)
+export async function GET(_request: Request, { params }: { params: { ref: string } }) {
   try {
-    const supabase = await createClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const db = await createUntypedClient()
-    const { data, error } = await db
-      .from('ez_documents')
-      .select('*')
-      .eq('doc_ref', params.ref)
-      .eq('store_id', 'EZ-001')
-      .maybeSingle()
-
-    if (error) throw error
-    if (!data) {
-      return NextResponse.json({ error: 'Document introuvable' }, { status: 404 })
-    }
-
-    return NextResponse.json({ status: 'success', data })
+    await requireUser()
+    const data = await prisma.ez_documents.findFirst({ where: { doc_ref: params.ref, store_id: 'EZ-001' } })
+    if (!data) throw new HttpError(404, 'Document introuvable')
+    return json({ status: 'success', data })
   } catch (err) {
-    console.error('[GET /api/documents/[ref]]', err)
-    return NextResponse.json({ error: 'Server error' }, { status: 500 })
+    return handleError(err, 'GET /api/documents/[ref]')
   }
 }

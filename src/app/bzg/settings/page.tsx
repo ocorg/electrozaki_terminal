@@ -5,7 +5,6 @@ import { t } from '@/lib/i18n/t'
 import { PageHeader, Field, inputClass, Btn } from '@/components/shared'
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import { Settings, Save, Store, Palette, Tag } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
 import StoreControlSection from '@/components/bzg/StoreControlSection'
 import CategoryManager from '@/components/bzg/CategoryManager'
 
@@ -20,7 +19,6 @@ interface StoreSetting {
 export default function BZGSettingsPage() {
   const { language } = useLanguageStore()
   const isAr   = language === 'ar'
-  const supabase = createClient()
 
   const [stores,  setStores]  = useState<StoreSetting[]>([])
   const [loading, setLoading] = useState(true)
@@ -33,8 +31,9 @@ export default function BZGSettingsPage() {
   function kvKey(storeId: string, key: string) { return `${storeId}__${key}` }
 
   async function fetchSettings() {
-    const { data } = await (supabase as any).from('settings').select('*').order('store_id').order('key')
-    if (data) {
+    const res = await fetch('/api/settings')
+    const { data } = await res.json()
+    if (res.ok && data) {
       setKvSettings(data)
       const edits: Record<string, string> = {}
       data.forEach((s: { key: string; value: string; store_id: string }) => {
@@ -45,20 +44,21 @@ export default function BZGSettingsPage() {
   }
 
   async function saveKvSetting(key: string, storeId: string) {
-    const { error } = await (supabase as any).from('settings').upsert({
-      key,
-      store_id:   storeId,
-      value:      kvEdits[kvKey(storeId, key)],
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'key,store_id' })
-    if (error) showError(error.message)
+    const res = await fetch('/api/settings', {
+      method:  'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ key, store_id: storeId, value: kvEdits[kvKey(storeId, key)] }),
+    })
+    const json = await res.json()
+    if (!res.ok) showError(json.error)
     else showSuccess(`${key} — ${storeId} sauvegardé ✓`)
   }
 
   async function fetchStores() {
     setLoading(true)
     try {
-      const { data } = await supabase.from('stores').select('*').order('created_at')
+      const res = await fetch('/api/stores')
+      const { data } = await res.json()
       setStores((data || []) as StoreSetting[])
       const init: Record<string, Partial<StoreSetting>> = {}
       ;(data || []).forEach((s: StoreSetting) => { init[s.store_id] = { ...s } })
@@ -81,16 +81,19 @@ export default function BZGSettingsPage() {
     setSaving(storeId)
     try {
       const updates = edits[storeId]
-      const { error } = await (supabase as any)
-        .from('stores')
-        .update({
+      const res = await fetch('/api/stores', {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          store_id:    storeId,
           name:        updates.name,
           theme_color: updates.theme_color,
           address:     updates.address,
           phone:       updates.phone,
-        })
-        .eq('store_id', storeId)
-      if (error) throw error
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error)
       showSuccess(t(isAr, 'common.savedOk'))
       await fetchStores()
     } catch (err: unknown) {

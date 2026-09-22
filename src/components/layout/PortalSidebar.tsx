@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import type { UserRole } from '@/types/database'
 import { useLanguageStore } from '@/lib/stores/language'
+import { codeLabel } from '@/lib/codes'
 
 // ─── Nav item definition ──────────────────────────────────────
 interface NavItem {
@@ -134,7 +135,7 @@ export default function PortalSidebar({ onClose, collapsed = false, onCollapsedC
               <p className="text-xs truncate mt-0.5" style={{ color: 'rgba(255,255,255,0.4)' }}>
                 {user.display_name}
                 {' · '}
-                <span style={{ color: `${primary}99` }} className="capitalize">{user.role}</span>
+                <span style={{ color: `${primary}99` }} className="capitalize">{codeLabel('user_role', user.role, language === 'ar' ? 'ar' : 'fr')}</span>
               </p>
             )}
           </div>

@@ -9,19 +9,20 @@ import { StatusBadge, BatteryBar, EmptyState, SkeletonRow, PageHeader, Btn, Moda
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import type { Laptop, DeviceCondition, DeviceSource, LocationType } from '@/types/database'
 import { Plus, Search, RefreshCw, Laptop as LaptopIcon, Edit2, MapPin, X, Filter } from 'lucide-react'
+import { codeLabel } from '@/lib/codes'
 
 const STORE_ID  = 'EZ-001'
 const MARQUES   = ['Apple', 'Dell', 'HP', 'Lenovo', 'Asus', 'Acer', 'MSI', 'Toshiba', 'Samsung', 'Autre']
 const STOCKAGES = ['128GB', '256GB', '512GB', '1TB', '2TB']
 const RAMS      = ['4GB', '8GB', '16GB', '32GB', '64GB']
-const STATUSES  = ['متوفر', 'مباع', 'إستبدال', 'إصلاح']
+const STATUSES  = ['disponible', 'vendu', 'echange', 'en_reparation'] as const
 
 const EMPTY: Partial<Laptop> = {
-  source: 'Fournisseur', condition: 'مستعمل',
+  source: 'fournisseur', condition: 'occasion',
   marque: '', model: '', stockage: '', ram: '',
   prix_achat: undefined, prix_vente_recommande: undefined,
   prix_vente_minimum: undefined, warranty_months: 6,
-  status: 'متوفر', location: 'Magasin Principal',
+  status: 'disponible', location: 'magasin_principal',
 }
 
 export default function EZLaptopsPage() {
@@ -94,9 +95,6 @@ export default function EZLaptopsPage() {
     }
   }
 
-  const STATUS_LABELS: Record<string, string> = {
-    'متوفر': 'Disponible', 'مباع': 'Vendu', 'إستبدال': 'Échangé', 'إصلاح': 'Réparation',
-  }
 
   return (
     <div className="flex flex-col h-full overflow-hidden animate-fade-in" dir={isAr ? 'rtl' : 'ltr'}>
@@ -128,7 +126,7 @@ export default function EZLaptopsPage() {
           <select className="text-sm border border-[#E8E5DE] rounded-xl px-3 py-2.5 bg-white text-[#6B6860] focus:outline-none"
             value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
             <option value="">{t(isAr, 'common.allStatuses')}</option>
-            {STATUSES.map(s => <option key={s} value={s}>{isAr ? s : STATUS_LABELS[s]}</option>)}
+            {STATUSES.map(s => <option key={s} value={s}>{codeLabel('device_status', s, isAr ? 'ar' : 'fr')}</option>)}
           </select>
         </div>
       </div>
@@ -168,7 +166,7 @@ export default function EZLaptopsPage() {
                         {laptop.ram && <span className="text-xs text-[#B0ADA6]">{laptop.ram}</span>}
                         <span className="text-xs text-[#B0ADA6] flex items-center gap-1">
                           <MapPin className="w-3 h-3" />
-                          {laptop.location === 'Magasin Principal' ? (isAr ? 'الرئيسي' : 'Principal') : (isAr ? 'الثاني' : 'Secondaire')}
+                          {laptop.location === 'magasin_principal' ? (isAr ? 'الرئيسي' : 'Principal') : (isAr ? 'الثاني' : 'Secondaire')}
                         </span>
                       </div>
                     </div>
@@ -200,16 +198,16 @@ export default function EZLaptopsPage() {
           <div className="grid grid-cols-2 gap-4">
             <Field label={t(isAr, 'common.source')} required>
               <select className={selectClass} value={form.source || ''} onChange={e => set('source', e.target.value as DeviceSource)}>
-                <option value="Fournisseur">Fournisseur</option>
-                <option value="Reprise">Reprise</option>
-                <option value="Échange">Échange</option>
+                <option value="fournisseur">Fournisseur</option>
+                <option value="reprise">Reprise</option>
+                <option value="echange">Échange</option>
               </select>
             </Field>
             <Field label={t(isAr, 'common.deviceCondition')} required>
               <select className={selectClass} value={form.condition || ''} onChange={e => set('condition', e.target.value as DeviceCondition)}>
-                <option value="جديد">{t(isAr, 'common.new')}</option>
-                <option value="مستعمل">{t(isAr, 'common.used')}</option>
-                <option value="معطوب">{t(isAr, 'common.damaged')}</option>
+                <option value="neuf">{t(isAr, 'common.new')}</option>
+                <option value="occasion">{t(isAr, 'common.used')}</option>
+                <option value="defectueux">{t(isAr, 'common.damaged')}</option>
               </select>
             </Field>
           </div>
@@ -255,15 +253,15 @@ export default function EZLaptopsPage() {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <Field label={t(isAr, 'common.stockStatus')}>
-              <select className={selectClass} value={form.status || 'متوفر'} onChange={e => set('status', e.target.value)}>
-                {STATUSES.map(s => <option key={s} value={s}>{isAr ? s : STATUS_LABELS[s]}</option>)}
+              <select className={selectClass} value={form.status || 'disponible'} onChange={e => set('status', e.target.value)}>
+                {STATUSES.map(s => <option key={s} value={s}>{codeLabel('device_status', s, isAr ? 'ar' : 'fr')}</option>)}
               </select>
             </Field>
             <Field label={t(isAr, 'common.location')}>
-              <select className={selectClass} value={form.location || 'Magasin Principal'} onChange={e => set('location', e.target.value as LocationType)}>
-                <option value="Magasin Principal">{t(isAr, 'common.mainStore')}</option>
-                <option value="Magasin Secondaire">{t(isAr, 'common.secondaryStore')}</option>
-                <option value="Externe">{t(isAr, 'common.external')}</option>
+              <select className={selectClass} value={form.location || 'magasin_principal'} onChange={e => set('location', e.target.value as LocationType)}>
+                <option value="magasin_principal">{t(isAr, 'common.mainStore')}</option>
+                <option value="magasin_secondaire">{t(isAr, 'common.secondaryStore')}</option>
+                <option value="externe">{t(isAr, 'common.external')}</option>
               </select>
             </Field>
           </div>

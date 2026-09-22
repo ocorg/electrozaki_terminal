@@ -1,133 +1,63 @@
-import { NextRequest, NextResponse }         from 'next/server'
-import { createClient, createUntypedClient } from '@/lib/supabase/server'
+import { NextRequest } from 'next/server'
+import { prisma } from '@/lib/db'
+import { json, handleError, requireActiveUser, HttpError, MANAGERS } from '@/lib/api'
+import { phoneLabel } from '@/lib/inventory'
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  const body = await req.json()
-  const rawImei: string = (body.imei ?? '').trim()
-  if (!rawImei) return NextResponse.json({ error: 'IMEI requis' }, { status: 400 })
+// Response `type`: trouve | hors_perimetre | non_enregistre | deja_scanne
+export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const body = await req.json()
+    const rawImei: string = (body.imei ?? '').trim()
+    if (!rawImei) throw new HttpError(400, 'IMEI requis')
 
-  const supabase      = await createUntypedClient()
-  const typedSupabase = await createClient()
-  const { data: { user } } = await typedSupabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-  const { data: profileRaw } = await supabase
-    .from('user_profiles')
-    .select('role, store_id')
-    .eq('id', user.id)
-    .maybeSingle()
-  const profile = profileRaw as { role: string; store_id: string } | null
-
-  if (profile?.role !== 'gerant' && profile?.role !== 'proprietaire') {
-    return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
-  }
-
-  // Valider la session
-  let sessionQuery = supabase
-    .from('inventory_sessions')
-    .select('session_id, statut')
-    .eq('session_id', params.id)
-  if (profile.store_id) sessionQuery = sessionQuery.eq('store_id', profile.store_id)
-  const { data: session } = await sessionQuery.maybeSingle()
-
-  if (!session)             return NextResponse.json({ error: 'Session introuvable' }, { status: 404 })
-  if (session.statut !== 'en_cours') return NextResponse.json({ error: 'Session déjà terminée' }, { status: 409 })
-
-  // Résoudre un code de référence PHO-XXX vers l'IMEI réel
-  let resolvedImei = rawImei
-  if (/^PHO-\d+$/i.test(rawImei)) {
-    const { data: phoneByRef } = await supabase
-      .from('phones')
-      .select('imei')
-      .eq('phone_id', rawImei)
-      .eq('is_deleted', false)
-      .maybeSingle()
-    if ((phoneByRef as any)?.imei) {
-      resolvedImei = (phoneByRef as any).imei
-    }
-  }
-
-  const now = new Date().toISOString()
-
-  // Chercher l'IMEI dans les articles de session
-  const { data: existingItem } = await supabase
-    .from('inventory_session_items')
-    .select('*')
-    .eq('session_id', params.id)
-    .eq('imei', resolvedImei)
-    .maybeSingle()
-
-  if (existingItem) {
-    // Déjà traité (trouvé, hors_périmètre, non_enregistré…)
-    if (existingItem.resultat !== 'en_attente') {
-      return NextResponse.json({ type: 'déjà_scanné', item: existingItem })
-    }
-
-    // CAS A — en périmètre, marquer trouvé
-    const { data: updated, error } = await supabase
-      .from('inventory_session_items')
-      .update({ resultat: 'trouvé', scanned_at: now })
-      .eq('item_id', existingItem.item_id)
-      .select()
-      .single()
-
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    return NextResponse.json({ type: 'trouvé', item: updated })
-  }
-
-  // IMEI absent de la session — chercher dans la table phones
-  const { data: phone } = await supabase
-    .from('phones')
-    .select('phone_id, marque, model, status')
-    .eq('imei', resolvedImei)
-    .eq('is_deleted', false)
-    .maybeSingle()
-
-  if (phone) {
-    // CAS B — téléphone en DB mais hors périmètre (ex: vendu)
-    const marque      = ((phone as any).marque ?? '').trim()
-    const model       = ((phone as any).model  ?? '').trim()
-    const cleanModel  = model.replace(/\s*\d+(GB|TB)\s*$/i, '').trim()
-    const phone_label = cleanModel.toLowerCase().startsWith(marque.toLowerCase())
-      ? cleanModel
-      : `${marque} ${cleanModel}`.trim()
-
-    const { data: hpItem, error: hpError } = await supabase
-      .from('inventory_session_items')
-      .insert({
-        session_id:   params.id,
-        phone_id:     (phone as any).phone_id,
-        imei:         resolvedImei,
-        phone_label,
-        phone_status: (phone as any).status,
-        resultat:     'hors_périmètre',
-        scanned_at:   now,
-      })
-      .select()
-      .single()
-
-    if (hpError) return NextResponse.json({ error: hpError.message }, { status: 500 })
-    return NextResponse.json({ type: 'hors_périmètre', item: hpItem })
-  }
-
-  // CAS C — IMEI inconnu, jamais enregistré
-  const { data: unknownItem, error: unknownError } = await supabase
-    .from('inventory_session_items')
-    .insert({
-      session_id:   params.id,
-      phone_id:     null,
-      imei:         resolvedImei,
-      phone_label:  null,
-      phone_status: null,
-      resultat:     'non_enregistré',
-      scanned_at:   now,
+    const user = await requireActiveUser(MANAGERS)
+    const session = await prisma.inventory_sessions.findFirst({
+      where:  { session_id: params.id, ...(user.store_id && { store_id: user.store_id }) },
+      select: { statut: true },
     })
-    .select()
-    .single()
+    if (!session) throw new HttpError(404, 'Session introuvable')
+    if (session.statut !== 'en_cours') throw new HttpError(409, 'Session déjà terminée')
 
-  if (unknownError) return NextResponse.json({ error: unknownError.message }, { status: 500 })
-  return NextResponse.json({ type: 'non_enregistré', item: unknownItem })
+    // A PHO-XXX reference code resolves to the phone's real IMEI
+    let imei = rawImei
+    if (/^PHO-\d+$/i.test(rawImei)) {
+      const byRef = await prisma.phones.findFirst({ where: { phone_id: rawImei, is_deleted: false }, select: { imei: true } })
+      if (byRef?.imei) imei = byRef.imei
+    }
+    const now = new Date()
+
+    const existing = await prisma.inventory_session_items.findFirst({ where: { session_id: params.id, imei } })
+    if (existing) {
+      if (existing.resultat !== 'en_attente') return json({ type: 'deja_scanne', item: existing })
+      // A — expected in the shop: found
+      const item = await prisma.inventory_session_items.update({
+        where: { item_id: existing.item_id },
+        data:  { resultat: 'trouve', scanned_at: now },
+      })
+      return json({ type: 'trouve', item })
+    }
+
+    const phone = await prisma.phones.findFirst({
+      where:  { imei, is_deleted: false },
+      select: { phone_id: true, marque: true, model: true, status: true },
+    })
+    if (phone) {
+      // B — known phone, not expected here (e.g. already sold)
+      const item = await prisma.inventory_session_items.create({
+        data: {
+          session_id: params.id, phone_id: phone.phone_id, imei, phone_label: phoneLabel(phone.marque, phone.model),
+          phone_status: phone.status, resultat: 'hors_perimetre', scanned_at: now,
+        },
+      })
+      return json({ type: 'hors_perimetre', item })
+    }
+
+    // C — IMEI never registered
+    const item = await prisma.inventory_session_items.create({
+      data: { session_id: params.id, phone_id: null, imei, phone_label: null, phone_status: null, resultat: 'non_enregistre', scanned_at: now },
+    })
+    return json({ type: 'non_enregistre', item })
+  } catch (err) {
+    return handleError(err, 'POST /api/inventory/[id]/scan')
+  }
 }

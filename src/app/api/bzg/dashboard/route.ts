@@ -1,75 +1,58 @@
-import { createUntypedClient, createClient } from '@/lib/supabase/server'
-import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/db'
+import { json, handleError, requireUser, dateOnly, todayDate, HttpError, MANAGERS } from '@/lib/api'
 
 const STORE_MAP: Record<string, string> = {
   'EZ-001': 'Electro Zaki',
 }
 
-export async function GET(_request: NextRequest) {
+const day = (d: Date) => d.toISOString().slice(0, 10)
+
+export async function GET() {
   try {
-    const supabase      = await createUntypedClient()
-    const typedSupabase = await createClient()
-    const { data: { user } } = await typedSupabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+    const user = await requireUser()
+    if (!MANAGERS.includes(user.role)) throw new HttpError(403, 'Accès refusé')
 
-    const today      = new Date().toISOString().split('T')[0]
-    const monthStart = today.slice(0, 7) + '-01'
+    const today      = todayDate()
+    const monthStart = dateOnly(`${day(today).slice(0, 7)}-01`)!
 
-    const [txnRes, repairRes, caisseRes, staffRes] = await Promise.all([
-      supabase
-        .from('transactions')
-        .select('store_id, prix_vente, date_vente')
-        .eq('voided', false)
-        .gte('date_vente', monthStart),
-
-      supabase
-        .from('reparations')
-        .select('store_id, statut')
-        .neq('statut', 'تم الاستلام'),
-
-      supabase
-        .from('caisse')
-        .select('caisse_id, store_id, date, status, solde_reel, solde_theorique, ecart, created_by')
-        .gte('date', monthStart)
-        .order('date', { ascending: false }),
-
-      supabase
-        .from('staff_attendance')
-        .select('user_name, store_id, punch_type, punched_at')
-        .eq('date', today)
-        .order('punched_at', { ascending: false }),
+    const [txns, repairs, caisses, staffToday] = await Promise.all([
+      prisma.transactions.findMany({
+        where:  { voided: false, date_vente: { gte: monthStart } },
+        select: { store_id: true, prix_vente: true, date_vente: true },
+      }),
+      prisma.reparations.findMany({ where: { statut: { not: 'recupere' } }, select: { store_id: true } }),
+      prisma.caisse.findMany({
+        where:   { date: { gte: monthStart } },
+        select:  { caisse_id: true, store_id: true, date: true, status: true, solde_reel: true, solde_theorique: true, ecart: true, created_by: true },
+        orderBy: { date: 'desc' },
+      }),
+      prisma.staff_attendance.findMany({
+        where:   { date: today },
+        select:  { user_name: true, store_id: true, punch_type: true, punched_at: true },
+        orderBy: { punched_at: 'desc' },
+      }),
     ])
 
-    const txns    = (txnRes.data    || []) as Record<string, unknown>[]
-    const repairs = (repairRes.data || []) as Record<string, unknown>[]
-    const caisses = (caisseRes.data || []) as Record<string, unknown>[]
-    const staff   = (staffRes.data  || []) as Record<string, unknown>[]
-
-    // Build per-store snapshots server-side
     const snapshots = Object.keys(STORE_MAP).map(storeId => {
-      const storeTxns    = txns.filter(t => t.store_id === storeId)
-      const todayTxns    = storeTxns.filter(t => t.date_vente === today)
-      const storeRepairs = repairs.filter(r => r.store_id === storeId)
-      const todayCaisse  = caisses.find(c => c.store_id === storeId && c.date === today)
-
+      const storeTxns   = txns.filter(t => t.store_id === storeId)
+      const todayCaisse = caisses.find(c => c.store_id === storeId && day(c.date) === day(today))
       return {
         store_id:       storeId,
-        ca_today:       todayTxns.reduce((s, t) => s + ((t.prix_vente as number) || 0), 0),
-        ca_month:       storeTxns.reduce((s, t) => s + ((t.prix_vente as number) || 0), 0),
+        ca_today:       storeTxns.filter(t => day(t.date_vente) === day(today)).reduce((s, t) => s + Number(t.prix_vente), 0),
+        ca_month:       storeTxns.reduce((s, t) => s + Number(t.prix_vente), 0),
         nb_ventes:      storeTxns.length,
-        active_repairs: storeRepairs.length,
+        active_repairs: repairs.filter(r => r.store_id === storeId).length,
         caisse_status:  todayCaisse ? todayCaisse.status : 'none',
         caisse_id:      todayCaisse?.caisse_id ?? null,
       }
     })
 
-    // Pending EOD approvals
     const pendingEOD = caisses
-      .filter(c => c.status === 'pending_eod')
+      .filter(c => c.status === 'en_attente_cloture')
       .map(c => ({
         caisse_id:       c.caisse_id,
         store_id:        c.store_id,
-        store_name:      STORE_MAP[c.store_id as string] ?? c.store_id,
+        store_name:      STORE_MAP[c.store_id ?? ''] ?? c.store_id,
         date:            c.date,
         solde_reel:      c.solde_reel,
         solde_theorique: c.solde_theorique,
@@ -77,8 +60,8 @@ export async function GET(_request: NextRequest) {
         submitted_by:    c.created_by ?? '—',
       }))
 
-    return NextResponse.json({ snapshots, pendingEOD, staffToday: staff })
-  } catch (err: unknown) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
+    return json({ snapshots, pendingEOD, staffToday })
+  } catch (err) {
+    return handleError(err, 'GET /api/bzg/dashboard')
   }
 }

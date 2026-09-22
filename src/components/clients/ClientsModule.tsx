@@ -12,6 +12,7 @@ import {
   MapPin, RefreshCw, Edit2, TrendingUp,
   ShoppingCart, Wrench, MessageCircle, ChevronRight
 } from 'lucide-react'
+import { codeLabel } from '@/lib/codes'
 
 interface Client {
   client_id:          string
@@ -419,7 +420,7 @@ export default function ClientsModule({ storeId }: ClientsModuleProps) {
                       <div key={r.rep_id} className="flex justify-between items-center py-2 border-b border-[#F2F0EB] text-xs last:border-0">
                         <span className="text-[#6B6860] font-mono">{r.rep_id}</span>
                         <span className="text-[#1A1A1A]">{r.marque} {r.model}</span>
-                        <span className={`font-bold ${r.statut === 'تم الاستلام' ? 'text-emerald-600' : 'text-amber-600'}`}>{r.statut}</span>
+                        <span className={`font-bold ${r.statut === 'recupere' ? 'text-emerald-600' : 'text-amber-600'}`}>{codeLabel('repair_status', r.statut, isAr ? 'ar' : 'fr')}</span>
                       </div>
                     ))}
                   </div>

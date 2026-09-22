@@ -80,6 +80,63 @@ export function todayDate(): Date {
   return dateOnly(new Date().toISOString().slice(0, 10))!
 }
 
+// Supabase coerced text into numbers/dates itself; Prisma rejects "85" for an Int.
+// Picks `fields` from `body` (absent keys stay absent, so updates stay partial) and
+// converts each value to the column's type, read from Prisma's data model.
+const fieldTypes = new Map<string, Map<string, string>>()
+function typesOf(model: string) {
+  let types = fieldTypes.get(model)
+  if (!types) {
+    const m = Prisma.dmmf.datamodel.models.find(x => x.name === model)
+    if (!m) throw new Error(`unknown model ${model}`)
+    types = new Map(m.fields.filter(f => f.kind !== 'object').map(f => [f.name, f.kind === 'enum' ? 'enum' : f.type]))
+    fieldTypes.set(model, types)
+  }
+  return types
+}
+
+const SYSTEM_COLUMNS = ['created_at', 'created_by', 'updated_at', 'updated_by', 'is_deleted']
+
+// All writable business columns of a model: everything except `exclude`
+// (typically the id) and the audit/soft-delete columns set by the server.
+export function columnsOf(model: Prisma.ModelName, exclude: string[] = []) {
+  return Array.from(typesOf(model).keys()).filter(c => !exclude.includes(c) && !SYSTEM_COLUMNS.includes(c))
+}
+
+export function pickInput(model: Prisma.ModelName, body: Record<string, unknown>, fields: readonly string[]) {
+  const types = typesOf(model)
+  const out: Record<string, unknown> = {}
+  for (const f of fields) {
+    if (!(f in body) || body[f] === undefined) continue
+    const type = types.get(f)
+    if (!type) throw new Error(`${model}.${f} is not a column`)
+    const v = body[f]
+    if (type === 'String' || type === 'Json') { out[f] = v; continue }
+    if (v === null || v === '') { out[f] = null; continue }
+    switch (type) {
+      case 'Int':
+      case 'Decimal': {
+        const n = Number(v)
+        if (!Number.isFinite(n)) throw new HttpError(400, `Champ "${f}" doit être un nombre valide`)
+        out[f] = type === 'Int' ? Math.trunc(n) : n
+        break
+      }
+      case 'Boolean':
+        out[f] = v === true || v === 'true'
+        break
+      case 'DateTime': {
+        const d = typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? dateOnly(v)! : new Date(v as string)
+        if (Number.isNaN(d.getTime())) throw new HttpError(400, `Date invalide : ${f}`)
+        out[f] = d
+        break
+      }
+      default:
+        out[f] = v // enums: Prisma validates the value
+    }
+  }
+  return out
+}
+
 export function requireFields(body: Record<string, unknown>, fields: string[]) {
   const missing = fields.filter(f => body[f] === undefined || body[f] === null || body[f] === '')
   if (missing.length) throw new HttpError(400, `${missing.join(', ')} requis`)

@@ -26,7 +26,7 @@ interface CreditImport {
   store_id:          string
   montant_du:        number
   montant_paye:      number
-  statut:            'en_cours' | 'soldé'
+  statut:            'en_cours' | 'solde'
   description:       string | null
   date_origine:      string
   notes:             string | null
@@ -35,7 +35,7 @@ interface CreditImport {
 
 interface PaymentForm {
   montant:        string
-  payment_method: 'نقد' | 'تحويل'
+  payment_method: 'especes' | 'virement'
   payment_ref:    string
   notes:          string
 }
@@ -75,7 +75,7 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
   // Payment modal
   const [payTarget, setPayTarget]   = useState<ClientWithCredit | null>(null)
   const [payForm, setPayForm]       = useState<PaymentForm>({
-    montant: '', payment_method: 'نقد', payment_ref: '', notes: ''
+    montant: '', payment_method: 'especes', payment_ref: '', notes: ''
   })
 
   // Import form
@@ -95,7 +95,7 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
   // Import payment modal
   const [importPayTarget, setImportPayTarget] = useState<CreditImport | null>(null)
   const [importPayForm,   setImportPayForm]   = useState<PaymentForm>({
-    montant: '', payment_method: 'نقد', payment_ref: '', notes: '',
+    montant: '', payment_method: 'especes', payment_ref: '', notes: '',
   })
 
   // ── Fetch credits list (clients with solde_impaye > 0) ─────
@@ -167,7 +167,7 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
       showError(`Montant dépasse le solde (${formatMAD(payTarget.solde_impaye)})`)
       return
     }
-    if (payForm.payment_method === 'تحويل' && !payForm.payment_ref) {
+    if (payForm.payment_method === 'virement' && !payForm.payment_ref) {
       showError('Référence virement requise')
       return
     }
@@ -189,7 +189,7 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
       if (!res.ok) throw new Error(json.error)
       showSuccess(t(isAr, 'common.paymentRecorded'))
       setPayTarget(null)
-      setPayForm({ montant: '', payment_method: 'نقد', payment_ref: '', notes: '' })
+      setPayForm({ montant: '', payment_method: 'especes', payment_ref: '', notes: '' })
       await fetchCredits()
     } catch (err: unknown) {
       showError((err as Error).message)
@@ -257,7 +257,7 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
     if (montant > remaining + 0.01) {
       showError(`Montant dépasse le restant (${formatMAD(remaining)})`); return
     }
-    if (importPayForm.payment_method === 'تحويل' && !importPayForm.payment_ref) {
+    if (importPayForm.payment_method === 'virement' && !importPayForm.payment_ref) {
       showError('Référence virement requise'); return
     }
     setSubmitting(true)
@@ -278,7 +278,7 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
       if (!res.ok) throw new Error(json.error)
       showSuccess(t(isAr, 'common.paymentRecorded'))
       setImportPayTarget(null)
-      setImportPayForm({ montant: '', payment_method: 'نقد', payment_ref: '', notes: '' })
+      setImportPayForm({ montant: '', payment_method: 'especes', payment_ref: '', notes: '' })
       await fetchImports()
     } catch (err: unknown) {
       showError((err as Error).message)
@@ -558,8 +558,8 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
                           </p>
                         </div>
                         <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
-                          <p className={`text-sm font-bold ${imp.statut === 'soldé' ? 'text-emerald-600' : 'text-red-500'}`}>
-                            {imp.statut === 'soldé'
+                          <p className={`text-sm font-bold ${imp.statut === 'solde' ? 'text-emerald-600' : 'text-red-500'}`}>
+                            {imp.statut === 'solde'
                               ? formatMAD(0)
                               : formatMAD(imp.montant_du - (imp.montant_paye ?? 0))}
                           </p>
@@ -568,25 +568,25 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
                               {formatMAD(imp.montant_paye)} / {formatMAD(imp.montant_du)} {isAr ? 'مدفوع' : 'payé'}
                             </p>
                           )}
-                          {imp.statut === 'soldé' && (
+                          {imp.statut === 'solde' && (
                             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
                               {isAr ? 'مسدد' : 'Soldé'}
                             </span>
                           )}
                         </div>
                         <div className="flex gap-2 flex-shrink-0">
-                          {imp.statut !== 'soldé' && (
+                          {imp.statut !== 'solde' && (
                             <button
                               onClick={() => {
                                 setImportPayTarget(imp)
-                                setImportPayForm({ montant: '', payment_method: 'نقد', payment_ref: '', notes: '' })
+                                setImportPayForm({ montant: '', payment_method: 'especes', payment_ref: '', notes: '' })
                               }}
                               className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-all">
                               <DollarSign className="w-3 h-3" />
                               {isAr ? 'دفع' : 'Payer'}
                             </button>
                           )}
-                          {isUnlinked && imp.statut !== 'soldé' && (
+                          {isUnlinked && imp.statut !== 'solde' && (
                             <button
                               onClick={() => { setLinkTarget(imp); setLinkSearch('') }}
                               className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition-all">
@@ -636,13 +636,13 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
 
             <Field label={t(isAr, 'common.paymentMethod')}>
               <select className={selectClass} value={payForm.payment_method}
-                onChange={e => setPayForm(f => ({ ...f, payment_method: e.target.value as 'نقد' | 'تحويل' }))}>
-                <option value="نقد">{t(isAr, 'common.cashAdverbial')}</option>
-                <option value="تحويل">{t(isAr, 'common.bankTransfer')}</option>
+                onChange={e => setPayForm(f => ({ ...f, payment_method: e.target.value as 'especes' | 'virement' }))}>
+                <option value="especes">{t(isAr, 'common.cashAdverbial')}</option>
+                <option value="virement">{t(isAr, 'common.bankTransfer')}</option>
               </select>
             </Field>
 
-            {payForm.payment_method === 'تحويل' && (
+            {payForm.payment_method === 'virement' && (
               <Field label={t(isAr, 'common.transferReference')}>
                 <input className={inputClass}
                   placeholder="REF-..."
@@ -706,12 +706,12 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
             </Field>
             <Field label={t(isAr, 'common.paymentMethod')}>
               <select className={selectClass} value={importPayForm.payment_method}
-                onChange={e => setImportPayForm(f => ({ ...f, payment_method: e.target.value as 'نقد' | 'تحويل' }))}>
-                <option value="نقد">{t(isAr, 'common.cashAdverbial')}</option>
-                <option value="تحويل">{t(isAr, 'common.bankTransfer')}</option>
+                onChange={e => setImportPayForm(f => ({ ...f, payment_method: e.target.value as 'especes' | 'virement' }))}>
+                <option value="especes">{t(isAr, 'common.cashAdverbial')}</option>
+                <option value="virement">{t(isAr, 'common.bankTransfer')}</option>
               </select>
             </Field>
-            {importPayForm.payment_method === 'تحويل' && (
+            {importPayForm.payment_method === 'virement' && (
               <Field label={t(isAr, 'common.transferReference')}>
                 <input className={inputClass} placeholder="REF-..."
                   value={importPayForm.payment_ref}
