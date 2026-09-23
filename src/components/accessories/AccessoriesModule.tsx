@@ -7,14 +7,14 @@ import { useLanguageStore } from '@/lib/stores/language'
 import { t } from '@/lib/i18n/t'
 import { usePortal } from '@/lib/context/portal'
 import { formatMAD } from '@/lib/utils'
-import { Modal, Field, inputClass, selectClass, Btn, PageHeader, EmptyState, SkeletonRow, StatusBadge } from '@/components/shared'
+import { Modal, Field, inputClass, selectClass, Btn, PageHeader, EmptyState, SkeletonRow, StatusBadge, RowAction, RowActionDivider } from '@/components/shared'
 import ScanButton from '@/components/scanner/ScanButton'
 import LabelGenerator, { type LabelProduct } from '@/components/print/LabelGenerator'
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import type { AccCategory } from '@/types/database'
 import {
   Package, Plus, Search, X, RefreshCw,
-  Edit2, AlertTriangle, Minus, TrendingUp, Trash2
+  Edit2, AlertTriangle, Minus, TrendingUp, Trash2, Tag
 } from 'lucide-react'
 
 
@@ -335,7 +335,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
 
           {/* Table header */}
           <div className="hidden lg:grid border-b border-[#F2F0EB] px-5 py-3 text-[10px] font-bold text-[#B0ADA6] uppercase tracking-widest"
-               style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 120px' }}>
+               style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 140px' }}>
             <span>{isAr ? 'المنتج' : 'Produit'}</span>
             <span>{t(isAr, 'common.category')}</span>
             <span>{t(isAr, 'common.quantity')}</span>
@@ -366,7 +366,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
                 <div
                   key={acc.acc_id}
                   className={`hidden lg:grid items-center px-5 py-3.5 transition-all ${acc.is_low_stock ? 'bg-red-50/30' : 'hover:bg-[#F8F7F4]'}`}
-                  style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 120px' }}
+                  style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 140px' }}
                 >
                   {/* Name */}
                   <div className="flex items-center gap-3 min-w-0">
@@ -422,8 +422,9 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
                   </p>
 
                   {/* Actions */}
-                  <div className="flex items-center gap-1 justify-end">
-                    <button
+                  <div className="flex items-center gap-2 justify-end">
+                    <RowAction
+                      title={isAr ? 'طباعة الملصق' : 'Générer étiquette'}
                       onClick={() => setLabelProduct({
                         id:       acc.acc_id,
                         name:     `${acc.marque ? acc.marque + ' ' : ''}${acc.nom}`,
@@ -431,27 +432,19 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
                         stockage: undefined,
                         couleur:  undefined,
                       })}
-                      className="p-1.5 rounded-lg text-[#B0ADA6] hover:text-[#1A1A1A] hover:bg-[#F2F0EB] transition-all"
-                      title="Générer étiquette"
                     >
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                          d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 8V5a2 2 0 012-2h2z" />
-                      </svg>
-                    </button>
-                    <button
-                      onClick={() => openEdit(acc)}
-                      className="p-1.5 rounded-lg text-[#B0ADA6] hover:text-[#1A1A1A] hover:bg-[#F2F0EB] transition-all"
-                    >
-                      <Edit2 className="w-3.5 h-3.5" />
-                    </button>
+                      <Tag className="w-4 h-4" />
+                    </RowAction>
+                    <RowAction title={isAr ? 'تعديل' : 'Modifier'} onClick={() => openEdit(acc)}>
+                      <Edit2 className="w-4 h-4" />
+                    </RowAction>
                     {canFinancials && (
-                      <button
-                        onClick={() => setConfirmDelete(acc.acc_id)}
-                        className="p-1.5 rounded-lg text-[#B0ADA6] hover:text-red-500 hover:bg-red-50 transition-all"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      <>
+                        <RowActionDivider />
+                        <RowAction title={isAr ? 'حذف' : 'Supprimer'} tone="danger" onClick={() => setConfirmDelete(acc.acc_id)}>
+                          <Trash2 className="w-4 h-4" />
+                        </RowAction>
+                      </>
                     )}
                   </div>
                 </div>
@@ -484,10 +477,10 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
                       className="w-7 h-7 rounded-lg border border-[#E8E5DE] flex items-center justify-center">
                       <Plus className="w-3 h-3 text-[#6B6860]" />
                     </button>
-                    <button onClick={() => openEdit(acc)}
-                      className="w-7 h-7 rounded-lg border border-[#E8E5DE] flex items-center justify-center">
-                      <Edit2 className="w-3.5 h-3.5 text-[#6B6860]" />
-                    </button>
+                    <RowActionDivider />
+                    <RowAction title={isAr ? 'تعديل' : 'Modifier'} onClick={() => openEdit(acc)}>
+                      <Edit2 className="w-4 h-4" />
+                    </RowAction>
                   </div>
                 </div>
               ))}

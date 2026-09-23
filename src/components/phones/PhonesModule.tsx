@@ -7,7 +7,7 @@ import { useLanguageStore } from '@/lib/stores/language'
 import { t } from '@/lib/i18n/t'
 import { usePortal } from '@/lib/context/portal'
 import { formatMAD, formatDate, getWarrantyFlag, computePromoPrice } from '@/lib/utils'
-import { StatusBadge, BatteryBar, EmptyState, SkeletonRow, PageHeader, Btn, Modal, Field, inputClass, selectClass } from '@/components/shared'
+import { StatusBadge, BatteryBar, EmptyState, SkeletonRow, PageHeader, Btn, Modal, Field, inputClass, selectClass, RowAction, RowActionDivider } from '@/components/shared'
 import PhoneForm from '@/components/phones/PhoneForm'
 import PhoneCreditPanel from '@/components/phones/PhoneCreditPanel'
 import type { Phone, Prospect } from '@/types/database'
@@ -17,7 +17,7 @@ import LabelGenerator, { type LabelProduct } from '@/components/print/LabelGener
 import {
   Plus, Search, Filter, RefreshCw,
   Smartphone, Edit2, MapPin, Shield,
-  ChevronDown, X, Eye, EyeOff, Trash2, Loader2, BookOpen, Check, CreditCard
+  ChevronDown, X, Eye, EyeOff, Trash2, Loader2, BookOpen, Check, CreditCard, Tag
 } from 'lucide-react'
 import { codeLabel } from '@/lib/codes'
 import type { DeviceStatus } from '@/types/database'
@@ -398,7 +398,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
 
           {/* Table header */}
           <div className="hidden lg:grid border-b border-[#F2F0EB] px-5 py-3 text-[10px] font-bold text-[#B0ADA6] uppercase tracking-widest"
-               style={{ gridTemplateColumns: '2fr 1fr 0.7fr 0.7fr 0.7fr 0.6fr 1fr 68px' }}>
+               style={{ gridTemplateColumns: '2fr 1fr 0.7fr 0.7fr 0.7fr 0.6fr 1fr 180px' }}>
             <span>{isAr ? 'الجهاز' : 'Appareil'}</span>
             <span>IMEI</span>
             <span>{isAr ? 'الذاكرة / RAM' : 'Stockage / RAM'}</span>
@@ -446,7 +446,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                     key={phone.phone_id}
                     onClick={() => openEdit(phone)}
                     className="hidden lg:grid items-center px-5 py-3.5 hover:bg-[#F8F7F4] transition-all cursor-pointer"
-                    style={{ gridTemplateColumns: '2fr 1fr 0.7fr 0.7fr 0.7fr 0.6fr 1fr 68px' }}
+                    style={{ gridTemplateColumns: '2fr 1fr 0.7fr 0.7fr 0.7fr 0.6fr 1fr 180px' }}
                   >
                     {/* Device name */}
                     <div className="flex items-center gap-3 min-w-0">
@@ -588,8 +588,9 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
-                      <button
+                    <div className="flex items-center justify-end gap-2" onClick={e => e.stopPropagation()}>
+                      <RowAction
+                        title={isAr ? 'طباعة الملصق' : 'Générer étiquette'}
                         onClick={() => setLabelProduct({
                           id:            phone.phone_id,
                           name:          (() => {
@@ -608,36 +609,24 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                           battery_level: phone.marque === 'Apple' ? (phone.battery_level ?? undefined) : undefined,
                           ram:           phone.marque !== 'Apple' ? (phone.ram ?? undefined) : undefined,
                         })}
-                        className="flex items-center justify-center w-8 h-8 rounded-lg text-[#B0ADA6] hover:text-[#1A1A1A] hover:bg-[#F2F0EB] transition-all"
-                        title="Générer étiquette"
                       >
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                            d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 8V5a2 2 0 012-2h2z" />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={() => openEdit(phone)}
-                        className="flex items-center justify-center w-8 h-8 rounded-lg text-[#B0ADA6] hover:text-[#1A1A1A] hover:bg-[#F2F0EB] transition-all"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </button>
+                        <Tag className="w-4 h-4" />
+                      </RowAction>
+                      <RowAction title={isAr ? 'تعديل' : 'Modifier'} onClick={() => openEdit(phone)}>
+                        <Edit2 className="w-4 h-4" />
+                      </RowAction>
                       {(['disponible', 'reserve', 'vendu'] as string[]).includes(phone.status) && (
-                        <button
-                          onClick={() => setCreditPhone(phone)}
-                          className="flex items-center justify-center w-8 h-8 rounded-lg text-[#B0ADA6] hover:text-[#C9A440] hover:bg-[#FAF5E8] transition-all"
-                          title="Crédit / Avance"
-                        >
-                          <CreditCard className="w-3.5 h-3.5" />
-                        </button>
+                        <RowAction title={isAr ? 'قرض / عربون' : 'Crédit / Avance'} tone="gold" onClick={() => setCreditPhone(phone)}>
+                          <CreditCard className="w-4 h-4" />
+                        </RowAction>
                       )}
                       {canSeeFinancials && (
-                        <button
-                          onClick={() => setConfirmDelete(phone.phone_id)}
-                          className="flex items-center justify-center w-8 h-8 rounded-lg text-[#B0ADA6] hover:text-red-500 hover:bg-red-50 transition-all"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        <>
+                          <RowActionDivider />
+                          <RowAction title={isAr ? 'حذف' : 'Supprimer'} tone="danger" onClick={() => setConfirmDelete(phone.phone_id)}>
+                            <Trash2 className="w-4 h-4" />
+                          </RowAction>
+                        </>
                       )}
                     </div>
                   </div>
@@ -734,19 +723,17 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                         {formatMAD(phone.prix_vente_recommande)}
                       </p>
                     )}
-                    {(['disponible', 'reserve', 'vendu'] as string[]).includes(phone.status) && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setCreditPhone(phone) }}
-                        className="p-1.5 rounded-lg text-[#B0ADA6] hover:text-[#C9A440] hover:bg-[#FAF5E8] transition-all flex-shrink-0"
-                        title="Crédit / Avance"
-                      >
-                        <CreditCard className="w-4 h-4" />
-                      </button>
-                    )}
-                    <button onClick={() => openEdit(phone)}
-                      className="p-1.5 rounded-lg text-[#B0ADA6] hover:text-[#1A1A1A] hover:bg-[#F2F0EB] transition-all flex-shrink-0">
-                      <Edit2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {(['disponible', 'reserve', 'vendu'] as string[]).includes(phone.status) && (
+                        <RowAction title={isAr ? 'قرض / عربون' : 'Crédit / Avance'} tone="gold"
+                          onClick={(e) => { e.stopPropagation(); setCreditPhone(phone) }}>
+                          <CreditCard className="w-4 h-4" />
+                        </RowAction>
+                      )}
+                      <RowAction title={isAr ? 'تعديل' : 'Modifier'} onClick={(e) => { e.stopPropagation(); openEdit(phone) }}>
+                        <Edit2 className="w-4 h-4" />
+                      </RowAction>
+                    </div>
                   </div>
                 )
               })}

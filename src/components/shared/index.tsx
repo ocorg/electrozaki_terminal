@@ -195,6 +195,43 @@ export function Btn({ children, onClick, variant = 'primary', size = 'md', disab
   )
 }
 
+// ── Row action (icon button in a list row) ──────────────────
+// Table rows carry several small actions side by side (étiquette, modifier,
+// crédit, supprimer). A visible border, a 32px target and gap-2 between them
+// keep each one easy to hit; the title doubles as the hover label.
+const ROW_ACTION_TONES = {
+  neutral: 'hover:text-[#1A1A1A] hover:bg-[#F2F0EB] hover:border-[#D9D5CC]',
+  gold:    'hover:text-[#C9A440] hover:bg-[#FAF5E8] hover:border-[#EADFB8]',
+  danger:  'hover:text-red-600 hover:bg-red-50 hover:border-red-200',
+}
+
+export function RowAction({ title, onClick, tone = 'neutral', children }: {
+  title: string
+  onClick: (e: React.MouseEvent) => void
+  tone?: keyof typeof ROW_ACTION_TONES
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      aria-label={title}
+      className={cn(
+        'flex items-center justify-center w-8 h-8 flex-shrink-0 rounded-lg border border-[#EEEBE4] bg-white text-[#8A877F] transition-all',
+        ROW_ACTION_TONES[tone],
+      )}
+    >
+      {children}
+    </button>
+  )
+}
+
+/** Thin separator that sets a destructive action apart from the others. */
+export function RowActionDivider() {
+  return <span aria-hidden className="w-px h-5 bg-[#E8E5DE] mx-0.5 flex-shrink-0" />
+}
+
 // ── Page Header ───────────────────────────────────────────────
 export function PageHeader({ title, subtitle, actions }: {
   title: string
