@@ -72,7 +72,7 @@ export default function BZGReportsPage() {
           ca_month:        storeTxns.filter(t => (t.date_vente as string) >= monthStart)
                                     .reduce((s, t) => s + ((t.prix_vente as number) || 0), 0),
           nb_transactions: storeTxns.length,
-          nb_repairs:      repairs.filter(r => r.store_id === store.id && r.statut !== 'تم الاستلام').length,
+          nb_repairs:      repairs.filter(r => r.store_id === store.id && r.statut !== 'recupere').length,
           low_stock:       store.id === 'EZ-001' ? lowAcc.length : 0,
         }
       })

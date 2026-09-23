@@ -1,122 +1,51 @@
-import { NextResponse } from 'next/server'
-import { createClient, createUntypedClient } from '@/lib/supabase/server'
+import { prisma } from '@/lib/db'
+import { json, handleError, requireUser, HttpError } from '@/lib/api'
 
-// ── GET /api/warranty ─────────────────────────────────────────────────────────
-// Retourne le statut de garantie complet pour une vente.
-// Params (au moins un requis) : ?txn_id= | ?facture_ref= | ?imei=
-
+// GET /api/warranty — full warranty status of a sale.
+// Params (at least one): ?txn_id= | ?facture_ref= | ?imei=
 export async function GET(request: Request) {
   try {
-    const supabase = await createClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const db = await createUntypedClient()
+    await requireUser()
     const { searchParams } = new URL(request.url)
     const txn_id      = searchParams.get('txn_id')
     const facture_ref = searchParams.get('facture_ref')
-    const imei        = searchParams.get('imei')
+    const imei        = searchParams.get('imei')?.trim()
+    if (!txn_id && !facture_ref && !imei) throw new HttpError(400, 'txn_id, facture_ref ou imei requis')
 
-    if (!txn_id && !facture_ref && !imei) {
-      return NextResponse.json(
-        { error: 'txn_id, facture_ref ou imei requis' },
-        { status: 400 }
-      )
-    }
-
-    let resolvedTxnId: string | null = txn_id
-
-    // ── Résolution IMEI → txn_id ─────────────────────────────────────────────
+    let resolvedTxnId = txn_id
     if (imei && !resolvedTxnId) {
-      // IMEI is unique per physical device — no store_id filter needed (and hardcoding one
-      // here silently broke warranty lookups for any store other than EZ-001).
-      const { data: phoneRaw } = await supabase
-        .from('phones')
-        .select('phone_id')
-        .eq('imei', imei.trim())
-        .maybeSingle()
-
-      const phone = phoneRaw as { phone_id: string } | null
-      if (!phone?.phone_id) {
-        return NextResponse.json({ error: 'Aucun téléphone trouvé pour cet IMEI' }, { status: 404 })
-      }
-
-      const { data: txnByPhoneRaw } = await supabase
-        .from('transactions')
-        .select('txn_id')
-        .eq('device_id', phone.phone_id)
-        .eq('voided', false)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-
-      resolvedTxnId = (txnByPhoneRaw as any)?.txn_id ?? null
-      if (!resolvedTxnId) {
-        return NextResponse.json({ error: 'Aucune vente trouvée pour cet IMEI' }, { status: 404 })
-      }
+      // IMEI is unique per physical device — no store filter needed
+      const phone = await prisma.phones.findFirst({ where: { imei }, select: { phone_id: true } })
+      if (!phone) throw new HttpError(404, 'Aucun téléphone trouvé pour cet IMEI')
+      const lastSale = await prisma.transactions.findFirst({
+        where: { device_id: phone.phone_id, voided: false }, orderBy: { created_at: 'desc' }, select: { txn_id: true },
+      })
+      if (!lastSale) throw new HttpError(404, 'Aucune vente trouvée pour cet IMEI')
+      resolvedTxnId = lastSale.txn_id
     }
 
-    // ── Fetch transaction ─────────────────────────────────────────────────────
-    let txnQuery = supabase
-      .from('transactions')
-      .select(
-        'txn_id, warranty_start, warranty_expiry, facture_ref, ' +
-        'device_id, prix_vente, date_vente, payment_method, voided'
-      )
-      .eq('voided', false)
+    const txn = await prisma.transactions.findFirst({
+      where:  { voided: false, ...(resolvedTxnId ? { txn_id: resolvedTxnId } : { facture_ref: facture_ref! }) },
+      select: { txn_id: true, warranty_start: true, warranty_expiry: true, facture_ref: true, device_id: true, prix_vente: true, date_vente: true, payment_method: true, voided: true },
+    })
+    if (!txn) throw new HttpError(404, 'Transaction introuvable')
 
-    if (resolvedTxnId)  txnQuery = txnQuery.eq('txn_id', resolvedTxnId)
-    else if (facture_ref) txnQuery = txnQuery.eq('facture_ref', facture_ref)
+    // Effective expiry = base + days spent in SAV (SQL function)
+    const [{ expiry }] = await prisma.$queryRaw<{ expiry: Date | null }[]>`SELECT get_effective_warranty_expiry(${txn.txn_id}) AS expiry`
+    const events = await prisma.warranty_events.findMany({
+      where:   { txn_id: txn.txn_id },
+      select:  { event_id: true, event_type: true, event_date: true, sav_ref: true, notes: true, created_at: true },
+      orderBy: { event_date: 'asc' },
+    })
 
-    const { data: txnRaw, error: txnError } = await txnQuery.maybeSingle()
-    if (txnError) throw txnError
-
-    const txn = txnRaw as any
-    if (!txn) {
-      return NextResponse.json({ error: 'Transaction introuvable' }, { status: 404 })
-    }
-
-    // ── Garantie effective via fonction SQL ───────────────────────────────────
-    const { data: effectiveExpiry, error: expError } = await db
-      .rpc('get_effective_warranty_expiry', { p_txn_id: txn.txn_id })
-    if (expError) throw expError
-
-    // ── Historique des événements SAV ─────────────────────────────────────────
-    const { data: eventsRaw } = await db
-      .from('warranty_events')
-      .select('event_id, event_type, event_date, sav_ref, notes, created_at')
-      .eq('txn_id', txn.txn_id)
-      .order('event_date', { ascending: true })
-
-    const events = (eventsRaw ?? []) as Array<{
-      event_id: string
-      event_type: string
-      event_date: string
-      sav_ref: string | null
-      notes: string | null
-      created_at: string
-    }>
-
-    // ── Calcul du statut ──────────────────────────────────────────────────────
-    const today      = new Date()
-    today.setHours(0, 0, 0, 0)
-    const expiryDate = effectiveExpiry ? new Date(effectiveExpiry as string) : null
-    const daysRemaining = expiryDate
-      ? Math.ceil((expiryDate.getTime() - today.getTime()) / 86_400_000)
-      : null
-
+    const today = new Date()
+    today.setUTCHours(0, 0, 0, 0)
+    const daysRemaining = expiry ? Math.ceil((expiry.getTime() - today.getTime()) / 86_400_000) : null
     const warranty_status: 'active' | 'expired' | 'no_warranty' =
-      !expiryDate           ? 'no_warranty'
-      : daysRemaining! > 0  ? 'active'
-      :                       'expired'
+      !expiry ? 'no_warranty' : daysRemaining! > 0 ? 'active' : 'expired'
+    const openSav = events.reduce((acc, ev) => acc + (ev.event_type === 'ouverture_sav' ? 1 : -1), 0) > 0
 
-    const openSav = events.reduce((acc, ev) =>
-      acc + (ev.event_type === 'SAV_OPEN' ? 1 : ev.event_type === 'SAV_CLOSE' ? -1 : 0), 0
-    ) > 0
-
-    return NextResponse.json({
+    return json({
       status: 'success',
       data: {
         txn_id:                    txn.txn_id,
@@ -126,7 +55,7 @@ export async function GET(request: Request) {
         date_vente:                txn.date_vente,
         warranty_start:            txn.warranty_start,
         warranty_expiry_base:      txn.warranty_expiry,
-        warranty_expiry_effective: effectiveExpiry,
+        warranty_expiry_effective: expiry,
         days_remaining:            daysRemaining,
         warranty_status,
         sav_currently_open:        openSav,
@@ -134,7 +63,6 @@ export async function GET(request: Request) {
       },
     })
   } catch (err) {
-    console.error('[GET /api/warranty]', err)
-    return NextResponse.json({ error: 'Server error' }, { status: 500 })
+    return handleError(err, 'GET /api/warranty')
   }
 }

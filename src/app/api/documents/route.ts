@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server'
-import { createClient, createUntypedClient } from '@/lib/supabase/server'
+import { Prisma } from '@prisma/client'
+import { prisma } from '@/lib/db'
+import { json, handleError, requireUser, requireActiveUser, dateOnly, todayDate, HttpError } from '@/lib/api'
 
 const TYPE_MAP: Record<string, { prefix: string; seq: string }> = {
   FAC: { prefix: 'EZ',  seq: 'ez_fac_seq' },
@@ -10,146 +11,92 @@ const TYPE_MAP: Record<string, { prefix: string; seq: string }> = {
 }
 
 // ── GET /api/documents ────────────────────────────────────────────────────────
-// Mode 1 : ?lookup_imei=XXXXXXX  → retourne les données du téléphone (autocomplete)
-// Mode 2 : archive filtrée (type, search, from, to, limit)
-
+// Mode 1 : ?lookup_imei=XXXXXXX  → phone data (autocomplete)
+// Mode 2 : filtered archive (type, search, from, to, limit)
 export async function GET(request: Request) {
   try {
-    const supabase = await createClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const db = await createUntypedClient()
+    await requireUser()
     const { searchParams } = new URL(request.url)
     const lookup_imei = searchParams.get('lookup_imei')
 
-    // ── Mode 1 : IMEI lookup ─────────────────────────────────────────────────
     if (lookup_imei) {
-      const { data: phone, error: phoneError } = await supabase
-        .from('phones')
-        .select(
-          'phone_id, imei, marque, model, stockage, ram, couleur, condition, ' +
-          'prix_vente_recommande, prix_vente_minimum, warranty_months, ' +
-          'status, source, description, is_damaged, damage_notes, serie, type'
-        )
-        .eq('imei', lookup_imei.trim())
-        .eq('store_id', 'EZ-001')
-        .eq('is_deleted', false)
-        .neq('status', 'مباع' as any)
-        .maybeSingle()
-
-      if (phoneError) throw phoneError
-      return NextResponse.json({ status: 'success', data: phone })
+      const phone = await prisma.phones.findFirst({
+        where: { imei: lookup_imei.trim(), store_id: 'EZ-001', is_deleted: false, status: { not: 'vendu' } },
+        select: {
+          phone_id: true, imei: true, marque: true, model: true, stockage: true, ram: true, couleur: true, condition: true,
+          prix_vente_recommande: true, prix_vente_minimum: true, warranty_months: true,
+          status: true, source: true, description: true, is_damaged: true, damage_notes: true, serie: true, type: true,
+        },
+      })
+      return json({ status: 'success', data: phone })
     }
 
-    // ── Mode 2 : archive list ────────────────────────────────────────────────
     const type   = searchParams.get('type')
-    const search = searchParams.get('search')
+    const search = searchParams.get('search')?.trim()
     const from   = searchParams.get('from')
     const to     = searchParams.get('to')
-    const limit  = Math.min(parseInt(searchParams.get('limit') || '50'), 200)
+    const limit  = Math.min(parseInt(searchParams.get('limit') || '50', 10), 200)
 
-    let query = db
-      .from('ez_documents')
-      .select(
-        'doc_id, doc_type, doc_ref, doc_date, client_name, client_tel, ' +
-        'device_label, imei, montant, warranty_end, warranty_months, ' +
-        'txn_id, phone_id, created_at, printed_at'
-      )
-      .eq('store_id', 'EZ-001')
-      .order('created_at', { ascending: false })
-      .limit(limit)
-
-    if (type)   query = query.eq('doc_type', type)
-    if (from)   query = query.gte('doc_date', from)
-    if (to)     query = query.lte('doc_date', to)
-    if (search) {
-      query = query.or(
-        `doc_ref.ilike.%${search}%,` +
-        `client_name.ilike.%${search}%,` +
-        `imei.ilike.%${search}%,` +
-        `device_label.ilike.%${search}%`
-      )
-    }
-
-    const { data, error } = await query
-    if (error) throw error
-
-    return NextResponse.json({ status: 'success', data: data ?? [] })
+    const data = await prisma.ez_documents.findMany({
+      where: {
+        store_id: 'EZ-001',
+        ...(type && { doc_type: type }),
+        ...((from || to) && { doc_date: { gte: dateOnly(from), lte: dateOnly(to) } }),
+        ...(search && { OR: ['doc_ref', 'client_name', 'imei', 'device_label'].map(f => ({ [f]: { contains: search, mode: 'insensitive' } })) }),
+      },
+      select: {
+        doc_id: true, doc_type: true, doc_ref: true, doc_date: true, client_name: true, client_tel: true,
+        device_label: true, imei: true, montant: true, warranty_end: true, warranty_months: true,
+        txn_id: true, phone_id: true, created_at: true, printed_at: true,
+      },
+      orderBy: { created_at: 'desc' },
+      take:    limit,
+    })
+    return json({ status: 'success', data })
   } catch (err) {
-    console.error('[GET /api/documents]', err)
-    return NextResponse.json({ error: 'Server error' }, { status: 500 })
+    return handleError(err, 'GET /api/documents')
   }
 }
 
 // ── POST /api/documents ───────────────────────────────────────────────────────
-// Crée le document et génère la référence. Appelé quand l'utilisateur clique
-// "Imprimer". txn_id est null à ce stade — rempli ensuite par /confirm-sale.
-
+// Creates the document and its reference when the user clicks "Imprimer".
+// txn_id stays null here — set later by /confirm-sale.
 export async function POST(request: Request) {
   try {
-    const supabase = await createClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const db = await createUntypedClient()
+    const user = await requireActiveUser()
     const body = await request.json()
-    const {
-      doc_type, phone_id, client_id, client_name, client_tel, client_cin,
-      device_label, imei, montant, warranty_months, warranty_start,
-      warranty_end, linked_doc_ref, doc_data,
-    } = body
-
-    if (!doc_type || !TYPE_MAP[doc_type]) {
-      return NextResponse.json({ error: 'doc_type invalide' }, { status: 400 })
-    }
-
+    const { doc_type } = body
+    if (!doc_type || !TYPE_MAP[doc_type]) throw new HttpError(400, 'doc_type invalide')
     const { prefix, seq } = TYPE_MAP[doc_type]
 
-    // Génère la référence via la fonction SQL
-    const { data: refData, error: refError } = await db
-      .rpc('next_doc_ref', { prefix, seq_name: seq })
+    // Sequence-safe reference from the database (EZ-2026-000042)
+    const [{ ref }] = await prisma.$queryRaw<{ ref: string }[]>`SELECT next_doc_ref(${prefix}, ${seq}) AS ref`
 
-    if (refError || !refData) {
-      throw new Error(refError?.message ?? 'Impossible de générer la référence')
-    }
-
-    const doc_ref = refData as string
-
-    const { data, error } = await db
-      .from('ez_documents')
-      .insert({
+    const data = await prisma.ez_documents.create({
+      data: {
         store_id:        'EZ-001',
         doc_type,
-        doc_ref,
-        doc_date:        new Date().toISOString().split('T')[0],
-        phone_id:        phone_id        || null,
-        client_id:       client_id       || null,
-        client_name:     client_name     || null,
-        client_tel:      client_tel      || null,
-        client_cin:      client_cin      || null,
-        device_label:    device_label    || null,
-        imei:            imei            || null,
-        montant:         montant         ?? null,
-        warranty_months: warranty_months ?? null,
-        warranty_start:  warranty_start  || null,
-        warranty_end:    warranty_end    || null,
-        linked_doc_ref:  linked_doc_ref  || null,
-        doc_data:        doc_data        ?? {},
+        doc_ref:         ref,
+        doc_date:        todayDate(),
+        phone_id:        body.phone_id        || null,
+        client_id:       body.client_id       || null,
+        client_name:     body.client_name     || null,
+        client_tel:      body.client_tel      || null,
+        client_cin:      body.client_cin      || null,
+        device_label:    body.device_label    || null,
+        imei:            body.imei            || null,
+        montant:         body.montant         ?? null,
+        warranty_months: body.warranty_months ?? null,
+        warranty_start:  dateOnly(body.warranty_start) ?? null,
+        warranty_end:    dateOnly(body.warranty_end)   ?? null,
+        linked_doc_ref:  body.linked_doc_ref  || null,
+        doc_data:        (body.doc_data ?? {}) as Prisma.InputJsonValue,
         created_by:      user.id,
-      })
-      .select('doc_id, doc_ref')
-      .single()
-
-    if (error) throw error
-
-    return NextResponse.json({ status: 'success', data })
+      },
+      select: { doc_id: true, doc_ref: true },
+    })
+    return json({ status: 'success', data })
   } catch (err) {
-    console.error('[POST /api/documents]', err)
-    return NextResponse.json({ error: 'Server error' }, { status: 500 })
+    return handleError(err, 'POST /api/documents')
   }
 }

@@ -10,7 +10,6 @@ import {
   Vault, RefreshCw, CheckCircle, XCircle,
   Clock, AlertTriangle, ChevronDown, ChevronUp, Calendar
 } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
 
 interface CaisseRecord {
   caisse_id:         string
@@ -24,7 +23,7 @@ interface CaisseRecord {
   solde_theorique:   number
   solde_reel?:       number | null
   ecart?:            number | null
-  status:            'open' | 'pending_eod' | 'closed'
+  status:            'ouverte' | 'en_attente_cloture' | 'cloturee'
   eod_submitted_at?: string | null
   approved_by?:      string | null
   approved_at?:      string | null
@@ -39,25 +38,28 @@ const STORES_FALLBACK = [
 ]
 
 const STATUS_STYLES = {
-  open:        { label: 'Ouverte',          labelAr: 'مفتوحة',              bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', dot: 'bg-emerald-500' },
-  pending_eod: { label: 'En attente',        labelAr: 'في انتظار الموافقة',  bg: 'bg-amber-50',   text: 'text-amber-700',   border: 'border-amber-200',   dot: 'bg-amber-500' },
-  closed:      { label: 'Clôturée',          labelAr: 'مغلقة',               bg: 'bg-slate-50',   text: 'text-slate-600',   border: 'border-slate-200',   dot: 'bg-slate-400' },
+  ouverte:            { label: 'Ouverte',          labelAr: 'مفتوحة',              bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', dot: 'bg-emerald-500' },
+  en_attente_cloture: { label: 'En attente',        labelAr: 'في انتظار الموافقة',  bg: 'bg-amber-50',   text: 'text-amber-700',   border: 'border-amber-200',   dot: 'bg-amber-500' },
+  cloturee:           { label: 'Clôturée',          labelAr: 'مغلقة',               bg: 'bg-slate-50',   text: 'text-slate-600',   border: 'border-slate-200',   dot: 'bg-slate-400' },
 }
 
 export default function BZGCaissePage() {
   const { user }     = useUser()
   const { language } = useLanguageStore()
   const isAr         = language === 'ar'
-  const supabase     = createClient()
-
   const [records, setRecords]     = useState<CaisseRecord[]>([])
   const [loading, setLoading]     = useState(true)
   const [expanded, setExpanded]   = useState<string | null>(null)
   const [approving, setApproving] = useState<string | null>(null)
-    const [stores, setStores] = useState(STORES_FALLBACK)
+  const [stores, setStores] = useState(STORES_FALLBACK)
   useEffect(() => {
-    (supabase as any).from('stores').select('store_id,name,theme_color').eq('is_active', true)
-      .then(({ data }: any) => { if (data?.length) setStores(data.map((s: any) => ({ id: s.store_id, name: s.name, color: s.theme_color }))) })
+    fetch('/api/stores')
+      .then(r => r.json())
+      .then(({ data }: { data?: { store_id: string; name: string; theme_color: string; is_active: boolean }[] }) => {
+        const active = (data ?? []).filter(s => s.is_active)
+        if (active.length) setStores(active.map(s => ({ id: s.store_id, name: s.name, color: s.theme_color })))
+      })
+      .catch(() => {})
   }, [])
   const [filterStore, setFilterStore] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
@@ -66,20 +68,15 @@ export default function BZGCaissePage() {
   async function fetchRecords() {
     setLoading(true)
     try {
-      let query = (supabase as any)
-        .from('caisse')
-        .select('*')
-        .order('date', { ascending: false })
-        .order('created_at', { ascending: false })
-        .limit(100)
+      const params = new URLSearchParams()
+      if (filterStore)  params.set('store_id', filterStore)
+      if (filterStatus) params.set('status', filterStatus)
+      if (selectedDate) params.set('date', selectedDate)
 
-      if (filterStore)  query = query.eq('store_id', filterStore)
-      if (filterStatus) query = query.eq('status', filterStatus)
-      if (selectedDate) query = query.eq('date', selectedDate)
-
-      const { data, error } = await query
-      if (error) throw error
-      setRecords(data || [])
+      const res  = await fetch(`/api/bzg/caisse?${params}`)
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error)
+      setRecords(json.data || [])
     } catch (err: unknown) {
       showError((err as Error).message)
     } finally {
@@ -136,7 +133,7 @@ export default function BZGCaissePage() {
     }
   }
 
-  const pending = records.filter(r => r.status === 'pending_eod')
+  const pending = records.filter(r => r.status === 'en_attente_cloture')
 
   return (
     <div className="flex flex-col h-full overflow-hidden animate-fade-in" dir={isAr ? 'rtl' : 'ltr'}>
@@ -180,9 +177,9 @@ export default function BZGCaissePage() {
             className="text-sm border border-[#E8E5DE] rounded-xl px-3 py-2.5 bg-white text-[#6B6860] focus:outline-none"
             value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
             <option value="">{t(isAr, 'common.allStatuses')}</option>
-            <option value="open">{t(isAr, 'common.openStatus')}</option>
-            <option value="pending_eod">{isAr ? 'في انتظار' : 'En attente'}</option>
-            <option value="closed">{t(isAr, 'common.closedStatus')}</option>
+            <option value="ouverte">{t(isAr, 'common.openStatus')}</option>
+            <option value="en_attente_cloture">{isAr ? 'في انتظار' : 'En attente'}</option>
+            <option value="cloturee">{t(isAr, 'common.closedStatus')}</option>
           </select>
 
           <div className="flex items-center gap-2 bg-white border border-[#E8E5DE] rounded-xl px-3 py-2">
@@ -256,7 +253,7 @@ export default function BZGCaissePage() {
                       </div>
 
                       {/* Approve/reject buttons for pending */}
-                      {rec.status === 'pending_eod' && (
+                      {rec.status === 'en_attente_cloture' && (
                         <div className="flex gap-2 flex-shrink-0" onClick={e => e.stopPropagation()}>
                           <button
                             onClick={() => approve(rec.caisse_id)}

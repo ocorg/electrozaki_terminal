@@ -1,56 +1,35 @@
 'use client'
 import React from 'react'
 import { cn } from '@/lib/utils'
+import { codeLabel, type CodeDomain, type Code, type Lang } from '@/lib/codes'
 
 // ── Status Badge ──────────────────────────────────────────────
-const STATUS_STYLES: Record<string, string> = {
-  // Device status
-  'متوفر':       'bg-emerald-50 text-emerald-700 border-emerald-200',
-  'مباع':        'bg-slate-100 text-slate-600 border-slate-200',
-  'إستبدال':     'bg-blue-50 text-blue-700 border-blue-200',
-  'إصلاح':       'bg-orange-50 text-orange-700 border-orange-200',
-  // Repair status
-  'معلق':        'bg-amber-50 text-amber-700 border-amber-200',
-  'قيد الإصلاح': 'bg-blue-50 text-blue-700 border-blue-200',
-  'جاهز':        'bg-emerald-50 text-emerald-700 border-emerald-200',
-  'تم الاستلام': 'bg-slate-100 text-slate-500 border-slate-200',
-  // Stock
-  'نفذ':         'bg-red-50 text-red-700 border-red-200',
-  'تحذير':       'bg-amber-50 text-amber-700 border-amber-200',
-  // Payment
-  '✅ مسدد':      'bg-emerald-50 text-emerald-700 border-emerald-200',
-  '🔵 متبقي':    'bg-blue-50 text-blue-700 border-blue-200',
-  '⚠️ زيادة دفع':'bg-orange-50 text-orange-700 border-orange-200',
+const GREEN  = 'bg-emerald-50 text-emerald-700 border-emerald-200'
+const SLATE  = 'bg-slate-100 text-slate-600 border-slate-200'
+const BLUE   = 'bg-blue-50 text-blue-700 border-blue-200'
+const ORANGE = 'bg-orange-50 text-orange-700 border-orange-200'
+const AMBER  = 'bg-amber-50 text-amber-700 border-amber-200'
+const RED    = 'bg-red-50 text-red-700 border-red-200'
+
+const STATUS_STYLES: Partial<Record<CodeDomain, Record<string, string>>> = {
+  device_status:  { disponible: GREEN, vendu: SLATE, echange: BLUE, en_reparation: ORANGE, reserve: AMBER, en_livraison: BLUE, en_transfert: BLUE },
+  repair_status:  { en_attente: AMBER, en_cours: BLUE, pret: GREEN, recupere: SLATE },
+  stock_level:    { disponible: GREEN, alerte: AMBER, epuise: RED },
+  payment_status: { solde: GREEN, reste: BLUE, trop_percu: ORANGE },
+  operation_type: { vente: GREEN, echange: BLUE, avance: AMBER, retour: ORANGE },
 }
 
-const STATUS_LABELS_FR: Record<string, string> = {
-  'متوفر':       'Disponible',
-  'مباع':        'Vendu',
-  'إستبدال':     'Échangé',
-  'إصلاح':       'Réparation',
-  'معلق':        'En attente',
-  'قيد الإصلاح': 'En cours',
-  'جاهز':        'Prêt',
-  'تم الاستلام': 'Récupéré',
-  'نفذ':         'Épuisé',
-  'تحذير':       'Stock bas',
-  '✅ مسدد':      'Soldé',
-  '🔵 متبقي':    'Solde restant',
-  '⚠️ زيادة دفع': 'Trop payé',
-  'جديد':        'Neuf',
-  'مستعمل':      'Occasion',
-  'معطوب':       'Défectueux',
+interface StatusBadgeProps<D extends CodeDomain> {
+  domain: D
+  code:   Code<D> | string | null | undefined
+  lang?:  Lang
+  size?:  'sm' | 'md'
 }
 
-interface StatusBadgeProps {
-  status: string
-  lang?: 'fr' | 'ar'
-  size?: 'sm' | 'md'
-}
-
-export function StatusBadge({ status, lang = 'fr', size = 'sm' }: StatusBadgeProps) {
-  const style = STATUS_STYLES[status] || 'bg-gray-100 text-gray-600 border-gray-200'
-  const label = lang === 'fr' ? (STATUS_LABELS_FR[status] || status) : status
+export function StatusBadge<D extends CodeDomain>({ domain, code, lang = 'fr', size = 'sm' }: StatusBadgeProps<D>) {
+  if (!code) return null
+  const style = STATUS_STYLES[domain]?.[code] || 'bg-gray-100 text-gray-600 border-gray-200'
+  const label = codeLabel(domain, code as Code<D>, lang)
   return (
     <span className={cn(
       'inline-flex items-center border rounded-full font-medium',

@@ -26,7 +26,7 @@ export default function StoreControlSection() {
   }, [])
 
   // Only owner sees this section
-  if (user?.role !== 'owner') return null
+  if (user?.role !== 'proprietaire') return null
 
   async function toggleStore(store_id: string, current: boolean) {
     setToggling(store_id)

@@ -1,124 +1,83 @@
-import { createClient, createUntypedClient } from '@/lib/supabase/server'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
+import type { supplier_payment_type } from '@prisma/client'
+import { prisma } from '@/lib/db'
+import { json, handleError, requireUser, requireActiveUser, dateOnly, todayDate, HttpError, MANAGERS } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
+
+const PAYMENT_TYPES: supplier_payment_type[] = ['reglement_a', 'avance_a', 'paiement_b']
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createUntypedClient()
+    await requireUser()
     const { searchParams } = new URL(request.url)
     const supplier_id = searchParams.get('supplier_id')
     const store_id    = searchParams.get('store_id')
-    const mode        = searchParams.get('mode')
 
-    // Mode : téléphones vendus non réglés pour le flow Fournisseur A
-    if (mode === 'unsettled_phones' && supplier_id) {
-      const { data, error } = await supabase
-        .from('phones_unsettled_a')
-        .select('phone_id, fournisseur_id, marque, model, imei, couleur, stockage, prix_achat, cash_recu, fac_ref, sold_at')
-        .eq('fournisseur_id', supplier_id)
-        .order('sold_at', { ascending: false })
-      if (error) throw error
-      return NextResponse.json({ data })
+    // Sold phones not yet settled, for the "Fournisseur A" flow (phones_unsettled_a is a view)
+    if (searchParams.get('mode') === 'unsettled_phones' && supplier_id) {
+      const data = await prisma.$queryRaw`
+        SELECT phone_id, fournisseur_id, marque, model, imei, couleur, stockage, prix_achat, cash_recu, fac_ref, sold_at
+        FROM phones_unsettled_a WHERE fournisseur_id = ${supplier_id} ORDER BY sold_at DESC`
+      return json({ data })
     }
 
-    // Mode par défaut : historique des paiements
-    let query = supabase
-      .from('supplier_payments')
-      .select('*')
-      .eq('is_deleted', false)
-      .order('date_paiement', { ascending: false })
-
-    if (supplier_id) query = query.eq('supplier_id', supplier_id)
-    if (store_id)    query = query.eq('store_id', store_id)
-
-    const { data, error } = await query
-    if (error) throw error
-    return NextResponse.json({ data })
-  } catch (err: unknown) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
+    const data = await prisma.supplier_payments.findMany({
+      where:   { is_deleted: false, ...(supplier_id && { supplier_id }), ...(store_id && { store_id }) },
+      orderBy: { date_paiement: 'desc' },
+    })
+    return json({ data })
+  } catch (err) {
+    return handleError(err, 'GET /api/supplier-payments')
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase      = await createUntypedClient()
-    const typedSupabase = await createClient()
-    const { data: { user } } = await typedSupabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
-
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('display_name, store_id, role')
-      .eq('id', user.id)
-      .single() as { data: { display_name: string; store_id: string | null; role: string } | null }
-
-    if (!['manager', 'owner'].includes(profile?.role ?? '')) {
-      return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
-    }
-
+    const user = await requireActiveUser(MANAGERS)
     const body = await request.json()
-    const resolvedStoreId = body.store_id ?? profile?.store_id ?? null
-    const today = new Date().toISOString().split('T')[0]
+    const store_id = body.store_id ?? user.store_id ?? null
 
-    if (!body.supplier_id)
-      return NextResponse.json({ error: 'supplier_id requis' }, { status: 400 })
-    if (!body.montant || Number(body.montant) <= 0)
-      return NextResponse.json({ error: 'Montant invalide' }, { status: 400 })
-    if (!['REGLEMENT_A', 'AVANCE_A', 'PAIEMENT_B'].includes(body.payment_type))
-      return NextResponse.json({ error: 'payment_type invalide' }, { status: 400 })
+    if (!body.supplier_id) throw new HttpError(400, 'supplier_id requis')
+    if (!(Number(body.montant) > 0)) throw new HttpError(400, 'Montant invalide')
+    if (!PAYMENT_TYPES.includes(body.payment_type)) throw new HttpError(400, 'payment_type invalide')
+    const phoneIds: string[] = Array.isArray(body.phone_ids) ? body.phone_ids : []
 
-    // Insertion du paiement
-    const { data, error } = await supabase
-      .from('supplier_payments')
-      .insert({
-        supplier_id:   body.supplier_id,
-        payment_type:  body.payment_type,
-        montant:       Number(body.montant),
-        phone_ids:     body.phone_ids ?? [],
-        date_paiement: body.date_paiement ?? today,
-        notes:         body.notes ?? null,
-        store_id:      resolvedStoreId,
-        created_by:    user.id,
+    // Payment and (for reglement_a) settling the phones commit together
+    const data = await prisma.$transaction(async (tx) => {
+      const payment = await tx.supplier_payments.create({
+        data: {
+          supplier_id:   body.supplier_id,
+          payment_type:  body.payment_type,
+          montant:       Number(body.montant),
+          phone_ids:     phoneIds,
+          date_paiement: dateOnly(body.date_paiement) ?? todayDate(),
+          notes:         body.notes ?? null,
+          store_id,
+          created_by:    user.id,
+        },
       })
-      .select()
-      .single() as { data: Record<string, unknown> | null; error: unknown }
-
-    if (error) throw error
-    if (!data) throw new Error('No data returned')
-
-    // REGLEMENT_A : marquer les téléphones comme réglés
-    if (
-      body.payment_type === 'REGLEMENT_A' &&
-      Array.isArray(body.phone_ids) &&
-      body.phone_ids.length > 0
-    ) {
-      const { error: updateError } = await supabase
-        .from('phones')
-        .update({
-          settled_at: new Date().toISOString(),
-          settled_by: user.id,
+      if (body.payment_type === 'reglement_a' && phoneIds.length) {
+        await tx.phones.updateMany({
+          where: { phone_id: { in: phoneIds } },
+          data:  { settled_at: new Date(), settled_by: user.id },
         })
-        .in('phone_id', body.phone_ids)
-
-      if (updateError) {
-        // Paiement enregistré — erreur non bloquante, loggée
-        console.error('[REGLEMENT_A] settled_at update failed:', updateError)
       }
-    }
+      return payment
+    })
 
     await logActivity({
-      store_id:    resolvedStoreId,
+      store_id,
       user_id:     user.id,
-      user_name:   profile?.display_name ?? '—',
-      action_type: 'INSERT',
-      module:      'suppliers' as any,
-      record_id:   data.payment_id as string,
+      user_name:   user.display_name,
+      action_type: 'creation',
+      module:      'paiements_fournisseurs',
+      record_id:   data.payment_id,
       after_state: data,
       ip_address:  getIpFromRequest(request),
     })
 
-    return NextResponse.json({ data }, { status: 201 })
-  } catch (err: unknown) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
+    return json({ data }, { status: 201 })
+  } catch (err) {
+    return handleError(err, 'POST /api/supplier-payments')
   }
 }

@@ -1,91 +1,61 @@
-import { createUntypedClient, createClient } from '@/lib/supabase/server'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
+import { prisma } from '@/lib/db'
+import { json, handleError, requireActiveUser, HttpError, MANAGERS } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
+import { notifyCaisseChange } from '@/lib/realtime'
 
 // PATCH /api/bzg/caisse/eod
 // Body: { caisse_id: string, action: 'approve' | 'reject', rejection_note?: string }
 export async function PATCH(request: NextRequest) {
   try {
-    const supabase      = await createUntypedClient()
-    const typedSupabase = await createClient()
-    const { data: { user } } = await typedSupabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
-
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('role, display_name, store_id')
-      .eq('id', user.id)
-      .single() as { data: { role: string; display_name: string; store_id: string | null } | null }
-
-    if (!['manager', 'owner'].includes(profile?.role ?? '')) {
-      return NextResponse.json({ error: 'Accès refusé — rôle manager ou owner requis' }, { status: 403 })
-    }
-
+    const user = await requireActiveUser(MANAGERS)
     const body = await request.json() as Record<string, unknown>
     const caisse_id      = body.caisse_id      as string | undefined
     const action         = body.action         as string | undefined
-    const rejection_note = body.rejection_note as string | undefined
+    const rejection_note = (body.rejection_note as string | undefined)?.trim()
 
-    if (!caisse_id) return NextResponse.json({ error: 'caisse_id requis' }, { status: 400 })
+    if (!caisse_id) throw new HttpError(400, 'caisse_id requis')
     if (action !== 'approve' && action !== 'reject') {
-      return NextResponse.json({ error: 'action doit être "approve" ou "reject"' }, { status: 400 })
+      throw new HttpError(400, 'action doit être "approve" ou "reject"')
     }
-    if (action === 'reject' && (!rejection_note || rejection_note.trim().length < 3)) {
-      return NextResponse.json({ error: 'Motif de rejet requis (3 caractères minimum)' }, { status: 400 })
-    }
-
-    // Fetch current caisse record
-    const { data: before } = await supabase
-      .from('caisse')
-      .select('*')
-      .eq('caisse_id', caisse_id)
-      .single() as { data: Record<string, unknown> | null }
-
-    if (!before) return NextResponse.json({ error: 'Caisse introuvable' }, { status: 404 })
-    if (before.status !== 'pending_eod') {
-      return NextResponse.json(
-        { error: `Cette caisse est en statut "${before.status}" — approbation impossible` },
-        { status: 400 }
-      )
+    if (action === 'reject' && (!rejection_note || rejection_note.length < 3)) {
+      throw new HttpError(400, 'Motif de rejet requis (3 caractères minimum)')
     }
 
-    const updatePayload = action === 'approve'
-      ? {
-          status:      'closed',
-          approved_by: user.id,
-          approved_at: new Date().toISOString(),
-        }
-      : {
-          status:          'open',
-          rejection_note:  rejection_note!.trim(),
-        }
+    const before = await prisma.caisse.findUnique({ where: { caisse_id } })
+    if (!before) throw new HttpError(404, 'Caisse introuvable')
+    if (before.status !== 'en_attente_cloture') {
+      throw new HttpError(400, 'Cette caisse n\'est pas en attente de validation — approbation impossible')
+    }
 
-    const { error: updateErr } = await supabase
-      .from('caisse')
-      .update(updatePayload)
-      .eq('caisse_id', caisse_id)
-
-    if (updateErr) throw updateErr
+    await prisma.caisse.update({
+      where: { caisse_id },
+      data: action === 'approve'
+        ? { status: 'cloturee', approved_by: user.id, approved_at: new Date() }
+        : { status: 'ouverte', rejection_note },
+    })
 
     await logActivity({
       user_id:     user.id,
-      store_id:    before.store_id as string,
-      user_name:   profile?.display_name ?? '—',
+      store_id:    before.store_id,
+      user_name:   user.display_name,
       module:      'caisse',
-      action_type: action === 'approve' ? 'EOD_APPROVE' : 'EOD_REJECT',
+      action_type: action === 'approve' ? 'validation_cloture' : 'rejet_cloture',
+      ip_address:  getIpFromRequest(request),
       after_state: {
         caisse_id,
         action,
-        date:             before.date,
-        solde_reel:       before.solde_reel,
-        solde_theorique:  before.solde_theorique,
-        ecart:            before.ecart,
-        ...(rejection_note ? { rejection_note: rejection_note.trim() } : {}),
+        date:            before.date,
+        solde_reel:      before.solde_reel,
+        solde_theorique: before.solde_theorique,
+        ecart:           before.ecart,
+        ...(rejection_note ? { rejection_note } : {}),
       },
     })
+    await notifyCaisseChange(before.store_id)
 
-    return NextResponse.json({ status: 'success' })
-  } catch (err: unknown) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
+    return json({ status: 'success' })
+  } catch (err) {
+    return handleError(err, 'PATCH /api/bzg/caisse/eod')
   }
 }

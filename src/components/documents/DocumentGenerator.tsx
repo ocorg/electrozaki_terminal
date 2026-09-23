@@ -369,7 +369,7 @@ export function DocumentGenerator({ userProfile }: DocumentGeneratorProps) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               facture_ref: payload.pec.facture_liee,
-              event_type:  'SAV_OPEN',
+              event_type:  'ouverture_sav',
               event_date:  payload.pec.date,
               store_id:    storeId,
             }),

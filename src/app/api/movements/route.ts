@@ -1,231 +1,140 @@
-import { createClient, createUntypedClient } from '@/lib/supabase/server'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
+import type { Prisma, device_status, device_type, location_type, movement_reason } from '@prisma/client'
+import { prisma } from '@/lib/db'
+import { json, handleError, requireUser, requireActiveUser, HttpError, MANAGERS } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
-
-interface SourceAccessory {
-  acc_id:                 string
-  quantite:               number
-  nom:                    string
-  categorie:              string
-  marque:                 string | null
-  compatible_with:        string | null
-  barcode:                string | null
-  prix_achat:             number | null
-  prix_vente_recommande:  number | null
-  prix_vente_minimum:     number | null
-  seuil_alerte:           number
-  store_id:               string | null
-}
+import { codeLabel } from '@/lib/codes'
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createUntypedClient()
+    await requireUser()
     const { searchParams } = new URL(request.url)
-    const store_id   = searchParams.get('store_id')
-    const device_type = searchParams.get('device_type')
-    const limit      = searchParams.get('limit') || '50'
+    const store_id    = searchParams.get('store_id')
+    const device_type = searchParams.get('device_type') as device_type | null
+    const limit       = Math.min(Number(searchParams.get('limit') || 50), 500)
 
-    let query = supabase
-      .from('stock_movements')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(Number(limit))
-
-    if (store_id)    query = query.eq('store_id', store_id)
-    if (device_type) query = query.eq('device_type', device_type)
-
-    const { data, error } = await query
-    if (error) throw error
-    return NextResponse.json({ data })
-  } catch (err: unknown) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
+    const data = await prisma.stock_movements.findMany({
+      where:   { ...(store_id && { store_id }), ...(device_type && { device_type }) },
+      orderBy: { created_at: 'desc' },
+      take:    limit,
+    })
+    return json({ data })
+  } catch (err) {
+    return handleError(err, 'GET /api/movements')
   }
+}
+
+// Status a phone takes when it moves for a given reason
+function phoneStatusFor(reason: movement_reason, to: location_type, toStoreId: string | null): device_status {
+  if (reason === 'retour')             return 'disponible'
+  if (reason === 'reparation_externe') return 'en_reparation'
+  if (reason === 'pret' || to === 'externe' || toStoreId !== null) return 'en_transfert'
+  return 'disponible'
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase      = await createUntypedClient()
-    const typedSupabase = await createClient()
-    const { data: { user } } = await typedSupabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
-
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('display_name, store_id, role')
-      .eq('id', user.id)
-      .single() as { data: { display_name: string; store_id: string | null; role: string } | null }
-
-    // Only manager/owner can move stock
-    if (!['manager', 'owner'].includes(profile?.role ?? '')) {
-      return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
-    }
-
+    const user = await requireActiveUser(MANAGERS) // only manager/owner can move stock
     const body = await request.json()
     if (!body.device_id || !body.device_type || !body.from_location || !body.to_location) {
-      return NextResponse.json({ error: 'Champs requis manquants' }, { status: 400 })
+      throw new HttpError(400, 'Champs requis manquants')
     }
+    if (body.from_location === body.to_location) throw new HttpError(400, 'Source et destination identiques')
 
-    if (body.from_location === body.to_location) {
-      return NextResponse.json({ error: 'Source et destination identiques' }, { status: 400 })
-    }
+    const deviceType = body.device_type as device_type
+    const from       = body.from_location as location_type
+    const to         = body.to_location as location_type
+    const reason     = (body.reason ?? 'transfert') as movement_reason
+    const toStoreId  = (body.to_store_id as string | null) ?? null
 
-    // Accessories are the only device_type that can move a PARTIAL quantity (phones/laptops
-    // are unique serialized items — always the whole thing, qty 1). Validate up front so we
-    // never log a movement record for a transfer that can't actually be applied.
-    let srcAcc: SourceAccessory | null = null
-    let movedQty = 1
-    if (body.device_type === 'إكسسوار') {
-      const { data: acc } = await supabase
-        .from('accessories')
-        .select('acc_id, quantite, nom, categorie, marque, compatible_with, barcode, prix_achat, prix_vente_recommande, prix_vente_minimum, seuil_alerte, store_id')
-        .eq('acc_id', body.device_id)
-        .single() as { data: SourceAccessory | null }
-      if (!acc) return NextResponse.json({ error: 'Accessoire introuvable' }, { status: 404 })
-      srcAcc = acc
-      movedQty = Math.max(1, Math.floor(Number(body.quantity) || 1))
-      if (movedQty > (acc.quantite ?? 0)) {
-        return NextResponse.json(
-          { error: `Quantité insuffisante — disponible : ${acc.quantite ?? 0}` },
-          { status: 400 }
-        )
+    const data = await prisma.$transaction(async (tx) => {
+      // Accessories are the only type that can move a PARTIAL quantity (phones/laptops are
+      // unique serialized items). Validate before writing anything.
+      let movedQty = 1
+      const srcAcc = deviceType === 'accessoire'
+        ? await tx.accessories.findUnique({ where: { acc_id: body.device_id } })
+        : null
+      if (deviceType === 'accessoire') {
+        if (!srcAcc) throw new HttpError(404, 'Accessoire introuvable')
+        movedQty = Math.max(1, Math.floor(Number(body.quantity) || 1))
+        if (movedQty > srcAcc.quantite) throw new HttpError(400, `Quantité insuffisante — disponible : ${srcAcc.quantite}`)
       }
-    }
 
-    // Create movement record
-    const { data, error } = await supabase
-      .from('stock_movements')
-      .insert({
-        device_type:   body.device_type,
-        device_id:     body.device_id,
-        quantity:      movedQty,
-        from_location: body.from_location,
-        to_location:   body.to_location,
-        external_name: body.external_name ?? null,
-        reason:        body.reason ?? 'Transfert',
-        store_id:      body.store_id ?? profile?.store_id ?? null,
-        notes:         body.notes ?? null,
-        moved_by:      user.id,
-        moved_at:      new Date().toISOString(),
-        created_by:    user.id,
+      const movement = await tx.stock_movements.create({
+        data: {
+          device_type:   deviceType,
+          device_id:     String(body.device_id),
+          quantity:      movedQty,
+          from_location: from,
+          to_location:   to,
+          external_name: body.external_name ?? null,
+          reason,
+          store_id:      body.store_id ?? user.store_id ?? null,
+          notes:         body.notes ?? null,
+          moved_by:      user.id,
+          moved_at:      new Date(),
+          created_by:    user.id,
+        },
       })
-      .select()
-      .single() as { data: Record<string, unknown> | null; error: unknown }
 
-    if (error) throw error
-    if (!data) throw new Error('No data returned')
-
-    // Update device location
-    const deviceTable = body.device_type === 'هاتف' ? 'phones'
-      : body.device_type === 'لابتوب' ? 'laptops'
-      : null // accessories are handled separately below (quantity-aware split/merge)
-
-    const deviceIdCol = body.device_type === 'هاتف' ? 'phone_id' : 'laptop_id'
-
-    const toLocation  = body.to_location  as string
-    const toStoreId   = (body.to_store_id as string | null) ?? null
-
-    if (deviceTable) {
-      const reason = (body.reason as string) ?? 'Transfert'
-
-      const deviceUpdate: Record<string, unknown> = {
-        location:   toLocation,
-        updated_by: user.id,
-      }
-
-      // Statut — uniquement pour les téléphones (ENUM device_status)
-      if (body.device_type === 'هاتف') {
-        if      (reason === 'Retour')              deviceUpdate.status = 'متوفر'
-        else if (reason === 'Réparation Externe')  deviceUpdate.status = 'إصلاح'
-        else if (reason === 'Prêt' || toLocation === 'Externe' || toStoreId !== null)
-                                                   deviceUpdate.status = 'en_transfert'
-        else                                       deviceUpdate.status = 'متوفر'
-      }
-
-      // Inter-magasin → transférer la propriété au magasin destination
-      if (toStoreId) {
-        deviceUpdate.store_id = toStoreId
-      }
-
-      await supabase
-        .from(deviceTable)
-        .update(deviceUpdate)
-        .eq(deviceIdCol, body.device_id)
-    } else if (srcAcc) {
-      const destStoreId = toStoreId ?? srcAcc.store_id
-      const isFullMove   = movedQty >= srcAcc.quantite
-
-      if (isFullMove) {
-        // Moving everything — relocate the existing row in place, same as before.
-        await supabase
-          .from('accessories')
-          .update({ location: toLocation, store_id: destStoreId, updated_by: user.id })
-          .eq('acc_id', srcAcc.acc_id)
-      } else {
-        // Partial move: decrement the source, then merge into a matching row already at
-        // the destination (same SKU there) or create one — never silently relocate the
-        // whole record, or the source location would lose stock it's still holding.
-        await supabase
-          .from('accessories')
-          .update({ quantite: srcAcc.quantite - movedQty, updated_by: user.id })
-          .eq('acc_id', srcAcc.acc_id)
-
-        let destQuery = supabase
-          .from('accessories')
-          .select('acc_id, quantite')
-          .eq('location', toLocation)
-          .eq('is_deleted', false)
-          .eq('nom', srcAcc.nom)
-          .eq('categorie', srcAcc.categorie)
-          .neq('acc_id', srcAcc.acc_id)
-        destQuery = destStoreId ? destQuery.eq('store_id', destStoreId) : destQuery.is('store_id', null)
-        destQuery = srcAcc.marque ? destQuery.eq('marque', srcAcc.marque) : destQuery.is('marque', null)
-
-        const { data: destMatch } = await destQuery.maybeSingle() as
-          { data: { acc_id: string; quantite: number } | null }
-
-        if (destMatch) {
-          await supabase
-            .from('accessories')
-            .update({ quantite: destMatch.quantite + movedQty, updated_by: user.id })
-            .eq('acc_id', destMatch.acc_id)
+      if (deviceType === 'telephone') {
+        await tx.phones.update({
+          where: { phone_id: movement.device_id },
+          data:  { location: to, status: phoneStatusFor(reason, to, toStoreId), updated_by: user.id, ...(toStoreId && { store_id: toStoreId }) },
+        })
+      } else if (deviceType === 'laptop') {
+        await tx.laptops.update({
+          where: { laptop_id: movement.device_id },
+          data:  { location: to, updated_by: user.id, ...(toStoreId && { store_id: toStoreId }) },
+        })
+      } else if (srcAcc) {
+        const destStoreId = toStoreId ?? srcAcc.store_id
+        if (movedQty >= srcAcc.quantite) {
+          // Moving everything — relocate the existing row in place
+          await tx.accessories.update({ where: { acc_id: srcAcc.acc_id }, data: { location: to, store_id: destStoreId, updated_by: user.id } })
         } else {
-          await supabase
-            .from('accessories')
-            .insert({
-              nom:                   srcAcc.nom,
-              categorie:             srcAcc.categorie,
-              marque:                srcAcc.marque,
-              compatible_with:       srcAcc.compatible_with,
-              barcode:               srcAcc.barcode,
-              prix_achat:            srcAcc.prix_achat,
-              prix_vente_recommande: srcAcc.prix_vente_recommande,
-              prix_vente_minimum:    srcAcc.prix_vente_minimum,
-              seuil_alerte:          srcAcc.seuil_alerte,
-              quantite:              movedQty,
-              location:              toLocation,
-              store_id:              destStoreId,
-              is_deleted:            false,
-              created_by:            user.id,
-              updated_by:            user.id,
+          // Partial move: decrement the source, then merge into the same SKU at the
+          // destination or create it there.
+          await tx.accessories.update({ where: { acc_id: srcAcc.acc_id }, data: { quantite: { decrement: movedQty }, updated_by: user.id } })
+          const destMatch = await tx.accessories.findFirst({
+            where: {
+              location: to, is_deleted: false, nom: srcAcc.nom, categorie: srcAcc.categorie,
+              marque: srcAcc.marque, store_id: destStoreId, acc_id: { not: srcAcc.acc_id },
+            },
+          })
+          if (destMatch) {
+            await tx.accessories.update({ where: { acc_id: destMatch.acc_id }, data: { quantite: { increment: movedQty }, updated_by: user.id } })
+          } else {
+            // barcode is unique: leave it empty so the database assigns the new row's own
+            await tx.accessories.create({
+              data: {
+                nom: srcAcc.nom, categorie: srcAcc.categorie, marque: srcAcc.marque,
+                compatible_with: srcAcc.compatible_with, prix_achat: srcAcc.prix_achat,
+                prix_vente_recommande: srcAcc.prix_vente_recommande, prix_vente_minimum: srcAcc.prix_vente_minimum,
+                seuil_alerte: srcAcc.seuil_alerte, quantite: movedQty, location: to, store_id: destStoreId,
+                created_by: user.id, updated_by: user.id,
+              } satisfies Prisma.accessoriesUncheckedCreateInput,
             })
+          }
         }
       }
-    }
-
-    await logActivity({
-      store_id:    data.store_id as string ?? null,
-      user_id:     user.id,
-      user_name:   profile?.display_name ?? '—',
-      action_type: 'UPDATE',
-      module:      'stock_movements',
-      record_id:   data.movement_id as string,
-      after_state: data,
-      ip_address:  getIpFromRequest(request),
-      notes:       `${body.device_id} : ${body.from_location} → ${body.to_location}`,
+      return movement
     })
 
-    return NextResponse.json({ data }, { status: 201 })
-  } catch (err: unknown) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
+    await logActivity({
+      store_id:    data.store_id,
+      user_id:     user.id,
+      user_name:   user.display_name,
+      action_type: 'modification',
+      module:      'mouvements_stock',
+      record_id:   data.movement_id,
+      after_state: data,
+      ip_address:  getIpFromRequest(request),
+      notes:       `${data.device_id} : ${codeLabel('location_type', from, 'fr')} → ${codeLabel('location_type', to, 'fr')}`,
+    })
+
+    return json({ data }, { status: 201 })
+  } catch (err) {
+    return handleError(err, 'POST /api/movements')
   }
 }

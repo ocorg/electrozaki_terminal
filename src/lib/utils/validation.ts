@@ -3,6 +3,7 @@
 //  Import in API routes before touching any database.
 // ============================================================
 
+import { HttpError } from '@/lib/api'
 /**
  * Throws a descriptive error if any required field is missing/empty.
  */
@@ -13,7 +14,7 @@ export function validateRequired(
   for (const key of required) {
     const val = fields[key]
     if (val === null || val === undefined || val === '') {
-      throw new Error(`Champ requis manquant: ${key}`)
+      throw new HttpError(400, `Champ requis manquant: ${key}`)
     }
   }
 }
@@ -28,7 +29,7 @@ export function validateMaxLength(
   for (const [key, max] of Object.entries(limits)) {
     const val = fields[key]
     if (val && val.length > max) {
-      throw new Error(`Champ "${key}" dépasse la limite de ${max} caractères`)
+      throw new HttpError(400, `Champ "${key}" dépasse la limite de ${max} caractères`)
     }
   }
 }
@@ -46,7 +47,7 @@ export function sanitizeText(input: string): string {
 export function validateNumeric(value: unknown, fieldName: string): number {
   const parsed = Number(value)
   if (!isFinite(parsed) || isNaN(parsed)) {
-    throw new Error(`Champ "${fieldName}" doit être un nombre valide`)
+    throw new HttpError(400, `Champ "${fieldName}" doit être un nombre valide`)
   }
   return parsed
 }

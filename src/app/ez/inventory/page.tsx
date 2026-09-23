@@ -1,25 +1,16 @@
 import { redirect }       from 'next/navigation'
 import type { Metadata }  from 'next'
-import { createClient }   from '@/lib/supabase/server'
+import { auth }           from '@/auth'
 import InventoryModule    from '@/components/inventory/InventoryModule'
 
 export const metadata: Metadata = { title: 'Inventaire — BZG Terminal' }
 
 export default async function InventoryPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const session = await auth()
+  if (!session?.user) redirect('/login')
 
-  const { data: profileRaw } = await supabase
-    .from('user_profiles')
-    .select('role, store_id')
-    .eq('id', user.id)
-    .maybeSingle()
-  const profile = profileRaw as { role: string; store_id: string } | null
+  const { role } = session.user
+  if (role !== 'gerant' && role !== 'proprietaire') redirect('/ez/dashboard')
 
-  if (profile?.role !== 'manager' && profile?.role !== 'owner') {
-    redirect('/ez/dashboard')
-  }
-
-  return <InventoryModule role={profile?.role ?? 'staff'} />
+  return <InventoryModule role={role} />
 }

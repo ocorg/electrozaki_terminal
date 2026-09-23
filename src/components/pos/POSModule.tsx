@@ -44,7 +44,7 @@ interface SaleForm {
   client_tel:               string
   type_operation:           OperationType
   payment_method:           PaymentMethod
-  avance_sub_method:        'نقد' | 'تحويل' | ''
+  avance_sub_method:        'especes' | 'virement' | ''
   montant_especes:          number
   montant_carte:            number
   avance:                   number
@@ -66,8 +66,8 @@ interface SaleForm {
 
 const EMPTY_SALE: SaleForm = {
   client_nom: '', client_tel: '',
-  type_operation:    'بيع',
-  payment_method:    'نقد',
+  type_operation:    'vente',
+  payment_method:    'especes',
   avance_sub_method: '',
   montant_especes: 0, montant_carte: 0,
   avance: 0, payment_ref: '',
@@ -116,7 +116,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
   const primary      = portal.primaryColor
   // canSeeAchat : seuls manager/owner voient prix_achat et la marge
   // prix_vente_recommandé visible à tous les rôles (staff inclus)
-  const canSeeAchat = user?.role === 'manager' || user?.role === 'owner'
+  const canSeeAchat = user?.role === 'gerant' || user?.role === 'proprietaire'
 
   const [search,    setSearch]    = useState('')
   const [results,   setResults]   = useState<DeviceResult[]>([])
@@ -163,10 +163,10 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
       try {
         const q = encodeURIComponent(search)
         const [pRes, aRes, lRes] = await Promise.all([
-          fetch(`/api/phones?status=متوفر&search=${q}&store_id=${storeId}`),
+          fetch(`/api/phones?status=disponible&search=${q}&store_id=${storeId}`),
           fetch(`/api/accessories?store_id=${storeId}&search=${q}`),
           hasLaptops
-            ? fetch(`/api/laptops?status=متوفر&search=${q}&store_id=${storeId}`)
+            ? fetch(`/api/laptops?status=disponible&search=${q}&store_id=${storeId}`)
             : Promise.resolve(null),
         ])
         const pJson = await pRes.json()
@@ -208,14 +208,14 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
     async function loadGrid() {
       try {
         if (activeCategory === 'phones') {
-          const res  = await fetch(`/api/phones?status=متوفر&store_id=${storeId}&limit=24`)
+          const res  = await fetch(`/api/phones?status=disponible&store_id=${storeId}&limit=24`)
           const json = await res.json()
           setGridItems((json.data || []).map((p: Phone) => ({
             ...p, _type: 'phone' as const, _id: p.phone_id,
             _displayName: [p.marque, p.model, p.stockage, p.couleur ? `· ${p.couleur}` : ''].filter(Boolean).join(' '),
           })))
         } else if (activeCategory === 'laptops') {
-          const res  = await fetch(`/api/laptops?status=متوفر&store_id=${storeId}&limit=24`)
+          const res  = await fetch(`/api/laptops?status=disponible&store_id=${storeId}&limit=24`)
           const json = await res.json()
           setGridItems((json.data || []).map((l: Laptop) => ({
             ...l, _type: 'laptop' as const, _id: l.laptop_id,
@@ -291,7 +291,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
     const item = cart.find(c => c._id === id)
     if (!item) return
     const min = (item as Phone).prix_vente_minimum
-    if (isBelowMinimum(prix, min) && user?.role === 'staff') {
+    if (isBelowMinimum(prix, min) && user?.role === 'employe') {
       setOverrideItem({ ...item, prix_vente_saisi: prix })
       setOverrideOpen(true)
     }
@@ -339,26 +339,26 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
   }
 
   const totalVente     = cart.reduce((s, c) => s + c.prix_vente_saisi * (c.qty ?? 1), 0)
-  const fariq          = computeFariq(totalVente, saleForm.avance, saleForm.type_operation === 'إستبدال' ? saleForm.valeur_echange : 0)
-  const displayFariq   = (saleForm.payment_method === 'تسبيق' || saleForm.payment_method === 'آجل') ? fariq : 0
+  const fariq          = computeFariq(totalVente, saleForm.avance, saleForm.type_operation === 'echange' ? saleForm.valeur_echange : 0)
+  const displayFariq   = (saleForm.payment_method === 'avance' || saleForm.payment_method === 'credit') ? fariq : 0
   const statutPaiement = computeStatutPaiement(displayFariq)
   const montantRendu   =
-    saleForm.payment_method === 'نقد' && saleForm.montant_especes > totalVente
+    saleForm.payment_method === 'especes' && saleForm.montant_especes > totalVente
       ? saleForm.montant_especes - totalVente
-      : saleForm.payment_method === 'مختلط' && (saleForm.montant_especes + saleForm.montant_carte) > totalVente
+      : saleForm.payment_method === 'mixte' && (saleForm.montant_especes + saleForm.montant_carte) > totalVente
       ? (saleForm.montant_especes + saleForm.montant_carte) - totalVente
       : 0
 
   // ── Submit ────────────────────────────────────────────────
   async function handleSubmit() {
     if (cart.length === 0) { showError(isAr ? 'السلة فارغة' : 'Panier vide'); return }
-    if (saleForm.payment_method === 'تحويل' && !saleForm.payment_ref) {
+    if (saleForm.payment_method === 'virement' && !saleForm.payment_ref) {
       showError(isAr ? 'مرجع التحويل مطلوب' : 'Référence virement obligatoire'); return
     }
-    if (saleForm.payment_method === 'تسبيق' && saleForm.avance > 0 && !saleForm.avance_sub_method) {
+    if (saleForm.payment_method === 'avance' && saleForm.avance > 0 && !saleForm.avance_sub_method) {
       showError(isAr ? 'يرجى تحديد طريقة دفع التسبيق' : "Précisez le mode de paiement de l'avance"); return
     }
-    if (saleForm.payment_method === 'آجل' && !saleForm.client_nom.trim()) {
+    if (saleForm.payment_method === 'credit' && !saleForm.client_nom.trim()) {
       showError(isAr ? 'اسم العميل مطلوب للبيع الآجل' : 'Nom du client obligatoire pour une vente à crédit'); return
     }
 
@@ -398,18 +398,18 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             store_id:        storeId,
-            device_type:     item._type === 'phone' ? 'هاتف' : item._type === 'laptop' ? 'لابتوب' : 'إكسسوار',
+            device_type:     item._type === 'phone' ? 'telephone' : item._type === 'laptop' ? 'laptop' : 'accessoire',
             device_id:       item._id,
             client_id:       clientId,
             type_operation:  saleForm.type_operation,
             qty:             item.qty ?? 1,
             prix_vente:      itemPv,
-            payment_method:  saleForm.payment_method === 'تسبيق' ? (saleForm.avance_sub_method as PaymentMethod) : saleForm.payment_method,
+            payment_method:  saleForm.payment_method === 'avance' ? (saleForm.avance_sub_method as PaymentMethod) : saleForm.payment_method,
             avance:          itemAvance  || 0,
             payment_ref:     saleForm.payment_ref     || undefined,
             montant_especes: itemEspeces || 0,
             montant_carte:   itemCarte   || 0,
-            valeur_echange:  saleForm.type_operation === 'إستبدال' ? itemEchange : 0,
+            valeur_echange:  saleForm.type_operation === 'echange' ? itemEchange : 0,
             marque_echange:  saleForm.marque_echange  || undefined,
             model_echange:   saleForm.model_echange   || undefined,
             imei_echange:    saleForm.imei_echange    || undefined,
@@ -451,7 +451,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
       if (
         clientId &&
         debtAmount > 0 &&
-        (saleForm.payment_method === 'آجل' || saleForm.payment_method === 'تسبيق')
+        (saleForm.payment_method === 'credit' || saleForm.payment_method === 'avance')
       ) {
         fetch('/api/credit-imports', {
           method:  'POST',
@@ -462,7 +462,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
             montant_du:   debtAmount,
             description:  cart.map(i => i._displayName).join(' + ').slice(0, 200),
             date_origine: new Date().toISOString().split('T')[0],
-            notes:        `POS — ${saleForm.payment_method === 'آجل' ? 'Vente à crédit' : 'Avance partielle'} — Réf: ${lastTxnId}`,
+            notes:        `POS — ${saleForm.payment_method === 'credit' ? 'Vente à crédit' : 'Avance partielle'} — Réf: ${lastTxnId}`,
           }),
         }).catch(() => { /* non-blocking — sale already recorded */ })
       }
@@ -775,7 +775,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
               {isAr ? 'نوع العملية' : "Type d'opération"}
             </p>
             <div className="grid grid-cols-4 gap-2">
-              {(['بيع', 'إستبدال'] as OperationType[]).map(op => (
+              {(['vente', 'echange'] as OperationType[]).map(op => (
                 <button key={op} onClick={() => setSale('type_operation', op)}
                   className="py-2.5 rounded-xl text-xs font-bold border transition-all"
                   style={{
@@ -783,7 +783,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                     borderColor:     saleForm.type_operation === op ? primary : '#E8E5DE',
                     color:           saleForm.type_operation === op ? 'white' : '#6B6860',
                   }}>
-                  {op === 'بيع' ? (t(isAr, 'common.sale')) : (isAr ? 'إستبدال' : 'Échange')}
+                  {op === 'vente' ? (t(isAr, 'common.sale')) : (isAr ? 'إستبدال' : 'Échange')}
                 </button>
               ))}
               <button onClick={() => setRetourOpen(true)}
@@ -795,7 +795,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
           </div>
 
           {/* Exchange block */}
-          {saleForm.type_operation === 'إستبدال' && (
+          {saleForm.type_operation === 'echange' && (
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3 animate-fade-in">
               <p className="text-xs font-bold text-blue-700 uppercase tracking-widest">{isAr ? 'الجهاز المستبدل' : 'Appareil échangé'}</p>
               <ComboBox options={brands} value={saleForm.marque_echange}
@@ -877,11 +877,11 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
             </p>
             <div className="grid grid-cols-2 gap-2">
               {([
-                { v: 'نقد',    fr: 'Espèces',  ar: 'نقداً'       },
-                { v: 'تحويل', fr: 'Virement',  ar: 'تحويل بنكي' },
-                { v: 'تسبيق', fr: 'Avance',    ar: 'تسبيق'      },
-                { v: 'مختلط', fr: 'Mixte',     ar: 'مختلط'      },
-                { v: 'آجل',   fr: 'À crédit',  ar: 'آجل'        },
+                { v: 'especes',    fr: 'Espèces',  ar: 'نقداً'       },
+                { v: 'virement', fr: 'Virement',  ar: 'تحويل بنكي' },
+                { v: 'avance', fr: 'Avance',    ar: 'تسبيق'      },
+                { v: 'mixte', fr: 'Mixte',     ar: 'مختلط'      },
+                { v: 'credit',   fr: 'À crédit',  ar: 'آجل'        },
               ] as { v: PaymentMethod; fr: string; ar: string }[]).map(({ v, fr, ar }) => (
                 <button key={v} type="button" onClick={() => setSale('payment_method', v)}
                   className="py-2 rounded-xl text-xs font-bold border transition-all"
@@ -895,18 +895,18 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
               ))}
             </div>
 
-            {saleForm.payment_method === 'آجل' && (
+            {saleForm.payment_method === 'credit' && (
               <div className="mt-2 p-3 bg-purple-50 border border-purple-200 rounded-xl">
                 <p className="text-xs font-medium text-purple-700">
                   {isAr ? 'سيُسجَّل المبلغ كاملاً كذمة على العميل — لا شيء يُحصَّل الآن' : "La totalité sera enregistrée comme créance client — rien n'est encaissé maintenant"}
                 </p>
               </div>
             )}
-            {saleForm.payment_method === 'تحويل' && (
+            {saleForm.payment_method === 'virement' && (
               <input className={`${inputClass} mt-2`} placeholder={t(isAr, 'common.transferReference')}
                 value={saleForm.payment_ref} onChange={e => setSale('payment_ref', e.target.value)} />
             )}
-            {saleForm.payment_method === 'تسبيق' && (
+            {saleForm.payment_method === 'avance' && (
               <div className="mt-2 space-y-2">
                 <input type="number" min={0} step={0.01} inputMode="decimal" className={inputClass}
                   placeholder={isAr ? 'مبلغ التسبيق (درهم)' : 'Montant avance (MAD)'}
@@ -916,7 +916,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                     {isAr ? 'طريقة دفع التسبيق *' : "Paiement de l'avance *"}
                   </p>
                   <div className="grid grid-cols-2 gap-2">
-                    {(['نقد', 'تحويل'] as const).map(method => (
+                    {(['especes', 'virement'] as const).map(method => (
                       <button key={method} type="button" onClick={() => setSale('avance_sub_method', method)}
                         className="py-2 rounded-xl text-xs font-bold border transition-all"
                         style={{
@@ -924,7 +924,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                           borderColor:     saleForm.avance_sub_method === method ? primary : '#E8E5DE',
                           color:           saleForm.avance_sub_method === method ? 'white' : '#6B6860',
                         }}>
-                        {method === 'نقد' ? (t(isAr, 'common.cashAdverbial')) : (t(isAr, 'common.bankTransfer'))}
+                        {method === 'especes' ? (t(isAr, 'common.cashAdverbial')) : (t(isAr, 'common.bankTransfer'))}
                       </button>
                     ))}
                   </div>
@@ -936,7 +936,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                 </div>
               </div>
             )}
-            {saleForm.payment_method === 'مختلط' && (
+            {saleForm.payment_method === 'mixte' && (
               <div className="grid grid-cols-2 gap-2 mt-2">
                 <input type="number" min={0} step={0.01} inputMode="decimal" className={inputClass}
                   placeholder={t(isAr, 'common.cash')}
@@ -948,12 +948,12 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
             )}
 
             {/* Inline client — آجل or تسبيق only */}
-            {(saleForm.payment_method === 'آجل' || saleForm.payment_method === 'تسبيق') && (
+            {(saleForm.payment_method === 'credit' || saleForm.payment_method === 'avance') && (
               <div className="mt-3 p-3 bg-white border border-[#E8E5DE] rounded-xl space-y-2 animate-fade-in">
                 <p className="text-[10px] font-bold text-[#6B6860] uppercase tracking-widest flex items-center gap-1.5">
                   <User className="w-3 h-3" />
                   {t(isAr, 'common.client')}
-                  {saleForm.payment_method === 'آجل' && (
+                  {saleForm.payment_method === 'credit' && (
                     <span className="text-purple-600 font-bold normal-case tracking-normal">
                       {'— '}{isAr ? 'مطلوب' : 'requis'}
                     </span>
@@ -977,7 +977,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                 {/* Name with live autocomplete */}
                 <div className="relative">
                   <input className={inputClass}
-                    placeholder={saleForm.payment_method === 'آجل' ? (t(isAr, 'common.nameRequired')) : (isAr ? 'الاسم (اختياري)' : 'Nom (optionnel)')}
+                    placeholder={saleForm.payment_method === 'credit' ? (t(isAr, 'common.nameRequired')) : (isAr ? 'الاسم (اختياري)' : 'Nom (optionnel)')}
                     value={saleForm.client_nom}
                     onChange={e => handleClientNameChange(e.target.value)}
                     onBlur={() => setTimeout(() => setShowClientDrop(false), 150)}
@@ -1028,7 +1028,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                 <span className="text-[#1A1A1A]">- {formatMAD(saleForm.avance)}</span>
               </div>
             )}
-            {saleForm.type_operation === 'إستبدال' && saleForm.valeur_echange > 0 && (
+            {saleForm.type_operation === 'echange' && saleForm.valeur_echange > 0 && (
               <div className="flex justify-between text-sm">
                 <span className="text-[#6B6860]">{isAr ? 'قيمة الاستبدال' : 'Valeur échange'}</span>
                 <span className="text-[#1A1A1A]">- {formatMAD(saleForm.valeur_echange)}</span>
@@ -1037,14 +1037,14 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
             {montantRendu > 0 && (
               <div className="flex justify-between text-sm">
                 <span className="text-[#6B6860]">{isAr ? 'المبلغ المُسلَّم' : 'Espèces remises'}</span>
-                <span className="text-[#1A1A1A]">{formatMAD(saleForm.payment_method === 'نقد' ? saleForm.montant_especes : saleForm.montant_especes + saleForm.montant_carte)}</span>
+                <span className="text-[#1A1A1A]">{formatMAD(saleForm.payment_method === 'especes' ? saleForm.montant_especes : saleForm.montant_especes + saleForm.montant_carte)}</span>
               </div>
             )}
             <div className="flex justify-between items-end pt-2 border-t border-[#E8E5DE]">
               <span className="font-bold text-[#1A1A1A]">{isAr ? 'المتبقي للدفع' : 'Reste à payer'}</span>
               <div className="text-right">
                 <p className="font-display font-bold text-xl" style={{ color: primary }}>{formatMAD(displayFariq)}</p>
-                <StatusBadge status={statutPaiement} />
+                <StatusBadge domain="payment_status" code={statutPaiement} lang={isAr ? 'ar' : 'fr'} />
                 {montantRendu > 0 && (
                   <div className="mt-1 px-2 py-1 bg-emerald-50 border border-emerald-200 rounded-lg text-xs font-bold text-emerald-700">
                     {isAr ? `المونطان رونديو: ${formatMAD(montantRendu)}` : `Rendu: ${formatMAD(montantRendu)}`}

@@ -1,162 +1,124 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createUntypedClient, createClient } from '@/lib/supabase/server'
+import { NextRequest } from 'next/server'
+import type { Prisma, prospect_demand, prospect_source, prospect_status } from '@prisma/client'
+import { prisma } from '@/lib/db'
+import { json, handleError, requireUser, requireActiveUser, pickInput, columnsOf, HttpError } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
-import { escapeLike } from '@/lib/utils/validation'
 
-type UserProfile = { display_name: string } | null
-
-async function getProfile(supabase: Awaited<ReturnType<typeof createUntypedClient>>, userId: string): Promise<UserProfile> {
-  const { data } = await supabase
-    .from('user_profiles')
-    .select('display_name')
-    .eq('user_id', userId)
-    .maybeSingle()
-  return data as UserProfile
-}
+const EDITABLE = columnsOf('prospects', ['prospect_id'])
 
 export async function GET(request: NextRequest) {
-  const supabase      = await createUntypedClient()
-  const typedSupabase = await createClient()
-  const { data: { user } } = await typedSupabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+  try {
+    await requireUser()
+    const { searchParams } = new URL(request.url)
+    const store_id    = searchParams.get('store_id')
+    const statut      = searchParams.get('statut') as prospect_status | null
+    const source      = searchParams.get('source') as prospect_source | null
+    const demand_type = searchParams.get('demand_type') as prospect_demand | null
+    const search      = searchParams.get('search')?.trim()
+    const open        = searchParams.get('open')
 
-  const { searchParams } = new URL(request.url)
-  const store_id    = searchParams.get('store_id')
-  const statut      = searchParams.get('statut')
-  const source      = searchParams.get('source')
-  const demand_type = searchParams.get('demand_type')
-  const search      = searchParams.get('search')
-  const open        = searchParams.get('open')
-
-  let query = supabase
-    .from('prospects')
-    .select('*')
-    .eq('is_deleted', false)
-    .order('created_at', { ascending: false })
-
-  if (store_id)     query = query.eq('store_id', store_id)
-  if (open === '1') query = query.in('statut', ['Nouveau', 'Contacté'])
-  else if (statut)  query = query.eq('statut', statut)
-  if (source)       query = query.eq('source', source)
-  if (demand_type)  query = query.eq('demand_type', demand_type)
-  if (search) {
-    const safeSearch = escapeLike(search)
-    query = query.or(
-      `nom.ilike.%${safeSearch}%,telephone.ilike.%${safeSearch}%,model.ilike.%${safeSearch}%,marque.ilike.%${safeSearch}%`
-    )
+    const data = await prisma.prospects.findMany({
+      where: {
+        is_deleted: false,
+        ...(store_id    && { store_id }),
+        ...(open === '1' ? { statut: { in: ['nouveau', 'contacte'] } } : statut ? { statut } : {}),
+        ...(source      && { source }),
+        ...(demand_type && { demand_type }),
+        ...(search && { OR: ['nom', 'telephone', 'model', 'marque'].map(f => ({ [f]: { contains: search, mode: 'insensitive' } })) }),
+      },
+      orderBy: { created_at: 'desc' },
+    })
+    return json({ data })
+  } catch (err) {
+    return handleError(err, 'GET /api/prospects')
   }
-
-  const { data, error } = await query
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ data })
 }
 
 export async function POST(request: NextRequest) {
-  const supabase      = await createUntypedClient()
-  const typedSupabase = await createClient()
-  const { data: { user } } = await typedSupabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+  try {
+    const user = await requireActiveUser()
+    const body = await request.json()
 
-  const body    = await request.json()
-  const profile = await getProfile(supabase, user.id)
-  const byName  = profile?.display_name ?? user.id
+    const data = await prisma.prospects.create({
+      data: {
+        ...(pickInput('prospects', body, EDITABLE) as Prisma.prospectsUncheckedCreateInput),
+        created_by: user.id,
+        updated_by: user.id,
+      },
+    })
 
-  const { data, error } = await supabase
-    .from('prospects')
-    .insert({ ...body, created_by: byName, updated_by: byName })
-    .select()
-    .single()
+    await logActivity({
+      store_id:    data.store_id,
+      user_id:     user.id,
+      user_name:   user.display_name,
+      action_type: 'creation',
+      module:      'prospects',
+      record_id:   data.prospect_id,
+      after_state: data,
+      ip_address:  getIpFromRequest(request),
+    })
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-
-  await logActivity({
-    store_id:    data.store_id,
-    user_id:     user.id,
-    user_name:   byName,
-    action_type: 'INSERT',
-    module:      'prospects',
-    record_id:   data.prospect_id,
-    after_state: data,
-    ip_address:  getIpFromRequest(request),
-  })
-
-  return NextResponse.json({ data }, { status: 201 })
+    return json({ data }, { status: 201 })
+  } catch (err) {
+    return handleError(err, 'POST /api/prospects')
+  }
 }
 
 export async function PATCH(request: NextRequest) {
-  const supabase      = await createUntypedClient()
-  const typedSupabase = await createClient()
-  const { data: { user } } = await typedSupabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+  try {
+    const user = await requireActiveUser()
+    const body = await request.json()
+    const prospect_id = body.prospect_id as string | undefined
+    if (!prospect_id) throw new HttpError(400, 'prospect_id requis')
 
-  const { prospect_id, ...updates } = await request.json()
-  if (!prospect_id) return NextResponse.json({ error: 'prospect_id requis' }, { status: 400 })
+    const before = await prisma.prospects.findUniqueOrThrow({ where: { prospect_id } })
+    const data = await prisma.prospects.update({
+      where: { prospect_id },
+      data:  { ...pickInput('prospects', body, EDITABLE), updated_by: user.id, updated_at: new Date() },
+    })
 
-  const profile = await getProfile(supabase, user.id)
-  const byName  = profile?.display_name ?? user.id
+    await logActivity({
+      store_id:     data.store_id,
+      user_id:      user.id,
+      user_name:    user.display_name,
+      action_type:  'modification',
+      module:       'prospects',
+      record_id:    prospect_id,
+      before_state: before,
+      after_state:  data,
+      ip_address:   getIpFromRequest(request),
+    })
 
-  const { data: before } = await supabase
-    .from('prospects')
-    .select('*')
-    .eq('prospect_id', prospect_id)
-    .single()
-
-  const { data, error } = await supabase
-    .from('prospects')
-    .update({ ...updates, updated_by: byName, updated_at: new Date().toISOString() })
-    .eq('prospect_id', prospect_id)
-    .select()
-    .single()
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-
-  await logActivity({
-    store_id:     data.store_id,
-    user_id:      user.id,
-    user_name:    byName,
-    action_type:  'UPDATE',
-    module:       'prospects',
-    record_id:    data.prospect_id,
-    before_state: before,
-    after_state:  data,
-    ip_address:   getIpFromRequest(request),
-  })
-
-  return NextResponse.json({ data })
+    return json({ data })
+  } catch (err) {
+    return handleError(err, 'PATCH /api/prospects')
+  }
 }
 
 export async function DELETE(request: NextRequest) {
-  const supabase      = await createUntypedClient()
-  const typedSupabase = await createClient()
-  const { data: { user } } = await typedSupabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+  try {
+    const user = await requireActiveUser()
+    const prospect_id = new URL(request.url).searchParams.get('prospect_id')
+    if (!prospect_id) throw new HttpError(400, 'prospect_id requis')
 
-  const { searchParams } = new URL(request.url)
-  const prospect_id = searchParams.get('prospect_id')
-  if (!prospect_id) return NextResponse.json({ error: 'prospect_id requis' }, { status: 400 })
+    const data = await prisma.prospects.update({
+      where: { prospect_id },
+      data:  { is_deleted: true, updated_by: user.id },
+    })
 
-  const profile = await getProfile(supabase, user.id)
-  const byName  = profile?.display_name ?? user.id
+    await logActivity({
+      store_id:     data.store_id,
+      user_id:      user.id,
+      user_name:    user.display_name,
+      action_type:  'suppression',
+      module:       'prospects',
+      record_id:    prospect_id,
+      before_state: data,
+      ip_address:   getIpFromRequest(request),
+    })
 
-  const { data, error } = await supabase
-    .from('prospects')
-    .update({ is_deleted: true, updated_by: byName })
-    .eq('prospect_id', prospect_id)
-    .select()
-    .single()
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-
-  await logActivity({
-    store_id:     data.store_id,
-    user_id:      user.id,
-    user_name:    byName,
-    action_type:  'DELETE',
-    module:       'prospects',
-    record_id:    data.prospect_id,
-    before_state: data,
-    ip_address:   getIpFromRequest(request),
-  })
-
-  return NextResponse.json({ data })
+    return json({ data })
+  } catch (err) {
+    return handleError(err, 'DELETE /api/prospects')
+  }
 }

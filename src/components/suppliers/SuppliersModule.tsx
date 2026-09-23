@@ -1,5 +1,5 @@
 'use client'
-import { useCategories } from '@/lib/hooks/useCategories'
+import { useCategories, categoryLabel } from '@/lib/hooks/useCategories'
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useUser } from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
@@ -72,9 +72,9 @@ const TYPE_CFG: Record<string, { bg: string; color: string; border: string; desc
 }
 
 const PAY_LABEL: Record<string, string> = {
-  REGLEMENT_A: 'Règlement ventes',
-  AVANCE_A:    'Avance stock',
-  PAIEMENT_B:  'Paiement',
+  reglement_a: 'Règlement ventes',
+  avance_a:    'Avance stock',
+  paiement_b:  'Paiement',
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -178,7 +178,7 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
       } else {
         // B/C : sold phones from this supplier (for payment traceability)
         const res  = await fetch(
-          `/api/phones?fournisseur_id=${supplier.supplier_id}&status=${encodeURIComponent('مباع')}&store_id=${storeId}`
+          `/api/phones?fournisseur_id=${supplier.supplier_id}&status=vendu&store_id=${storeId}`
         )
         const json = await res.json()
         const rows: PhoneRow[] = (json.data || []).map((p: any) => ({
@@ -316,7 +316,7 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
         body:    JSON.stringify({
           supplier_id:   selected.supplier_id,
           store_id:      storeId,
-          payment_type:  'REGLEMENT_A',
+          payment_type:  'reglement_a',
           montant:       selectedTotal,
           phone_ids:     Array.from(selectedPhoneIds),
           date_paiement: new Date().toISOString().split('T')[0],
@@ -354,7 +354,7 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
         body:    JSON.stringify({
           supplier_id:   selected.supplier_id,
           store_id:      storeId,
-          payment_type:  'PAIEMENT_B',
+          payment_type:  'paiement_b',
           montant:       parseFloat(payMontant),
           phone_ids:     Array.from(selectedPhoneIds),
           date_paiement: payDate,
@@ -393,8 +393,7 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
   }
 
   function getCatLabel(v: string) {
-    const c = supplierCats.find((x: any) => x.ar === v)
-    return c ? (isAr ? c.ar : c.fr) : v
+    return categoryLabel(supplierCats, v, isAr)
   }
 
   // ── Render ────────────────────────────────────────────────────────────────────
@@ -929,7 +928,7 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
               onChange={e => setForm(f => ({ ...f, categorie: e.target.value }))}>
               <option value="">{t(isAr, 'common.chooseEllipsis')}</option>
               {supplierCats.map((c: any) => (
-                <option key={c.ar} value={c.ar}>{isAr ? c.ar : c.fr}</option>
+                <option key={c.code} value={c.code}>{isAr ? c.ar : c.fr}</option>
               ))}
             </select>
           </Field>

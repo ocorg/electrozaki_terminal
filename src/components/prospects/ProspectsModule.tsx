@@ -16,31 +16,32 @@ import {
   Plus, Search, X, RefreshCw, Edit2, Trash2,
   CheckCircle, XCircle, ClipboardList,
 } from 'lucide-react'
+import { codeLabel, type Lang } from '@/lib/codes'
 
 // ── Constants ──────────────────────────────────────────────────
-const SOURCES  = ['TikTok', 'Instagram', 'WhatsApp', 'En magasin', 'Autre'] as const
-const STATUTS  = ['Nouveau', 'Contacté', 'Converti', 'Perdu']               as const
+const SOURCES  = ['tiktok', 'instagram', 'whatsapp', 'en_magasin', 'autre'] as const
+const STATUTS  = ['nouveau', 'contacte', 'converti', 'perdu']               as const
 const STOCKAGES = ['16GB', '32GB', '64GB', '128GB', '256GB', '512GB', '1TB']
 
 const SOURCE_STYLES: Record<string, { bg: string; color: string }> = {
-  'TikTok':     { bg: '#F3F3F3', color: '#010101' },
-  'Instagram':  { bg: '#FCE4EC', color: '#C2185B' },
-  'WhatsApp':   { bg: '#E8F5E9', color: '#2E7D32' },
-  'En magasin': { bg: '#FAF5E8', color: '#C9A440' },
-  'Autre':      { bg: '#F8F7F4', color: '#6B6860' },
+  tiktok:     { bg: '#F3F3F3', color: '#010101' },
+  instagram:  { bg: '#FCE4EC', color: '#C2185B' },
+  whatsapp:   { bg: '#E8F5E9', color: '#2E7D32' },
+  en_magasin: { bg: '#FAF5E8', color: '#C9A440' },
+  autre:      { bg: '#F8F7F4', color: '#6B6860' },
 }
 
 const STATUT_STYLES: Record<string, { bg: string; color: string; border: string }> = {
-  'Nouveau':  { bg: '#EFF6FF', color: '#2563EB', border: '#BFDBFE' },
-  'Contacté': { bg: '#FFFBEB', color: '#D97706', border: '#FDE68A' },
-  'Converti': { bg: '#ECFDF5', color: '#059669', border: '#A7F3D0' },
-  'Perdu':    { bg: '#F9FAFB', color: '#9CA3AF', border: '#E5E7EB' },
+  nouveau:  { bg: '#EFF6FF', color: '#2563EB', border: '#BFDBFE' },
+  contacte: { bg: '#FFFBEB', color: '#D97706', border: '#FDE68A' },
+  converti: { bg: '#ECFDF5', color: '#059669', border: '#A7F3D0' },
+  perdu:    { bg: '#F9FAFB', color: '#9CA3AF', border: '#E5E7EB' },
 }
 
 const EMPTY_FORM = {
   nom:         '',
   telephone:   '',
-  source:      'En magasin' as string,
+  source:      'en_magasin' as string,
   demand_type: 'modele'     as 'modele' | 'budget',
   marque:      '',
   model:       '',
@@ -57,10 +58,11 @@ interface ProspectsModuleProps {
 
 export default function ProspectsModule({ storeId, role }: ProspectsModuleProps) {
   const { language } = useLanguageStore()
+  const lang: Lang = language === 'ar' ? 'ar' : 'fr'
   const portal       = usePortal()
   const isAr         = language === 'ar'
   const primary      = portal.primaryColor
-  const canDelete    = role === 'manager' || role === 'owner'
+  const canDelete    = role === 'gerant' || role === 'proprietaire'
 
   const { brands, modelsFor } = usePhoneCatalog()
 
@@ -78,7 +80,7 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
 
   // Fetch available phones once for stock-matching
   useEffect(() => {
-    fetch(`/api/phones?store_id=${storeId}&status=متوفر`)
+    fetch(`/api/phones?store_id=${storeId}&status=disponible`)
       .then(r => r.json())
       .then(json => setAvailablePhones(json.data || []))
       .catch(() => {})
@@ -289,14 +291,14 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
             className="text-sm border border-[#E8E5DE] rounded-xl px-3 py-1.5 bg-white text-[#6B6860] focus:outline-none"
             value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
             <option value="">{t(isAr, 'common.allStatuses')}</option>
-            {STATUTS.map(s => <option key={s} value={s}>{s}</option>)}
+            {STATUTS.map(s => <option key={s} value={s}>{codeLabel('prospect_status', s, lang)}</option>)}
           </select>
 
           <select
             className="text-sm border border-[#E8E5DE] rounded-xl px-3 py-1.5 bg-white text-[#6B6860] focus:outline-none"
             value={filterSource} onChange={e => setFilterSource(e.target.value)}>
             <option value="">{isAr ? 'كل المصادر' : 'Toutes sources'}</option>
-            {SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
+            {SOURCES.map(s => <option key={s} value={s}>{codeLabel('prospect_source', s, lang)}</option>)}
           </select>
 
           <select
@@ -350,9 +352,9 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {prospects.map(p => {
               const matches   = getStockMatches(p)
-              const isClosed  = p.statut === 'Converti' || p.statut === 'Perdu'
-              const srcStyle  = SOURCE_STYLES[p.source]  ?? SOURCE_STYLES['Autre']
-              const statStyle = STATUT_STYLES[p.statut]  ?? STATUT_STYLES['Nouveau']
+              const isClosed  = p.statut === 'converti' || p.statut === 'perdu'
+              const srcStyle  = SOURCE_STYLES[p.source]  ?? SOURCE_STYLES.autre
+              const statStyle = STATUT_STYLES[p.statut]  ?? STATUT_STYLES.nouveau
 
               return (
                 <div
@@ -371,11 +373,11 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
                     <div className="flex items-center gap-1.5 flex-shrink-0 flex-wrap justify-end">
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
                         style={{ backgroundColor: srcStyle.bg, color: srcStyle.color }}>
-                        {p.source}
+                        {codeLabel('prospect_source', p.source, lang)}
                       </span>
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border"
                         style={{ backgroundColor: statStyle.bg, color: statStyle.color, borderColor: statStyle.border }}>
-                        {p.statut}
+                        {codeLabel('prospect_status', p.statut, lang)}
                       </span>
                     </div>
                   </div>
@@ -428,21 +430,21 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
                     <div className="flex items-center gap-1">
                       {!isClosed && (
                         <>
-                          {p.statut === 'Nouveau' && (
+                          {p.statut === 'nouveau' && (
                             <button
-                              onClick={() => updateStatut(p.prospect_id, 'Contacté')}
+                              onClick={() => updateStatut(p.prospect_id, 'contacte')}
                               className="px-2 py-1 text-[10px] font-bold rounded-lg bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-all">
                               {isAr ? 'تم التواصل' : 'Contacté'}
                             </button>
                           )}
                           <button
-                            onClick={() => updateStatut(p.prospect_id, 'Converti')}
+                            onClick={() => updateStatut(p.prospect_id, 'converti')}
                             title={isAr ? 'تم البيع' : 'Marquer converti'}
                             className="p-1.5 rounded-lg text-[#B0ADA6] hover:text-emerald-600 hover:bg-emerald-50 transition-all">
                             <CheckCircle className="w-3.5 h-3.5" />
                           </button>
                           <button
-                            onClick={() => updateStatut(p.prospect_id, 'Perdu')}
+                            onClick={() => updateStatut(p.prospect_id, 'perdu')}
                             title={isAr ? 'طلب مفقود' : 'Marquer perdu'}
                             className="p-1.5 rounded-lg text-[#B0ADA6] hover:text-red-500 hover:bg-red-50 transition-all">
                             <XCircle className="w-3.5 h-3.5" />
@@ -451,7 +453,7 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
                       )}
                       {isClosed && (
                         <button
-                          onClick={() => updateStatut(p.prospect_id, 'Nouveau')}
+                          onClick={() => updateStatut(p.prospect_id, 'nouveau')}
                           className="px-2 py-1 text-[10px] font-bold rounded-lg bg-[#F8F7F4] text-[#6B6860] border border-[#E8E5DE] hover:bg-white transition-all">
                           {isAr ? 'إعادة فتح' : 'Réouvrir'}
                         </button>
@@ -508,7 +510,7 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
             <select className={selectClass}
               value={form.source}
               onChange={e => setF('source', e.target.value)}>
-              {SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
+              {SOURCES.map(s => <option key={s} value={s}>{codeLabel('prospect_source', s, lang)}</option>)}
             </select>
           </Field>
 

@@ -1,118 +1,64 @@
-import { createClient, createUntypedClient } from '@/lib/supabase/server'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
+import { prisma } from '@/lib/db'
+import { json, handleError, requireActiveUser, HttpError, MANAGERS } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase      = await createUntypedClient()
-    const typedSupabase = await createClient()
-    const { data: { user } } = await typedSupabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
-
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('display_name, store_id')
-      .eq('id', user.id)
-      .single() as { data: { display_name: string; store_id: string | null } | null }
-
-    const body = await request.json()
-    const { rep_id, nom_piece, fournisseur, cout } = body as {
+    const user = await requireActiveUser()
+    const { rep_id, nom_piece, fournisseur, cout } = await request.json() as {
       rep_id: string; nom_piece: string; fournisseur?: string; cout: number
     }
-
-    if (!rep_id || !nom_piece || cout == null) {
-      return NextResponse.json({ error: 'rep_id, nom_piece et cout sont requis' }, { status: 400 })
-    }
-
-    if (nom_piece.length > 200) return NextResponse.json({ error: 'nom_piece trop long' }, { status: 400 })
+    if (!rep_id || !nom_piece || cout == null) throw new HttpError(400, 'rep_id, nom_piece et cout sont requis')
+    if (nom_piece.length > 200) throw new HttpError(400, 'nom_piece trop long')
     const coutNum = Number(cout)
-    if (isNaN(coutNum) || coutNum < 0) {
-      return NextResponse.json({ error: 'cout doit être un nombre positif' }, { status: 400 })
-    }
+    if (Number.isNaN(coutNum) || coutNum < 0) throw new HttpError(400, 'cout doit être un nombre positif')
 
-    const { data, error } = await supabase
-      .from('reparations_parts')
-      .insert({
-        rep_id,
-        nom_piece: nom_piece.trim(),
-        fournisseur: fournisseur?.trim() ?? null,
-        cout: coutNum,
-        created_by: user.id,
-      })
-      .select()
-      .single() as { data: Record<string, unknown> | null; error: unknown }
-
-    if (error) throw error
-    if (!data) throw new Error('No data returned')
-
-    await logActivity({
-      store_id:    profile?.store_id ?? null,
-      user_id:     user.id,
-      user_name:   profile?.display_name ?? '—',
-      action_type: 'INSERT',
-      module:      'repairs/parts',
-      record_id:   data.part_id as string,
-      after_state: data,
-      ip_address:  getIpFromRequest(request),
-      notes:       `Pièce ajoutée: ${nom_piece} — ${coutNum} MAD`,
+    const data = await prisma.reparations_parts.create({
+      data: { rep_id, description: nom_piece.trim(), fournisseur: fournisseur?.trim() ?? null, cout: coutNum, created_by: user.id },
     })
 
-    return NextResponse.json({ status: 'success', data }, { status: 201 })
-  } catch (err: unknown) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
+    await logActivity({
+      store_id:    user.store_id,
+      user_id:     user.id,
+      user_name:   user.display_name,
+      action_type: 'creation',
+      module:      'pieces_reparation',
+      record_id:   data.part_id,
+      after_state: data,
+      ip_address:  getIpFromRequest(request),
+      notes:       `Pièce ajoutée : ${nom_piece} — ${coutNum} MAD`,
+    })
+
+    return json({ status: 'success', data }, { status: 201 })
+  } catch (err) {
+    return handleError(err, 'POST /api/repairs/parts')
   }
 }
 
 export async function DELETE(request: NextRequest) {
   try {
-    const supabase      = await createUntypedClient()
-    const typedSupabase = await createClient()
-    const { data: { user } } = await typedSupabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+    const user = await requireActiveUser(MANAGERS)
+    const part_id = new URL(request.url).searchParams.get('part_id')
+    if (!part_id) throw new HttpError(400, 'part_id requis')
 
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('display_name, role')
-      .eq('id', user.id)
-      .single() as { data: { display_name: string; role: string } | null }
-
-    if (!['manager', 'owner'].includes(profile?.role ?? '')) {
-      return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
-    }
-
-    const { searchParams } = new URL(request.url)
-    const part_id = searchParams.get('part_id')
-    if (!part_id) return NextResponse.json({ error: 'part_id requis' }, { status: 400 })
-
-    const { data: before } = await supabase
-      .from('reparations_parts')
-      .select('*')
-      .eq('part_id', part_id)
-      .single() as { data: Record<string, unknown> | null }
-
-    if (!before) return NextResponse.json({ error: 'Pièce introuvable' }, { status: 404 })
-
-    const { error } = await supabase
-      .from('reparations_parts')
-      .delete()
-      .eq('part_id', part_id)
-
-    if (error) throw error
+    const before = await prisma.reparations_parts.findUnique({ where: { part_id } })
+    if (!before) throw new HttpError(404, 'Pièce introuvable')
+    await prisma.reparations_parts.delete({ where: { part_id } })
 
     await logActivity({
       store_id:     null,
       user_id:      user.id,
-      user_name:    profile?.display_name ?? '—',
-      action_type:  'DELETE',
-      module:       'repairs/parts',
+      user_name:    user.display_name,
+      action_type:  'suppression',
+      module:       'pieces_reparation',
       record_id:    part_id,
       before_state: before,
-      after_state:  null,
       ip_address:   getIpFromRequest(request),
     })
 
-    return NextResponse.json({ status: 'success' })
-  } catch (err: unknown) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
+    return json({ status: 'success' })
+  } catch (err) {
+    return handleError(err, 'DELETE /api/repairs/parts')
   }
 }

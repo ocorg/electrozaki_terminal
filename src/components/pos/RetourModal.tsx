@@ -1,12 +1,12 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { Modal, Btn } from '@/components/shared'
 import { useLanguageStore } from '@/lib/stores/language'
 import { t } from '@/lib/i18n/t'
 import { formatMAD } from '@/lib/utils'
 import { Loader2, RotateCcw, AlertTriangle } from 'lucide-react'
 import { showSuccess, showError } from '@/lib/utils/toasts'
+import { codeLabel, type Code } from '@/lib/codes'
 
 interface Transaction {
   txn_id:         string
@@ -17,6 +17,7 @@ interface Transaction {
   payment_method: string
   voided:         boolean
   clients?:       { nom: string } | null
+  device_label?:  string
 }
 
 interface RetourModalProps {
@@ -32,7 +33,6 @@ export default function RetourModal({
 }: RetourModalProps) {
   const { language } = useLanguageStore()
   const isAr   = language === 'ar'
-  const supabase = createClient()
 
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [deviceNames,  setDeviceNames]  = useState<Record<string, string>>({})
@@ -48,56 +48,12 @@ export default function RetourModal({
       return
     }
     setLoading(true)
-    fetch(`/api/transactions?store_id=${storeId}&limit=30`)
+    fetch(`/api/transactions?store_id=${storeId}&limit=30&with_device=1`)
       .then(r => r.json())
-      .then(async j => {
+      .then(j => {
         const nonVoided = (j.data || []).filter((t: Transaction) => !t.voided) as Transaction[]
         setTransactions(nonVoided)
-
-        if (nonVoided.length === 0) return
-
-        // Batch-resolve device names per type
-        const pIds = nonVoided.filter(t => t.device_type === 'هاتف').map(t => t.device_id)
-        const aIds = nonVoided.filter(t => t.device_type === 'إكسسوار').map(t => t.device_id)
-        const lIds = nonVoided.filter(t => t.device_type === 'لابتوب').map(t => t.device_id)
-
-        const [pRes, aRes, lRes] = await Promise.all([
-          pIds.length > 0
-            ? supabase.from('phones').select('phone_id, marque, model, stockage, couleur').in('phone_id', pIds)
-            : { data: [] },
-          aIds.length > 0
-            ? supabase.from('accessories').select('acc_id, nom, marque').in('acc_id', aIds)
-            : { data: [] },
-          lIds.length > 0
-            ? supabase.from('laptops').select('laptop_id, marque, model, stockage').in('laptop_id', lIds)
-            : { data: [] },
-        ])
-
-        const names: Record<string, string> = {}
-
-        for (const p of (pRes.data || []) as {
-          phone_id: string; marque: string; model: string
-          stockage?: string | null; couleur?: string | null
-        }[]) {
-          names[p.phone_id] = [
-            p.marque, p.model, p.stockage,
-            p.couleur ? `· ${p.couleur}` : '',
-          ].filter(Boolean).join(' ')
-        }
-
-        for (const a of (aRes.data || []) as {
-          acc_id: string; nom: string; marque?: string | null
-        }[]) {
-          names[a.acc_id] = [a.nom, a.marque ? `· ${a.marque}` : ''].filter(Boolean).join(' ')
-        }
-
-        for (const l of (lRes.data || []) as {
-          laptop_id: string; marque: string; model: string; stockage?: string | null
-        }[]) {
-          names[l.laptop_id] = [l.marque, l.model, l.stockage].filter(Boolean).join(' ')
-        }
-
-        setDeviceNames(names)
+        setDeviceNames(Object.fromEntries(nonVoided.map(t => [t.device_id, t.device_label ?? t.device_id])))
       })
       .catch(e => showError(e.message))
       .finally(() => setLoading(false))
@@ -134,9 +90,9 @@ export default function RetourModal({
   // (a translation-string ternary was rewritten to call the Transaction object as a function).
   function deviceLabel(txn: Transaction): string {
     if (deviceNames[txn.device_id]) return deviceNames[txn.device_id]
-    const type = txn.device_type === 'هاتف'
+    const type = txn.device_type === 'telephone'
       ? (t(isAr, 'common.phoneNoun'))
-      : txn.device_type === 'إكسسوار'
+      : txn.device_type === 'accessoire'
       ? t(isAr, 'common.accessory')
       : (t(isAr, 'common.laptop'))
     return `${type} — ${txn.device_id}`
@@ -191,7 +147,7 @@ export default function RetourModal({
                     {t.txn_id} · {t.clients?.nom ?? (isAr ? 'عميل عابر' : 'Comptoir')}
                   </p>
                   <p className="text-xs text-[#B0ADA6]">
-                    {t.date_vente} · {t.payment_method}
+                    {t.date_vente} · {codeLabel('payment_method', t.payment_method as Code<'payment_method'>, isAr ? 'ar' : 'fr')}
                   </p>
                 </div>
                 <p className="text-sm font-bold flex-shrink-0" style={{ color: primary }}>

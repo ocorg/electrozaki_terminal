@@ -7,7 +7,6 @@ import { usePortal } from '@/lib/context/portal'
 import { formatMAD, formatDate } from '@/lib/utils'
 import { Modal, Field, inputClass, selectClass, Btn, PageHeader, EmptyState, SkeletonRow } from '@/components/shared'
 import { showSuccess, showError } from '@/lib/utils/toasts'
-import type { ExpenseCategory } from '@/types/database'
 import {
   Receipt, Plus, Trash2, RefreshCw,
   ShoppingBag, Zap, Truck, Wrench,
@@ -15,23 +14,23 @@ import {
   Calendar, AlertTriangle, Loader2
 } from 'lucide-react'
 
-import { useCategories } from '@/lib/hooks/useCategories'
+import { useCategories, categoryLabel } from '@/lib/hooks/useCategories'
+import { uploadFile } from '@/lib/upload'
 
 // Icon mapping for built-in categories — custom categories fall back to MoreHorizontal
 const CAT_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
-  'إيجار':  ShoppingBag,
-  'فاتورة': Zap,
-  'نقل':    Truck,
-  'صيانة':  Wrench,
-  'أجور':   Users,
-  'تسويق':  Megaphone,
-  'معدات':  Monitor,
-  'أخرى':   MoreHorizontal,
+  loyer:       ShoppingBag,
+  facture:     Zap,
+  transport:   Truck,
+  maintenance: Wrench,
+  salaires:    Users,
+  marketing:   Megaphone,
+  equipements: Monitor,
 }
 
 interface Expense {
   exp_id:            string
-  categorie:         ExpenseCategory
+  categorie:         string
   montant:           number
   date:              string
   facture_ref?:      string | null
@@ -60,7 +59,7 @@ export default function ExpensesModule({ storeId }: ExpensesModuleProps) {
   const portal       = usePortal()
   const isAr         = language === 'ar'
   const primary      = portal.primaryColor
-  const canDelete    = user?.role === 'manager' || user?.role === 'owner'
+  const canDelete    = user?.role === 'gerant' || user?.role === 'proprietaire'
 
   const [expenses, setExpenses]     = useState<Expense[]>([])
   const [loading, setLoading]       = useState(true)
@@ -155,10 +154,7 @@ export default function ExpensesModule({ storeId }: ExpensesModuleProps) {
 
   const { expenses: dynamicCategories } = useCategories()
   const getCatIcon  = (v: string) => CAT_ICONS[v] ?? MoreHorizontal
-  const getCatLabel = (v: string) => {
-    const c = dynamicCategories.find(x => x.ar === v)
-    return c ? (isAr ? c.ar : c.fr) : v
-  }
+  const getCatLabel = (code: string) => categoryLabel(dynamicCategories, code, isAr)
 
   return (
     <div className="p-6 space-y-5 animate-fade-in" dir={isAr ? 'rtl' : 'ltr'}>
@@ -214,7 +210,7 @@ export default function ExpensesModule({ storeId }: ExpensesModuleProps) {
         >
           <option value="">{t(isAr, 'common.allCategories')}</option>
           {dynamicCategories.map(cat => (
-            <option key={cat.ar} value={cat.ar}>
+            <option key={cat.code} value={cat.code}>
               {isAr ? cat.ar : cat.fr}
             </option>
           ))}
@@ -296,11 +292,11 @@ export default function ExpensesModule({ storeId }: ExpensesModuleProps) {
           <Field label={t(isAr, 'common.category')} required>
             <div className="grid grid-cols-4 gap-2">
               {dynamicCategories.map(cat => {
-              const active = form.categorie === cat.ar
-              const Icon   = getCatIcon(cat.ar)
+              const active = form.categorie === cat.code
+              const Icon   = getCatIcon(cat.code)
               return (
-                <button key={cat.ar}
-                  onClick={() => setF('categorie', active ? '' : cat.ar)}
+                <button key={cat.code}
+                  onClick={() => setF('categorie', active ? '' : cat.code)}
                     className="flex flex-col items-center gap-1 p-2 rounded-xl border text-xs font-medium transition-all"
                     style={{ backgroundColor: active ? '#1A1A1A' : 'white', color: active ? 'white' : '#6B6860', borderColor: active ? '#1A1A1A' : '#E8E5DE' }}>
                     <Icon className="w-3.5 h-3.5" />
@@ -374,14 +370,8 @@ export default function ExpensesModule({ storeId }: ExpensesModuleProps) {
                   if (!file) return
                   setUploading(true)
                   try {
-                    const { createClient: mkClient } = await import('@/lib/supabase/client')
-                    const sb = mkClient()
-                    const ext  = file.name.split('.').pop()
-                    const path = `receipts/${storeId}/${Date.now()}.${ext}`
-                    const { error: upErr } = await sb.storage.from('expenses').upload(path, file, { upsert: true })
-                    if (upErr) throw upErr
-                    const { data: { publicUrl } } = sb.storage.from('expenses').getPublicUrl(path)
-                    setForm(p => ({ ...p, receipt_photo_url: publicUrl }))
+                    const url = await uploadFile(file, 'receipts')
+                    setForm(p => ({ ...p, receipt_photo_url: url }))
                     showSuccess(isAr ? 'تم رفع الصورة ✓' : 'Photo téléversée ✓')
                   } catch (err: unknown) {
                     showError((err as Error).message)

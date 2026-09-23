@@ -6,6 +6,9 @@ import { t } from '@/lib/i18n/t'
 import { formatDate } from '@/lib/utils'
 import { PageHeader, SkeletonRow, Modal, Field, inputClass, selectClass, Btn } from '@/components/shared'
 import { showSuccess, showError } from '@/lib/utils/toasts'
+import { codeLabel } from '@/lib/codes'
+import type { UserRole } from '@/types/database'
+import { uploadFile } from '@/lib/upload'
 import { Users, Shield, Edit2, CheckCircle, XCircle, RefreshCw, Plus, Eye, EyeOff } from 'lucide-react'
 
 interface UserProfile {
@@ -47,7 +50,7 @@ export default function BZGUsersPage() {
     email:        '',
     full_name:    '',
     password:     '',
-    role:         'staff',
+    role:         'employe',
     store_id:     '',
     store_locked: true,
     is_active:    true,
@@ -71,19 +74,7 @@ export default function BZGUsersPage() {
 
     setUploadingAvatarFor(userId)
     try {
-      const { createClient: createBrowserClient } = await import('@/lib/supabase/client')
-      const supabase = createBrowserClient()
-
-      const ext  = file.name.split('.').pop() ?? 'jpg'
-      const path = `avatars/${userId}/${Date.now()}.${ext}`
-
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(path, file, { upsert: true, contentType: file.type })
-
-      if (uploadError) throw uploadError
-
-      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path)
+      const publicUrl = await uploadFile(file, 'avatars')
 
       const res = await fetch('/api/users', {
         method:  'PATCH',
@@ -116,7 +107,7 @@ export default function BZGUsersPage() {
   useEffect(() => { fetchUsers() }, [])
 
   function openCreate() {
-    setCreateForm({ email: '', full_name: '', password: '', role: 'staff', store_id: '', store_locked: true, is_active: true })
+    setCreateForm({ email: '', full_name: '', password: '', role: 'employe', store_id: '', store_locked: true, is_active: true })
     setShowPassword(false)
     setCreateOpen(true)
   }
@@ -126,7 +117,7 @@ export default function BZGUsersPage() {
       ...p,
       role,
       // Auto-toggle store_locked based on role
-      store_locked: role === 'staff',
+      store_locked: role === 'employe',
     }))
   }
 
@@ -217,7 +208,7 @@ export default function BZGUsersPage() {
           subtitle={`${users.length} ${isAr ? 'مستخدم' : 'utilisateur(s)'}`}
           actions={
             <div className="flex items-center gap-2">
-              {(self?.role === 'owner' || self?.role === 'manager') && (
+              {(self?.role === 'proprietaire' || self?.role === 'gerant') && (
                 <button
                   onClick={openCreate}
                   className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#6366F1] text-white text-sm font-medium hover:bg-[#4F46E5] transition-all"
@@ -290,7 +281,7 @@ export default function BZGUsersPage() {
                           )}
                         </p>
                         <span className={`inline-flex items-center border rounded-lg px-2 py-0.5 text-[10px] font-bold tracking-wide ${ROLE_STYLES[u.role] ?? ''}`}>
-                          {u.role}
+                          {codeLabel('user_role', u.role as UserRole, isAr ? 'ar' : 'fr')}
                         </span>
                       </div>
                       <div className="flex items-center gap-3 mt-0.5">
@@ -318,7 +309,7 @@ export default function BZGUsersPage() {
                     </div>
 
                     {/* Actions */}
-                    {self?.role === 'owner' || (self?.role === 'manager' && u.role !== 'owner') ? (
+                    {self?.role === 'proprietaire' || (self?.role === 'gerant' && u.role !== 'proprietaire') ? (
                       <button
                         onClick={() => openEdit(u)}
                         className="p-2 rounded-xl border border-[#E8E5DE] text-[#6B6860] hover:text-[#1A1A1A] hover:bg-[#F2F0EB] transition-all flex-shrink-0"
@@ -377,12 +368,12 @@ export default function BZGUsersPage() {
             <Field label={t(isAr, 'common.role')} required>
               <select className={selectClass} value={createForm.role}
                 onChange={e => handleCreateRoleChange(e.target.value)}>
-                <option value="staff">Staff</option>
-                <option value="manager">Manager</option>
-                {self?.role === 'owner' && <option value="owner">Owner</option>}
-                {self?.role === 'manager' && (
-                  <option value="owner" disabled className="text-gray-400">
-                    Owner (accès refusé)
+                <option value="employe">{codeLabel('user_role', 'employe', isAr ? 'ar' : 'fr')}</option>
+                <option value="gerant">{codeLabel('user_role', 'gerant', isAr ? 'ar' : 'fr')}</option>
+                {self?.role === 'proprietaire' && <option value="proprietaire">{codeLabel('user_role', 'proprietaire', isAr ? 'ar' : 'fr')}</option>}
+                {self?.role === 'gerant' && (
+                  <option value="proprietaire" disabled className="text-gray-400">
+                    {codeLabel('user_role', 'proprietaire', isAr ? 'ar' : 'fr')} (accès refusé)
                   </option>
                 )}
               </select>
@@ -458,10 +449,10 @@ export default function BZGUsersPage() {
             <Field label={t(isAr, 'common.role')} required>
               <select className={selectClass} value={form.role}
                 onChange={e => setForm(p => ({ ...p, role: e.target.value }))}
-                disabled={self?.role !== 'owner'}>
-                <option value="staff">Staff</option>
-                <option value="manager">Manager</option>
-                {self?.role === 'owner' && <option value="owner">Owner</option>}
+                disabled={self?.role !== 'proprietaire'}>
+                <option value="employe">{codeLabel('user_role', 'employe', isAr ? 'ar' : 'fr')}</option>
+                <option value="gerant">{codeLabel('user_role', 'gerant', isAr ? 'ar' : 'fr')}</option>
+                {self?.role === 'proprietaire' && <option value="proprietaire">{codeLabel('user_role', 'proprietaire', isAr ? 'ar' : 'fr')}</option>}
               </select>
             </Field>
 

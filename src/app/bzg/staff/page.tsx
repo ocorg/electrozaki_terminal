@@ -10,7 +10,7 @@ interface Punch {
   store_id:      string
   user_id:       string
   user_name:     string
-  punch_type:    'in' | 'out'
+  punch_type:    'entree' | 'sortie'
   punched_at:    string
   date:          string
 }
@@ -50,8 +50,8 @@ export default function BZGStaffPage() {
     }, {} as Record<string, Punch>)
   )
 
-  const presentCount = latestPerUser.filter(p => p.punch_type === 'in').length
-  const absentCount  = latestPerUser.filter(p => p.punch_type === 'out').length
+  const presentCount = latestPerUser.filter(p => p.punch_type === 'entree').length
+  const absentCount  = latestPerUser.filter(p => p.punch_type === 'sortie').length
 
   return (
     <div className="flex flex-col h-full overflow-hidden animate-fade-in" dir={isAr ? 'rtl' : 'ltr'}>
@@ -82,7 +82,7 @@ export default function BZGStaffPage() {
         <div className="grid grid-cols-2 gap-4">
           {STORES.map(store => {
             const storeUsers = latestPerUser.filter(p => p.store_id === store.id)
-            const present    = storeUsers.filter(p => p.punch_type === 'in').length
+            const present    = storeUsers.filter(p => p.punch_type === 'entree').length
             return (
               <div key={store.id}
                 className="bg-white border border-[#E8E5DE] rounded-2xl p-4"
@@ -132,7 +132,7 @@ export default function BZGStaffPage() {
                       const userPunches = [...punches]
                         .filter(p => p.user_id === latest.user_id)
                         .reverse()
-                      const isIn = latest.punch_type === 'in'
+                      const isIn = latest.punch_type === 'entree'
 
                       return (
                         <div key={latest.user_id} className="px-5 py-4">
@@ -164,11 +164,11 @@ export default function BZGStaffPage() {
                             {userPunches.map(p => (
                               <div key={p.attendance_id}
                                 className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border ${
-                                  p.punch_type === 'in'
+                                  p.punch_type === 'entree'
                                     ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
                                     : 'bg-slate-50 border-slate-200 text-slate-600'
                                 }`}>
-                                {p.punch_type === 'in'
+                                {p.punch_type === 'entree'
                                   ? <LogIn className="w-3 h-3" />
                                   : <LogOut className="w-3 h-3" />
                                 }

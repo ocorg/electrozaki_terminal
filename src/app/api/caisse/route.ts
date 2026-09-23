@@ -1,11 +1,14 @@
-import { createClient, createUntypedClient } from '@/lib/supabase/server'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
+import type { Prisma } from '@prisma/client'
+import { prisma } from '@/lib/db'
+import { json, handleError, requireUser, requireActiveUser, dateOnly, HttpError } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
+import { notifyCaisseChange } from '@/lib/realtime'
 
 // ─── Shared aggregation — single source of truth for GET (live view) and PATCH (EOD submit) ───
 //
 // IMPORTANT: `solde_theorique` must reflect PHYSICAL CASH ONLY. Sales/repayments paid by
-// virement (تحويل) or by card (the card portion of مختلط) never enter the drawer — they must
+// virement or by card (the card portion of mixte) never enter the drawer — they must
 // never be added to the theoretical cash balance, or it will drift further from the real count
 // every time a customer pays by transfer/card. `total_ventes` / `total_credit_versements` below
 // stay as gross (all-methods) figures for display only; `payment_breakdown.cash` is the figure
@@ -24,132 +27,99 @@ type CaisseTotals = {
   payment_breakdown: {
     cash:     number   // physical cash actually collected — THE figure behind solde_theorique
     transfer: number
-    credit:   number   // remaining balance still due on آجل sales (not yet collected)
+    credit:   number   // remaining balance still due on credit sales (not yet collected)
     reprises: number
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function computeCaisseTotals(supabase: any, store_id: string, date: string): Promise<CaisseTotals> {
-  const nextDate = new Date(new Date(date + 'T00:00:00Z').getTime() + 86_400_000)
-    .toISOString().split('T')[0]
+const num = (v: Prisma.Decimal | number | null | undefined) => (v == null ? 0 : Number(v))
+const sum = <T>(rows: T[], pick: (r: T) => number) => rows.reduce((s, r) => s + pick(r), 0)
+
+async function computeCaisseTotals(store_id: string, date: Date): Promise<CaisseTotals> {
+  const nextDay = new Date(date.getTime() + 86_400_000)
+  const byMethod = { montant: true, payment_method: true } as const
 
   const [
-    txnRes, repDeliveredRes, repDepotRes, expRes, dropRes,
-    phoneCreditRes, manualCreditRes, importCreditRes, repriseRes,
+    txns, repsDelivered, repsDepot, exps, drops,
+    phoneCreditPmts, manualCreditPmts, importCreditPmts, reprises,
   ] = await Promise.all([
-    supabase.from('transactions')
-      .select('prix_vente, payment_method, avance, valeur_echange, montant_especes, montant_carte')
-      .eq('store_id', store_id).eq('date_vente', date).eq('voided', false),
-    supabase.from('reparations')
-      .select('cout_reparation, avance_rep')
-      .eq('store_id', store_id).eq('date_livraison', date).eq('statut', 'تم الاستلام'),
-    supabase.from('reparations')
-      .select('avance_rep')
-      .eq('store_id', store_id).eq('date_depot', date).gt('avance_rep', 0),
-    supabase.from('expenses')
-      .select('montant')
-      .eq('store_id', store_id).eq('date', date).eq('is_deleted', false),
-    supabase.from('cash_drops')
-      .select('amount')
-      .eq('store_id', store_id).eq('date', date),
+    prisma.transactions.findMany({
+      where:  { store_id, date_vente: date, voided: false },
+      select: { prix_vente: true, payment_method: true, avance: true, valeur_echange: true, montant_especes: true, montant_carte: true },
+    }),
+    prisma.reparations.findMany({
+      where:  { store_id, date_livraison: date, statut: 'recupere' },
+      select: { cout_reparation: true, avance_rep: true },
+    }),
+    prisma.reparations.findMany({
+      where:  { store_id, date_depot: date, avance_rep: { gt: 0 } },
+      select: { avance_rep: true },
+    }),
+    prisma.expenses.findMany({ where: { store_id, date, is_deleted: false }, select: { montant: true } }),
+    prisma.cash_drops.findMany({ where: { store_id, date }, select: { amount: true } }),
     // Repayments on POS phone-credit installment plans
-    supabase.from('phone_credit_payments')
-      .select('montant, payment_method')
-      .eq('store_id', store_id).eq('date_paiement', date),
+    prisma.phone_credit_payments.findMany({ where: { store_id, date_paiement: date }, select: byMethod }),
     // Repayments on ad-hoc client credit balances (Crédits tab) — no date_paiement column, use created_at
-    supabase.from('credit_payments')
-      .select('montant, payment_method')
-      .eq('store_id', store_id)
-      .gte('created_at', `${date}T00:00:00.000Z`).lt('created_at', `${nextDate}T00:00:00.000Z`),
+    prisma.credit_payments.findMany({ where: { store_id, created_at: { gte: date, lt: nextDay } }, select: byMethod }),
     // Repayments on imported legacy credit balances (Crédits > Imports tab)
-    supabase.from('credit_import_payments')
-      .select('montant, payment_method')
-      .eq('store_id', store_id).eq('date_paiement', date),
-    supabase.from('phone_credit_sales')
-      .select('reprise_valeur')
-      .eq('store_id', store_id).eq('has_reprise', true).not('reprise_phone_id', 'is', null)
-      .gte('discharged_at', `${date}T00:00:00.000Z`).lt('discharged_at', `${nextDate}T00:00:00.000Z`),
+    prisma.credit_import_payments.findMany({ where: { store_id, date_paiement: date }, select: byMethod }),
+    prisma.phone_credit_sales.findMany({
+      where:  { store_id, has_reprise: true, reprise_phone_id: { not: null }, discharged_at: { gte: date, lt: nextDay } },
+      select: { reprise_valeur: true },
+    }),
   ])
 
-  const txns          = (txnRes.data          || []) as Record<string, unknown>[]
-  const repsDelivered = (repDeliveredRes.data  || []) as Record<string, unknown>[]
-  const repsDepot     = (repDepotRes.data      || []) as Record<string, unknown>[]
-  const exps          = (expRes.data           || []) as Record<string, unknown>[]
-  const drops         = (dropRes.data          || []) as Record<string, unknown>[]
-  const reprises      = (repriseRes.data       || []) as Record<string, unknown>[]
   // Combine all three client-repayment streams — each is a real cash/transfer event
-  // that must feed the same caisse totals as phone-credit repayments already did.
-  const creditPmts = [
-    ...((phoneCreditRes.data  || []) as Record<string, unknown>[]),
-    ...((manualCreditRes.data || []) as Record<string, unknown>[]),
-    ...((importCreditRes.data || []) as Record<string, unknown>[]),
-  ]
+  const creditPmts = [...phoneCreditPmts, ...manualCreditPmts, ...importCreditPmts]
 
-  const total_ventes = txns.reduce((s, t) => {
-    const pv = (t.prix_vente     as number) || 0
-    const av = (t.avance         as number) || 0
-    const ve = (t.valeur_echange as number) || 0
-    const pm =  t.payment_method as string
-    if (pm === 'إستبدال') return s + (pv - ve)
-    if (pm === 'آجل')    return s + av
+  const total_ventes = sum(txns, t => {
+    const pv = num(t.prix_vente), av = num(t.avance), ve = num(t.valeur_echange)
+    if (t.payment_method === 'echange') return pv - ve
+    if (t.payment_method === 'credit')  return av
     const isPartial = av > 0 && (pv - av - ve) > 0
-    return s + (isPartial ? av : pv - ve)
-  }, 0)
+    return isPartial ? av : pv - ve
+  })
 
-  // Cash physically collected from sales today — excludes تحويل entirely and the card portion of مختلط
-  const ventes_cash = txns.reduce((s, t) => {
-    const pm = t.payment_method as string
-    const pv = (t.prix_vente     as number) || 0
-    const av = (t.avance         as number) || 0
-    const ve = (t.valeur_echange as number) || 0
-    if (pm === 'نقد') {
-      const isPartial = av > 0 && (pv - av - ve) > 0
-      return s + (isPartial ? av : Math.max(pv - ve, 0))
+  // Cash physically collected from sales today — excludes virement entirely and the card portion of mixte
+  const ventes_cash = sum(txns, t => {
+    const pv = num(t.prix_vente), av = num(t.avance), ve = num(t.valeur_echange)
+    switch (t.payment_method) {
+      case 'especes': {
+        const isPartial = av > 0 && (pv - av - ve) > 0
+        return isPartial ? av : Math.max(pv - ve, 0)
+      }
+      case 'mixte':   return num(t.montant_especes)
+      case 'echange': return Math.max(pv - ve, 0)
+      case 'credit':  return av   // down payment taken at signing — assumed cash
+      default:        return 0    // virement — bank money, never enters the drawer
     }
-    if (pm === 'مختلط')   return s + ((t.montant_especes as number) || 0)
-    if (pm === 'إستبدال') return s + Math.max(pv - ve, 0)
-    if (pm === 'آجل')     return s + av   // down payment taken at signing — assumed cash
-    return s                              // تحويل — bank money, never enters the drawer
-  }, 0)
+  })
 
-  const ventes_transfer = txns.reduce((s, t) => {
-    const pm = t.payment_method as string
-    const pv = (t.prix_vente as number) || 0
-    const av = (t.avance    as number) || 0
-    if (pm === 'تحويل') {
+  const ventes_transfer = sum(txns, t => {
+    const pv = num(t.prix_vente), av = num(t.avance)
+    if (t.payment_method === 'virement') {
       const isPartial = av > 0 && (pv - av) > 0
-      return s + (isPartial ? av : pv)
+      return isPartial ? av : pv
     }
-    if (pm === 'مختلط') return s + ((t.montant_carte as number) || 0)
-    return s
-  }, 0)
+    if (t.payment_method === 'mixte') return num(t.montant_carte)
+    return 0
+  })
 
-  const ventes_credit_due = txns.reduce((s, t) => {
-    const pm = t.payment_method as string
-    const pv = (t.prix_vente     as number) || 0
-    const av = (t.avance         as number) || 0
-    const ve = (t.valeur_echange as number) || 0
-    if (pm === 'آجل') return s + Math.max(pv - av - ve, 0)
-    return s
-  }, 0)
+  const ventes_credit_due = sum(txns, t =>
+    t.payment_method === 'credit' ? Math.max(num(t.prix_vente) - num(t.avance) - num(t.valeur_echange), 0) : 0)
 
   const total_reparations =
-    repsDelivered.reduce((s, r) => {
-      const cout   = (r.cout_reparation as number) || 0
-      const avance = (r.avance_rep      as number) || 0
-      return s + Math.max(cout - avance, 0)
-    }, 0)
-    + repsDepot.reduce((s, r) => s + ((r.avance_rep as number) || 0), 0)
+    sum(repsDelivered, r => Math.max(num(r.cout_reparation) - num(r.avance_rep), 0))
+    + sum(repsDepot, r => num(r.avance_rep))
 
-  const total_depenses   = exps.reduce( (s, e) => s + ((e.montant as number) || 0), 0)
-  const total_cash_drops = drops.reduce((s, d) => s + ((d.amount  as number) || 0), 0)
+  const total_depenses   = sum(exps,  e => num(e.montant))
+  const total_cash_drops = sum(drops, d => num(d.amount))
 
-  const total_credit_versements = creditPmts.reduce((s, p) => s + ((p.montant as number) || 0), 0)
-  const credit_cash     = creditPmts.filter(p => (p.payment_method as string) === 'نقد'   ).reduce((s, p) => s + ((p.montant as number) || 0), 0)
-  const credit_transfer = creditPmts.filter(p => (p.payment_method as string) === 'تحويل').reduce((s, p) => s + ((p.montant as number) || 0), 0)
+  const total_credit_versements = sum(creditPmts, p => num(p.montant))
+  const credit_cash     = sum(creditPmts.filter(p => p.payment_method === 'especes'),  p => num(p.montant))
+  const credit_transfer = sum(creditPmts.filter(p => p.payment_method === 'virement'), p => num(p.montant))
 
-  const total_reprises = reprises.reduce((s, r) => s + ((r.reprise_valeur as number) || 0), 0)
+  const total_reprises = sum(reprises, r => num(r.reprise_valeur))
 
   return {
     total_ventes,
@@ -171,48 +141,36 @@ async function computeCaisseTotals(supabase: any, store_id: string, date: string
   }
 }
 
+// solde_theorique is driven ONLY by payment_breakdown.cash (physical cash in) — see note above
+const soldeTheorique = (ouverture: Prisma.Decimal | number, t: CaisseTotals) =>
+  num(ouverture) + t.payment_breakdown.cash + t.total_reparations - t.total_depenses
+
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createUntypedClient()
+    await requireUser()
     const { searchParams } = new URL(request.url)
     const store_id = searchParams.get('store_id')
-    const date     = searchParams.get('date') || new Date().toISOString().split('T')[0]
+    const date     = dateOnly(searchParams.get('date') || new Date().toISOString().slice(0, 10))!
+    if (!store_id) throw new HttpError(400, 'store_id requis')
 
-    if (!store_id) return NextResponse.json({ error: 'store_id requis' }, { status: 400 })
+    const caisse = await prisma.caisse.findFirst({ where: { store_id, date } })
+    if (!caisse) return json({ data: null })
 
-    // Fetch today's caisse record
-    const { data: caisse } = await supabase
-      .from('caisse')
-      .select('*')
-      .eq('store_id', store_id)
-      .eq('date', date)
-      .single() as { data: Record<string, unknown> | null }
+    // Once EOD has been submitted, the totals are a FROZEN snapshot taken at submit time and
+    // already persisted on the row (see PATCH below). Re-computing live here would silently
+    // disagree with the approved/pending ecart if a backdated edit or a void happens
+    // afterwards — return the persisted snapshot as-is instead, so history stays honest.
+    if (caisse.status !== 'ouverte') return json({ data: caisse })
 
-    if (!caisse) {
-      return NextResponse.json({ data: null })
-    }
-
-    // Once EOD has been submitted (pending_eod/closed), the totals are a FROZEN snapshot taken
-    // at submit time and already persisted on the row (see PATCH below). Re-computing live here
-    // would silently disagree with the approved/pending ecart if a backdated edit or a void
-    // happens afterwards — return the persisted snapshot as-is instead, so history stays honest.
-    if (caisse.status !== 'open') {
-      return NextResponse.json({ data: caisse })
-    }
-
-    const totals     = await computeCaisseTotals(supabase, store_id, date)
-    const ouverture  = (caisse.ouverture as number) || 0
-    // solde_theorique is driven ONLY by payment_breakdown.cash (physical cash in) — see note above computeCaisseTotals
-    const solde_theorique = ouverture + totals.payment_breakdown.cash + totals.total_reparations - totals.total_depenses
-
-    return NextResponse.json({
+    const totals = await computeCaisseTotals(store_id, date)
+    return json({
       data: {
         ...caisse,
         total_ventes:            totals.total_ventes,
         total_reparations:       totals.total_reparations,
         total_depenses:          totals.total_depenses,
         total_cash_drops:        totals.total_cash_drops,
-        solde_theorique,
+        solde_theorique:         soldeTheorique(caisse.ouverture, totals),
         payment_breakdown:       totals.payment_breakdown,
         total_credit_versements: totals.total_credit_versements,
         total_reprises:          totals.total_reprises,
@@ -220,121 +178,71 @@ export async function GET(request: NextRequest) {
         nb_cash_drops:           totals.nb_cash_drops,
         nb_credit_versements:    totals.nb_credit_versements,
         nb_reprises:             totals.nb_reprises,
-      }
+      },
     })
-  } catch (err: unknown) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
+  } catch (err) {
+    return handleError(err, 'GET /api/caisse')
   }
 }
 
+// BOD — open the drawer for today
 export async function POST(request: NextRequest) {
-  // BOD — open the drawer for today
   try {
-    const supabase       = await createUntypedClient()
-    const typedSupabase  = await createClient()
-    const { data: { user } } = await typedSupabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
-
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('display_name, store_id')
-      .eq('id', user.id)
-      .single() as { data: { display_name: string; store_id: string | null } | null }
-
+    const user     = await requireActiveUser()
     const body     = await request.json()
-    const store_id = body.store_id ?? profile?.store_id
-    const date     = new Date().toISOString().split('T')[0]
+    const store_id = body.store_id ?? user.store_id
+    const date     = dateOnly(new Date().toISOString().slice(0, 10))!
+    if (!store_id) throw new HttpError(400, 'store_id manquant')
 
-    if (!store_id) return NextResponse.json({ error: 'store_id manquant' }, { status: 400 })
+    const existing = await prisma.caisse.findFirst({ where: { store_id, date }, select: { caisse_id: true, status: true } })
+    if (existing) return json({ error: 'Caisse déjà ouverte pour aujourd\'hui', data: existing }, { status: 409 })
 
-    // Check not already open today
-    const { data: existing } = await supabase
-      .from('caisse')
-      .select('caisse_id, status')
-      .eq('store_id', store_id)
-      .eq('date', date)
-      .single() as { data: { caisse_id: string; status: string } | null }
-
-    if (existing) {
-      return NextResponse.json({ error: 'Caisse déjà ouverte pour aujourd\'hui', data: existing }, { status: 409 })
-    }
-
-    const { data, error } = await supabase
-      .from('caisse')
-      .insert({
-        date,
-        store_id,
-        ouverture:  body.ouverture ?? 0,
-        status:     'open',
-        created_by: user.id,
-      })
-      .select()
-      .single() as { data: Record<string, unknown> | null; error: unknown }
-
-    if (error) throw error
-    if (!data) throw new Error('No data returned')
+    const ouverture = Number(body.ouverture ?? 0)
+    const data = await prisma.caisse.create({
+      data: { date, store_id, ouverture, status: 'ouverte', created_by: user.id },
+    })
 
     await logActivity({
       store_id,
       user_id:     user.id,
-      user_name:   profile?.display_name ?? '—',
-      action_type: 'INSERT',
+      user_name:   user.display_name,
+      action_type: 'creation',
       module:      'caisse',
-      record_id:   data.caisse_id as string,
+      record_id:   data.caisse_id,
       after_state: data,
       ip_address:  getIpFromRequest(request),
-      notes:       `BOD — Ouverture: ${body.ouverture} MAD`,
+      notes:       `Ouverture de caisse : ${ouverture} MAD`,
     })
+    await notifyCaisseChange(store_id)
 
-    return NextResponse.json({ data }, { status: 201 })
-  } catch (err: unknown) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
+    return json({ data }, { status: 201 })
+  } catch (err) {
+    return handleError(err, 'POST /api/caisse')
   }
 }
 
+// EOD — submit closure for approval
 export async function PATCH(request: NextRequest) {
-  // EOD — submit closure for approval
   try {
-    const supabase       = await createUntypedClient()
-    const typedSupabase  = await createClient()
-    const { data: { user } } = await typedSupabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+    const user = await requireActiveUser()
+    const { caisse_id, solde_reel, notes } = await request.json()
+    if (!caisse_id) throw new HttpError(400, 'caisse_id requis')
+    if (solde_reel == null) throw new HttpError(400, 'solde_reel requis')
 
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('display_name, store_id')
-      .eq('id', user.id)
-      .single() as { data: { display_name: string; store_id: string | null } | null }
-
-    const body = await request.json()
-    const { caisse_id, solde_reel, notes } = body
-
-    if (!caisse_id) return NextResponse.json({ error: 'caisse_id requis' }, { status: 400 })
-    if (solde_reel == null) return NextResponse.json({ error: 'solde_reel requis' }, { status: 400 })
-
-    // Fetch current to compute ecart
-    const { data: current } = await supabase
-      .from('caisse')
-      .select('*')
-      .eq('caisse_id', caisse_id)
-      .single() as { data: Record<string, unknown> | null }
-
-    if (!current) return NextResponse.json({ error: 'Caisse introuvable' }, { status: 404 })
-    if (current.status !== 'open') return NextResponse.json({ error: 'Caisse non ouverte' }, { status: 400 })
+    const current = await prisma.caisse.findUnique({ where: { caisse_id } })
+    if (!current) throw new HttpError(404, 'Caisse introuvable')
+    if (current.status !== 'ouverte') throw new HttpError(400, 'Caisse non ouverte')
+    if (!current.store_id) throw new HttpError(400, 'Caisse sans magasin')
 
     // Re-compute live solde_theorique at EOD time (the stored column value is stale)
-    const caisseDate  = current.date as string
-    const caisseStore = current.store_id as string
+    const totals          = await computeCaisseTotals(current.store_id, current.date)
+    const solde_theorique = soldeTheorique(current.ouverture, totals)
+    const ecart           = Number(solde_reel) - solde_theorique
 
-    const totals = await computeCaisseTotals(supabase, caisseStore, caisseDate)
-    // solde_theorique is driven ONLY by payment_breakdown.cash (physical cash in) — see note above computeCaisseTotals
-    const solde_theorique = ((current.ouverture as number) || 0) + totals.payment_breakdown.cash + totals.total_reparations - totals.total_depenses
-    const ecart           = solde_reel - solde_theorique
-
-    const { data, error } = await supabase
-      .from('caisse')
-      .update({
-        solde_reel,
+    const data = await prisma.caisse.update({
+      where: { caisse_id },
+      data: {
+        solde_reel:        Number(solde_reel),
         ecart,
         // Persist computed totals so BZG cross-store view reads real figures
         total_ventes:      totals.total_ventes,
@@ -343,38 +251,32 @@ export async function PATCH(request: NextRequest) {
         total_cash_drops:  totals.total_cash_drops,
         solde_theorique,
         payment_breakdown: totals.payment_breakdown,
-        status:           'pending_eod',
-        eod_submitted_at: new Date().toISOString(),
-        closed_by:        user.id,
-        notes:            notes || null,
-      })
-      .eq('caisse_id', caisse_id)
-      .select()
-      .single() as { data: Record<string, unknown> | null; error: unknown }
-
-    if (error) throw error
-    if (!data) throw new Error('No data returned')
+        status:            'en_attente_cloture',
+        eod_submitted_at:  new Date(),
+        closed_by:         user.id,
+        notes:             notes || null,
+      },
+    })
 
     await logActivity({
-      store_id:     current.store_id as string,
+      store_id:     current.store_id,
       user_id:      user.id,
-      user_name:    profile?.display_name ?? '—',
-      action_type:  'EOD_SUBMIT',
+      user_name:    user.display_name,
+      action_type:  'soumission_cloture',
       module:       'caisse',
       record_id:    caisse_id,
       before_state: current,
-      after_state:  data as Record<string, unknown>,
+      after_state:  data,
       ip_address:   getIpFromRequest(request),
-      notes:        `EOD — Réel: ${solde_reel} MAD | Écart: ${ecart} MAD`,
+      notes:        `Clôture soumise — Réel : ${solde_reel} MAD | Écart : ${ecart} MAD`,
     })
+    await notifyCaisseChange(current.store_id)
 
-    return NextResponse.json({ data })
-  } catch (err: unknown) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
+    return json({ data })
+  } catch (err) {
+    return handleError(err, 'PATCH /api/caisse')
   }
 }
 
 // EOD approval/rejection lives solely in /api/bzg/caisse/eod (PATCH) — it's the only path that
 // role-checks AND writes an activity_log entry, and it supports both approve and reject.
-// A PUT handler used to live here too (approve-only, no reject) and every caller has been
-// migrated off it — removed to close off the "two approval paths that can silently drift" gap.

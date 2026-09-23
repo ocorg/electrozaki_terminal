@@ -2,11 +2,15 @@
 import { useState, useEffect } from 'react'
 import { useLanguageStore } from '@/lib/stores/language'
 import { t } from '@/lib/i18n/t'
-import { useCategories, type CategoryItem } from '@/lib/hooks/useCategories'
+import { useCategories } from '@/lib/hooks/useCategories'
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import { Tag, Plus, X, Save, Loader2, AlertCircle } from 'lucide-react'
 
 type CatType = 'accessories' | 'expenses' | 'suppliers'
+
+// code is assigned by the server on first save
+interface DraftCategory { code?: string; fr: string; ar: string }
+const itemKey = (c: DraftCategory) => c.code ?? `new:${c.fr}`
 
 const SECTIONS: { key: CatType; fr: string; ar: string; color: string }[] = [
   { key: 'accessories', fr: 'Accessoires',  ar: 'الإكسسوارات', color: '#8B5CF6' },
@@ -15,7 +19,7 @@ const SECTIONS: { key: CatType; fr: string; ar: string; color: string }[] = [
 ]
 
 interface SectionState {
-  categories: CategoryItem[]
+  categories: DraftCategory[]
   inputFr:    string
   inputAr:    string
   saving:     boolean
@@ -70,9 +74,9 @@ export default function CategoryManager() {
     })
   }
 
-  function remove(type: CatType, ar: string) {
+  function remove(type: CatType, key: string) {
     patch(type, {
-      categories: sections[type].categories.filter(c => c.ar !== ar),
+      categories: sections[type].categories.filter(c => itemKey(c) !== key),
       dirty: true,
     })
   }
@@ -91,7 +95,7 @@ export default function CategoryManager() {
       if (!res.ok) throw new Error(json.error)
       invalidate()
       showSuccess(t(isAr, 'common.savedOk'))
-      patch(type, { dirty: false })
+      patch(type, { dirty: false, categories: json.categories })
     } catch (err: unknown) {
       showError((err as Error).message)
     } finally {
@@ -139,13 +143,13 @@ export default function CategoryManager() {
                   {isAr ? 'لا توجد فئات — أضف أدناه' : 'Aucune catégorie — ajoutez ci-dessous'}
                 </div>
               ) : s.categories.map(cat => (
-                <div key={cat.ar}
+                <div key={itemKey(cat)}
                   className="flex items-center gap-1 pl-3 pr-1.5 py-1.5 rounded-full text-xs font-semibold border border-[#E8E5DE] bg-[#F8F7F4]">
                   <span className="text-[#1A1A1A]">{isAr ? cat.ar : cat.fr}</span>
                   <span className="text-[9px] text-[#B0ADA6]">
                     {isAr ? `(${cat.fr})` : `(${cat.ar})`}
                   </span>
-                  <button onClick={() => remove(key, cat.ar)}
+                  <button onClick={() => remove(key, itemKey(cat))}
                     className="ml-1 w-4 h-4 rounded-full bg-[#E8E5DE] text-[#6B6860] hover:bg-red-100 hover:text-red-500 transition-all flex items-center justify-center">
                     <X className="w-2.5 h-2.5" />
                   </button>

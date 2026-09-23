@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type PaymentMethod = 'نقد' | 'تحويل'
+type PaymentMethod = 'especes' | 'virement'
 
 interface Props {
   isOpen:           boolean
@@ -39,7 +39,7 @@ export function ConfirmSaleModal({
 }: Props) {
 
   const [amount,         setAmount]         = useState(initialMontant)
-  const [paymentMethod,  setPaymentMethod]  = useState<PaymentMethod>('نقد')
+  const [paymentMethod,  setPaymentMethod]  = useState<PaymentMethod>('especes')
   const [notes,          setNotes]          = useState('')
   const [loading,        setLoading]        = useState(false)
 
@@ -47,7 +47,7 @@ export function ConfirmSaleModal({
   useEffect(() => {
     if (isOpen) {
       setAmount(initialMontant)
-      setPaymentMethod('نقد')
+      setPaymentMethod('especes')
       setNotes('')
       setLoading(false)
     }
@@ -86,7 +86,7 @@ export function ConfirmSaleModal({
       if (json.status !== 'success') throw new Error(json.error ?? 'Erreur inconnue')
 
       toast.success(`Vente confirmée — ${doc_ref}`, {
-        description: `${amount.toLocaleString('fr-MA')} MAD · ${paymentMethod === 'نقد' ? 'Espèces' : 'Virement'}`,
+        description: `${amount.toLocaleString('fr-MA')} MAD · ${paymentMethod === 'especes' ? 'Espèces' : 'Virement'}`,
       })
       onSuccess(json.data.txn_id)
 
@@ -188,8 +188,8 @@ export function ConfirmSaleModal({
             <div className="grid grid-cols-2 gap-3">
               {(
                 [
-                  { method: 'نقد'   as PaymentMethod, labelFr: 'Espèces',  Icon: Banknote       },
-                  { method: 'تحويل' as PaymentMethod, labelFr: 'Virement', Icon: ArrowRightLeft },
+                  { method: 'especes'   as PaymentMethod, labelFr: 'Espèces',  Icon: Banknote       },
+                  { method: 'virement' as PaymentMethod, labelFr: 'Virement', Icon: ArrowRightLeft },
                 ]
               ).map(({ method, labelFr, Icon }) => {
                 const active = paymentMethod === method

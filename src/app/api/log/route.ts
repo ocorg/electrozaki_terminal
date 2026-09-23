@@ -1,50 +1,37 @@
-import { createClient } from '@/lib/supabase/server'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
+import type { log_action, log_module } from '@prisma/client'
+import { prisma } from '@/lib/db'
+import { json, handleError, requireUser, dateOnly, HttpError, MANAGERS } from '@/lib/api'
 
+// GET /api/log — activity log (manager/owner only)
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
-
-    // Only manager and owner can read logs
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single<{ role: string }>()
-
-    if (!profile || !['manager', 'owner'].includes(profile.role)) {
-      return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
-    }
+    const user = await requireUser()
+    if (!MANAGERS.includes(user.role)) throw new HttpError(403, 'Accès refusé')
 
     const { searchParams } = new URL(request.url)
     const store_id    = searchParams.get('store_id')
     const user_id     = searchParams.get('user_id')
-    const module      = searchParams.get('module')
-    const action_type = searchParams.get('action_type')
+    const module      = searchParams.get('module') as log_module | null
+    const action_type = searchParams.get('action_type') as log_action | null
     const date_from   = searchParams.get('date_from')
     const date_to     = searchParams.get('date_to')
-    const limit       = searchParams.get('limit') || '100'
+    const limit       = Math.min(Number(searchParams.get('limit') || 100), 1000)
 
-    let query = supabase
-      .from('activity_log')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(Number(limit))
-
-    if (store_id)    query = query.eq('store_id', store_id)
-    if (user_id)     query = query.eq('user_id', user_id)
-    if (module)      query = query.eq('module', module)
-    if (action_type) query = query.eq('action_type', action_type)
-    if (date_from)   query = query.gte('created_at', date_from)
-    if (date_to)     query = query.lte('created_at', date_to + 'T23:59:59Z')
-
-    const { data, error } = await query
-    if (error) throw error
-
-    return NextResponse.json({ data })
-  } catch (err: unknown) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
+    const to = date_to ? new Date(dateOnly(date_to)!.getTime() + 86_400_000 - 1) : undefined
+    const data = await prisma.activity_log.findMany({
+      where: {
+        ...(store_id    && { store_id }),
+        ...(user_id     && { user_id }),
+        ...(module      && { module }),
+        ...(action_type && { action_type }),
+        ...((date_from || to) && { created_at: { gte: dateOnly(date_from), lte: to } }),
+      },
+      orderBy: { created_at: 'desc' },
+      take:    limit,
+    })
+    return json({ data })
+  } catch (err) {
+    return handleError(err, 'GET /api/log')
   }
 }

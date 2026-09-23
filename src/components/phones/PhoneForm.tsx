@@ -25,8 +25,8 @@ const STOCKAGES = ['16GB', '32GB', '64GB', '128GB', '256GB', '512GB', '1TB']
 const RAMS      = ['2GB', '3GB', '4GB', '6GB', '8GB', '12GB', '16GB']
 
 const EMPTY: Partial<Phone> = {
-  source:                'Fournisseur',
-  condition:             'مستعمل',
+  source:                'fournisseur',
+  condition:             'occasion',
   marque:                '',
   serie:                 '',
   type:                  '',
@@ -40,8 +40,8 @@ const EMPTY: Partial<Phone> = {
   prix_vente_recommande: undefined,
   prix_vente_minimum:    undefined,
   warranty_months:       3,
-  status:                'متوفر',
-  location:              'Magasin Principal',
+  status:                'disponible',
+  location:              'magasin_principal',
   description:          '',
   replaced_components:  [],
   is_damaged:           false,
@@ -57,7 +57,7 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
   const isAr     = language === 'ar'
   const primary  = portal.primaryColor
   const isEdit   = !!phone
-  const canSeeFinancials = role === 'manager' || role === 'owner'
+  const canSeeFinancials = role === 'gerant' || role === 'proprietaire'
 
   const { brands, seriesFor, modelsFor, couleursFor, addEntry, loading: catalogLoading } = usePhoneCatalog()
 
@@ -76,7 +76,7 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
 
   // ── Derived state ────────────────────────────────────────
   const isApple = form.marque === 'Apple'
-  const isNeuf  = form.condition === 'جديد'
+  const isNeuf  = form.condition === 'neuf'
 
   // Dependent dropdown options
   const serieOptions  = seriesFor(form.marque ?? '')
@@ -108,7 +108,7 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
       model:   '',
       couleur: '',
       ram:     val === 'Apple' ? '' : prev.ram,
-      battery_level: val === 'Apple' && prev.condition === 'جديد' ? 100 : (val === 'Apple' ? prev.battery_level : undefined),
+      battery_level: val === 'Apple' && prev.condition === 'neuf' ? 100 : (val === 'Apple' ? prev.battery_level : undefined),
     }))
   }
 
@@ -175,24 +175,24 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
           <Field label={t(isAr, 'common.source')} required>
             <select className={selectClass} value={form.source || ''} onChange={e => {
               set('source', e.target.value as DeviceSource)
-              if (e.target.value !== 'Fournisseur') set('fournisseur_id', null)
+              if (e.target.value !== 'fournisseur') set('fournisseur_id', null)
             }}>
-              <option value="Fournisseur">Fournisseur</option>
-              <option value="Reprise">Reprise</option>
-              <option value="Échange">Échange</option>
+              <option value="fournisseur">Fournisseur</option>
+              <option value="reprise">Reprise</option>
+              <option value="echange">Échange</option>
             </select>
           </Field>
           <Field label={t(isAr, 'common.deviceCondition')} required>
             <select className={selectClass} value={form.condition || ''} onChange={e => set('condition', e.target.value as DeviceCondition)}>
-              <option value="جديد">{t(isAr, 'common.new')}</option>
-              <option value="مستعمل">{t(isAr, 'common.used')}</option>
-              <option value="معطوب">{t(isAr, 'common.damaged')}</option>
+              <option value="neuf">{t(isAr, 'common.new')}</option>
+              <option value="occasion">{t(isAr, 'common.used')}</option>
+              <option value="defectueux">{t(isAr, 'common.damaged')}</option>
             </select>
           </Field>
         </div>
 
         {/* Fournisseur — visible uniquement si source = Fournisseur */}
-        {form.source === 'Fournisseur' && (
+        {form.source === 'fournisseur' && (
           <Field label={t(isAr, 'common.supplier')}>
             <select
               className={selectClass}
@@ -341,20 +341,20 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
         {/* Row 6 — Statut + Emplacement */}
         <div className="grid grid-cols-2 gap-4">
           <Field label={t(isAr, 'common.stockStatus')} required>
-            <select className={selectClass} value={form.status || 'متوفر'} onChange={e => set('status', e.target.value)}>
-              <option value="متوفر">{t(isAr, 'common.available')}</option>
-              <option value="حجز">{isAr ? 'محجوز' : 'Réservé'}</option>
-              <option value="مباع">{isAr ? 'مباع' : 'Vendu'}</option>
-              <option value="إستبدال">{isAr ? 'مستبدل' : 'Échangé'}</option>
-              <option value="إصلاح">{isAr ? 'في الإصلاح' : 'En réparation'}</option>
+            <select className={selectClass} value={form.status || 'disponible'} onChange={e => set('status', e.target.value)}>
+              <option value="disponible">{t(isAr, 'common.available')}</option>
+              <option value="reserve">{isAr ? 'محجوز' : 'Réservé'}</option>
+              <option value="vendu">{isAr ? 'مباع' : 'Vendu'}</option>
+              <option value="echange">{isAr ? 'مستبدل' : 'Échangé'}</option>
+              <option value="en_reparation">{isAr ? 'في الإصلاح' : 'En réparation'}</option>
               <option value="en_transfert">{isAr ? 'في النقل' : 'En transfert'}</option>
             </select>
           </Field>
           <Field label={t(isAr, 'common.location')}>
-            <select className={selectClass} value={form.location || 'Magasin Principal'} onChange={e => set('location', e.target.value as LocationType)}>
-              <option value="Magasin Principal">{t(isAr, 'common.mainStore')}</option>
-              <option value="Magasin Secondaire">{t(isAr, 'common.secondaryStore')}</option>
-              <option value="Externe">{t(isAr, 'common.external')}</option>
+            <select className={selectClass} value={form.location || 'magasin_principal'} onChange={e => set('location', e.target.value as LocationType)}>
+              <option value="magasin_principal">{t(isAr, 'common.mainStore')}</option>
+              <option value="magasin_secondaire">{t(isAr, 'common.secondaryStore')}</option>
+              <option value="externe">{t(isAr, 'common.external')}</option>
             </select>
           </Field>
         </div>

@@ -1,263 +1,162 @@
-import { createClient, createUntypedClient } from '@/lib/supabase/server'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
+import type { Prisma } from '@prisma/client'
+import { prisma } from '@/lib/db'
+import { json, handleError, requireUser, requireActiveUser, pickInput, todayDate, HttpError, MANAGERS } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
-import { escapeLike, validateRequired, sanitizeText } from '@/lib/utils/validation'
+import { validateRequired, sanitizeText } from '@/lib/utils/validation'
+
+// Hidden from staff: purchase price, iCloud password, settlement and audit fields
+const STAFF_OMIT = {
+  icloud_mdp: true, prix_achat: true, created_by: true, updated_by: true,
+  is_deleted: true, settled_at: true, settled_by: true,
+} as const
+
+const EDITABLE = [
+  'imei', 'source', 'fournisseur_id', 'txn_ref_id', 'condition',
+  'marque', 'serie', 'type', 'couleur', 'model', 'stockage',
+  'battery_level', 'ram', 'description', 'icloud_compte', 'icloud_mdp',
+  'prix_achat', 'prix_vente_recommande', 'prix_vente_minimum',
+  'warranty_months', 'status', 'location', 'date_entree', 'image_url',
+  'replaced_components', 'is_damaged', 'damage_notes',
+  'promo_type', 'promo_montant',
+] as const
+
+const clean = (v: unknown) => (typeof v === 'string' ? sanitizeText(v) : v)
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase      = await createUntypedClient()
-    const typedSupabase = await createClient()
-    const { data: { user } } = await typedSupabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
-
+    const user = await requireUser()
     const { searchParams } = new URL(request.url)
-    const status   = searchParams.get('status')
-    const marque   = searchParams.get('marque')
-    const location = searchParams.get('location')
-    const stockage = searchParams.get('stockage')
+    const status         = searchParams.get('status') as Prisma.phonesWhereInput['status']
+    const marque         = searchParams.get('marque')
+    const location       = searchParams.get('location') as Prisma.phonesWhereInput['location']
+    const stockage       = searchParams.get('stockage')
     const promo          = searchParams.get('promo')
-    const search         = searchParams.get('search')
+    const search         = searchParams.get('search')?.trim()
     const store_id       = searchParams.get('store_id')
     const fournisseur_id = searchParams.get('fournisseur_id')
     const limit          = Math.min(parseInt(searchParams.get('limit') || '200', 10), 500)
 
-    const { data: callerProfile } = await supabase
-      .from('user_profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single() as { data: { role: string } | null }
-
-    const isPrivileged = ['manager', 'owner'].includes(callerProfile?.role ?? '')
-    const columns = isPrivileged
-      ? '*'
-      : 'phone_id,imei,source,fournisseur_id,txn_ref_id,condition,marque,serie,type,couleur,model,stockage,battery_level,ram,description,icloud_compte,prix_vente_recommande,prix_vente_minimum,warranty_months,status,location,date_entree,image_url,created_at,updated_at,store_id,replaced_components,is_damaged,damage_notes,promo_type,promo_montant'
-
-    let query = supabase
-      .from('phones')
-      .select(columns)
-      .eq('is_deleted', false)
-      .order('created_at', { ascending: false })
-      .limit(limit)
-
-    if (store_id) query = query.eq('store_id', store_id)
-    if (status)   query = query.eq('status', status)
-    if (marque)   query = query.ilike('marque', `%${marque}%`)
-    if (location) query = query.eq('location', location)
-    if (stockage)     query = query.eq('stockage', stockage)
-    if (fournisseur_id) query = query.eq('fournisseur_id', fournisseur_id)
-    if (promo === '1')  query = query.not('promo_type', 'is', null)
+    const where: Prisma.phonesWhereInput = {
+      is_deleted: false,
+      ...(store_id       && { store_id }),
+      ...(status         && { status }),
+      ...(marque         && { marque: { contains: marque, mode: 'insensitive' } }),
+      ...(location       && { location }),
+      ...(stockage       && { stockage }),
+      ...(fournisseur_id && { fournisseur_id }),
+      ...(promo === '1'  && { promo_type: { not: null } }),
+    }
     if (search) {
-      const safeSearch    = escapeLike(search)
-      const looksLikeImei = /^\d{6,}$/.test(search)
-      if (looksLikeImei) {
-        query = query.ilike('imei', `%${safeSearch}%`)
-      } else {
-        query = query.or(`model.ilike.%${safeSearch}%,marque.ilike.%${safeSearch}%`)
-      }
+      where.OR = /^\d{6,}$/.test(search)
+        ? [{ imei: { contains: search } }]
+        : [{ model: { contains: search, mode: 'insensitive' } }, { marque: { contains: search, mode: 'insensitive' } }]
     }
 
-    const { data, error } = await query
-    if (error) throw error
-    return NextResponse.json({ data })
-  } catch (err: unknown) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
+    const data = await prisma.phones.findMany({
+      where,
+      orderBy: { created_at: 'desc' },
+      take:    limit,
+      ...(!MANAGERS.includes(user.role) && { omit: STAFF_OMIT }),
+    })
+    return json({ data })
+  } catch (err) {
+    return handleError(err, 'GET /api/phones')
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase        = await createUntypedClient()
-    const typedSupabase   = await createClient()
-    const { data: { user } } = await typedSupabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+    const user = await requireActiveUser()
+    const body = await request.json() as Record<string, unknown>
+    validateRequired(body, ['marque', 'model', 'status'])
 
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('display_name, store_id')
-      .eq('id', user.id)
-      .single() as { data: { display_name: string; store_id: string | null } | null }
-
-    const body = await request.json()
-
-    const {
-      imei, source, fournisseur_id, txn_ref_id, condition,
-      marque, serie, type: deviceType, couleur, model, stockage,
-      battery_level, ram, description, icloud_compte, icloud_mdp,
-      prix_achat, prix_vente_recommande, prix_vente_minimum,
-      warranty_months, status, location, date_entree, image_url,
-      replaced_components, is_damaged, damage_notes,
-      promo_type, promo_montant,
-    } = body as Record<string, unknown>
-
-    validateRequired(
-      body as Record<string, unknown>,
-      ['marque', 'model', 'status']
-    )
-
-    const safeMarque      = typeof marque      === 'string' ? sanitizeText(marque)      : marque
-    const safeModel       = typeof model       === 'string' ? sanitizeText(model)       : model
-    const safeDescription = typeof description === 'string' ? sanitizeText(description) : description
-
-    const { data, error } = await supabase
-      .from('phones')
-      .insert({
-        imei, source, fournisseur_id, txn_ref_id, condition,
-        marque: safeMarque, serie, type: deviceType, couleur, model: safeModel, stockage,
-        battery_level, ram, description: safeDescription, icloud_compte, icloud_mdp,
-        prix_achat, prix_vente_recommande, prix_vente_minimum,
-        warranty_months, status, location,
-        date_entree: (date_entree as string | null) ?? new Date().toISOString().split('T')[0],
-        image_url,
-        replaced_components, is_damaged, damage_notes,
-        promo_type, promo_montant,
-        store_id:   (body as Record<string, unknown>).store_id ?? profile?.store_id ?? null,
-        created_by: user.id,
-        updated_by: user.id,
-      })
-      .select()
-      .single() as { data: Record<string, unknown> | null; error: unknown }
-
-    if (error) throw error
-    if (!data) throw new Error('No data returned')
+    const input = pickInput('phones', body, EDITABLE)
+    const data = await prisma.phones.create({
+      data: {
+        ...(input as Prisma.phonesUncheckedCreateInput),
+        marque:      clean(input.marque) as string,
+        model:       clean(input.model) as string,
+        description: clean(input.description) as string | null | undefined,
+        date_entree: (input.date_entree as Date | null | undefined) ?? todayDate(),
+        store_id:    (body.store_id as string | undefined) ?? user.store_id ?? null,
+        created_by:  user.id,
+        updated_by:  user.id,
+      },
+    })
 
     await logActivity({
-      store_id:    data.store_id as string ?? null,
+      store_id:    data.store_id,
       user_id:     user.id,
-      user_name:   profile?.display_name ?? user.email ?? '—',
-      action_type: 'INSERT',
-      module:      'phones',
-      record_id:   data.phone_id as string ?? null,
+      user_name:   user.display_name,
+      action_type: 'creation',
+      module:      'telephones',
+      record_id:   data.phone_id,
       after_state: data,
       ip_address:  getIpFromRequest(request),
     })
 
-    return NextResponse.json({ data }, { status: 201 })
-  } catch (err: unknown) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
+    return json({ data }, { status: 201 })
+  } catch (err) {
+    return handleError(err, 'POST /api/phones')
   }
 }
 
 export async function PATCH(request: NextRequest) {
   try {
-    const supabase        = await createUntypedClient()
-    const typedSupabase   = await createClient()
-    const { data: { user } } = await typedSupabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
-
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('display_name, store_id')
-      .eq('id', user.id)
-      .single() as { data: { display_name: string; store_id: string | null } | null }
-
+    const user = await requireActiveUser()
     const body = await request.json() as Record<string, unknown>
     const phone_id = body.phone_id as string | undefined
-    if (!phone_id) return NextResponse.json({ error: 'phone_id requis' }, { status: 400 })
+    if (!phone_id) throw new HttpError(400, 'phone_id requis')
 
-    const {
-      imei, source, fournisseur_id, txn_ref_id, condition,
-      marque, serie, type: deviceType, couleur, model, stockage,
-      battery_level, ram, description, icloud_compte, icloud_mdp,
-      prix_achat, prix_vente_recommande, prix_vente_minimum,
-      warranty_months, status, location, store_id, date_entree, image_url,
-      replaced_components, is_damaged, damage_notes,
-      promo_type, promo_montant,
-    } = body
-
-    const allowedUpdates = {
-      imei, source, fournisseur_id, txn_ref_id, condition,
-      marque, serie, type: deviceType, couleur, model, stockage,
-      battery_level, ram, description, icloud_compte, icloud_mdp,
-      prix_achat, prix_vente_recommande, prix_vente_minimum,
-      warranty_months, status, location, store_id, date_entree, image_url,
-      replaced_components, is_damaged, damage_notes,
-      promo_type, promo_montant,
-    }
-
-    const { data: before } = await supabase
-      .from('phones')
-      .select('*')
-      .eq('phone_id', phone_id)
-      .single() as { data: Record<string, unknown> | null }
-
-    const { data, error } = await supabase
-      .from('phones')
-      .update({ ...allowedUpdates, updated_by: user.id })
-      .eq('phone_id', phone_id)
-      .select()
-      .single() as { data: Record<string, unknown> | null; error: unknown }
-
-    if (error) throw error
-    if (!data) throw new Error('No data returned')
+    const before = await prisma.phones.findUniqueOrThrow({ where: { phone_id } })
+    const data = await prisma.phones.update({
+      where: { phone_id },
+      data:  { ...pickInput('phones', body, [...EDITABLE, 'store_id']), updated_by: user.id },
+    })
 
     await logActivity({
-      store_id:     data.store_id as string ?? null,
+      store_id:     data.store_id,
       user_id:      user.id,
-      user_name:    profile?.display_name ?? user.email ?? '—',
-      action_type:  'UPDATE',
-      module:       'phones',
+      user_name:    user.display_name,
+      action_type:  'modification',
+      module:       'telephones',
       record_id:    phone_id,
-      before_state: before ?? null,
+      before_state: before,
       after_state:  data,
       ip_address:   getIpFromRequest(request),
     })
 
-    return NextResponse.json({ data })
-  } catch (err: unknown) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
+    return json({ data })
+  } catch (err) {
+    return handleError(err, 'PATCH /api/phones')
   }
 }
 
 export async function DELETE(request: NextRequest) {
   try {
-    const supabase      = await createUntypedClient()
-    const typedSupabase = await createClient()
-    const { data: { user } } = await typedSupabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+    const user = await requireActiveUser(MANAGERS)
+    const phone_id = new URL(request.url).searchParams.get('phone_id')
+    if (!phone_id) throw new HttpError(400, 'phone_id requis')
 
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('display_name, role, store_id')
-      .eq('id', user.id)
-      .single() as { data: { display_name: string; role: string; store_id: string | null } | null }
+    const before = await prisma.phones.findUnique({ where: { phone_id } })
+    if (!before) throw new HttpError(404, 'Téléphone introuvable')
 
-    if (!['manager', 'owner'].includes(profile?.role ?? '')) {
-      return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
-    }
-
-    const { searchParams } = new URL(request.url)
-    const phone_id = searchParams.get('phone_id')
-    if (!phone_id) return NextResponse.json({ error: 'phone_id requis' }, { status: 400 })
-
-    const { data: before } = await supabase
-      .from('phones')
-      .select('*')
-      .eq('phone_id', phone_id)
-      .single() as { data: Record<string, unknown> | null }
-
-    if (!before) return NextResponse.json({ error: 'Téléphone introuvable' }, { status: 404 })
-
-    const { error } = await supabase
-      .from('phones')
-      .update({ is_deleted: true, updated_by: user.id, updated_at: new Date().toISOString() })
-      .eq('phone_id', phone_id)
-
-    if (error) throw error
+    await prisma.phones.update({ where: { phone_id }, data: { is_deleted: true, updated_by: user.id } })
 
     await logActivity({
-      store_id:     before.store_id as string ?? null,
+      store_id:     before.store_id,
       user_id:      user.id,
-      user_name:    profile?.display_name ?? '—',
-      action_type:  'DELETE',
-      module:       'phones',
+      user_name:    user.display_name,
+      action_type:  'suppression',
+      module:       'telephones',
       record_id:    phone_id,
       before_state: before,
-      after_state:  null,
       ip_address:   getIpFromRequest(request),
     })
 
-    return NextResponse.json({ status: 'success' })
-  } catch (err: unknown) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
+    return json({ status: 'success' })
+  } catch (err) {
+    return handleError(err, 'DELETE /api/phones')
   }
 }

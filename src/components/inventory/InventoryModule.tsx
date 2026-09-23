@@ -8,14 +8,15 @@ import {
 import { toast } from 'sonner'
 import { usePortal } from '@/lib/context/portal'
 import { useEscapeKey } from '@/lib/hooks/useEscapeKey'
-import type { InventorySession, InventorySessionItem, InventoryResultat } from '@/types/database'
+import type { InventorySession, InventorySessionItem, InventoryResultat, DeviceStatus } from '@/types/database'
+import { codeLabel } from '@/lib/codes'
 
 // ── Types internes ─────────────────────────────────────────
 interface SessionWithCounts extends InventorySession {
   counts: Record<string, number>
 }
 
-type ScanType = 'trouvé' | 'hors_périmètre' | 'non_enregistré' | 'déjà_scanné'
+type ScanType = 'trouve' | 'hors_perimetre' | 'non_enregistre' | 'deja_scanne'
 
 interface ScanFeedback {
   type:  ScanType
@@ -25,12 +26,12 @@ interface ScanFeedback {
 
 // ── Config visuelle par résultat ───────────────────────────
 const RC: Record<string, { label: string; color: string; bg: string; border: string; icon: string }> = {
-  'trouvé':          { label: 'Trouvé',          color: 'text-emerald-400', bg: 'bg-emerald-950/60', border: 'border-emerald-700', icon: '✅' },
+  'trouve':          { label: 'Trouvé',          color: 'text-emerald-400', bg: 'bg-emerald-950/60', border: 'border-emerald-700', icon: '✅' },
   'manquant':        { label: 'Manquant',         color: 'text-red-400',     bg: 'bg-red-950/60',     border: 'border-red-800',     icon: '❌' },
-  'non_enregistré':  { label: 'Non enregistré',   color: 'text-amber-400',   bg: 'bg-amber-950/60',   border: 'border-amber-700',   icon: '⚠️' },
-  'hors_périmètre':  { label: 'Hors périmètre',   color: 'text-blue-400',    bg: 'bg-blue-950/60',    border: 'border-blue-800',    icon: '🔵' },
+  'non_enregistre':  { label: 'Non enregistré',   color: 'text-amber-400',   bg: 'bg-amber-950/60',   border: 'border-amber-700',   icon: '⚠️' },
+  'hors_perimetre':  { label: 'Hors périmètre',   color: 'text-blue-400',    bg: 'bg-blue-950/60',    border: 'border-blue-800',    icon: '🔵' },
   'en_attente':      { label: 'En attente',        color: 'text-zinc-400',    bg: 'bg-zinc-900',       border: 'border-zinc-700',    icon: '⏳' },
-  'déjà_scanné':     { label: 'Déjà scanné',      color: 'text-zinc-400',    bg: 'bg-zinc-900',       border: 'border-zinc-700',    icon: '↩' },
+  'deja_scanne':     { label: 'Déjà scanné',      color: 'text-zinc-400',    bg: 'bg-zinc-900',       border: 'border-zinc-700',    icon: '↩' },
 }
 
 const formatDate = (iso: string) =>
@@ -87,7 +88,7 @@ export default function InventoryModule({ role }: { role: string }) {
   }, [items])
 
   const progress = currentSession && currentSession.snapshot_count > 0
-    ? Math.round(((counts['trouvé'] ?? 0) / currentSession.snapshot_count) * 100)
+    ? Math.round(((counts['trouve'] ?? 0) / currentSession.snapshot_count) * 100)
     : 0
 
   // ── Fetch ──────────────────────────────────────────────
@@ -165,10 +166,10 @@ export default function InventoryModule({ role }: { role: string }) {
       })
 
       const labelMap: Record<string, string> = {
-        'trouvé':         item.phone_label ?? imei,
-        'hors_périmètre': `${item.phone_label ?? '?'} (${item.phone_status ?? '?'})`,
-        'non_enregistré': `IMEI : ${imei}`,
-        'déjà_scanné':    item.phone_label ?? imei,
+        'trouve':         item.phone_label ?? imei,
+        'hors_perimetre': `${item.phone_label ?? '?'} (${item.phone_status ? codeLabel('device_status', item.phone_status as DeviceStatus, 'fr') : '?'})`,
+        'non_enregistre': `IMEI : ${imei}`,
+        'deja_scanne':    item.phone_label ?? imei,
       }
 
       const feedback: ScanFeedback = { type, label: labelMap[type] ?? imei, imei }
@@ -329,10 +330,10 @@ export default function InventoryModule({ role }: { role: string }) {
               Démarrée le {formatDate(activeSession.started_at)} · {activeSession.snapshot_count} téléphones en périmètre
             </p>
             <div className="flex flex-wrap gap-4 mt-2 text-xs">
-              <span className="text-emerald-400">✅ {activeSession.counts?.['trouvé'] ?? 0} trouvés</span>
+              <span className="text-emerald-400">✅ {activeSession.counts?.['trouve'] ?? 0} trouvés</span>
               <span className="text-zinc-500">⏳ {activeSession.counts?.['en_attente'] ?? 0} en attente</span>
-              <span className="text-amber-400">⚠️ {activeSession.counts?.['non_enregistré'] ?? 0} non enregistrés</span>
-              <span className="text-blue-400">🔵 {activeSession.counts?.['hors_périmètre'] ?? 0} hors périmètre</span>
+              <span className="text-amber-400">⚠️ {activeSession.counts?.['non_enregistre'] ?? 0} non enregistrés</span>
+              <span className="text-blue-400">🔵 {activeSession.counts?.['hors_perimetre'] ?? 0} hors périmètre</span>
             </div>
           </div>
           <button
@@ -349,7 +350,7 @@ export default function InventoryModule({ role }: { role: string }) {
         <div className="flex justify-center py-20">
           <Loader2 className="animate-spin text-zinc-600" size={28} />
         </div>
-      ) : sessions.filter(s => s.statut === 'terminée').length === 0 ? (
+      ) : sessions.filter(s => s.statut === 'terminee').length === 0 ? (
         <div className="text-center py-20">
           <PackageSearch size={44} className="mx-auto mb-4 text-zinc-700" />
           <p className="text-zinc-500 text-sm">Aucune vérification terminée</p>
@@ -357,7 +358,7 @@ export default function InventoryModule({ role }: { role: string }) {
       ) : (
         <div className="space-y-2">
           <p className="text-xs text-zinc-600 font-semibold uppercase tracking-widest mb-3">Historique</p>
-          {sessions.filter(s => s.statut === 'terminée').map(s => (
+          {sessions.filter(s => s.statut === 'terminee').map(s => (
             <div
               key={s.session_id}
               className="bg-zinc-900/80 border border-zinc-800 rounded-2xl p-4 flex items-center justify-between hover:border-zinc-700 transition-colors"
@@ -368,10 +369,10 @@ export default function InventoryModule({ role }: { role: string }) {
                   {s.snapshot_count} en périmètre · Clôturée {s.completed_at ? formatDate(s.completed_at) : '—'}
                 </p>
                 <div className="flex flex-wrap gap-4 mt-2 text-xs">
-                  <span className="text-emerald-400">✅ {s.counts?.['trouvé'] ?? 0}</span>
+                  <span className="text-emerald-400">✅ {s.counts?.['trouve'] ?? 0}</span>
                   <span className="text-red-400">❌ {s.counts?.['manquant'] ?? 0}</span>
-                  <span className="text-amber-400">⚠️ {s.counts?.['non_enregistré'] ?? 0}</span>
-                  <span className="text-blue-400">🔵 {s.counts?.['hors_périmètre'] ?? 0}</span>
+                  <span className="text-amber-400">⚠️ {s.counts?.['non_enregistre'] ?? 0}</span>
+                  <span className="text-blue-400">🔵 {s.counts?.['hors_perimetre'] ?? 0}</span>
                 </div>
               </div>
               <button
@@ -429,9 +430,9 @@ export default function InventoryModule({ role }: { role: string }) {
       <div className="grid grid-cols-2 gap-2 mb-4">
         {[
           { key: 'en_attente',     label: 'En attente',      icon: '⏳', color: 'text-zinc-300' },
-          { key: 'trouvé',         label: 'Trouvés',         icon: '✅', color: 'text-emerald-400' },
-          { key: 'non_enregistré', label: 'Non enregistrés', icon: '⚠️', color: 'text-amber-400' },
-          { key: 'hors_périmètre', label: 'Hors périmètre',  icon: '🔵', color: 'text-blue-400' },
+          { key: 'trouve',         label: 'Trouvés',         icon: '✅', color: 'text-emerald-400' },
+          { key: 'non_enregistre', label: 'Non enregistrés', icon: '⚠️', color: 'text-amber-400' },
+          { key: 'hors_perimetre', label: 'Hors périmètre',  icon: '🔵', color: 'text-blue-400' },
         ].map(({ key, label, icon, color }) => (
           <div key={key} className="bg-zinc-900 border border-zinc-800 rounded-xl p-3 text-center">
             <p className={`text-3xl font-bold ${color}`} style={{ fontFamily: 'Barlow Condensed, sans-serif' }}>
@@ -446,7 +447,7 @@ export default function InventoryModule({ role }: { role: string }) {
       <div className="mb-5">
         <div className="flex justify-between text-xs text-zinc-500 mb-1.5">
           <span>Progression</span>
-          <span>{counts['trouvé'] ?? 0} / {currentSession?.snapshot_count ?? 0} ({progress}%)</span>
+          <span>{counts['trouve'] ?? 0} / {currentSession?.snapshot_count ?? 0} ({progress}%)</span>
         </div>
         <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
           <div
@@ -545,7 +546,7 @@ export default function InventoryModule({ role }: { role: string }) {
                   <p className="text-zinc-600 text-xs font-mono">{item.imei}</p>
                 </div>
                 <span className="text-xs text-zinc-600 bg-zinc-800 px-2 py-0.5 rounded-lg ml-2 shrink-0">
-                  {item.phone_status}
+                  {codeLabel('device_status', item.phone_status as DeviceStatus, 'fr')}
                 </span>
               </div>
             ))}
@@ -592,9 +593,9 @@ export default function InventoryModule({ role }: { role: string }) {
   const renderReport = () => {
     const tabs: Array<{ key: InventoryResultat; label: string; color: string }> = [
       { key: 'manquant',       label: 'Manquants',       color: 'text-red-400' },
-      { key: 'hors_périmètre', label: 'Hors périmètre',  color: 'text-blue-400' },
-      { key: 'non_enregistré', label: 'Non enregistrés', color: 'text-amber-400' },
-      { key: 'trouvé',         label: 'Trouvés',         color: 'text-emerald-400' },
+      { key: 'hors_perimetre', label: 'Hors périmètre',  color: 'text-blue-400' },
+      { key: 'non_enregistre', label: 'Non enregistrés', color: 'text-amber-400' },
+      { key: 'trouve',         label: 'Trouvés',         color: 'text-emerald-400' },
     ]
 
     const tabItems = items.filter(i => i.resultat === activeTab)
@@ -676,7 +677,7 @@ export default function InventoryModule({ role }: { role: string }) {
                       <p className="text-white text-sm font-medium truncate">{item.phone_label ?? '—'}</p>
                       <p className="text-zinc-500 text-xs font-mono mt-0.5">{item.imei}</p>
                       {item.phone_status && (
-                        <span className="text-zinc-600 text-xs">{item.phone_status}</span>
+                        <span className="text-zinc-600 text-xs">{codeLabel('device_status', item.phone_status as DeviceStatus, 'fr')}</span>
                       )}
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
@@ -685,7 +686,7 @@ export default function InventoryModule({ role }: { role: string }) {
                           {new Date(item.scanned_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
                         </span>
                       )}
-                      {activeTab === 'non_enregistré' && (
+                      {activeTab === 'non_enregistre' && (
                         <a
                           href={`/ez/stock/phones?prefill=${item.imei}`}
                           className="px-2.5 py-1 text-xs bg-[#C9A440]/15 text-[#C9A440] border border-[#C9A440]/30 rounded-lg hover:bg-[#C9A440]/25 transition-colors"
@@ -693,7 +694,7 @@ export default function InventoryModule({ role }: { role: string }) {
                           Ajouter
                         </a>
                       )}
-                      {(activeTab === 'manquant' || activeTab === 'hors_périmètre') && item.phone_id && (
+                      {(activeTab === 'manquant' || activeTab === 'hors_perimetre') && item.phone_id && (
                         <a
                           href={`/ez/stock/phones?id=${item.phone_id}`}
                           className="px-2.5 py-1 text-xs bg-zinc-800 text-zinc-300 border border-zinc-700 rounded-lg hover:bg-zinc-700 transition-colors"

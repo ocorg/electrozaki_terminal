@@ -11,7 +11,7 @@ export default function BZGLayout({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed]     = useState(false)
 
   // Client-side guard — all hooks called above, safe to return early here
-  if (!loading && user && !['manager', 'owner'].includes(user.role ?? '')) {
+  if (!loading && user && !['gerant', 'proprietaire'].includes(user.role ?? '')) {
     return <div className="p-8 text-red-600 font-bold">Accès refusé.</div>
   }
 

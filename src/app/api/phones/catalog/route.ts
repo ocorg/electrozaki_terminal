@@ -1,105 +1,57 @@
-import { createUntypedClient, createClient } from '@/lib/supabase/server'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
+import { prisma } from '@/lib/db'
+import { json, handleError, requireUser, requireActiveUser, HttpError } from '@/lib/api'
 
 export async function GET() {
   try {
-    const typedSupabase = await createClient()
-
-    const { data: { user } } = await typedSupabase.auth.getUser()
-    if (!user) {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
-    }
-
-    const { data, error } = await typedSupabase
-      .from('phone_catalog')
-      .select('*')
-      .order('marque')
-      .order('model')
-
-    if (error) throw error
-
-    return NextResponse.json({ data: data || [] })
-  } catch (err: unknown) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
+    await requireUser()
+    const data = await prisma.phone_catalog.findMany({ orderBy: [{ marque: 'asc' }, { model: 'asc' }] })
+    return json({ data })
+  } catch (err) {
+    return handleError(err, 'GET /api/phones/catalog')
   }
 }
 
 export async function POST(request: NextRequest) {
-  const supabase = await createUntypedClient()
-  const typedSupabase = await createClient()
-  const { data: { user } } = await typedSupabase.auth.getUser()
+  try {
+    await requireActiveUser()
+    const body = await request.json()
+    if (!body.marque || !body.model || !body.couleur) throw new HttpError(400, 'marque, model et couleur obligatoires')
 
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
-  const body = await request.json()
-  if (!body.marque || !body.model || !body.couleur) {
-    return NextResponse.json(
-      { error: 'marque, model et couleur obligatoires' }, 
-      { status: 400 }
-    )
-  }
-
-  const { data, error } = await supabase
-    .from('phone_catalog')
-    .insert({ 
-      marque: body.marque, 
-      serie: body.serie || '', 
-      type: body.type || 'Normal', 
-      model: body.model, 
-      couleur: body.couleur 
+    const data = await prisma.phone_catalog.create({
+      data: { marque: body.marque, serie: body.serie || '', type: body.type || 'Normal', model: body.model, couleur: body.couleur },
     })
-    .select()
-    .single()
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return json({ data }, { status: 201 })
+  } catch (err) {
+    return handleError(err, 'POST /api/phones/catalog')
   }
-  return NextResponse.json({ data }, { status: 201 })
 }
 
 export async function DELETE(request: NextRequest) {
-  const supabase = await createUntypedClient()
-  const typedSupabase = await createClient()
-  const { data: { user } } = await typedSupabase.auth.getUser()
-
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  try {
+    await requireActiveUser()
+    const { catalog_id } = await request.json()
+    if (!catalog_id) throw new HttpError(400, 'catalog_id requis')
+    await prisma.phone_catalog.delete({ where: { catalog_id } })
+    return json({ message: 'deleted' })
+  } catch (err) {
+    return handleError(err, 'DELETE /api/phones/catalog')
   }
-
-  const { catalog_id } = await request.json()
-  if (!catalog_id) {
-    return NextResponse.json({ error: 'catalog_id requis' }, { status: 400 })
-  }
-
-  const { error } = await supabase
-    .from('phone_catalog')
-    .delete()
-    .eq('catalog_id', catalog_id)
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
-  return NextResponse.json({ message: 'deleted' })
 }
 
 export async function PATCH(request: NextRequest) {
-  const supabase      = await createUntypedClient()
-  const typedSupabase = await createClient()
-  const { data: { user } } = await typedSupabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  try {
+    await requireActiveUser()
+    const { catalog_id, marque, serie, type, model, couleur } = await request.json()
+    if (!catalog_id) throw new HttpError(400, 'catalog_id requis')
+    if (!marque || !model || !couleur) throw new HttpError(400, 'marque, model, couleur obligatoires')
 
-  const body = await request.json()
-  const { catalog_id, marque, serie, type, model, couleur } = body
-  if (!catalog_id) return NextResponse.json({ error: 'catalog_id requis' }, { status: 400 })
-  if (!marque || !model || !couleur) return NextResponse.json({ error: 'marque, model, couleur obligatoires' }, { status: 400 })
-
-  const { error } = await supabase
-    .from('phone_catalog')
-    .update({ marque, serie: serie || '', type: type || 'Normal', model, couleur })
-    .eq('catalog_id', catalog_id)
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ status: 'success' })
+    await prisma.phone_catalog.update({
+      where: { catalog_id },
+      data:  { marque, serie: serie || '', type: type || 'Normal', model, couleur },
+    })
+    return json({ status: 'success' })
+  } catch (err) {
+    return handleError(err, 'PATCH /api/phones/catalog')
+  }
 }

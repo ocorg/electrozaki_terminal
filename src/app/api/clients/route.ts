@@ -1,141 +1,98 @@
-import { createClient, createUntypedClient } from '@/lib/supabase/server'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
+import { Prisma } from '@prisma/client'
+import { prisma } from '@/lib/db'
+import { json, handleError, requireUser, requireActiveUser, pickInput, columnsOf, HttpError } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { escapeLike } from '@/lib/utils/validation'
 
+const EDITABLE = columnsOf('clients', ['client_id'])
+
+// client_summary is a database view (client + purchase/credit aggregates)
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createUntypedClient()
+    await requireUser()
     const { searchParams } = new URL(request.url)
-    const search   = searchParams.get('search')
+    const search   = searchParams.get('search')?.trim()
     const store_id = searchParams.get('store_id')
 
-    let query = supabase
-      .from('client_summary')
-      .select('*')
-      .eq('is_deleted', false)
-      .order('created_at', { ascending: false })
-
-    if (store_id) query = query.eq('store_id', store_id)
+    const conds = [Prisma.sql`is_deleted = false`]
+    if (store_id) conds.push(Prisma.sql`store_id = ${store_id}`)
     if (search) {
-      const safeSearch = escapeLike(search)
-      query = query.or(
-        `nom.ilike.%${safeSearch}%,telephone.ilike.%${safeSearch}%,telephone_2.ilike.%${safeSearch}%`
-      )
+      const like = `%${escapeLike(search)}%`
+      conds.push(Prisma.sql`(nom ILIKE ${like} OR telephone ILIKE ${like} OR telephone_2 ILIKE ${like})`)
     }
-
-    const { data, error } = await query
-    if (error) throw error
-    return NextResponse.json({ data })
-  } catch (err: unknown) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
+    const data = await prisma.$queryRaw`
+      SELECT * FROM client_summary WHERE ${Prisma.join(conds, ' AND ')} ORDER BY created_at DESC`
+    return json({ data })
+  } catch (err) {
+    return handleError(err, 'GET /api/clients')
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase      = await createUntypedClient()
-    const typedSupabase = await createClient()
-    const { data: { user } } = await typedSupabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
-
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('display_name, store_id')
-      .eq('id', user.id)
-      .single() as { data: { display_name: string; store_id: string | null } | null }
-
+    const user = await requireActiveUser()
     const body = await request.json()
 
-    // Return existing client if phone already exists
+    // Return existing client if the phone number is already known
     if (body.telephone) {
-      const { data: existing } = await supabase
-        .from('clients')
-        .select('*')
-        .eq('telephone', body.telephone)
-        .single() as { data: Record<string, unknown> | null }
-
-      if (existing) return NextResponse.json({ data: existing, existing: true })
+      const existing = await prisma.clients.findFirst({ where: { telephone: body.telephone } })
+      if (existing) return json({ data: existing, existing: true })
     }
 
-    const { data, error } = await supabase
-      .from('clients')
-      .insert({
-        ...body,
-        store_id:   body.store_id ?? profile?.store_id ?? null,
+    const data = await prisma.clients.create({
+      data: {
+        ...(pickInput('clients', body, EDITABLE) as Prisma.clientsUncheckedCreateInput),
+        store_id:   body.store_id ?? user.store_id ?? null,
         created_by: user.id,
         updated_by: user.id,
-      })
-      .select()
-      .single() as { data: Record<string, unknown> | null; error: unknown }
-
-    if (error) throw error
-    if (!data) throw new Error('No data returned')
+      },
+    })
 
     await logActivity({
-      store_id:    data.store_id as string ?? null,
+      store_id:    data.store_id,
       user_id:     user.id,
-      user_name:   profile?.display_name ?? '—',
-      action_type: 'INSERT',
+      user_name:   user.display_name,
+      action_type: 'creation',
       module:      'clients',
-      record_id:   data.client_id as string,
+      record_id:   data.client_id,
       after_state: data,
       ip_address:  getIpFromRequest(request),
     })
 
-    return NextResponse.json({ data }, { status: 201 })
-  } catch (err: unknown) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
+    return json({ data }, { status: 201 })
+  } catch (err) {
+    return handleError(err, 'POST /api/clients')
   }
 }
 
 export async function PATCH(request: NextRequest) {
   try {
-    const supabase      = await createUntypedClient()
-    const typedSupabase = await createClient()
-    const { data: { user } } = await typedSupabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
-
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('display_name')
-      .eq('id', user.id)
-      .single() as { data: { display_name: string } | null }
-
+    const user = await requireActiveUser()
     const body = await request.json()
-    const { client_id, ...updates } = body
-    if (!client_id) return NextResponse.json({ error: 'client_id requis' }, { status: 400 })
+    const client_id = body.client_id as string | undefined
+    if (!client_id) throw new HttpError(400, 'client_id requis')
 
-    const { data: before } = await supabase
-      .from('clients')
-      .select('*')
-      .eq('client_id', client_id)
-      .single() as { data: Record<string, unknown> | null }
-
-    const { data, error } = await supabase
-      .from('clients')
-      .update({ ...updates, updated_by: user.id })
-      .eq('client_id', client_id)
-      .select()
-      .single() as { data: Record<string, unknown> | null; error: unknown }
-
-    if (error) throw error
-    if (!data) throw new Error('No data returned')
+    const before = await prisma.clients.findUniqueOrThrow({ where: { client_id } })
+    const data = await prisma.clients.update({
+      where: { client_id },
+      data:  { ...pickInput('clients', body, EDITABLE), updated_by: user.id },
+    })
 
     await logActivity({
-      store_id:     data.store_id as string ?? null,
+      store_id:     data.store_id,
       user_id:      user.id,
-      user_name:    profile?.display_name ?? '—',
-      action_type:  'UPDATE',
+      user_name:    user.display_name,
+      action_type:  'modification',
       module:       'clients',
       record_id:    client_id,
-      before_state: before ?? null,
+      before_state: before,
       after_state:  data,
       ip_address:   getIpFromRequest(request),
     })
 
-    return NextResponse.json({ data })
-  } catch (err: unknown) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
+    return json({ data })
+  } catch (err) {
+    return handleError(err, 'PATCH /api/clients')
   }
 }

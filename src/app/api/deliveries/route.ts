@@ -1,309 +1,142 @@
-import { createClient, createUntypedClient } from '@/lib/supabase/server'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
+import type { Prisma, delivery_status, device_status, device_type } from '@prisma/client'
+import { prisma } from '@/lib/db'
+import { json, handleError, requireUser, requireActiveUser, pickInput, columnsOf, HttpError, MANAGERS } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
+import { notifyCaisseChange } from '@/lib/realtime'
+import { codeLabel } from '@/lib/codes'
 
-// ── Helpers ───────────────────────────────────────────────────
-type UClient = Awaited<ReturnType<typeof createUntypedClient>>
+const EDITABLE = columnsOf('deliveries', ['delivery_id', 'caisse_entry_created'])
+const TERMINAL: delivery_status[] = ['livre', 'annule', 'retour']
 
-async function setDeviceStatus(
-  sb:         UClient,
-  deviceType: string,
-  deviceId:   string,
-  status:     string,
-  userId:     string,
-) {
-  const table = deviceType === 'هاتف' ? 'phones'    : 'laptops'
-  const idCol = deviceType === 'هاتف' ? 'phone_id'  : 'laptop_id'
-  await sb
-    .from(table)
-    .update({
-      status,
-      updated_at: new Date().toISOString(),
-      updated_by: userId,
-    })
-    .eq(idCol, deviceId)
+async function setDeviceStatus(tx: Prisma.TransactionClient, type: device_type, id: string, status: device_status, userId: string) {
+  if (type === 'telephone') await tx.phones.update({ where: { phone_id: id }, data: { status, updated_by: userId } })
+  else if (type === 'laptop') await tx.laptops.update({ where: { laptop_id: id }, data: { status, updated_by: userId } })
 }
 
 // ── GET — list deliveries ─────────────────────────────────────
 export async function GET(request: NextRequest) {
   try {
-    const supabase      = await createUntypedClient()
-    const typedSupabase = await createClient()
-
-    const { data: { user } } = await typedSupabase.auth.getUser()
-    if (!user) {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
-    }
-
+    await requireUser()
     const { searchParams } = new URL(request.url)
     const store_id = searchParams.get('store_id')
-    const statut   = searchParams.get('statut')
+    const statut   = searchParams.get('statut') as delivery_status | null
 
-    let query = supabase
-      .from('deliveries')
-      .select('*, delivery_items(*)')
-      .eq('is_deleted', false)
-      .order('created_at', { ascending: false })
-
-    if (store_id) query = query.eq('store_id', store_id)
-    if (statut)   query = query.eq('statut', statut)
-
-    const { data, error } = await query
-    if (error) throw error
-
-    return NextResponse.json({ data: data || [] })
-  } catch (err: unknown) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
+    const data = await prisma.deliveries.findMany({
+      where:   { is_deleted: false, ...(store_id && { store_id }), ...(statut && { statut }) },
+      include: { delivery_items: true },
+      orderBy: { created_at: 'desc' },
+    })
+    return json({ data })
+  } catch (err) {
+    return handleError(err, 'GET /api/deliveries')
   }
 }
 
 // ── POST — create delivery ────────────────────────────────────
 export async function POST(request: NextRequest) {
   try {
-    const supabase      = await createUntypedClient()
-    const typedSupabase = await createClient()
-
-    const { data: { user } } = await typedSupabase.auth.getUser()
-    if (!user) {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+    const user = await requireActiveUser(MANAGERS)
+    const { items, ...body } = await request.json()
+    const store_id = body.store_id ?? user.store_id
+    if (!body.client_name || !body.client_phone || !body.client_address) {
+      throw new HttpError(400, 'Informations client incomplètes')
     }
+    const input = pickInput('deliveries', body, EDITABLE) as Prisma.deliveriesUncheckedCreateInput
+    const withAdvance = input.payment_scenario === 'avance_totale' || input.payment_scenario === 'avance_partielle'
 
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('display_name, store_id, role')
-      .eq('id', user.id)
-      .single() as {
-        data: { display_name: string; store_id: string | null; role: string } | null
-      }
-
-    if (!['manager', 'owner'].includes(profile?.role ?? '')) {
-      return NextResponse.json(
-        { error: 'Manager ou propriétaire requis' },
-        { status: 403 }
-      )
-    }
-
-    const body = await request.json()
-    const { items, ...deliveryData } = body
-    const store_id = deliveryData.store_id ?? profile?.store_id
-
-    if (
-      !deliveryData.client_name  ||
-      !deliveryData.client_phone ||
-      !deliveryData.client_address
-    ) {
-      return NextResponse.json(
-        { error: 'Informations client incomplètes' },
-        { status: 400 }
-      )
-    }
-
-    // Insert delivery
-    const { data: delivery, error: delErr } = await supabase
-      .from('deliveries')
-      .insert({
-        ...deliveryData,
-        store_id,
-        is_deleted: false,
-        created_by: user.id,
-        updated_by: user.id,
+    const delivery = await prisma.$transaction(async (tx) => {
+      const delivery = await tx.deliveries.create({
+        data: { ...input, store_id, caisse_entry_created: withAdvance, created_by: user.id, updated_by: user.id },
       })
-      .select()
-      .single() as { data: Record<string, unknown> | null; error: unknown }
-
-    if (delErr) throw delErr
-    if (!delivery) throw new Error('Aucune donnée retournée')
-
-    const deliveryId = delivery.delivery_id as string
-
-    // Insert delivery items
-    if (Array.isArray(items) && items.length > 0) {
-      const { error: itemErr } = await supabase
-        .from('delivery_items')
-        .insert(
-          items.map((i: { device_type: string; device_id: string; txn_id?: string }) => ({
-            delivery_id: deliveryId,
-            device_type: i.device_type,
-            device_id:   i.device_id,
-            txn_id:      i.txn_id ?? null,
-          }))
-        )
-      if (itemErr) throw itemErr
-
-      // Set device status to en_livraison if moving past confirmation
-      if (
-        deliveryData.statut &&
-        deliveryData.statut !== 'confirmation_encours'
-      ) {
-        for (const i of items) {
-          await setDeviceStatus(
-            supabase, i.device_type, i.device_id, 'en_livraison', user.id
-          )
+      if (Array.isArray(items) && items.length) {
+        await tx.delivery_items.createMany({
+          data: items.map((i: { device_type: device_type; device_id: string; txn_id?: string }) => ({
+            delivery_id: delivery.delivery_id, device_type: i.device_type, device_id: i.device_id, txn_id: i.txn_id ?? null,
+          })),
+        })
+        // Past confirmation, the devices are out for delivery
+        if (delivery.statut !== 'confirmation_en_cours') {
+          for (const i of items) await setDeviceStatus(tx, i.device_type, i.device_id, 'en_livraison', user.id)
         }
       }
-    }
-
-    // Mark caisse_entry_created for advance scenarios
-    if (['full_advance', 'partial_advance'].includes(deliveryData.payment_scenario)) {
-      await supabase
-        .from('deliveries')
-        .update({ caisse_entry_created: true })
-        .eq('delivery_id', deliveryId)
-    }
+      return delivery
+    })
 
     await logActivity({
       store_id,
-      user_id:      user.id,
-      user_name:    profile?.display_name ?? '—',
-      action_type:  'INSERT',
-      module:       'transactions',
-      record_id:    deliveryId,
-      before_state: null,
-      after_state:  delivery,
-      ip_address:   getIpFromRequest(request),
-      notes:        `Livraison créée — scénario: ${deliveryData.payment_scenario}`,
+      user_id:     user.id,
+      user_name:   user.display_name,
+      action_type: 'creation',
+      module:      'transactions',
+      record_id:   delivery.delivery_id,
+      after_state: delivery,
+      ip_address:  getIpFromRequest(request),
+      notes:       `Livraison créée — scénario : ${codeLabel('payment_scenario', delivery.payment_scenario, 'fr')}`,
     })
 
-    return NextResponse.json({ data: delivery }, { status: 201 })
-  } catch (err: unknown) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
+    return json({ data: delivery }, { status: 201 })
+  } catch (err) {
+    return handleError(err, 'POST /api/deliveries')
   }
 }
 
 // ── PATCH — update delivery status ───────────────────────────
+// Manager/owner only: cancelling or returning voids the linked transaction, which
+// must need the same approval as /api/transactions/void.
 export async function PATCH(request: NextRequest) {
   try {
-    const supabase      = await createUntypedClient()
-    const typedSupabase = await createClient()
+    const user = await requireActiveUser(MANAGERS)
+    const { delivery_id, statut, notes } = await request.json() as { delivery_id?: string; statut?: delivery_status; notes?: string }
+    if (!delivery_id || !statut) throw new HttpError(400, 'delivery_id et statut requis')
 
-    const { data: { user } } = await typedSupabase.auth.getUser()
-    if (!user) {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
-    }
+    const { before, updated } = await prisma.$transaction(async (tx) => {
+      const before = await tx.deliveries.findUnique({ where: { delivery_id }, include: { delivery_items: true } })
+      if (!before) throw new HttpError(404, 'Livraison introuvable')
+      if (TERMINAL.includes(before.statut)) throw new HttpError(400, 'Statut terminal — impossible de modifier')
+      const items = before.delivery_items
 
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('display_name, role')
-      .eq('id', user.id)
-      .single() as { data: { display_name: string; role: string } | null }
-
-    // The whole Deliveries UI is manager/owner-gated client-side, but this endpoint had no
-    // matching server-side check — a staff-role user could call it directly with statut
-    // 'annule'/'retour' and void the linked transaction (removing it from every revenue/
-    // caisse total) without the manager/owner approval that /api/transactions/void enforces
-    // for every other way of voiding a sale. Mirrors the check already on POST above.
-    if (!['manager', 'owner'].includes(profile?.role ?? '')) {
-      return NextResponse.json(
-        { error: 'Manager ou propriétaire requis' },
-        { status: 403 }
-      )
-    }
-
-    const body = await request.json()
-    const { delivery_id, statut, notes } = body
-
-    if (!delivery_id || !statut) {
-      return NextResponse.json(
-        { error: 'delivery_id et statut requis' },
-        { status: 400 }
-      )
-    }
-
-    // Fetch current delivery with items
-    const { data: before } = await supabase
-      .from('deliveries')
-      .select('*, delivery_items(*)')
-      .eq('delivery_id', delivery_id)
-      .single() as {
-        data: (Record<string, unknown> & {
-          delivery_items: { device_type: string; device_id: string; txn_id?: string }[]
-        }) | null
+      if (statut !== 'confirmation_en_cours' && before.statut === 'confirmation_en_cours') {
+        for (const i of items) await setDeviceStatus(tx, i.device_type, i.device_id, 'en_livraison', user.id)
       }
-
-    if (!before) {
-      return NextResponse.json({ error: 'Livraison introuvable' }, { status: 404 })
-    }
-
-    // Block mutations on terminal statuses
-    const TERMINAL = ['livre', 'annule', 'retour']
-    if (TERMINAL.includes(before.statut as string)) {
-      return NextResponse.json(
-        { error: 'Statut terminal — impossible de modifier' },
-        { status: 400 }
-      )
-    }
-
-    const items = before.delivery_items
-
-    // Moving out of confirmation_encours → set devices to en_livraison
-    if (
-      statut !== 'confirmation_encours' &&
-      before.statut === 'confirmation_encours'
-    ) {
-      for (const i of items) {
-        await setDeviceStatus(supabase, i.device_type, i.device_id, 'en_livraison', user.id)
+      if (statut === 'livre') {
+        for (const i of items) await setDeviceStatus(tx, i.device_type, i.device_id, 'vendu', user.id)
       }
-    }
-
-    // Delivered → devices become مباع
-    if (statut === 'livre') {
-      for (const i of items) {
-        await setDeviceStatus(supabase, i.device_type, i.device_id, 'مباع', user.id)
-      }
-      await supabase
-        .from('deliveries')
-        .update({ caisse_entry_created: true })
-        .eq('delivery_id', delivery_id)
-    }
-
-    // Annulé or Retour → revert devices to متوفر + void linked transactions
-    if (['annule', 'retour'].includes(statut)) {
-      for (const i of items) {
-        await setDeviceStatus(supabase, i.device_type, i.device_id, 'متوفر', user.id)
-        if (i.txn_id) {
-          await supabase
-            .from('transactions')
-            .update({
-              voided:        true,
-              voided_by:     user.id,
-              voided_at:     new Date().toISOString(),
-              voided_reason: `Livraison ${statut} — ${delivery_id}`,
+      if (statut === 'annule' || statut === 'retour') {
+        for (const i of items) {
+          await setDeviceStatus(tx, i.device_type, i.device_id, 'disponible', user.id)
+          if (i.txn_id) {
+            await tx.transactions.update({
+              where: { txn_id: i.txn_id },
+              data:  { voided: true, voided_by: user.id, voided_at: new Date(), voided_reason: `Livraison ${codeLabel('delivery_status', statut, 'fr').toLowerCase()} — ${delivery_id}` },
             })
-            .eq('txn_id', i.txn_id)
+          }
         }
       }
-    }
 
-    // Update delivery status
-    const { data: updated, error } = await supabase
-      .from('deliveries')
-      .update({
-        statut,
-        notes:      notes ?? before.notes,
-        updated_at: new Date().toISOString(),
-        updated_by: user.id,
+      const updated = await tx.deliveries.update({
+        where: { delivery_id },
+        data:  { statut, notes: notes ?? before.notes, updated_by: user.id, ...(statut === 'livre' && { caisse_entry_created: true }) },
       })
-      .eq('delivery_id', delivery_id)
-      .select()
-      .single() as { data: Record<string, unknown> | null; error: unknown }
-
-    if (error) throw error
+      return { before, updated }
+    })
 
     await logActivity({
-      store_id:     before.store_id as string,
+      store_id:     before.store_id,
       user_id:      user.id,
-      user_name:    profile?.display_name ?? '—',
-      action_type:  'UPDATE',
+      user_name:    user.display_name,
+      action_type:  'modification',
       module:       'transactions',
       record_id:    delivery_id,
       before_state: before,
       after_state:  updated,
       ip_address:   getIpFromRequest(request),
-      notes:        `Statut livraison: ${before.statut as string} → ${statut}`,
+      notes:        `Statut livraison : ${codeLabel('delivery_status', before.statut, 'fr')} → ${codeLabel('delivery_status', statut, 'fr')}`,
     })
+    if (statut === 'annule' || statut === 'retour') await notifyCaisseChange(before.store_id)
 
-    return NextResponse.json({ data: updated })
-  } catch (err: unknown) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
+    return json({ data: updated })
+  } catch (err) {
+    return handleError(err, 'PATCH /api/deliveries')
   }
 }

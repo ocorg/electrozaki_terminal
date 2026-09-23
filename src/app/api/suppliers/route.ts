@@ -1,149 +1,109 @@
-import { createClient, createUntypedClient } from '@/lib/supabase/server'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
+import { Prisma } from '@prisma/client'
+import { prisma } from '@/lib/db'
+import { json, handleError, requireUser, requireActiveUser, pickInput, columnsOf, HttpError, MANAGERS } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { escapeLike } from '@/lib/utils/validation'
 
+const EDITABLE = columnsOf('suppliers', ['supplier_id'])
+
+// categorie references categories.code — an empty choice means "no category"
+function supplierInput(body: Record<string, unknown>) {
+  const input = pickInput('suppliers', body, EDITABLE)
+  if (input.categorie === '') input.categorie = null
+  return input
+}
+
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createUntypedClient()
+    await requireUser()
     const { searchParams } = new URL(request.url)
     const store_id = searchParams.get('store_id')
-    const search   = searchParams.get('search')
-    const mode     = searchParams.get('mode')
+    const search   = searchParams.get('search')?.trim()
 
-    if (mode === 'dropdown') {
-      const { data, error } = await supabase
-        .from('suppliers')
-        .select('supplier_id, nom, type_fournisseur')
-        .eq('is_deleted', false)
-        .order('nom')
-      if (error) throw error
-      return NextResponse.json({ data })
+    if (searchParams.get('mode') === 'dropdown') {
+      const data = await prisma.suppliers.findMany({
+        where:   { is_deleted: false },
+        select:  { supplier_id: true, nom: true, type_fournisseur: true },
+        orderBy: { nom: 'asc' },
+      })
+      return json({ data })
     }
 
-    let query = supabase
-      .from('suppliers_summary')
-      .select('*')
-      .order('created_at', { ascending: false })
-
-    if (store_id) query = query.eq('store_id', store_id)
+    // suppliers_summary is a database view (stock / sales / balance per supplier)
+    const conds = [Prisma.sql`TRUE`]
+    if (store_id) conds.push(Prisma.sql`store_id = ${store_id}`)
     if (search) {
-      const safeSearch = escapeLike(search)
-      query = query.or(
-        `nom.ilike.%${safeSearch}%,telephone.ilike.%${safeSearch}%,ville.ilike.%${safeSearch}%`
-      )
+      const like = `%${escapeLike(search)}%`
+      conds.push(Prisma.sql`(nom ILIKE ${like} OR telephone ILIKE ${like} OR ville ILIKE ${like})`)
     }
-
-    const { data, error } = await query
-    if (error) throw error
-    return NextResponse.json({ data })
-  } catch (err: unknown) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
+    const data = await prisma.$queryRaw`
+      SELECT * FROM suppliers_summary WHERE ${Prisma.join(conds, ' AND ')} ORDER BY created_at DESC`
+    return json({ data })
+  } catch (err) {
+    return handleError(err, 'GET /api/suppliers')
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase      = await createUntypedClient()
-    const typedSupabase = await createClient()
-    const { data: { user } } = await typedSupabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
-
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('display_name, store_id, role')
-      .eq('id', user.id)
-      .single() as { data: { display_name: string; store_id: string | null; role: string } | null }
-
-    if (!['manager', 'owner'].includes(profile?.role ?? '')) {
-      return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
-    }
-
+    const user = await requireActiveUser(MANAGERS)
     const body = await request.json()
-    if (!body.nom) return NextResponse.json({ error: 'nom requis' }, { status: 400 })
+    if (!body.nom) throw new HttpError(400, 'nom requis')
 
-    const { data, error } = await supabase
-      .from('suppliers')
-      .insert({
-        ...body,
-        store_id:   body.store_id ?? profile?.store_id ?? null,
+    const data = await prisma.suppliers.create({
+      data: {
+        ...(supplierInput(body) as Prisma.suppliersUncheckedCreateInput),
+        store_id:   body.store_id ?? user.store_id ?? null,
         created_by: user.id,
         updated_by: user.id,
-      })
-      .select()
-      .single() as { data: Record<string, unknown> | null; error: unknown }
-
-    if (error) throw error
-    if (!data) throw new Error('No data returned')
+      },
+    })
 
     await logActivity({
-      store_id:    data.store_id as string ?? null,
+      store_id:    data.store_id,
       user_id:     user.id,
-      user_name:   profile?.display_name ?? '—',
-      action_type: 'INSERT',
-      module:      'suppliers',
-      record_id:   data.supplier_id as string,
+      user_name:   user.display_name,
+      action_type: 'creation',
+      module:      'fournisseurs',
+      record_id:   data.supplier_id,
       after_state: data,
       ip_address:  getIpFromRequest(request),
     })
 
-    return NextResponse.json({ data }, { status: 201 })
-  } catch (err: unknown) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
+    return json({ data }, { status: 201 })
+  } catch (err) {
+    return handleError(err, 'POST /api/suppliers')
   }
 }
 
 export async function PATCH(request: NextRequest) {
   try {
-    const supabase      = await createUntypedClient()
-    const typedSupabase = await createClient()
-    const { data: { user } } = await typedSupabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
-
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('display_name, role')
-      .eq('id', user.id)
-      .single() as { data: { display_name: string; role: string } | null }
-
-    if (!['manager', 'owner'].includes(profile?.role ?? '')) {
-      return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
-    }
-
+    const user = await requireActiveUser(MANAGERS)
     const body = await request.json()
-    const { supplier_id, ...updates } = body
-    if (!supplier_id) return NextResponse.json({ error: 'supplier_id requis' }, { status: 400 })
+    const supplier_id = body.supplier_id as string | undefined
+    if (!supplier_id) throw new HttpError(400, 'supplier_id requis')
 
-    const { data: before } = await supabase
-      .from('suppliers')
-      .select('*')
-      .eq('supplier_id', supplier_id)
-      .single() as { data: Record<string, unknown> | null }
-
-    const { data, error } = await supabase
-      .from('suppliers')
-      .update({ ...updates, updated_by: user.id })
-      .eq('supplier_id', supplier_id)
-      .select()
-      .single() as { data: Record<string, unknown> | null; error: unknown }
-
-    if (error) throw error
-    if (!data) throw new Error('No data returned')
+    const before = await prisma.suppliers.findUniqueOrThrow({ where: { supplier_id } })
+    const data = await prisma.suppliers.update({
+      where: { supplier_id },
+      data:  { ...supplierInput(body), updated_by: user.id },
+    })
 
     await logActivity({
-      store_id:     data.store_id as string ?? null,
+      store_id:     data.store_id,
       user_id:      user.id,
-      user_name:    profile?.display_name ?? '—',
-      action_type:  'UPDATE',
-      module:       'suppliers',
+      user_name:    user.display_name,
+      action_type:  'modification',
+      module:       'fournisseurs',
       record_id:    supplier_id,
-      before_state: before ?? null,
+      before_state: before,
       after_state:  data,
       ip_address:   getIpFromRequest(request),
     })
 
-    return NextResponse.json({ data })
-  } catch (err: unknown) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
+    return json({ data })
+  } catch (err) {
+    return handleError(err, 'PATCH /api/suppliers')
   }
 }

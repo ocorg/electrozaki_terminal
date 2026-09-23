@@ -167,7 +167,7 @@ export function SavTab() {
         await fetch('/api/warranty/events', {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ txn_id: info.txn_id, facture_ref: info.facture_ref, event_type: 'SAV_OPEN', sav_ref: newPecRef }),
+          body: JSON.stringify({ txn_id: info.txn_id, facture_ref: info.facture_ref, event_type: 'ouverture_sav', sav_ref: newPecRef }),
         })
       }
 
@@ -193,7 +193,7 @@ export function SavTab() {
         await fetch('/api/warranty/events', {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ txn_id: info.txn_id, facture_ref: info.facture_ref, event_type: 'SAV_CLOSE', sav_ref: newRstRef }),
+          body: JSON.stringify({ txn_id: info.txn_id, facture_ref: info.facture_ref, event_type: 'cloture_sav', sav_ref: newRstRef }),
         })
       }
 

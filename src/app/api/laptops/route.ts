@@ -1,192 +1,122 @@
-import { createClient, createUntypedClient } from '@/lib/supabase/server'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
+import type { Prisma } from '@prisma/client'
+import { prisma } from '@/lib/db'
+import { json, handleError, requireUser, requireActiveUser, pickInput, columnsOf, HttpError, MANAGERS } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
-import { escapeLike } from '@/lib/utils/validation'
+
+const EDITABLE = columnsOf('laptops', ['laptop_id'])
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase      = await createUntypedClient()
-    const typedSupabase = await createClient()
-    const { data: { user } } = await typedSupabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
-
+    await requireUser()
     const { searchParams } = new URL(request.url)
-    const status   = searchParams.get('status')
-    const search   = searchParams.get('search')
-    const location = searchParams.get('location')
+    const status   = searchParams.get('status') as Prisma.laptopsWhereInput['status']
+    const search   = searchParams.get('search')?.trim()
+    const location = searchParams.get('location') as Prisma.laptopsWhereInput['location']
     const store_id = searchParams.get('store_id')
 
-    let query = supabase
-      .from('laptops')
-      .select('*')
-      .eq('is_deleted', false)
-      .order('created_at', { ascending: false })
-
-    if (store_id) query = query.eq('store_id', store_id)
-    if (status)   query = query.eq('status', status)
-    if (location) query = query.eq('location', location)
-    if (search) {
-      const safeSearch = escapeLike(search)
-      query = query.or(
-        `serial.ilike.%${safeSearch}%,model.ilike.%${safeSearch}%,marque.ilike.%${safeSearch}%`
-      )
-    }
-
-    const { data, error } = await query
-    if (error) throw error
-    return NextResponse.json({ data })
-  } catch (err: unknown) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
+    const data = await prisma.laptops.findMany({
+      where: {
+        is_deleted: false,
+        ...(store_id && { store_id }),
+        ...(status   && { status }),
+        ...(location && { location }),
+        ...(search   && { OR: ['serial', 'model', 'marque'].map(f => ({ [f]: { contains: search, mode: 'insensitive' } })) }),
+      },
+      orderBy: { created_at: 'desc' },
+    })
+    return json({ data })
+  } catch (err) {
+    return handleError(err, 'GET /api/laptops')
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase      = await createUntypedClient()
-    const typedSupabase = await createClient()
-    const { data: { user } } = await typedSupabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
-
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('display_name, store_id')
-      .eq('id', user.id)
-      .single() as { data: { display_name: string; store_id: string | null } | null }
-
+    const user = await requireActiveUser()
     const body = await request.json()
 
-    const { data, error } = await supabase
-      .from('laptops')
-      .insert({
-        ...body,
-        store_id:   body.store_id ?? profile?.store_id ?? null,
+    const data = await prisma.laptops.create({
+      data: {
+        ...(pickInput('laptops', body, EDITABLE) as Prisma.laptopsUncheckedCreateInput),
+        store_id:   body.store_id ?? user.store_id ?? null,
         created_by: user.id,
         updated_by: user.id,
-      })
-      .select()
-      .single() as { data: Record<string, unknown> | null; error: unknown }
-
-    if (error) throw error
-    if (!data) throw new Error('No data returned')
+      },
+    })
 
     await logActivity({
-      store_id:    data.store_id as string ?? null,
+      store_id:    data.store_id,
       user_id:     user.id,
-      user_name:   profile?.display_name ?? '—',
-      action_type: 'INSERT',
+      user_name:   user.display_name,
+      action_type: 'creation',
       module:      'laptops',
-      record_id:   data.laptop_id as string,
+      record_id:   data.laptop_id,
       after_state: data,
       ip_address:  getIpFromRequest(request),
     })
 
-    return NextResponse.json({ data }, { status: 201 })
-  } catch (err: unknown) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
+    return json({ data }, { status: 201 })
+  } catch (err) {
+    return handleError(err, 'POST /api/laptops')
   }
 }
 
 export async function PATCH(request: NextRequest) {
   try {
-    const supabase      = await createUntypedClient()
-    const typedSupabase = await createClient()
-    const { data: { user } } = await typedSupabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
-
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('display_name')
-      .eq('id', user.id)
-      .single() as { data: { display_name: string } | null }
-
+    const user = await requireActiveUser()
     const body = await request.json()
-    const { laptop_id, ...updates } = body
-    if (!laptop_id) return NextResponse.json({ error: 'laptop_id requis' }, { status: 400 })
+    const laptop_id = body.laptop_id as string | undefined
+    if (!laptop_id) throw new HttpError(400, 'laptop_id requis')
 
-    const { data: before } = await supabase
-      .from('laptops')
-      .select('*')
-      .eq('laptop_id', laptop_id)
-      .single() as { data: Record<string, unknown> | null }
-
-    const { data, error } = await supabase
-      .from('laptops')
-      .update({ ...updates, updated_by: user.id })
-      .eq('laptop_id', laptop_id)
-      .select()
-      .single() as { data: Record<string, unknown> | null; error: unknown }
-
-    if (error) throw error
-    if (!data) throw new Error('No data returned')
+    const before = await prisma.laptops.findUniqueOrThrow({ where: { laptop_id } })
+    const data = await prisma.laptops.update({
+      where: { laptop_id },
+      data:  { ...pickInput('laptops', body, EDITABLE), updated_by: user.id },
+    })
 
     await logActivity({
-      store_id:     data.store_id as string ?? null,
+      store_id:     data.store_id,
       user_id:      user.id,
-      user_name:    profile?.display_name ?? '—',
-      action_type:  'UPDATE',
+      user_name:    user.display_name,
+      action_type:  'modification',
       module:       'laptops',
       record_id:    laptop_id,
-      before_state: before ?? null,
+      before_state: before,
       after_state:  data,
       ip_address:   getIpFromRequest(request),
     })
 
-    return NextResponse.json({ data })
-  } catch (err: unknown) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
+    return json({ data })
+  } catch (err) {
+    return handleError(err, 'PATCH /api/laptops')
   }
 }
 
 export async function DELETE(request: NextRequest) {
   try {
-    const supabase      = await createUntypedClient()
-    const typedSupabase = await createClient()
-    const { data: { user } } = await typedSupabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+    const user = await requireActiveUser(MANAGERS)
+    const laptop_id = new URL(request.url).searchParams.get('laptop_id')
+    if (!laptop_id) throw new HttpError(400, 'laptop_id requis')
 
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('display_name, role')
-      .eq('id', user.id)
-      .single() as { data: { display_name: string; role: string } | null }
+    const before = await prisma.laptops.findUnique({ where: { laptop_id } })
+    if (!before) throw new HttpError(404, 'Laptop introuvable')
 
-    if (!['manager', 'owner'].includes(profile?.role ?? '')) {
-      return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
-    }
-
-    const { searchParams } = new URL(request.url)
-    const laptop_id = searchParams.get('laptop_id')
-    if (!laptop_id) return NextResponse.json({ error: 'laptop_id requis' }, { status: 400 })
-
-    const { data: before } = await supabase
-      .from('laptops')
-      .select('*')
-      .eq('laptop_id', laptop_id)
-      .single() as { data: Record<string, unknown> | null }
-
-    if (!before) return NextResponse.json({ error: 'Laptop introuvable' }, { status: 404 })
-
-    const { error } = await supabase
-      .from('laptops')
-      .update({ is_deleted: true, updated_by: user.id, updated_at: new Date().toISOString() })
-      .eq('laptop_id', laptop_id)
-
-    if (error) throw error
+    await prisma.laptops.update({ where: { laptop_id }, data: { is_deleted: true, updated_by: user.id } })
 
     await logActivity({
-      store_id:     before.store_id as string ?? null,
+      store_id:     before.store_id,
       user_id:      user.id,
-      user_name:    profile?.display_name ?? '—',
-      action_type:  'DELETE',
+      user_name:    user.display_name,
+      action_type:  'suppression',
       module:       'laptops',
       record_id:    laptop_id,
       before_state: before,
-      after_state:  null,
       ip_address:   getIpFromRequest(request),
     })
 
-    return NextResponse.json({ status: 'success' })
-  } catch (err: unknown) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
+    return json({ status: 'success' })
+  } catch (err) {
+    return handleError(err, 'DELETE /api/laptops')
   }
 }

@@ -8,6 +8,7 @@ import {
   ScrollText, RefreshCw, Search, X,
   ChevronDown, ChevronUp, Calendar
 } from 'lucide-react'
+import { CODES, codeLabel, type Code } from '@/lib/codes'
 
 interface LogEntry {
   log_id:        string
@@ -24,37 +25,27 @@ interface LogEntry {
 }
 
 const ACTION_COLORS: Record<string, string> = {
-  INSERT:      'bg-emerald-50 text-emerald-700 border-emerald-200',
-  UPDATE:      'bg-blue-50 text-blue-700 border-blue-200',
-  DELETE:      'bg-red-50 text-red-700 border-red-200',
-  VOID:        'bg-red-50 text-red-700 border-red-200',
-  EOD_SUBMIT:  'bg-amber-50 text-amber-700 border-amber-200',
-  EOD_APPROVE: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  EOD_REJECT:  'bg-red-50 text-red-700 border-red-200',
-  OVERRIDE:    'bg-violet-50 text-violet-700 border-violet-200',
-  LOGIN:       'bg-slate-50 text-slate-600 border-slate-200',
-  LOGOUT:      'bg-slate-50 text-slate-600 border-slate-200',
-  PUNCH_IN:    'bg-teal-50 text-teal-700 border-teal-200',
-  PUNCH_OUT:   'bg-teal-50 text-teal-700 border-teal-200',
-  USER_CREATE: 'bg-violet-50 text-violet-700 border-violet-200',
+  creation:             'bg-emerald-50 text-emerald-700 border-emerald-200',
+  modification:         'bg-blue-50 text-blue-700 border-blue-200',
+  suppression:          'bg-red-50 text-red-700 border-red-200',
+  annulation:           'bg-red-50 text-red-700 border-red-200',
+  soumission_cloture:   'bg-amber-50 text-amber-700 border-amber-200',
+  validation_cloture:   'bg-emerald-50 text-emerald-700 border-emerald-200',
+  rejet_cloture:        'bg-red-50 text-red-700 border-red-200',
+  derogation:           'bg-violet-50 text-violet-700 border-violet-200',
+  connexion:            'bg-slate-50 text-slate-600 border-slate-200',
+  deconnexion:          'bg-slate-50 text-slate-600 border-slate-200',
+  pointage_entree:      'bg-teal-50 text-teal-700 border-teal-200',
+  pointage_sortie:      'bg-teal-50 text-teal-700 border-teal-200',
+  creation_utilisateur: 'bg-violet-50 text-violet-700 border-violet-200',
 }
 
 const STORE_NAMES: Record<string, string> = {
   'EZ-001': 'Electro Zaki',
 }
 
-const MODULES = [
-  'phones', 'laptops', 'accessories', 'transactions',
-  'reparations', 'clients', 'suppliers', 'supplier_payments',
-  'expenses', 'caisse', 'stock_movements', 'users',
-  'settings', 'auth', 'attendance', 'changelog', 'repairs/parts',
-]
-
-const ACTIONS = [
-  'INSERT', 'UPDATE', 'DELETE', 'VOID',
-  'EOD_SUBMIT', 'EOD_APPROVE', 'EOD_REJECT',
-  'OVERRIDE', 'LOGIN', 'LOGOUT', 'PUNCH_IN', 'PUNCH_OUT', 'USER_CREATE',
-]
+const MODULES = Object.keys(CODES.log_module) as Code<'log_module'>[]
+const ACTIONS = Object.keys(CODES.log_action) as Code<'log_action'>[]
 
 const STORES = [
   { id: 'EZ-001', name: 'Electro Zaki' },
@@ -191,7 +182,7 @@ export default function BZGLogsPage() {
             className="px-3 py-2 bg-white border border-[#E8E5DE] rounded-xl text-sm text-[#6B6860] focus:outline-none focus:border-[#6366F1] transition-all"
           >
             <option value="">{isAr ? 'كل الوحدات' : 'Tous les modules'}</option>
-            {MODULES.map(m => <option key={m} value={m}>{m}</option>)}
+            {MODULES.map(m => <option key={m} value={m}>{codeLabel('log_module', m, isAr ? 'ar' : 'fr')}</option>)}
           </select>
 
           {/* Action */}
@@ -201,7 +192,7 @@ export default function BZGLogsPage() {
             className="px-3 py-2 bg-white border border-[#E8E5DE] rounded-xl text-sm text-[#6B6860] focus:outline-none focus:border-[#6366F1] transition-all"
           >
             <option value="">{isAr ? 'كل الأنواع' : 'Toutes les actions'}</option>
-            {ACTIONS.map(a => <option key={a} value={a}>{a}</option>)}
+            {ACTIONS.map(a => <option key={a} value={a}>{codeLabel('log_action', a, isAr ? 'ar' : 'fr')}</option>)}
           </select>
 
           {/* Date from */}
@@ -263,12 +254,12 @@ export default function BZGLogsPage() {
                 >
                   {/* Action badge */}
                   <span className={`flex-shrink-0 text-[10px] font-bold px-2 py-1 rounded-md border font-mono uppercase tracking-wide ${actionStyle}`}>
-                    {log.action_type}
+                    {codeLabel('log_action', log.action_type as Code<'log_action'>, isAr ? 'ar' : 'fr')}
                   </span>
 
                   {/* Module badge */}
                   <span className="flex-shrink-0 text-[10px] font-mono text-[#B0ADA6] bg-[#F8F7F4] border border-[#E8E5DE] px-2 py-0.5 rounded">
-                    {log.module}
+                    {codeLabel('log_module', log.module as Code<'log_module'>, isAr ? 'ar' : 'fr')}
                   </span>
 
                   {/* User */}

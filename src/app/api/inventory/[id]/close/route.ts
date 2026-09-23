@@ -1,73 +1,45 @@
-import { NextRequest, NextResponse }         from 'next/server'
-import { createClient, createUntypedClient } from '@/lib/supabase/server'
-import { logActivity }                       from '@/lib/utils/logger'
+import { NextRequest } from 'next/server'
+import { prisma } from '@/lib/db'
+import { json, handleError, requireActiveUser, HttpError, MANAGERS } from '@/lib/api'
+import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
+import { countByResult } from '@/lib/inventory'
 
-export async function PATCH(
-  _req: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  const supabase      = await createUntypedClient()
-  const typedSupabase = await createClient()
-  const { data: { user } } = await typedSupabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const user = await requireActiveUser(MANAGERS)
+    const session = await prisma.inventory_sessions.findFirst({
+      where: { session_id: params.id, ...(user.store_id && { store_id: user.store_id }) },
+    })
+    if (!session) throw new HttpError(404, 'Session introuvable')
+    if (session.statut !== 'en_cours') throw new HttpError(409, 'Session déjà terminée')
 
-  const { data: profileRaw } = await supabase
-    .from('user_profiles')
-    .select('role, store_id, display_name')
-    .eq('id', user.id)
-    .maybeSingle()
-  const profile = profileRaw as { role: string; store_id: string; display_name: string } | null
+    const { closedSession, counts } = await prisma.$transaction(async (tx) => {
+      // Everything never scanned is missing
+      await tx.inventory_session_items.updateMany({
+        where: { session_id: params.id, resultat: 'en_attente' },
+        data:  { resultat: 'manquant' },
+      })
+      const closedSession = await tx.inventory_sessions.update({
+        where: { session_id: params.id },
+        data:  { statut: 'terminee', completed_at: new Date() },
+      })
+      const items = await tx.inventory_session_items.findMany({ where: { session_id: params.id }, select: { resultat: true } })
+      return { closedSession, counts: countByResult(items) }
+    })
 
-  if (profile?.role !== 'manager' && profile?.role !== 'owner') {
-    return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
+    await logActivity({
+      user_id:     user.id,
+      store_id:    user.store_id,
+      user_name:   user.display_name,
+      module:      'inventaire',
+      action_type: 'modification',
+      record_id:   params.id,
+      ip_address:  getIpFromRequest(req),
+      after_state: { session_id: params.id, counts },
+    })
+
+    return json({ session: closedSession, counts })
+  } catch (err) {
+    return handleError(err, 'PATCH /api/inventory/[id]/close')
   }
-
-  let sessionQuery = supabase
-    .from('inventory_sessions')
-    .select('*')
-    .eq('session_id', params.id)
-  if (profile.store_id) sessionQuery = sessionQuery.eq('store_id', profile.store_id)
-  const { data: session } = await sessionQuery.maybeSingle()
-
-  if (!session)                       return NextResponse.json({ error: 'Session introuvable' }, { status: 404 })
-  if (session.statut !== 'en_cours')  return NextResponse.json({ error: 'Session déjà terminée' }, { status: 409 })
-
-  // Marquer tous les en_attente → manquant
-  await supabase
-    .from('inventory_session_items')
-    .update({ resultat: 'manquant' })
-    .eq('session_id', params.id)
-    .eq('resultat', 'en_attente')
-
-  // Clôturer la session
-  const { data: closedSession, error: closeError } = await supabase
-    .from('inventory_sessions')
-    .update({ statut: 'terminée', completed_at: new Date().toISOString() })
-    .eq('session_id', params.id)
-    .select()
-    .single()
-
-  if (closeError) return NextResponse.json({ error: closeError.message }, { status: 500 })
-
-  // Récupérer les compteurs finaux
-  const { data: allItems } = await supabase
-    .from('inventory_session_items')
-    .select('resultat')
-    .eq('session_id', params.id)
-
-  const counts = (allItems ?? []).reduce((acc: Record<string, number>, i: any) => {
-    acc[i.resultat] = (acc[i.resultat] ?? 0) + 1
-    return acc
-  }, {})
-
-  await logActivity({
-    user_id:     user.id,
-    store_id:    profile.store_id,
-    user_name:   profile.display_name,
-    module:      'inventaire' as any,
-    action_type: 'UPDATE',
-    after_state: { session_id: params.id, counts },
-  })
-
-  return NextResponse.json({ session: closedSession, counts })
 }

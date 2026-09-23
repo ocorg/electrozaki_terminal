@@ -1,94 +1,63 @@
-import { createUntypedClient, createClient } from '@/lib/supabase/server'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
+import { prisma } from '@/lib/db'
+import { json, handleError, requireActiveUser, todayDate, HttpError } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
+import { notifyCaisseChange } from '@/lib/realtime'
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase      = await createUntypedClient()
-    const typedSupabase = await createClient()
-    const { data: { user } } = await typedSupabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
-
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('display_name, store_id')
-      .eq('id', user.id)
-      .single() as { data: { display_name: string; store_id: string | null } | null }
-
+    const user = await requireActiveUser()
     const body = await request.json() as Record<string, unknown>
-    const { import_id, montant, payment_method, payment_ref, notes, store_id } = body
+    const import_id = body.import_id as string | undefined
+    const montant   = Number(body.montant)
+    if (!import_id) throw new HttpError(400, 'import_id requis')
+    if (!(montant > 0)) throw new HttpError(400, 'Montant invalide')
+    const store_id = (body.store_id as string | null) ?? user.store_id ?? null
 
-    if (!import_id) return NextResponse.json({ error: 'import_id requis' }, { status: 400 })
-    if (!montant || (montant as number) <= 0) {
-      return NextResponse.json({ error: 'Montant invalide' }, { status: 400 })
-    }
+    const { payment, updated } = await prisma.$transaction(async (tx) => {
+      // Lock the credit row: two simultaneous payments can't both pass the balance check
+      const [imp] = await tx.$queryRaw<{ montant_du: number; montant_paye: number | null; statut: string }[]>`
+        SELECT montant_du::float8 AS montant_du, montant_paye::float8 AS montant_paye, statut::text AS statut
+        FROM credit_imports WHERE import_id = ${import_id} FOR UPDATE`
+      if (!imp) throw new HttpError(404, 'Import introuvable')
+      if (imp.statut === 'solde') throw new HttpError(400, 'Ce crédit est déjà soldé')
+      const remaining = imp.montant_du - (imp.montant_paye ?? 0)
+      if (montant > remaining + 0.01) throw new HttpError(400, `Montant dépasse le restant dû (${remaining.toFixed(2)} MAD)`)
 
-    // Validate against current balance
-    const { data: imp } = await supabase
-      .from('credit_imports')
-      .select('import_id, montant_du, montant_paye, statut')
-      .eq('import_id', import_id)
-      .single() as { data: Record<string, unknown> | null }
-
-    if (!imp) return NextResponse.json({ error: 'Import introuvable' }, { status: 404 })
-    if (imp.statut === 'soldé') {
-      return NextResponse.json({ error: 'Ce crédit est déjà soldé' }, { status: 400 })
-    }
-
-    const remaining = (imp.montant_du as number) - ((imp.montant_paye as number) ?? 0)
-    if ((montant as number) > remaining + 0.01) {
-      return NextResponse.json(
-        { error: `Montant dépasse le restant dû (${remaining.toFixed(2)} MAD)` },
-        { status: 400 }
-      )
-    }
-
-    const resolvedStoreId = (store_id as string | null) ?? profile?.store_id ?? null
-
-    const { data: payment, error: payErr } = await supabase
-      .from('credit_import_payments')
-      .insert({
-        import_id,
-        store_id:       resolvedStoreId,
-        montant,
-        payment_method: payment_method ?? 'نقد',
-        payment_ref:    payment_ref    ?? null,
-        notes:          notes          ?? null,
-        date_paiement:  new Date().toISOString().split('T')[0],
-        created_by:     user.id,
+      const payment = await tx.credit_import_payments.create({
+        data: {
+          import_id,
+          store_id,
+          montant,
+          payment_method: (body.payment_method as 'especes' | 'virement' | undefined) ?? 'especes',
+          payment_ref:    (body.payment_ref as string | undefined) ?? null,
+          notes:          (body.notes as string | undefined) ?? null,
+          date_paiement:  todayDate(),
+          created_by:     user.id,
+        },
       })
-      .select()
-      .single() as { data: Record<string, unknown> | null; error: unknown }
-
-    if (payErr) throw payErr
-
-    // Trigger handles updating montant_paye + statut on credit_imports automatically.
-    // Fetch the updated row for the activity log.
-    const { data: updated } = await supabase
-      .from('credit_imports')
-      .select('montant_du, montant_paye, statut')
-      .eq('import_id', import_id)
-      .single() as { data: Record<string, unknown> | null }
+      // The sync_credit_import_balance trigger updates montant_paye + statut
+      const updated = await tx.credit_imports.findUniqueOrThrow({
+        where: { import_id }, select: { montant_du: true, montant_paye: true, statut: true },
+      })
+      return { payment, updated }
+    })
 
     await logActivity({
       user_id:     user.id,
-      store_id:    resolvedStoreId ?? '',
-      user_name:   profile?.display_name ?? '—',
-      module:      'credit_imports',
-      action_type: 'UPDATE',
-      record_id:   import_id as string,
-      after_state: {
-        import_id,
-        montant_paye: updated?.montant_paye,
-        montant_du:   updated?.montant_du,
-        statut:       updated?.statut,
-      },
-      ip_address: getIpFromRequest(request),
-      notes:      `Paiement de ${(montant as number).toFixed(2)} MAD`,
+      store_id,
+      user_name:   user.display_name,
+      module:      'credits_importes',
+      action_type: 'modification',
+      record_id:   import_id,
+      after_state: { import_id, ...updated },
+      ip_address:  getIpFromRequest(request),
+      notes:       `Paiement de ${montant.toFixed(2)} MAD`,
     })
+    await notifyCaisseChange(store_id)
 
-    return NextResponse.json({ data: payment }, { status: 201 })
-  } catch (err: unknown) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
+    return json({ data: payment }, { status: 201 })
+  } catch (err) {
+    return handleError(err, 'POST /api/credit-imports/payments')
   }
 }

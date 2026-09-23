@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { signOut } from 'next-auth/react'
 import { useUser } from '@/lib/hooks/useUser'
 import { usePortal } from '@/lib/context/portal'
 import {
@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import type { UserRole } from '@/types/database'
 import { useLanguageStore } from '@/lib/stores/language'
+import { codeLabel } from '@/lib/codes'
 
 // ─── Nav item definition ──────────────────────────────────────
 interface NavItem {
@@ -28,41 +29,41 @@ interface NavItem {
 function getNavItems(portalBase: string, portalType: string): NavItem[] {
   if (portalType === 'bzg') {
     return [
-      { href: `${portalBase}/dashboard`,    icon: LayoutDashboard, label: 'Tableau de bord',    roles: ['manager','owner'] as UserRole[] },
-      { divider: true, label: 'OPÉRATIONS',                                                      roles: ['manager','owner'] as UserRole[] },
-      { href: `${portalBase}/transactions`, icon: ShoppingCart,    label: 'Transactions',        roles: ['manager','owner'] as UserRole[] },
-      { href: `${portalBase}/caisse`,       icon: Vault,           label: 'Caisse — Validation', roles: ['manager','owner'] as UserRole[] },
-      { divider: true, label: 'ANALYSE',                                                          roles: ['manager','owner'] as UserRole[] },
-      { href: `${portalBase}/reports`,      icon: BarChart3,       label: 'Rapports',            roles: ['manager','owner'] as UserRole[] },
-      { href: `${portalBase}/staff`,        icon: UserCheck,       label: 'Présence équipe',     roles: ['manager','owner'] as UserRole[] },
-      { divider: true, label: 'ADMIN',                                                            roles: ['manager','owner'] as UserRole[] },
-      { href: `${portalBase}/logs`,         icon: ScrollText,      label: "Journal d'activité",  roles: ['manager','owner'] as UserRole[] },
-      { href: `${portalBase}/users`,        icon: Shield,          label: 'Utilisateurs',        roles: ['manager','owner'] as UserRole[] },
-      { href: `${portalBase}/changelog`,    icon: FileText,        label: 'Changelog plateforme',roles: ['manager','owner'] as UserRole[] },
-      { href: `${portalBase}/settings`,     icon: Settings,        label: 'Paramètres',          roles: ['owner'] as UserRole[] },
+      { href: `${portalBase}/dashboard`,    icon: LayoutDashboard, label: 'Tableau de bord',    roles: ['gerant','proprietaire'] as UserRole[] },
+      { divider: true, label: 'OPÉRATIONS',                                                      roles: ['gerant','proprietaire'] as UserRole[] },
+      { href: `${portalBase}/transactions`, icon: ShoppingCart,    label: 'Transactions',        roles: ['gerant','proprietaire'] as UserRole[] },
+      { href: `${portalBase}/caisse`,       icon: Vault,           label: 'Caisse — Validation', roles: ['gerant','proprietaire'] as UserRole[] },
+      { divider: true, label: 'ANALYSE',                                                          roles: ['gerant','proprietaire'] as UserRole[] },
+      { href: `${portalBase}/reports`,      icon: BarChart3,       label: 'Rapports',            roles: ['gerant','proprietaire'] as UserRole[] },
+      { href: `${portalBase}/staff`,        icon: UserCheck,       label: 'Présence équipe',     roles: ['gerant','proprietaire'] as UserRole[] },
+      { divider: true, label: 'ADMIN',                                                            roles: ['gerant','proprietaire'] as UserRole[] },
+      { href: `${portalBase}/logs`,         icon: ScrollText,      label: "Journal d'activité",  roles: ['gerant','proprietaire'] as UserRole[] },
+      { href: `${portalBase}/users`,        icon: Shield,          label: 'Utilisateurs',        roles: ['gerant','proprietaire'] as UserRole[] },
+      { href: `${portalBase}/changelog`,    icon: FileText,        label: 'Changelog plateforme',roles: ['gerant','proprietaire'] as UserRole[] },
+      { href: `${portalBase}/settings`,     icon: Settings,        label: 'Paramètres',          roles: ['proprietaire'] as UserRole[] },
     ]
   }
 
   // Default: EZ portal
   return [
-    { href: `${portalBase}/dashboard`,        icon: LayoutDashboard, label: 'Tableau de bord',   roles: ['staff','manager','owner'] },
-    { href: `${portalBase}/pos`,              icon: ShoppingCart,    label: 'Point de vente',     roles: ['staff','manager','owner'] },
-    { href: `${portalBase}/documents`,        icon: FileText,        label: 'Documents',          roles: ['staff','manager','owner'] },
-    { divider: true, label: 'STOCK',                                                              roles: ['staff','manager','owner'] },
-    { href: `${portalBase}/stock/phones`,     icon: Smartphone,      label: 'Téléphones',         roles: ['staff','manager','owner'] },
-    { href: `${portalBase}/stock/laptops`,    icon: Laptop,          label: 'Laptops',            roles: ['staff','manager','owner'] },
-    { href: `${portalBase}/stock/accessories`,icon: Package,         label: 'Accessoires',        roles: ['staff','manager','owner'] },
-    { divider: true, label: 'OPÉRATIONS',                                                         roles: ['staff','manager','owner'] },
-    { href: `${portalBase}/deliveries`,       icon: PackageCheck,    label: 'Livraisons',         roles: ['manager','owner'] },
-    { href: `${portalBase}/repairs`,          icon: Wrench,          label: 'Réparations',        roles: ['staff','manager','owner'] },
-    { href: `${portalBase}/clients`,          icon: Users,           label: 'Clients',            roles: ['staff','manager','owner'] },
-    { href: `${portalBase}/suppliers`,        icon: Truck,           label: 'Fournisseurs',       roles: ['manager','owner'] },
-    { href: `${portalBase}/prospects`,        icon: ClipboardList,   label: 'Prospects',          roles: ['staff','manager','owner'] },
-    { href: `${portalBase}/inventory`,        icon: PackageSearch,   label: 'Inventaire',         roles: ['manager','owner'] },
-    { href: `${portalBase}/expenses`,         icon: Receipt,         label: 'Dépenses',           roles: ['manager','owner'] },
-    { href: `${portalBase}/caisse`,           icon: Vault,           label: 'Caisse du jour',     roles: ['staff','manager','owner'] },
-    { href: `${portalBase}/movements`,        icon: ArrowLeftRight,  label: 'Transferts stock',   roles: ['manager','owner'] },
-    { href: `${portalBase}/credits`,          icon: CreditCard,      label: 'Crédits clients',    roles: ['manager','owner'] },
+    { href: `${portalBase}/dashboard`,        icon: LayoutDashboard, label: 'Tableau de bord',   roles: ['employe','gerant','proprietaire'] },
+    { href: `${portalBase}/pos`,              icon: ShoppingCart,    label: 'Point de vente',     roles: ['employe','gerant','proprietaire'] },
+    { href: `${portalBase}/documents`,        icon: FileText,        label: 'Documents',          roles: ['employe','gerant','proprietaire'] },
+    { divider: true, label: 'STOCK',                                                              roles: ['employe','gerant','proprietaire'] },
+    { href: `${portalBase}/stock/phones`,     icon: Smartphone,      label: 'Téléphones',         roles: ['employe','gerant','proprietaire'] },
+    { href: `${portalBase}/stock/laptops`,    icon: Laptop,          label: 'Laptops',            roles: ['employe','gerant','proprietaire'] },
+    { href: `${portalBase}/stock/accessories`,icon: Package,         label: 'Accessoires',        roles: ['employe','gerant','proprietaire'] },
+    { divider: true, label: 'OPÉRATIONS',                                                         roles: ['employe','gerant','proprietaire'] },
+    { href: `${portalBase}/deliveries`,       icon: PackageCheck,    label: 'Livraisons',         roles: ['gerant','proprietaire'] },
+    { href: `${portalBase}/repairs`,          icon: Wrench,          label: 'Réparations',        roles: ['employe','gerant','proprietaire'] },
+    { href: `${portalBase}/clients`,          icon: Users,           label: 'Clients',            roles: ['employe','gerant','proprietaire'] },
+    { href: `${portalBase}/suppliers`,        icon: Truck,           label: 'Fournisseurs',       roles: ['gerant','proprietaire'] },
+    { href: `${portalBase}/prospects`,        icon: ClipboardList,   label: 'Prospects',          roles: ['employe','gerant','proprietaire'] },
+    { href: `${portalBase}/inventory`,        icon: PackageSearch,   label: 'Inventaire',         roles: ['gerant','proprietaire'] },
+    { href: `${portalBase}/expenses`,         icon: Receipt,         label: 'Dépenses',           roles: ['gerant','proprietaire'] },
+    { href: `${portalBase}/caisse`,           icon: Vault,           label: 'Caisse du jour',     roles: ['employe','gerant','proprietaire'] },
+    { href: `${portalBase}/movements`,        icon: ArrowLeftRight,  label: 'Transferts stock',   roles: ['gerant','proprietaire'] },
+    { href: `${portalBase}/credits`,          icon: CreditCard,      label: 'Crédits clients',    roles: ['gerant','proprietaire'] },
   ]
 }
 
@@ -75,7 +76,6 @@ interface PortalSidebarProps {
 export default function PortalSidebar({ onClose, collapsed = false, onCollapsedChange }: PortalSidebarProps) {
   const pathname    = usePathname() ?? ''
   const router      = useRouter()
-  const supabase    = createClient()
   const { user }    = useUser()
   const portal      = usePortal()
   const { language, setLanguage } = useLanguageStore()
@@ -89,7 +89,7 @@ export default function PortalSidebar({ onClose, collapsed = false, onCollapsedC
   )
 
   async function handleLogout() {
-    await supabase.auth.signOut()
+    await signOut({ redirect: false })
     router.push('/login')
   }
 
@@ -135,7 +135,7 @@ export default function PortalSidebar({ onClose, collapsed = false, onCollapsedC
               <p className="text-xs truncate mt-0.5" style={{ color: 'rgba(255,255,255,0.4)' }}>
                 {user.display_name}
                 {' · '}
-                <span style={{ color: `${primary}99` }} className="capitalize">{user.role}</span>
+                <span style={{ color: `${primary}99` }} className="capitalize">{codeLabel('user_role', user.role, language === 'ar' ? 'ar' : 'fr')}</span>
               </p>
             )}
           </div>

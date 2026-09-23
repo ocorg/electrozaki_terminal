@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
 
-// Single type definition used across the entire platform
+// `code` is what's stored in accessories/expenses/suppliers.categorie;
+// fr/ar are the labels shown depending on the interface language.
 export interface CategoryItem {
-  fr: string  // French label shown in French mode
-  ar: string  // Arabic label shown in Arabic mode — also the value stored in DB columns
+  code: string
+  fr:   string
+  ar:   string
 }
 
 export interface Categories {
@@ -15,31 +17,26 @@ export interface Categories {
 const EMPTY: Categories = { accessories: [], expenses: [], suppliers: [] }
 
 // Module-level cache: one fetch per page session shared across all components
-let _cache:   Categories | null       = null
+let _cache:   Categories | null          = null
 let _promise: Promise<Categories> | null = null
-
-function parse(raw: unknown): CategoryItem[] {
-  if (!Array.isArray(raw) || raw.length === 0) return []
-  // Handle legacy plain-string format from before bilingual support
-  if (typeof raw[0] === 'string') return (raw as string[]).map(s => ({ fr: s, ar: s }))
-  return raw as CategoryItem[]
-}
 
 async function load(): Promise<Categories> {
   if (_cache)   return _cache
   if (_promise) return _promise
   _promise = fetch('/api/categories')
     .then(r => { if (!r.ok) throw new Error('fetch failed'); return r.json() })
-    .then(json => {
-      _cache = {
-        accessories: parse(json.accessories),
-        expenses:    parse(json.expenses),
-        suppliers:   parse(json.suppliers),
-      }
+    .then((json: Categories) => {
+      _cache = { accessories: json.accessories ?? [], expenses: json.expenses ?? [], suppliers: json.suppliers ?? [] }
       return _cache
     })
     .catch(() => EMPTY)
   return _promise
+}
+
+export function categoryLabel(list: CategoryItem[], code: string | null | undefined, isAr: boolean): string {
+  if (!code) return ''
+  const c = list.find(x => x.code === code)
+  return c ? (isAr ? c.ar : c.fr) : code
 }
 
 export function useCategories() {

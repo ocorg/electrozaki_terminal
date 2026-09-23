@@ -54,11 +54,12 @@ function fmtDateTime(s?: string): string {
 }
 
 const PM_LABELS: Record<string, string> = {
-  'نقد':     'Espèces / نقداً',
-  'تحويل':   'Virement / تحويل',
-  'تسبيق':   'Avance / تسبيق',
-  'إستبدال': 'Échange / استبدال',
-  'مختلط':   'Mixte / مختلط',
+  especes:  'Espèces / نقداً',
+  virement: 'Virement / تحويل',
+  avance:   'Avance / تسبيق',
+  echange:  'Échange / استبدال',
+  mixte:    'Mixte / مختلط',
+  credit:   'Crédit / آجل',
 }
 
 // ─── Component ────────────────────────────────────────────────
@@ -205,7 +206,7 @@ export function ReceiptPrint({ data, onClose }: ReceiptPrintProps) {
                 <span>Règlement / الدفع</span>
                 <span className="text-right max-w-[180px]">
                   {PM_LABELS[data.payment_method] ?? data.payment_method}
-                  {data.payment_method === 'مختلط' &&
+                  {data.payment_method === 'mixte' &&
                    data.montant_especes != null &&
                    data.montant_carte   != null
                     ? ` (${fmtMAD(data.montant_especes)} esp. + ${fmtMAD(data.montant_carte)} vir.)`

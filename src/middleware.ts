@@ -1,5 +1,9 @@
-import { type NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
+import NextAuth from 'next-auth'
+import { NextResponse } from 'next/server'
+import { neon } from '@neondatabase/serverless'
+import { authConfig } from '@/auth.config'
+
+const { auth } = NextAuth(authConfig)
 
 // Paths that never need auth
 const PUBLIC_PATHS = ['/login', '/select-store']
@@ -7,143 +11,92 @@ const PUBLIC_PATHS = ['/login', '/select-store']
 // Paths that are portal roots — require auth + correct store access
 const PORTAL_PATHS = ['/ez', '/bzg']
 
-async function handleMiddleware(request: NextRequest): Promise<NextResponse> {
+const STORE_PORTAL_MAP: Record<string, string> = { 'EZ-001': '/ez' }
+const PORTAL_STORE_MAP: Record<string, string> = { '/ez': 'EZ-001' }
+
+const SESSION_COOKIES = ['authjs.session-token', '__Secure-authjs.session-token']
+
+// Auth.js's own endpoints must work while signed out. verify-override lives
+// under the same prefix but has no session check of its own, so it stays gated.
+function isAuthJsRoute(pathname: string) {
+  return pathname.startsWith('/api/auth/') && !pathname.startsWith('/api/auth/verify-override')
+}
+
+function signOutAndRedirect(url: URL) {
+  const response = NextResponse.redirect(url)
+  SESSION_COOKIES.forEach(name => response.cookies.delete(name))
+  return response
+}
+
+// Store availability rarely changes: cache per edge instance so page
+// navigation doesn't wait on the database.
+const storeActiveCache = new Map<string, { active: boolean; expires: number }>()
+
+async function isStoreActive(storeId: string) {
+  const cached = storeActiveCache.get(storeId)
+  if (cached && cached.expires > Date.now()) return cached.active
+
+  const sql  = neon(process.env.DATABASE_URL!)
+  const rows = await sql`select is_active from stores where store_id = ${storeId}`
+  const active = rows[0]?.is_active !== false
+  storeActiveCache.set(storeId, { active, expires: Date.now() + 60_000 })
+  return active
+}
+
+export default auth(async (request) => {
   const { pathname } = request.nextUrl
+  const user = request.auth?.user
+  const isPublic = PUBLIC_PATHS.some(p => pathname.startsWith(p)) || isAuthJsRoute(pathname)
 
-  // Guard: if Supabase env vars are missing, skip auth and let the page handle it
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    return NextResponse.next({ request })
-  }
-
-  let response = NextResponse.next({ request })
-
-  // ── Build supabase client with cookie forwarding ────────────
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    {
-      cookies: {
-        getAll()        { return request.cookies.getAll() },
-        setAll(toSet) {
-          toSet.forEach(({ name, value }) => request.cookies.set(name, value))
-          response = NextResponse.next({ request })
-          toSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
-          )
-        },
-      },
-    }
-  )
-
-  let user = null
-  try {
-    const { data } = await supabase.auth.getUser()
-    user = data.user
-  } catch {
-    // Edge network error — fail open (let the page/API handle auth)
-    return NextResponse.next({ request })
-  }
-
-  // ── Not authenticated → redirect to login ───────────────────
-  const isPublic = PUBLIC_PATHS.some(p => pathname.startsWith(p))
   if (!user && !isPublic) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // ── Already authenticated → keep away from login ────────────
   if (user && pathname === '/login') {
     return NextResponse.redirect(new URL('/select-store', request.url))
   }
 
-  // ── Authenticated: check portal access ──────────────────────
   if (user && PORTAL_PATHS.some(p => pathname.startsWith(p))) {
-    try {
-      const { data: profile } = await supabase
-        .from('user_profiles')
-        .select('role, store_id, store_locked, is_active')
-        .eq('id', user.id)
-        .single()
+    if (!user.is_active) {
+      return signOutAndRedirect(new URL('/login?reason=inactive', request.url))
+    }
 
-      // Deactivated account
-      if (!profile || !profile.is_active) {
-        await supabase.auth.signOut()
-        return NextResponse.redirect(new URL('/login?reason=inactive', request.url))
+    if (user.store_locked && user.store_id) {
+      const storePortal = STORE_PORTAL_MAP[user.store_id]
+      if (!storePortal) {
+        return signOutAndRedirect(new URL('/login?reason=store_not_found', request.url))
       }
+      if (!pathname.startsWith(storePortal)) {
+        return NextResponse.redirect(new URL(`${storePortal}/dashboard`, request.url))
+      }
+    }
 
-      // Staff locked to a store: enforce their portal
-      if (profile.store_locked && profile.store_id) {
-        const STORE_PORTAL_MAP: Record<string, string> = {
-          'EZ-001': '/ez',
+    if (pathname.startsWith('/bzg') && !['gerant', 'proprietaire'].includes(user.role)) {
+      return NextResponse.redirect(new URL('/select-store', request.url))
+    }
+
+    // Store is_active guard — /bzg is always exempt
+    const matchedPortal = Object.keys(PORTAL_STORE_MAP).find(p => pathname.startsWith(p))
+    if (matchedPortal) {
+      const storeId = PORTAL_STORE_MAP[matchedPortal]
+      try {
+        if (!(await isStoreActive(storeId))) {
+          return NextResponse.redirect(
+            new URL(`/store-unavailable?store=${encodeURIComponent(storeId)}`, request.url)
+          )
         }
-        const storePortal = STORE_PORTAL_MAP[profile.store_id]
-        if (!storePortal) {
-          // store_id not recognised — block access entirely
-          await supabase.auth.signOut()
-          return NextResponse.redirect(new URL('/login?reason=store_not_found', request.url))
-        }
-        if (!pathname.startsWith(storePortal)) {
-          return NextResponse.redirect(new URL(`${storePortal}/dashboard`, request.url))
-        }
+      } catch {
+        // Fail open on lookup error — let the page handle it
       }
-
-      // BZG portal: only manager and owner allowed
-      if (pathname.startsWith('/bzg') && !['manager', 'owner'].includes(profile.role)) {
-        return NextResponse.redirect(new URL('/select-store', request.url))
-      }
-
-      // Store is_active guard — /ez and /hp only, /bzg is always exempt
-      const PORTAL_STORE_MAP: Record<string, string> = {
-        '/ez': 'EZ-001',
-      }
-
-      const matchedPortal = Object.keys(PORTAL_STORE_MAP).find(p =>
-        pathname.startsWith(p)
-      )
-
-      if (matchedPortal) {
-        const guardStoreId = PORTAL_STORE_MAP[matchedPortal]
-        try {
-          const { data: storeRow } = await supabase
-            .from('stores')
-            .select('is_active')
-            .eq('store_id', guardStoreId)
-            .single()
-
-          if (storeRow && storeRow.is_active === false) {
-            return NextResponse.redirect(
-              new URL(
-                `/store-unavailable?store=${encodeURIComponent(guardStoreId)}`,
-                request.url
-              )
-            )
-          }
-        } catch {
-          // Fail open on lookup error — let the page handle it
-        }
-      }
-    } catch {
-      // Profile fetch failed — fail open, let the page handle it
-      return NextResponse.next({ request })
     }
   }
 
-  // ── Root "/" → redirect to select-store ─────────────────────
   if (user && pathname === '/') {
     return NextResponse.redirect(new URL('/select-store', request.url))
   }
 
-  return response
-}
-
-// ── Top-level safety net — NEVER let middleware crash into a 404 ──
-export async function middleware(request: NextRequest): Promise<NextResponse> {
-  try {
-    return await handleMiddleware(request)
-  } catch {
-    // If anything unexpected throws, fail open so pages remain accessible
-    return NextResponse.next({ request })
-  }
-}
+  return NextResponse.next()
+})
 
 export const config = {
   matcher: [

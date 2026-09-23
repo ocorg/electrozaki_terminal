@@ -59,10 +59,10 @@ export default function ExchangeIntakePanel({ exchangePanel, storeId, isAr, onSu
           stockage:              exchangePanel.stockage_echange || form.capacite || null,
           battery_level:         exchangePanel.battery_echange  ?? null,
           ram:                   exchangePanel.ram_echange       || null,
-          condition:             'مستعمل',
-          source:                'Échange',
+          condition:             'occasion',
+          source:                'echange',
           status:                exchangePanel.echange_vers_reparation ? 'إصلاح' : 'متوفر',
-          location:              'Magasin Principal',
+          location:              'magasin_principal',
           txn_ref_id:            exchangePanel.txn_id,
         }),
       })
