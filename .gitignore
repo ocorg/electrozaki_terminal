@@ -143,3 +143,6 @@ vite.config.ts.timestamp-*
 
 .vercel
 .env*.local
+
+# Prisma client for the storefront database (built by `npm run build`)
+src/generated/

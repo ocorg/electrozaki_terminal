@@ -20,6 +20,8 @@ export const MANAGERS: UserRole[] = ['gerant', 'proprietaire']
 export function toWire(value: unknown): unknown {
   if (value === null || value === undefined) return value
   if (value instanceof Prisma.Decimal) return value.toNumber()
+  // Decimals from the storefront database's client (a separate generated client)
+  if (Prisma.Decimal.isDecimal(value)) return (value as Prisma.Decimal).toNumber()
   if (typeof value === 'bigint') return Number(value)
   if (value instanceof Date) {
     const iso = value.toISOString()

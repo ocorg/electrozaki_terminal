@@ -5,7 +5,7 @@ export type Entity =
   | 'transactions' | 'phones' | 'laptops' | 'accessories' | 'caisse' | 'expenses'
   | 'repairs' | 'clients' | 'suppliers' | 'credits' | 'deliveries' | 'movements'
   | 'inventory' | 'prospects' | 'documents' | 'attendance' | 'categories'
-  | 'settings' | 'users' | 'stores' | 'catalog' | 'changelog'
+  | 'settings' | 'users' | 'stores' | 'catalog' | 'changelog' | 'site'
 
 // Every write also adds an activity-log entry
 const LOG = '/api/log'
@@ -33,6 +33,9 @@ export const AFFECTS: Record<Entity, string[]> = {
   stores:       ['/api/stores', LOG],
   catalog:      ['/api/phones/catalog'],
   changelog:    ['/api/changelog'],
+  // Website (storefront) data managed from "Site web"; reserving a phone for
+  // a web order also changes ERP stock.
+  site:         ['/api/site', '/api/phones', '/api/dashboard', LOG],
 }
 
 // API path of a write → the entities it changes
@@ -65,6 +68,7 @@ const WRITE_ENTITIES: [prefix: string, entities: Entity[]][] = [
   ['/api/users',              ['users']],
   ['/api/stores',             ['stores']],
   ['/api/changelog',          ['changelog']],
+  ['/api/site',               ['site']],
 ]
 
 export function entitiesForWrite(path: string): Entity[] {

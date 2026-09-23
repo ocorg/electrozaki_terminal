@@ -1,5 +1,7 @@
 import Pusher from 'pusher'
-import { REALTIME_CHANNEL, REALTIME_EVENT, entitiesForWrite, type ChangeEvent, type Entity } from '@/lib/data/entities'
+import { waitUntil } from '@vercel/functions'
+import { REALTIME_CHANNEL, REALTIME_EVENT, entitiesForWrite, prefixesFor, type ChangeEvent, type Entity } from '@/lib/data/entities'
+import { syncStorefrontQuietly } from '@/lib/storefront/sync'
 
 const pusher = new Pusher({
   appId:   process.env.PUSHER_APP_ID!,
@@ -32,6 +34,12 @@ export function withNotify<R extends Request, A extends unknown[]>(
     if (res.ok) {
       const entities = entitiesForWrite(new URL(request.url).pathname)
       if (entities.length) await notifyChange(null, entities)
+      // Anything that can change sellable stock or prices → update the
+      // website, after the response (the till never waits for it).
+      const prefixes = prefixesFor(entities)
+      if (prefixes.includes('/api/phones') || prefixes.includes('/api/accessories') || prefixes.includes('/api/categories')) {
+        waitUntil(syncStorefrontQuietly(entities.join(',')))
+      }
     }
     return res
   }

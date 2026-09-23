@@ -198,6 +198,7 @@ export const CODES = {
     credits_importes:       { fr: 'Crédits importés',       ar: 'القروض المستوردة' },
     prospects:              { fr: 'Prospects',              ar: 'العملاء المحتملون' },
     inventaire:             { fr: 'Inventaire',             ar: 'الجرد' },
+    site_web:               { fr: 'Site web',               ar: 'الموقع الإلكتروني' },
   },
 } as const satisfies Record<string, Labels>
 
