@@ -57,12 +57,18 @@ async function login(email, password) {
 async function makeUser(role) {
   const password = crypto.randomBytes(12).toString('base64url')
   const email = `zz-e2e-site-${role}@migration.local`
+  const forget = id => Promise.all([
+    erp.query(`update phones set updated_by = null where updated_by = $1`, [id]),
+    erp.query(`delete from activity_log where user_id = $1`, [id]),
+  ])
+  const { rows: old } = await erp.query(`select id from user_profiles where email = $1`, [email])
+  for (const o of old) await forget(o.id)
   await erp.query(`delete from user_profiles where email = $1`, [email])
   const { rows: [u] } = await erp.query(
     `insert into user_profiles (email, password_hash, display_name, role, store_id, store_locked, is_active)
      values ($1, $2, $3, $4, null, false, true) returning id`, [email, await bcrypt.hash(password, 10), `E2E site ${role}`, role])
   cleanups.push(async () => {
-    await erp.query(`delete from activity_log where user_id = $1`, [u.id])
+    await forget(u.id)
     await erp.query(`delete from user_profiles where id = $1`, [u.id])
   })
   return { id: u.id, api: await login(email, password) }

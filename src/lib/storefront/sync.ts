@@ -1,4 +1,6 @@
+import { randomUUID } from 'node:crypto'
 import { prisma } from '@/lib/db'
+import type { Prisma } from '@/generated/storefront/client'
 import { storefrontDb, storefrontConfigured } from './db'
 import { revalidateStorefront } from './revalidate'
 import {
@@ -10,11 +12,15 @@ import {
 // Keeps the website's catalogue equal to the ERP's sellable stock.
 // Idempotent full reconcile: safe to run any time, as often as needed —
 // after every stock-changing write (see withNotify), once a day by cron, and
-// from the "Synchroniser" button. Only differences are written.
+// from the "Synchroniser" button.
+//
+// Built to need only a handful of database round trips: everything is read
+// up front, compared in memory, and written back in bulk (only what
+// differs), inside one transaction guarded by an advisory lock.
 //
 // The sync owns: price, stock, availability, condition, variants and (for
-// phones) photos. Staff own, from "Site web → Catalogue": name/category of
-// accessories, descriptions, published flag and model photos.
+// phones) name and photos. Staff own, from "Site web → Catalogue": name /
+// category of accessories, descriptions, published flag and model photos.
 // ─────────────────────────────────────────────────────────────────────────
 
 export interface SyncResult {
@@ -54,40 +60,6 @@ export async function readErpStock(): Promise<{ phones: ErpPhone[]; accessories:
 
 type Tx = Parameters<Parameters<ReturnType<typeof storefrontDb>['$transaction']>[0]>[0]
 
-async function uniqueSlug(tx: Tx, base: string, erpKey: string): Promise<string> {
-  for (let n = 1; ; n++) {
-    const slug  = n === 1 ? base : `${base}-${n}`
-    const taken = await tx.product.findUnique({ where: { slug }, select: { erpKey: true } })
-    if (!taken || taken.erpKey === erpKey) return slug
-  }
-}
-
-async function ensureCategory(tx: Tx, code: string, labels: Map<string, string>): Promise<string> {
-  const existing = await tx.category.findUnique({ where: { erpCode: code }, select: { id: true } })
-  if (existing) return existing.id
-
-  if (code === PHONE_CATEGORY_CODE) {
-    // Adopt the site's existing "Téléphones" category when there is one.
-    const phones = await tx.category.findUnique({ where: { slug: 'telephones' } })
-    if (phones && !phones.erpCode) {
-      await tx.category.update({ where: { id: phones.id }, data: { erpCode: code } })
-      return phones.id
-    }
-    const created = await tx.category.create({ data: { name: 'Téléphones', slug: `telephones-${Date.now()}`, erpCode: code } })
-    return created.id
-  }
-
-  // A new ERP accessory category: file it under "Accessoires".
-  const parent = await tx.category.findUnique({ where: { slug: 'accessoires' }, select: { id: true } })
-  const name   = labels.get(code) ?? code
-  let slug     = slugify(name)
-  if (await tx.category.findUnique({ where: { slug } })) slug = `${slug}-${code.replace(/_/g, '-')}`
-  const created = await tx.category.create({
-    data: { name, slug, erpCode: code, parentId: parent?.id ?? null, sortOrder: 100 },
-  })
-  return created.id
-}
-
 // Order-insensitive comparison (Postgres jsonb doesn't keep key order).
 function canon(v: unknown): unknown {
   if (Array.isArray(v)) return v.map(canon)
@@ -100,184 +72,214 @@ const same = (a: unknown, b: unknown) => JSON.stringify(canon(a)) === JSON.strin
 /** True when any field of `want` differs from `cur`. */
 const differs = (cur: Record<string, unknown>, want: Record<string, unknown>) =>
   Object.keys(want).some(k => !same(cur[k] ?? null, want[k] ?? null))
-const num  = (d: { toString(): string } | null | undefined) => (d === null || d === undefined ? null : Number(d.toString()))
+const num   = (d: { toString(): string } | null | undefined) => (d === null || d === undefined ? null : Number(d.toString()))
+const newId = () => `c${randomUUID().replace(/-/g, '').slice(0, 24)}`
 
-async function syncPhones(tx: Tx, listings: PhoneListing[], stats: SyncResult) {
-  const categoryId = await ensureCategory(tx, PHONE_CATEGORY_CODE, new Map())
-  const photos     = await tx.modelPhoto.findMany({ select: { modelKey: true, color: true, url: true } })
-  const photoFor   = (model: string, color: string | null) =>
-    color ? photos.find(p => p.modelKey === model && p.color.toLowerCase() === color.toLowerCase())?.url ?? null : null
-
-  const existing = await tx.product.findMany({
-    where:  { source: 'ERP', isPhone: true },
+async function reconcile(tx: Tx, phones: PhoneListing[], accessories: AccessoryListing[], labels: Map<string, string>, stats: SyncResult) {
+  // ── Read everything once ───────────────────────────────────────────────
+  const products = await tx.product.findMany({
     select: {
-      id: true, erpKey: true, modelKey: true, name: true, condition: true, brand: true, recommendedSalePrice: true,
-      availability: true, tags: true, specs: true, categoryId: true,
-      images:   { select: { id: true, url: true, sortOrder: true }, orderBy: { sortOrder: 'asc' } },
-      variants: { select: {
-        id: true, erpRef: true, name: true, color: true, storageLabel: true, priceOverride: true, stockQuantity: true, imageUrl: true,
-        batteryHealthPercent: true, screenGenuine: true, batteryGenuine: true, cameraGenuine: true,
-        chargingPortGenuine: true, speakerGenuine: true, hasDefects: true, transparencyNotes: true,
-      } },
+      id: true, slug: true, source: true, erpKey: true, modelKey: true, isPhone: true, name: true, condition: true,
+      brand: true, recommendedSalePrice: true, availability: true, tags: true, specs: true,
     },
   })
-  const byKey = new Map(existing.map(p => [p.erpKey, p]))
-  const wanted = new Set(listings.map(l => l.erpKey))
+  const categories = await tx.category.findMany({ select: { id: true, slug: true, erpCode: true } })
+  const photos     = await tx.modelPhoto.findMany({ select: { modelKey: true, color: true, url: true } })
+  const variants   = await tx.productVariant.findMany({
+    where:  { product: { source: 'ERP', isPhone: true } },
+    select: {
+      id: true, productId: true, erpRef: true, name: true, color: true, storageLabel: true, priceOverride: true,
+      stockQuantity: true, imageUrl: true, batteryHealthPercent: true, screenGenuine: true, batteryGenuine: true,
+      cameraGenuine: true, chargingPortGenuine: true, speakerGenuine: true, hasDefects: true, transparencyNotes: true,
+    },
+  })
+  const images    = await tx.productImage.findMany({
+    where:   { product: { source: 'ERP', isPhone: true } },
+    select:  { productId: true, url: true },
+    orderBy: { sortOrder: 'asc' },
+  })
+  const internals = await tx.productInternal.findMany({
+    where:  { product: { source: 'ERP', isPhone: false } },
+    select: { productId: true, stockQuantity: true },
+  })
+  const compat    = await tx.productCompatibility.findMany({
+    where:  { compatibleWith: { source: 'ERP', isPhone: true } },
+    select: { productId: true, compatibleWithId: true, isGiftOption: true },
+  })
 
-  for (const l of listings) {
+  const byKey     = new Map(products.filter(p => p.erpKey).map(p => [p.erpKey!, p]))
+  const slugs     = new Set(products.map(p => p.slug))
+  const claimSlug = (base: string) => {
+    let slug = base
+    for (let n = 2; slugs.has(slug); n++) slug = `${base}-${n}`
+    slugs.add(slug)
+    return slug
+  }
+
+  // ── Categories (rarely more than a create or two) ──────────────────────
+  const categoryFor = new Map(categories.filter(c => c.erpCode).map(c => [c.erpCode!, c.id]))
+  async function ensureCategory(code: string): Promise<string> {
+    const known = categoryFor.get(code)
+    if (known) return known
+    let id: string
+    const phonesCat = categories.find(c => c.slug === 'telephones' && !c.erpCode)
+    if (code === PHONE_CATEGORY_CODE && phonesCat) {
+      // Adopt the site's existing "Téléphones" category.
+      await tx.category.update({ where: { id: phonesCat.id }, data: { erpCode: code } })
+      id = phonesCat.id
+    } else {
+      const parent = code === PHONE_CATEGORY_CODE ? null : categories.find(c => c.slug === 'accessoires')?.id ?? null
+      const name   = code === PHONE_CATEGORY_CODE ? 'Téléphones' : labels.get(code) ?? code
+      let slug     = slugify(name)
+      if (categories.some(c => c.slug === slug)) slug = `${slug}-${code.replace(/_/g, '-')}`
+      const created = await tx.category.create({ data: { name, slug, erpCode: code, parentId: parent, sortOrder: 100 } })
+      categories.push({ id: created.id, slug, erpCode: code })
+      id = created.id
+    }
+    categoryFor.set(code, id)
+    return id
+  }
+
+  const photoFor = (model: string, color: string | null) =>
+    color ? photos.find(p => p.modelKey === model && p.color.toLowerCase() === color.toLowerCase())?.url ?? null : null
+
+  // ── Plan the writes ────────────────────────────────────────────────────
+  const productCreates: Prisma.ProductCreateManyInput[] = []
+  const productUpdates: { id: string; data: Record<string, unknown> }[] = []
+  const variantCreates: Record<string, unknown>[] = []
+  const variantUpdates: { id: string; data: Record<string, unknown> }[] = []
+  const variantDeletes: string[] = []
+  const imageResets: string[] = []
+  const imageCreates: { productId: string; url: string; sortOrder: number; altText: string }[] = []
+  const internalCreates: { productId: string; stockQuantity: number }[] = []
+  const internalUpdates: { productId: string; stockQuantity: number }[] = []
+  const compatCreates: { productId: string; compatibleWithId: string; isGiftOption: boolean }[] = []
+
+  const variantByRef = new Map(variants.filter(v => v.erpRef).map(v => [v.erpRef!, v]))
+  const keptVariants = new Set<string>()
+
+  // Phones
+  const phoneCategory = phones.length ? await ensureCategory(PHONE_CATEGORY_CODE) : ''
+  const wanted = new Set<string>()
+  for (const l of phones) {
+    wanted.add(l.erpKey)
     const core = {
-      name:                 l.name,
-      modelKey:             l.modelKey,
-      brand:                l.brand,
-      condition:            l.grade,
-      isPhone:              true,
-      recommendedSalePrice: l.price,
-      compareAtPrice:       null,
-      availability:         'IN_STOCK' as const,
-      tags:                 l.tags,
-      specs:                l.specs,
-      categoryId,
+      name: l.name, modelKey: l.modelKey, brand: l.brand, condition: l.grade, recommendedSalePrice: l.price,
+      availability: 'IN_STOCK' as const, tags: l.tags, specs: l.specs,
     }
     let product = byKey.get(l.erpKey)
+    let productId: string
     if (!product) {
-      const created = await tx.product.create({
-        data:   { ...core, slug: await uniqueSlug(tx, l.slugBase, l.erpKey), source: 'ERP', erpKey: l.erpKey, published: true },
-        select: { id: true },
+      productId = newId()
+      productCreates.push({
+        id: productId, ...core, isPhone: true, compareAtPrice: null, slug: claimSlug(l.slugBase),
+        categoryId: phoneCategory, source: 'ERP', erpKey: l.erpKey, published: true,
       })
       stats.created++
       // A new storage/grade of a known model inherits its accessories and gifts.
-      const sibling = await tx.product.findFirst({
-        where:  { modelKey: l.modelKey, isPhone: true, id: { not: created.id }, compatibleAccessories: { some: {} } },
-        select: { compatibleAccessories: { select: { productId: true, isGiftOption: true } } },
-      })
+      const sibling = products.find(p => p.modelKey === l.modelKey && p.isPhone && compat.some(c => c.compatibleWithId === p.id))
       if (sibling) {
-        await tx.productCompatibility.createMany({
-          data: sibling.compatibleAccessories.map(c => ({ ...c, compatibleWithId: created.id })),
-          skipDuplicates: true,
-        })
+        for (const c of compat.filter(c => c.compatibleWithId === sibling.id)) {
+          compatCreates.push({ productId: c.productId, compatibleWithId: productId, isGiftOption: c.isGiftOption })
+        }
       }
-      product = { ...created, erpKey: l.erpKey, modelKey: l.modelKey, name: '', condition: l.grade, brand: null, recommendedSalePrice: null as never,
-        availability: 'IN_STOCK', tags: [], specs: null, categoryId, images: [], variants: [] }
-    } else if (
-      product.name !== core.name || product.modelKey !== core.modelKey || product.condition !== core.condition || product.brand !== core.brand ||
-      num(product.recommendedSalePrice) !== core.recommendedSalePrice || product.availability !== core.availability ||
-      !same(product.tags, core.tags) || !same(product.specs, core.specs)
-    ) {
-      // categoryId is only set on creation: staff may move a product.
-      const { categoryId: _c, ...update } = core
-      void _c
-      await tx.product.update({ where: { id: product.id }, data: update })
-      stats.updated++
+      product = undefined
+    } else {
+      productId = product.id
+      if (differs({ ...product, recommendedSalePrice: num(product.recommendedSalePrice) }, core)) {
+        productUpdates.push({ id: productId, data: core }) // category only set on creation: staff may move it
+        stats.updated++
+      }
     }
 
-    // Variants
-    const current = new Map(product.variants.map(v => [v.erpRef, v]))
     for (const v of l.variants) {
       const data = {
-        name:                 v.name,
-        color:                v.color,
-        storageLabel:         v.storageLabel,
-        priceOverride:        v.price,
-        stockQuantity:        v.stockQuantity,
-        imageUrl:             photoFor(l.modelKey, v.photoColor),
-        batteryHealthPercent: v.batteryHealthPercent,
-        screenGenuine:        v.screenGenuine,
-        batteryGenuine:       v.batteryGenuine,
-        cameraGenuine:        v.cameraGenuine,
-        chargingPortGenuine:  v.chargingPortGenuine,
-        speakerGenuine:       v.speakerGenuine,
-        hasDefects:           v.hasDefects,
-        transparencyNotes:    v.transparencyNotes,
+        name: v.name, color: v.color, storageLabel: v.storageLabel, priceOverride: v.price, stockQuantity: v.stockQuantity,
+        imageUrl: photoFor(l.modelKey, v.photoColor), batteryHealthPercent: v.batteryHealthPercent,
+        screenGenuine: v.screenGenuine, batteryGenuine: v.batteryGenuine, cameraGenuine: v.cameraGenuine,
+        chargingPortGenuine: v.chargingPortGenuine, speakerGenuine: v.speakerGenuine,
+        hasDefects: v.hasDefects, transparencyNotes: v.transparencyNotes,
       }
-      const had = current.get(v.erpRef)
+      const had = variantByRef.get(v.erpRef)
       if (!had) {
-        // A unit can move between groups (e.g. a part gets replaced): take it over.
-        await tx.productVariant.deleteMany({ where: { erpRef: v.erpRef } })
-        await tx.productVariant.create({ data: { ...data, productId: product.id, erpRef: v.erpRef } })
+        variantCreates.push({ id: newId(), productId, erpRef: v.erpRef, ...data })
       } else {
-        if (differs({ ...had, priceOverride: num(had.priceOverride) }, data)) {
-          await tx.productVariant.update({ where: { id: had.id }, data })
+        keptVariants.add(had.id)
+        // A unit can move between groups (e.g. a part got replaced): move it.
+        if (had.productId !== productId || differs({ ...had, priceOverride: num(had.priceOverride) }, data)) {
+          variantUpdates.push({ id: had.id, data: { ...data, productId } })
         }
       }
     }
-    const stale = product.variants.filter(v => !l.variants.some(w => w.erpRef === v.erpRef))
-    if (stale.length) await tx.productVariant.deleteMany({ where: { id: { in: stale.map(v => v.id) } } })
 
     // Gallery: the model's photos, colours in stock first.
     const gallery = [
       ...l.colors.map(c => photoFor(l.modelKey, c)),
       ...photos.filter(p => p.modelKey === l.modelKey).map(p => p.url),
     ].filter((u, i, all): u is string => !!u && all.indexOf(u) === i)
-    if (!same(product.images.map(i => i.url), gallery)) {
-      await tx.productImage.deleteMany({ where: { productId: product.id } })
-      if (gallery.length) {
-        await tx.productImage.createMany({
-          data: gallery.map((url, sortOrder) => ({ productId: product!.id, url, sortOrder, altText: l.name })),
-        })
-      }
+    const current = product ? images.filter(i => i.productId === productId).map(i => i.url) : []
+    if (!same(current, gallery)) {
+      if (product) imageResets.push(productId)
+      gallery.forEach((url, sortOrder) => imageCreates.push({ productId, url, sortOrder, altText: l.name }))
     }
   }
+  for (const v of variants) if (!keptVariants.has(v.id)) variantDeletes.push(v.id)
 
-  // Sold out groups: hidden (DISCONTINUED) but kept, so photos/descriptions
-  // come back by themselves when the same model is in stock again.
-  for (const p of existing) {
-    if (wanted.has(p.erpKey ?? '') || (p.availability === 'DISCONTINUED' && p.variants.length === 0)) continue
-    await tx.productVariant.deleteMany({ where: { productId: p.id } })
-    await tx.product.update({ where: { id: p.id }, data: { availability: 'DISCONTINUED' } })
+  // Sold-out groups: hidden (DISCONTINUED) but kept, so photos / texts come
+  // back by themselves when the same model is in stock again.
+  for (const p of products) {
+    if (p.source !== 'ERP' || !p.isPhone || wanted.has(p.erpKey ?? '') || p.availability === 'DISCONTINUED') continue
+    productUpdates.push({ id: p.id, data: { availability: 'DISCONTINUED' } })
     stats.removed++
   }
-}
 
-async function syncAccessories(tx: Tx, listings: AccessoryListing[], labels: Map<string, string>, stats: SyncResult) {
-  const existing = await tx.product.findMany({
-    where:  { source: 'ERP', isPhone: false },
-    select: { id: true, erpKey: true, recommendedSalePrice: true, availability: true, internal: { select: { stockQuantity: true } } },
-  })
-  const byKey    = new Map(existing.map(p => [p.erpKey, p]))
-  const wanted   = new Set(listings.map(l => l.erpKey))
-  const catCache = new Map<string, string>()
-
-  for (const l of listings) {
+  // Accessories
+  const wantedAcc = new Set<string>()
+  const stockOf   = new Map(internals.map(i => [i.productId, i.stockQuantity]))
+  for (const l of accessories) {
+    wantedAcc.add(l.erpKey)
     const availability = l.price !== null && l.stock > 0 ? 'IN_STOCK' as const : 'OUT_OF_STOCK' as const
     const price        = l.price ?? 0
     const product      = byKey.get(l.erpKey)
     if (!product) {
-      let categoryId = catCache.get(l.categoryCode)
-      if (!categoryId) {
-        categoryId = await ensureCategory(tx, l.categoryCode, labels)
-        catCache.set(l.categoryCode, categoryId)
-      }
+      const id = newId()
       // Hidden until staff give it a public name (and ideally a photo).
-      await tx.product.create({
-        data: {
-          slug: await uniqueSlug(tx, l.slugBase, l.erpKey), name: l.name, brand: l.brand, condition: 'NEUF',
-          isPhone: false, recommendedSalePrice: price, availability, categoryId,
-          source: 'ERP', erpKey: l.erpKey, published: false,
-          internal: { create: { stockQuantity: l.stock } },
-        },
+      productCreates.push({
+        id, slug: claimSlug(l.slugBase), name: l.name, brand: l.brand, condition: 'NEUF', isPhone: false,
+        recommendedSalePrice: price, availability, categoryId: await ensureCategory(l.categoryCode),
+        source: 'ERP', erpKey: l.erpKey, published: false,
       })
+      internalCreates.push({ productId: id, stockQuantity: l.stock })
       stats.created++
       continue
     }
     if (num(product.recommendedSalePrice) !== price || product.availability !== availability) {
-      await tx.product.update({ where: { id: product.id }, data: { recommendedSalePrice: price, availability } })
+      productUpdates.push({ id: product.id, data: { recommendedSalePrice: price, availability } })
       stats.updated++
     }
-    if (product.internal?.stockQuantity !== l.stock) {
-      await tx.productInternal.upsert({
-        where:  { productId: product.id },
-        create: { productId: product.id, stockQuantity: l.stock },
-        update: { stockQuantity: l.stock },
-      })
-    }
+    if (!stockOf.has(product.id)) internalCreates.push({ productId: product.id, stockQuantity: l.stock })
+    else if (stockOf.get(product.id) !== l.stock) internalUpdates.push({ productId: product.id, stockQuantity: l.stock })
   }
-
-  for (const p of existing) {
-    if (wanted.has(p.erpKey ?? '') || p.availability === 'DISCONTINUED') continue
-    await tx.product.update({ where: { id: p.id }, data: { availability: 'DISCONTINUED' } })
-    await tx.productInternal.updateMany({ where: { productId: p.id }, data: { stockQuantity: 0 } })
+  for (const p of products) {
+    if (p.source !== 'ERP' || p.isPhone || wantedAcc.has(p.erpKey ?? '') || p.availability === 'DISCONTINUED') continue
+    productUpdates.push({ id: p.id, data: { availability: 'DISCONTINUED' } })
+    if ((stockOf.get(p.id) ?? 0) !== 0) internalUpdates.push({ productId: p.id, stockQuantity: 0 })
     stats.removed++
   }
+
+  // ── Write (bulk where possible) ────────────────────────────────────────
+  if (productCreates.length)  await tx.product.createMany({ data: productCreates })
+  if (variantDeletes.length)  await tx.productVariant.deleteMany({ where: { id: { in: variantDeletes } } })
+  for (const u of variantUpdates) await tx.productVariant.update({ where: { id: u.id }, data: u.data })
+  if (variantCreates.length)  await tx.productVariant.createMany({ data: variantCreates as never })
+  for (const u of productUpdates) await tx.product.update({ where: { id: u.id }, data: u.data })
+  if (imageResets.length)     await tx.productImage.deleteMany({ where: { productId: { in: imageResets } } })
+  if (imageCreates.length)    await tx.productImage.createMany({ data: imageCreates })
+  if (internalCreates.length) await tx.productInternal.createMany({ data: internalCreates, skipDuplicates: true })
+  for (const u of internalUpdates) {
+    await tx.productInternal.update({ where: { productId: u.productId }, data: { stockQuantity: u.stockQuantity } })
+  }
+  if (compatCreates.length)   await tx.productCompatibility.createMany({ data: compatCreates, skipDuplicates: true })
 }
 
 export async function syncStorefront(): Promise<SyncResult> {
@@ -294,17 +296,15 @@ export async function syncStorefront(): Promise<SyncResult> {
       select: { unitRef: true },
     }),
   ])
-  const heldRefs          = new Set(held.flatMap(h => h.unitRef!.split(',')))
-  const phones            = stock.filter(p => !heldRefs.has(refOf('tel-unit', p.phone_id)))
-  const phoneListings     = buildPhoneListings(phones)
-  const accessoryListings = buildAccessoryListings(accessories)
+  const heldRefs = new Set(held.flatMap(h => h.unitRef!.split(',')))
+  const phones   = stock.filter(p => !heldRefs.has(refOf('tel-unit', p.phone_id)))
   stats.phones      = phones.length
   stats.accessories = accessories.length
 
   await storefrontDb().$transaction(async tx => {
     await tx.$executeRaw`select pg_advisory_xact_lock(${LOCK_KEY})`
-    await syncPhones(tx, phoneListings, stats)
-    await syncAccessories(tx, accessoryListings, new Map(categories.map(c => [c.code, c.label_fr])), stats)
+    await reconcile(tx, buildPhoneListings(phones), buildAccessoryListings(accessories),
+      new Map(categories.map(c => [c.code, c.label_fr])), stats)
   }, { timeout: 60_000, maxWait: 20_000 })
 
   stats.ms = Date.now() - started
