@@ -23,6 +23,9 @@ export default function ComboBox({
   const [query, setQuery] = useState('')
   const containerRef      = useRef<HTMLDivElement>(null)
   const inputRef          = useRef<HTMLInputElement>(null)
+  // Only what the user actually typed is committed on close: opening the list
+  // clears the search box, which must never erase the current value
+  const typed             = useRef(false)
 
   // Sync query with external value when it changes (e.g. parent resets)
   useEffect(() => {
@@ -38,28 +41,33 @@ export default function ComboBox({
     }
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
-  }, [query])
+  }, [open, query, value, onChange]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function commitAndClose() {
+    if (!open) return
     // Whatever is typed, commit it as the value (allows custom entries)
-    if (query.trim() !== value) onChange(query.trim())
+    if (typed.current && query.trim() !== value) onChange(query.trim())
+    typed.current = false
     setOpen(false)
   }
 
   function handleFocus() {
     if (disabled) return
     setQuery('')          // clear so user sees filtered list from scratch
+    typed.current = false
     setOpen(true)
   }
 
   function handleInput(e: React.ChangeEvent<HTMLInputElement>) {
     setQuery(e.target.value)
+    typed.current = true
     setOpen(true)
     // Live-update the form value as user types (for free-text support)
     onChange(e.target.value)
   }
 
   function select(opt: string) {
+    typed.current = false
     onChange(opt)
     setQuery(opt)
     setOpen(false)

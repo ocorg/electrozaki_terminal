@@ -26,15 +26,26 @@ interface Props {
   onClose:       () => void
 }
 
+const INPUT = 'w-full mt-1 border border-amber-200 rounded-lg px-3 py-2 text-sm bg-white'
+
 export default function ExchangeIntakePanel({ exchangePanel, storeId, isAr, onSuccess, onClose }: Props) {
+  // Everything entered in the POS trade-in form, shown again so it can be checked
+  // and completed before the phone goes into stock
   const [form, setForm] = useState({
-    modele:     exchangePanel.model_echange,
-    imei:       exchangePanel.imei_echange,
-    marque:     exchangePanel.marque_echange,
-    prix_achat: exchangePanel.valeur_echange,
-    couleur:    '',
-    capacite:   '',
+    marque:      exchangePanel.marque_echange,
+    modele:      exchangePanel.model_echange,
+    imei:        exchangePanel.imei_echange,
+    couleur:     exchangePanel.couleur_echange,
+    stockage:    exchangePanel.stockage_echange,
+    ram:         exchangePanel.ram_echange,
+    batterie:    exchangePanel.battery_echange != null ? String(exchangePanel.battery_echange) : '',
+    prix_achat:  String(exchangePanel.valeur_echange || ''),
+    prix_vente:  exchangePanel.prix_vente_echange != null ? String(exchangePanel.prix_vente_echange) : '',
+    prix_min:    exchangePanel.prix_min_echange   != null ? String(exchangePanel.prix_min_echange)   : '',
+    reparation:  exchangePanel.echange_vers_reparation,
   })
+  const set = (k: keyof typeof form, v: string | boolean) => setForm(p => ({ ...p, [k]: v }))
+  const num = (v: string) => (v.trim() === '' ? null : Number(v))
   const [loading, setLoading] = useState(false)
 
   async function handleAddToStock() {
@@ -49,19 +60,19 @@ export default function ExchangeIntakePanel({ exchangePanel, storeId, isAr, onSu
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           store_id:              storeId,
-          marque:                form.marque || 'Inconnu',
-          model:                 form.modele,
-          imei:                  form.imei,
-          prix_achat:            form.prix_achat,
-          prix_vente_recommande: exchangePanel.prix_vente_echange ?? null,
-          prix_vente_minimum:    exchangePanel.prix_min_echange   ?? null,
-          couleur:               exchangePanel.couleur_echange  || form.couleur  || null,
-          stockage:              exchangePanel.stockage_echange || form.capacite || null,
-          battery_level:         exchangePanel.battery_echange  ?? null,
-          ram:                   exchangePanel.ram_echange       || null,
+          marque:                form.marque.trim() || 'Inconnu',
+          model:                 form.modele.trim(),
+          imei:                  form.imei.trim(),
+          couleur:               form.couleur.trim()  || null,
+          stockage:              form.stockage.trim() || null,
+          ram:                   form.ram.trim()      || null,
+          battery_level:         num(form.batterie),
+          prix_achat:            num(form.prix_achat),
+          prix_vente_recommande: num(form.prix_vente),
+          prix_vente_minimum:    num(form.prix_min),
           condition:             'occasion',
           source:                'echange',
-          status:                exchangePanel.echange_vers_reparation ? 'إصلاح' : 'متوفر',
+          status:                form.reparation ? 'en_reparation' : 'disponible',
           location:              'magasin_principal',
           txn_ref_id:            exchangePanel.txn_id,
         }),
@@ -83,25 +94,59 @@ export default function ExchangeIntakePanel({ exchangePanel, storeId, isAr, onSu
       <div className="grid grid-cols-2 gap-3 mb-3">
         <div>
           <label className="text-xs text-amber-700 font-medium">{t(isAr, 'common.brand')}</label>
-          <input className="w-full mt-1 border border-amber-200 rounded-lg px-3 py-2 text-sm bg-white"
-            value={form.marque} onChange={e => setForm(p => ({ ...p, marque: e.target.value }))} />
+          <input className={INPUT}
+            value={form.marque as string} onChange={e => set('marque', e.target.value)} />
         </div>
         <div>
           <label className="text-xs text-amber-700 font-medium">{t(isAr, 'common.model')} *</label>
-          <input className="w-full mt-1 border border-amber-200 rounded-lg px-3 py-2 text-sm bg-white"
-            value={form.modele} onChange={e => setForm(p => ({ ...p, modele: e.target.value }))} />
+          <input className={INPUT}
+            value={form.modele as string} onChange={e => set('modele', e.target.value)} />
         </div>
         <div>
           <label className="text-xs text-amber-700 font-medium">IMEI *</label>
-          <input className="w-full mt-1 border border-amber-200 rounded-lg px-3 py-2 text-sm bg-white font-mono"
-            value={form.imei} onChange={e => setForm(p => ({ ...p, imei: e.target.value }))} />
+          <input className={INPUT + ' font-mono'}
+            value={form.imei as string} onChange={e => set('imei', e.target.value)} />
+        </div>
+        <div>
+          <label className="text-xs text-amber-700 font-medium">{isAr ? 'اللون' : 'Couleur'}</label>
+          <input className={INPUT}
+            value={form.couleur as string} onChange={e => set('couleur', e.target.value)} />
+        </div>
+        <div>
+          <label className="text-xs text-amber-700 font-medium">{isAr ? 'السعة' : 'Stockage'}</label>
+          <input className={INPUT}
+            value={form.stockage as string} onChange={e => set('stockage', e.target.value)} />
+        </div>
+        <div>
+          <label className="text-xs text-amber-700 font-medium">RAM</label>
+          <input className={INPUT}
+            value={form.ram as string} onChange={e => set('ram', e.target.value)} />
+        </div>
+        <div>
+          <label className="text-xs text-amber-700 font-medium">{isAr ? 'البطارية (%)' : 'Batterie (%)'}</label>
+          <input className={INPUT} type="number"
+            value={form.batterie as string} onChange={e => set('batterie', e.target.value)} />
         </div>
         <div>
           <label className="text-xs text-amber-700 font-medium">{isAr ? 'سعر الشراء' : 'Prix achat (MAD)'}</label>
-          <input type="number" className="w-full mt-1 border border-amber-200 rounded-lg px-3 py-2 text-sm bg-white"
-            value={form.prix_achat} onChange={e => setForm(p => ({ ...p, prix_achat: Number(e.target.value) }))} />
+          <input className={INPUT} type="number"
+            value={form.prix_achat as string} onChange={e => set('prix_achat', e.target.value)} />
+        </div>
+        <div>
+          <label className="text-xs text-amber-700 font-medium">{isAr ? 'سعر البيع' : 'Prix vente (MAD)'}</label>
+          <input className={INPUT} type="number"
+            value={form.prix_vente as string} onChange={e => set('prix_vente', e.target.value)} />
+        </div>
+        <div>
+          <label className="text-xs text-amber-700 font-medium">{isAr ? 'السعر الأدنى' : 'Prix minimum (MAD)'}</label>
+          <input className={INPUT} type="number"
+            value={form.prix_min as string} onChange={e => set('prix_min', e.target.value)} />
         </div>
       </div>
+      <label className="flex items-center gap-2 mb-3 text-xs font-medium text-amber-800 cursor-pointer select-none">
+        <input type="checkbox" checked={form.reparation} onChange={e => set('reparation', e.target.checked)} />
+        {isAr ? 'إرسال للإصلاح قبل الوضع في المخزون' : 'Envoyer en réparation avant mise en stock'}
+      </label>
       <div className="flex gap-2">
         <button onClick={handleAddToStock} disabled={loading}
           className="px-4 py-2 rounded-xl bg-amber-600 text-white text-sm font-medium hover:bg-amber-700 transition-all disabled:opacity-50">
