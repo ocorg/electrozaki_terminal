@@ -10,7 +10,8 @@ import {
   Wrench, Users, Truck, Receipt, Vault, ArrowLeftRight,
   Settings, LogOut, Globe, ChevronRight,
   PanelLeftClose, PanelLeftOpen, Store, FileText, Clock,
-  BarChart3, UserCheck, ScrollText, Shield, PackageCheck, CreditCard, List, PackageSearch
+  BarChart3, UserCheck, ScrollText, Shield, PackageCheck, CreditCard, List, PackageSearch,
+  ShoppingBag, Tag, Inbox
 } from 'lucide-react'
 import type { UserRole } from '@/types/database'
 import { useLanguageStore } from '@/lib/stores/language'
@@ -65,6 +66,11 @@ function getNavItems(portalBase: string, portalType: string): NavItem[] {
     { href: `${portalBase}/caisse`,           icon: Vault,           label: 'Caisse du jour',     roles: ['employe','gerant','proprietaire'] },
     { href: `${portalBase}/movements`,        icon: ArrowLeftRight,  label: 'Transferts stock',   roles: ['gerant','proprietaire'] },
     { href: `${portalBase}/credits`,          icon: CreditCard,      label: 'Crédits clients',    roles: ['gerant','proprietaire'] },
+    { divider: true, label: 'SITE WEB',                                                           roles: ['employe','gerant','proprietaire'] },
+    { href: `${portalBase}/site/orders`,      icon: ShoppingBag,     label: 'Commandes web',      roles: ['employe','gerant','proprietaire'] },
+    { href: `${portalBase}/site/requests`,    icon: Inbox,           label: 'Demandes du site',   roles: ['employe','gerant','proprietaire'] },
+    { href: `${portalBase}/site/catalog`,     icon: Globe,           label: 'Catalogue du site',  roles: ['gerant','proprietaire'] },
+    { href: `${portalBase}/site/promos`,      icon: Tag,             label: 'Promos & packs',     roles: ['gerant','proprietaire'] },
   ]
 }
 

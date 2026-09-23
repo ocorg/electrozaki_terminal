@@ -1,0 +1,522 @@
+// ─────────────────────────────────────────────────────────────────────────
+// GENERATED COPY — do not edit. Source: electrozaki-storefront/prisma/schema.prisma
+// (that project owns this database and its migrations). Refresh with
+// `node scripts/pull-storefront-schema.mjs`. Used only to generate the ERP's
+// client for the website database (src/lib/storefront/db.ts).
+// ─────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────
+// Electro Zaki Storefront — Prisma Schema (v1)
+// Datasource: Neon (Postgres), accessed via Prisma from Next.js (App Router)
+// ─────────────────────────────────────────────────────────────────────────
+//
+// DESIGN RULE (read this before touching the storefront code):
+// `Product` is the ONLY model the public storefront (product pages, search,
+// collections) is allowed to query. `ProductInternal` holds everything
+// staff-only (cost, supplier, margin, exact stock count). Never `include`
+// or `select` ProductInternal from any file under `app/(storefront)`.
+// The safest way to enforce this in code (built in deliverable 2) is a
+// single `lib/db/public-products.ts` file that is the *only* place allowed
+// to import the Prisma client for product reads on the public side, and
+// whose functions hard-code the field list — so a future developer adding
+// `purchasePrice` to a page has to notice they're bypassing that file.
+// ─────────────────────────────────────────────────────────────────────────
+
+generator client {
+  provider = "prisma-client"
+  output   = "../../src/generated/storefront"
+}
+
+datasource db {
+  provider = "postgresql"
+  // No `url`/`directUrl` here — Prisma 7's driver-adapter architecture takes
+  // the app's connection from the adapter (lib/db/client.ts) and the CLI's
+  // connection from prisma.config.ts, not from this file.
+}
+
+// ── Enums ───────────────────────────────────────────────────────────────
+
+// 4-tier grading standard from the phase-2 spec, replacing the earlier
+// NEW/REFURBISHED/USED. This is a breaking rename — every place that reads
+// ProductCondition (product page, ProductCard) needs updating alongside it.
+enum ProductCondition {
+  NEUF
+  TRES_BON
+  BON
+  PIECES_REMPLACEES
+}
+
+// Deliberately NOT the ERP's Arabic operational enum (متوفر/مباع/إصلاح/...).
+// That enum describes a phone's position in a POS workflow (sold, mid-repair,
+// mid-exchange, in transfer). A storefront listing only ever needs to say
+// "can a customer request this right now" — so it gets its own, simpler enum.
+enum AvailabilityStatus {
+  IN_STOCK
+  OUT_OF_STOCK
+  COMING_SOON // matches the current "coming soon" placeholder on accessory collections
+  DISCONTINUED
+}
+
+// Where a product's stock and price come from. ERP products are created and
+// kept up to date by the ERP's sync (electrozaki_terminal,
+// src/lib/storefront/sync.ts): staff never edit their price/stock/condition
+// here — only the presentation (photos, description, category, published).
+enum ProductSource {
+  MANUAL
+  ERP
+}
+
+enum OrderRequestStatus {
+  NEW
+  CONTACTED
+  CONFIRMED
+  CANCELLED
+}
+
+// ── Catalog ─────────────────────────────────────────────────────────────
+
+// A flat-or-nested category tree, so "Accessoires" can have children like
+// Pochettes / Incassables / Câbles / Chargeurs / Oraimo without hardcoding
+// them as an enum (new subcategories are then a data change, not a deploy).
+model Category {
+  id        String     @id @default(cuid())
+  name      String
+  slug      String     @unique
+  // The ERP accessory-category code (or "telephone") this category receives
+  // synced products for. Null for purely hand-made categories.
+  erpCode   String?    @unique
+  parentId  String?
+  parent    Category?  @relation("CategoryToCategory", fields: [parentId], references: [id])
+  children  Category[] @relation("CategoryToCategory")
+  sortOrder Int        @default(0)
+  products  Product[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([parentId])
+}
+
+// The PUBLIC product view. Every field here is safe to render on the site.
+model Product {
+  id          String           @id @default(cuid())
+  slug        String           @unique
+  name        String
+  brand       String?
+  condition   ProductCondition
+  description String?          @db.Text
+
+  // Drives the checkout's dynamic payment logic (phase-2): an order needs
+  // the 300 DH advance if ANY item has isPhone=true. Deliberately an
+  // explicit staff-set flag rather than inferred from category name/slug,
+  // which would silently break if a category gets renamed.
+  isPhone Boolean @default(false)
+
+  // Flexible spec sheet (e.g. { "Stockage": "128GB", "RAM": "6GB", "Écran": "6.1\"" })
+  // so phones/laptops/accessories don't need different tables for differing spec sets.
+  specs Json?
+
+  // Naming matches the ERP's "recommended sale price" concept for a phone,
+  // so a future shared catalog is a rename-free merge, not a remap.
+  recommendedSalePrice Decimal  @db.Decimal(10, 2)
+  compareAtPrice       Decimal? @db.Decimal(10, 2) // optional "was" price for promos
+
+  availability AvailabilityStatus @default(IN_STOCK)
+  tags         String[]           @default([]) // free-form search/facet keywords
+
+  // ERP link — see ProductSource. erpKey identifies the ERP group this
+  // product mirrors (a phone model+storage+grade, or one accessory); it is
+  // an opaque hash, never an ERP id. `published` = false hides the product
+  // from every public page (synced accessories start hidden until staff
+  // give them a public name).
+  source    ProductSource @default(MANUAL)
+  erpKey    String?       @unique
+  published Boolean       @default(true)
+  // Synced phones: normalised "brand|model" shared by every storage/grade
+  // of one model — lets staff set photos and gift options once per model.
+  modelKey  String?
+
+  // Phase-2 "transparency" spec: battery health is iPhone-specific in
+  // practice but kept generic here rather than a phone-only subtype: any
+  // used device with a battery can carry it, and it's just null otherwise.
+  batteryHealthPercent Int?
+  // Dashboard fields for the phase-2 "état" visual — null means not
+  // applicable (e.g. an accessory, or a phone with no Face ID hardware),
+  // not "unknown", so the UI can tell the difference and simply omit the
+  // tile rather than showing a false negative.
+  faceIdWorking        Boolean?
+  screenGenuine        Boolean?
+  batteryGenuine       Boolean?
+  // Extends the same genuine/replaced tracking to the rest of the
+  // component list the repair-request flow already uses (écran, batterie,
+  // caméra, connecteur, son) — one consistent vocabulary across the app.
+  cameraGenuine        Boolean?
+  chargingPortGenuine  Boolean?
+  speakerGenuine       Boolean?
+  hasDefects           Boolean  @default(false)
+  transparencyNotes    String?  @db.Text // shown on the PDP when hasDefects is true
+
+  metaTitle       String?
+  metaDescription String?
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  images   ProductImage[]
+  variants ProductVariant[]
+
+  // Phase-2 accessory compatibility + gift-bundle spec. A phone's
+  // `giftOptions` are its own `compatibleAccessories` filtered by
+  // `isGiftOption` — modeled as one join table so "does this case fit that
+  // phone" and "which cases are free gift choices for that phone" share the
+  // same data rather than drifting apart as two separate lists.
+  compatibleAccessories ProductCompatibility[] @relation("CompatibilityPhone")
+  compatibleWithPhones  ProductCompatibility[] @relation("CompatibilityAccessory")
+
+  // 1:1 to the staff-only slice. Optional at the type level only because
+  // Prisma requires it on the "many/one" side — every real product should
+  // have one; enforce that in the creation flow, not by making it required
+  // here (making it required here would force every public query to be
+  // capable of loading it, which is exactly what we don't want).
+  internal ProductInternal?
+
+  orderRequestItems OrderRequestItem[]
+
+  // Curated bundles this product is a member of (e.g. "iPhone 13 + case +
+  // glass"). See Bundle below — bundlePrice lives on the bundle, not here.
+  bundleItems BundleItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([categoryId])
+  @@index([availability])
+  @@index([published])
+  @@index([modelKey])
+}
+
+model ProductImage {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  altText   String?
+  sortOrder Int     @default(0)
+
+  @@index([productId])
+}
+
+// Optional per-product options (storage size, color, bundle, etc). A
+// product with no meaningful options simply has zero variants.
+//
+// Also doubles as "one specific physical unit in a batch" — a shipment of
+// otherwise-identical phones differing only by color/storage uses color +
+// storageLabel + imageUrl + stockQuantity; a shipment of individually
+// reconditioned units (each with its own replaced part and price) uses the
+// genuine/defect fields below instead. Every field here is optional and
+// falls back to the matching Product-level field when null — a variant
+// only needs to set what actually differs for that unit, not everything.
+model ProductVariant {
+  id            String   @id @default(cuid())
+  productId     String
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name          String // e.g. "256GB — Bleu"
+  priceOverride Decimal? @db.Decimal(10, 2) // null = use Product.recommendedSalePrice
+  skuOrRef      String?
+  // Opaque reference of the ERP unit(s) this variant mirrors (HMAC of the
+  // ERP id — never the id or IMEI itself). Lets staff find the exact phone
+  // a customer ordered.
+  erpRef        String?  @unique
+
+  // "Clean batch" attributes — color drives the color-swatch picker and
+  // which photo displays; storageLabel is informational (e.g. "128GB").
+  color         String?
+  storageLabel  String?
+  imageUrl      String?
+  // Per-variant stock — a specific color/storage combo (or a specific
+  // unit) can be sold out independently of the rest of the product.
+  stockQuantity Int     @default(0)
+
+  // "Faulty batch" attributes — this specific unit's condition, same
+  // vocabulary as Product's own fields.
+  batteryHealthPercent Int?
+  faceIdWorking        Boolean?
+  screenGenuine        Boolean?
+  batteryGenuine       Boolean?
+  cameraGenuine        Boolean?
+  chargingPortGenuine  Boolean?
+  speakerGenuine       Boolean?
+  hasDefects           Boolean  @default(false)
+  transparencyNotes    String?  @db.Text
+
+  orderRequestItems OrderRequestItem[]
+
+  createdAt DateTime @default(now())
+
+  @@index([productId])
+}
+
+// Links an accessory to a phone it fits. `isGiftOption` marks it as also
+// offered as one of the free choices in the phase-2 gift-bundle popup for
+// that specific phone — the accessory-page "does this fit my phone?"
+// selector and the phone-page "pick your free gift" popup both read from
+// this same table instead of two separately-maintained lists.
+model ProductCompatibility {
+  id String @id @default(cuid())
+
+  productId String // the accessory
+  product   Product @relation("CompatibilityAccessory", fields: [productId], references: [id], onDelete: Cascade)
+
+  compatibleWithId String // the phone
+  compatibleWith   Product @relation("CompatibilityPhone", fields: [compatibleWithId], references: [id], onDelete: Cascade)
+
+  isGiftOption Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@unique([productId, compatibleWithId])
+  @@index([compatibleWithId])
+}
+
+// The STAFF-ONLY slice. The storefront's query layer must never import this
+// model. IMEI is deliberately excluded (an ERP-only, per-unit field) — if a
+// future merge needs per-unit serials, that's a new table added at that
+// point, not something v1 needs to carry.
+model ProductInternal {
+  id        String  @id @default(cuid())
+  productId String  @unique
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  // Optional: ERP-synced products never carry cost data here (it stays in
+  // the ERP) — their row only holds the stock count used to validate orders.
+  purchasePrice Decimal? @db.Decimal(10, 2)
+  minSalePrice  Decimal? @db.Decimal(10, 2) // price floor, mirrors the ERP's concept
+  supplier      String? // plain text for v1, not a Supplier table —
+  // the ERP's 4-type supplier model is ERP-only complexity
+  stockQuantity Int     @default(0)
+  sourceNote    String? // e.g. "Douane auction", "reprise client"
+  internalNotes String? @db.Text
+
+  updatedAt DateTime @updatedAt
+}
+
+// ── Cart → WhatsApp / order-request handoff ────────────────────────────
+//
+// The cart itself is NOT modeled here — it lives client-side only (React
+// state / localStorage-free session state) until the customer submits it.
+// Submission is the moment a cart becomes durable data, as an OrderRequest.
+// This keeps the schema simple and avoids storing abandoned carts nobody
+// asked to save. If you'd rather persist in-progress carts too, say so
+// before deliverable 2 and this gets a `Cart`/`CartItem` pair added.
+
+model OrderRequest {
+  id               String             @id @default(cuid())
+  customerName     String
+  customerPhone    String
+  deliveryAddress  String?            @db.Text
+  status           OrderRequestStatus @default(NEW)
+  totalEstimate    Decimal            @db.Decimal(10, 2)
+  whatsappOpenedAt DateTime? // set once the WhatsApp prefill was triggered client-side
+  notes            String?            @db.Text
+
+  // Phase-2 dynamic payment tunnel. requiresAdvance is computed once at
+  // submission time from whether the cart contained an isPhone item, then
+  // stored — so a later catalog change (marking something isPhone) never
+  // silently rewrites the terms of an order already placed.
+  requiresAdvance      Boolean              @default(false)
+  advancePaymentStatus AdvancePaymentStatus @default(NOT_REQUIRED)
+  // Object key in the PRIVATE receipts bucket (never a public URL). Staff
+  // view it through a short-lived signed link generated by the ERP.
+  receiptKey           String?
+  receiptUrl           String? // legacy public URL — unused, dropped once the new code is live
+  receiptUploadedAt    DateTime?
+  dataConsentAccepted  Boolean              @default(false)
+
+  // Promo-code discount, locked in at submission time — same philosophy as
+  // requiresAdvance above: a later change to the code (or its deletion)
+  // must never rewrite the terms of an order already placed.
+  promoCodeId    String?
+  promoCode      PromoCode? @relation(fields: [promoCodeId], references: [id])
+  discountAmount Decimal    @default(0) @db.Decimal(10, 2)
+
+  items OrderRequestItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+}
+
+enum AdvancePaymentStatus {
+  NOT_REQUIRED
+  AWAITING_RECEIPT
+  RECEIPT_UPLOADED
+  VERIFIED
+  REJECTED
+}
+
+model OrderRequestItem {
+  id             String       @id @default(cuid())
+  orderRequestId String
+  orderRequest   OrderRequest @relation(fields: [orderRequestId], references: [id], onDelete: Cascade)
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+
+  // SetNull: a synced phone's variant is deleted once the phone is sold —
+  // unitRef below keeps the link to the exact ERP unit that was ordered.
+  variantId String?
+  variant   ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  unitRef   String?
+
+  // How the line was priced by the server: a free gift for a phone in the
+  // same order, or part of a pack (bundleId).
+  isGift   Boolean @default(false)
+  bundleId String?
+
+  // Snapshots — so an edited or later-discontinued product doesn't silently
+  // rewrite the history of what was actually requested.
+  productNameSnapshot String
+  priceAtRequest      Decimal @db.Decimal(10, 2)
+  quantity            Int     @default(1)
+
+  @@index([orderRequestId])
+  @@index([productId])
+}
+
+// ── Contact page ────────────────────────────────────────────────────────
+// Simple durable log of contact-form submissions, separate from OrderRequest
+// since a contact inquiry isn't necessarily about specific products.
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String?
+  email     String?
+  message   String   @db.Text
+  createdAt DateTime @default(now())
+}
+
+// ── Repair diagnostic (phase-2) ─────────────────────────────────────────
+
+enum RepairRequestStatus {
+  NEW
+  CONTACTED
+  QUOTED
+  CONFIRMED
+  CANCELLED
+}
+
+// Not linked to Product — a device brought in for repair is often a model
+// we don't sell, so device info is free text rather than a Product
+// reference. problemAreas is a plain string array of area keys (ecran,
+// batterie, camera, connecteur, son, reseau) chosen from the interactive
+// diagnostic step, not user-typed.
+model RepairRequest {
+  id            String              @id @default(cuid())
+  customerName  String
+  customerPhone String
+  deviceBrand   String
+  deviceModel   String
+  problemAreas  String[]
+  notes         String?             @db.Text
+  status        RepairRequestStatus @default(NEW)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+}
+
+// ── Discounts & bundles ─────────────────────────────────────────────────
+
+enum PromoCodeType {
+  PERCENTAGE
+  FIXED_AMOUNT
+}
+
+// Customer-entered codes, applied in the cart before submission. Kept
+// separate from Product.compareAtPrice (the staff-set "sale price" shown
+// directly on a listing) — a promo code is a targeted, redeemable discount
+// rather than a standing merchandising price.
+model PromoCode {
+  id        String        @id @default(cuid())
+  code      String        @unique
+  type      PromoCodeType
+  value     Decimal       @db.Decimal(10, 2) // 10 means "10%" or "10 MAD", per `type`
+  active    Boolean       @default(true)
+  startsAt  DateTime?
+  expiresAt DateTime?
+
+  // Both optional — null means "no cap" / "no minimum".
+  maxRedemptions  Int?
+  redemptionCount Int      @default(0)
+  minOrderAmount  Decimal? @db.Decimal(10, 2)
+
+  orderRequests OrderRequest[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// A staff-curated set of products sold together at one combined price
+// (e.g. "iPhone 13 + coque + verre trempé"). Distinct from the existing
+// ProductCompatibility "free gift" mechanic — a bundle item is priced, not
+// free, and bundles aren't tied to exactly one phone the way gift options
+// are.
+model Bundle {
+  id          String  @id @default(cuid())
+  name        String
+  slug        String  @unique
+  description String? @db.Text
+  bundlePrice Decimal @db.Decimal(10, 2)
+  active      Boolean @default(true)
+
+  items BundleItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model BundleItem {
+  id       String @id @default(cuid())
+  bundleId String
+  bundle   Bundle @relation(fields: [bundleId], references: [id], onDelete: Cascade)
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+
+  quantity Int @default(1)
+
+  @@unique([bundleId, productId])
+  @@index([productId])
+}
+
+// ── ERP photos ──────────────────────────────────────────────────────────
+
+// One photo per phone model + colour, uploaded once by staff in the ERP and
+// reused by every synced product/unit of that model and colour (whatever
+// the storage or grade). modelKey is the normalised "brand|model".
+model ModelPhoto {
+  id        String   @id @default(cuid())
+  modelKey  String
+  color     String
+  url       String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([modelKey, color])
+}
+
+// ── Abuse protection ────────────────────────────────────────────────────
+
+// One row per public form submission / upload, used to cap how often a
+// single visitor (hashed IP, never the raw address) can submit. Rows older
+// than a day are pruned as new ones arrive.
+model RateLimitHit {
+  id        BigInt   @id @default(autoincrement())
+  bucket    String
+  keyHash   String
+  createdAt DateTime @default(now())
+
+  @@index([bucket, keyHash, createdAt])
+  @@index([createdAt])
+}

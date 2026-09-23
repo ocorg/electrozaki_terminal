@@ -5,8 +5,8 @@ import { authConfig } from '@/auth.config'
 
 const { auth } = NextAuth(authConfig)
 
-// Paths that never need auth
-const PUBLIC_PATHS = ['/login', '/select-store']
+// Paths that never need auth. /api/cron/* checks CRON_SECRET itself.
+const PUBLIC_PATHS = ['/login', '/select-store', '/api/cron/']
 
 // Paths that are portal roots — require auth + correct store access
 const PORTAL_PATHS = ['/ez', '/bzg']

@@ -218,6 +218,7 @@ enum log_module {
   credits_importes
   prospects
   inventaire
+  site_web
 }
 
 model categories {
