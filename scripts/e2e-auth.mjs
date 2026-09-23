@@ -32,6 +32,8 @@ function cookieJar() {
     },
     header: () => [...jar].map(([k, v]) => `${k}=${v}`).join('; '),
     has: (k) => jar.has(k),
+    // secure (https) cookies are prefixed: __Secure-authjs.session-token
+    hasSession: () => [...jar.keys()].some(k => k.endsWith('authjs.session-token')),
   }
 }
 
@@ -73,13 +75,13 @@ try {
 
   // Bad credentials / inactive
   let l = await login(users.staff.email, 'wrong-password')
-  check('wrong password rejected', /error=CredentialsSignin/.test(l.url) && !l.jar.has('authjs.session-token'), l.url)
+  check('wrong password rejected', /error=CredentialsSignin/.test(l.url) && !l.jar.hasSession(), l.url)
   l = await login(users.inactive.email, password)
-  check('inactive account → code=inactive', /code=inactive/.test(l.url) && !l.jar.has('authjs.session-token'), l.url)
+  check('inactive account → code=inactive', /code=inactive/.test(l.url) && !l.jar.hasSession(), l.url)
 
   // Store-locked staff
   l = await login(users.staff.email.toUpperCase(), password)
-  check('staff login (email case-insensitive) sets session', l.jar.has('authjs.session-token'), l.url)
+  check('staff login (email case-insensitive) sets session', l.jar.hasSession(), l.url)
   const sessRes = await fetch(BASE + '/api/auth/session', { headers: { cookie: l.jar.header() } })
   const sess = await sessRes.json()
   const su = sess?.user ?? {}
