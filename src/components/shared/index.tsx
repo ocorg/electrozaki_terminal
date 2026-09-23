@@ -1,4 +1,7 @@
-'use client'
+// No 'use client' here on purpose: this shared UI kit is only imported by client
+// components, which already put it in the browser bundle. Marking it as a
+// client entry makes Next's editor plugin flag every callback prop
+// (onClick, onClose…) as "must be serializable" (TS 71007).
 import React from 'react'
 import { cn } from '@/lib/utils'
 import { codeLabel, type CodeDomain, type Code, type Lang } from '@/lib/codes'
