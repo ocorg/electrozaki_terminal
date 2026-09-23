@@ -317,11 +317,19 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
   const fariq          = computeFariq(totalVente, saleForm.avance, saleForm.type_operation === 'echange' ? saleForm.valeur_echange : 0)
   const displayFariq   = (saleForm.payment_method === 'avance' || saleForm.payment_method === 'credit') ? fariq : 0
   const statutPaiement = computeStatutPaiement(displayFariq)
+  // What the client hands over: the cart minus the trade-in value (a 5 000 phone
+  // with a 2 000 trade-in = 3 000 to pay); negative when the trade-in is worth more
+  const valeurEchange  = saleForm.type_operation === 'echange' ? saleForm.valeur_echange : 0
+  const netAPayer      = totalVente - valeurEchange
+  const aEncaisser     =
+    saleForm.payment_method === 'credit' ? 0
+    : saleForm.payment_method === 'avance' ? saleForm.avance
+    : Math.max(netAPayer, 0)
   const montantRendu   =
-    saleForm.payment_method === 'especes' && saleForm.montant_especes > totalVente
-      ? saleForm.montant_especes - totalVente
-      : saleForm.payment_method === 'mixte' && (saleForm.montant_especes + saleForm.montant_carte) > totalVente
-      ? (saleForm.montant_especes + saleForm.montant_carte) - totalVente
+    saleForm.payment_method === 'especes' && saleForm.montant_especes > 0 && saleForm.montant_especes > netAPayer
+      ? saleForm.montant_especes - netAPayer
+      : saleForm.payment_method === 'mixte' && (saleForm.montant_especes + saleForm.montant_carte) > 0 && (saleForm.montant_especes + saleForm.montant_carte) > netAPayer
+      ? (saleForm.montant_especes + saleForm.montant_carte) - netAPayer
       : 0
 
   // ── Submit ────────────────────────────────────────────────
@@ -946,16 +954,6 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                       ✓ {t(isAr, 'common.existing')}
                     </span>
                   )}
-                  {selectedClientId && (
-                    <span className="ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 normal-case tracking-normal">
-                      ✓ {t(isAr, 'common.existing')}
-                    </span>
-                  )}
-                  {selectedClientId && (
-                    <span className="ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 normal-case tracking-normal">
-                      ✓ {t(isAr, 'common.existing')}
-                    </span>
-                  )}
                 </p>
                 {/* Name with live autocomplete */}
                 <div className="relative">
@@ -1014,6 +1012,16 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                 <span className="text-[#1A1A1A]">- {formatMAD(saleForm.valeur_echange)}</span>
               </div>
             )}
+            {saleForm.type_operation === 'echange' && netAPayer < 0 && (
+              <div className="flex justify-between text-sm font-bold text-amber-700">
+                <span>{isAr ? 'يُرجَع للعميل' : 'À rendre au client'}</span>
+                <span>{formatMAD(-netAPayer)}</span>
+              </div>
+            )}
+            <div className="flex justify-between text-sm font-bold">
+              <span className="text-[#1A1A1A]">{isAr ? 'المبلغ المُحصَّل الآن' : 'À encaisser maintenant'}</span>
+              <span className="text-[#1A1A1A]">{formatMAD(aEncaisser)}</span>
+            </div>
             {montantRendu > 0 && (
               <div className="flex justify-between text-sm">
                 <span className="text-[#6B6860]">{isAr ? 'المبلغ المُسلَّم' : 'Espèces remises'}</span>
