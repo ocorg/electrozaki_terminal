@@ -4,10 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && prisma generate --schema prisma/storefront/schema.prisma && next build",
+    "build": "prisma generate && prisma generate --schema prisma-storefront/schema.prisma && next build",
     "start": "next start",
     "lint": "next lint",
-    "postinstall": "prisma generate --schema prisma/storefront/schema.prisma"
+    "postinstall": "prisma generate --schema prisma-storefront/schema.prisma"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1137.0",

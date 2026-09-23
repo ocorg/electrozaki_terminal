@@ -1,5 +1,5 @@
 // Copies the storefront's Prisma schema (../electrozaki-storefront owns it and
-// its migrations) into prisma/storefront/schema.prisma, swapping only the
+// its migrations) into prisma-storefront/schema.prisma, swapping only the
 // generator block, so the ERP gets a typed client for the website database.
 //
 //   node scripts/pull-storefront-schema.mjs          → copy
@@ -11,7 +11,9 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 const source = path.resolve('../electrozaki-storefront/prisma/schema.prisma')
-const target = path.resolve('prisma/storefront/schema.prisma')
+// Deliberately NOT inside prisma/: Prisma's editor extension reads every
+// .prisma file under prisma/ as one schema and would see two generators.
+const target = path.resolve('prisma-storefront/schema.prisma')
 
 const HEADER = `// ─────────────────────────────────────────────────────────────────────────
 // GENERATED COPY — do not edit. Source: electrozaki-storefront/prisma/schema.prisma
@@ -23,7 +25,7 @@ const HEADER = `// ────────────────────�
 
 const GENERATOR = `generator client {
   provider = "prisma-client"
-  output   = "../../src/generated/storefront"
+  output   = "../src/generated/storefront"
 }`
 
 function build(text) {
@@ -42,7 +44,7 @@ const wanted = build(fs.readFileSync(source, 'utf8'))
 if (check) {
   const current = fs.existsSync(target) ? fs.readFileSync(target, 'utf8') : ''
   if (current !== wanted) {
-    console.error('prisma/storefront/schema.prisma is out of date — run node scripts/pull-storefront-schema.mjs')
+    console.error('prisma-storefront/schema.prisma is out of date — run node scripts/pull-storefront-schema.mjs')
     process.exit(1)
   }
   console.log('storefront schema copy is up to date')

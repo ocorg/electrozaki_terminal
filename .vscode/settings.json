@@ -1,0 +1,8 @@
+{
+  // Stylesheets use Tailwind at-rules (@tailwind, @apply, @theme…): let the
+  // Tailwind extension read them instead of the plain CSS checker, which
+  // reports them as "Unknown at rule".
+  "files.associations": {
+    "*.css": "tailwindcss"
+  }
+}

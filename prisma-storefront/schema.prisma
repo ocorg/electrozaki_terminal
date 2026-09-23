@@ -23,7 +23,7 @@
 
 generator client {
   provider = "prisma-client"
-  output   = "../../src/generated/storefront"
+  output   = "../src/generated/storefront"
 }
 
 datasource db {
