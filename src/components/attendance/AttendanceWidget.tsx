@@ -1,5 +1,6 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import { useApi } from '@/lib/data/api'
 import { useUser } from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
 import { usePortal } from '@/lib/context/portal'
@@ -24,25 +25,15 @@ export default function AttendanceWidget({ storeId }: AttendanceWidgetProps) {
   const isAr         = language === 'ar'
   const primary      = portal.primaryColor
 
-  const [punches, setPunches]   = useState<Punch[]>([])
-  const [loading, setLoading]   = useState(true)
   const [punching, setPunching] = useState(false)
 
   const today = new Date().toISOString().split('T')[0]
 
-  async function fetchToday() {
-    try {
-      const res  = await fetch(`/api/attendance?store_id=${storeId}&date=${today}`)
-      const json = await res.json()
-      // Only show current user's punches
-      const mine = (json.data || []).filter((p: Punch) => p.user_name === user?.display_name)
-      setPunches(mine)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => { if (user) fetchToday() }, [user])
+  const punchesQ = useApi<Punch[]>(user ? `/api/attendance?store_id=${storeId}&date=${today}` : null)
+  // Only show current user's punches
+  const punches  = (punchesQ.data ?? []).filter(p => p.user_name === user?.display_name)
+  const loading  = !punchesQ.data && !punchesQ.error
+  const fetchToday = () => punchesQ.refresh()
 
   const lastPunch  = punches[0]
   const isCurrentlyIn = lastPunch?.punch_type === 'entree'

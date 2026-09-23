@@ -3,9 +3,9 @@ import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { json, handleError, requireUser, requireActiveUser, requireFields, dateOnly, todayDate } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
-import { notifyCaisseChange } from '@/lib/realtime'
 import { codeLabel } from '@/lib/codes'
 import { computeStatutPaiement } from '@/lib/utils'
+import { withNotify } from '@/lib/realtime'
 
 export async function GET(request: NextRequest) {
   try {
@@ -74,7 +74,7 @@ async function deviceLabels(rows: { device_type: string; device_id: string }[]) 
 const str  = (v: unknown) => (v === undefined || v === null || v === '' ? null : String(v))
 const nums = (v: unknown) => (v === undefined || v === null || v === '' ? null : Number(v))
 
-export async function POST(request: NextRequest) {
+async function POST_(request: NextRequest) {
   try {
     const user = await requireActiveUser()
     const body = await request.json()
@@ -161,10 +161,11 @@ export async function POST(request: NextRequest) {
       ip_address:  getIpFromRequest(request),
       notes:       `${codeLabel('operation_type', data.type_operation, 'fr')} — ${codeLabel('device_type', data.device_type, 'fr')} ${data.device_id}`,
     })
-    await notifyCaisseChange(data.store_id)
 
     return json({ data }, { status: 201 })
   } catch (err) {
     return handleError(err, 'POST /api/transactions')
   }
 }
+
+export const POST = withNotify(POST_)

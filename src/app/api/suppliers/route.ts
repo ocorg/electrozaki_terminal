@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db'
 import { json, handleError, requireUser, requireActiveUser, pickInput, columnsOf, HttpError, MANAGERS } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { escapeLike } from '@/lib/utils/validation'
+import { withNotify } from '@/lib/realtime'
 
 const EDITABLE = columnsOf('suppliers', ['supplier_id'])
 
@@ -45,7 +46,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
+async function POST_(request: NextRequest) {
   try {
     const user = await requireActiveUser(MANAGERS)
     const body = await request.json()
@@ -77,7 +78,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function PATCH(request: NextRequest) {
+async function PATCH_(request: NextRequest) {
   try {
     const user = await requireActiveUser(MANAGERS)
     const body = await request.json()
@@ -107,3 +108,6 @@ export async function PATCH(request: NextRequest) {
     return handleError(err, 'PATCH /api/suppliers')
   }
 }
+
+export const POST = withNotify(POST_)
+export const PATCH = withNotify(PATCH_)

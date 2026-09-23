@@ -1,5 +1,6 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useApi } from '@/lib/data/api'
 import { useUser }          from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
 import { t } from '@/lib/i18n/t'
@@ -66,9 +67,6 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
 
   const { brands, modelsFor } = usePhoneCatalog()
 
-  const [prospects,       setProspects]       = useState<Prospect[]>([])
-  const [availablePhones, setAvailablePhones] = useState<Phone[]>([])
-  const [loading,         setLoading]         = useState(true)
   const [formOpen,        setFormOpen]        = useState(false)
   const [editProspect,    setEditProspect]    = useState<Prospect | null>(null)
   const [saving,          setSaving]          = useState(false)
@@ -78,38 +76,28 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
   const [filterType,      setFilterType]      = useState('')
   const [form,            setForm]            = useState({ ...EMPTY_FORM })
 
-  // Fetch available phones once for stock-matching
-  useEffect(() => {
-    fetch(`/api/phones?store_id=${storeId}&status=disponible`)
-      .then(r => r.json())
-      .then(json => setAvailablePhones(json.data || []))
-      .catch(() => {})
-  }, [storeId])
+  // Available stock for matching: same cached list as the POS
+  const availablePhones = useApi<Phone[]>(`/api/phones?status=disponible&store_id=${storeId}&limit=500`).data ?? []
 
-  // Fetch prospects
+  // All the store's prospects are cached; filters and search apply instantly here
+  const prospectsQ = useApi<Prospect[]>(`/api/prospects?store_id=${storeId}`)
+  const loading    = prospectsQ.isLoading
+  const [manualRefresh, setManualRefresh] = useState(false)
+  useEffect(() => { if (prospectsQ.error) showError(prospectsQ.error.message) }, [prospectsQ.error])
+  const prospects = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    return (prospectsQ.data ?? []).filter(p =>
+      (!filterStatus || p.statut      === filterStatus) &&
+      (!filterSource || p.source      === filterSource) &&
+      (!filterType   || p.demand_type === filterType) &&
+      (q.length < 2  || [p.nom, p.telephone, p.model, p.marque].some(v => v?.toLowerCase().includes(q)))
+    )
+  }, [prospectsQ.data, filterStatus, filterSource, filterType, search])
+
   const fetchProspects = useCallback(async () => {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams({ store_id: storeId })
-      if (filterStatus) params.set('statut', filterStatus)
-      if (filterSource) params.set('source', filterSource)
-      if (filterType)   params.set('demand_type', filterType)
-      if (search.length >= 2) params.set('search', search)
-      const res  = await fetch(`/api/prospects?${params}`)
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error)
-      setProspects(json.data || [])
-    } catch (err: unknown) {
-      showError((err as Error).message)
-    } finally {
-      setLoading(false)
-    }
-  }, [storeId, filterStatus, filterSource, filterType, search])
-
-  useEffect(() => {
-    const timer = setTimeout(() => fetchProspects(), search ? 300 : 0)
-    return () => clearTimeout(timer)
-  }, [fetchProspects, search])
+    setManualRefresh(true)
+    try { await prospectsQ.refresh() } finally { setManualRefresh(false) }
+  }, [prospectsQ])
 
   // Stock match — returns matching available phones for a given prospect
   const getStockMatches = (p: Prospect): Phone[] => {
@@ -255,9 +243,9 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
           subtitle={`${prospects.length} demande${prospects.length !== 1 ? 's' : ''}`}
           actions={
             <div className="flex items-center gap-2">
-              <button onClick={fetchProspects} disabled={loading}
+              <button onClick={fetchProspects} disabled={manualRefresh}
                 className="p-2 rounded-xl border border-[#E8E5DE] bg-white text-[#6B6860] hover:bg-[#F8F7F4] transition-all disabled:opacity-50">
-                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-4 h-4 ${manualRefresh ? 'animate-spin' : ''}`} />
               </button>
               <Btn variant="primary" onClick={openAdd}
                 style={{ backgroundColor: primary } as React.CSSProperties}>

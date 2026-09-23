@@ -1,5 +1,6 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useApi } from '@/lib/data/api'
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import { useLanguageStore } from '@/lib/stores/language'
 import { formatMAD, formatDate } from '@/lib/utils'
@@ -54,14 +55,11 @@ export default function TransactionsListPage({ scope, storeId, title }: Transact
   const today      = new Date().toISOString().split('T')[0]
   const monthStart = today.slice(0, 7) + '-01'
 
-  const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [loading, setLoading]           = useState(true)
   const [expanded, setExpanded]         = useState<string | null>(null)
   const [filterOp, setFilterOp]         = useState('')
   const [filterStore, setFilterStore]   = useState('')
   const [dateFrom, setDateFrom]         = useState(monthStart)
   const [dateTo, setDateTo]             = useState(today)
-  const [stores, setStores]             = useState<StoreRef[]>([])
 
   const [voidTxnId, setVoidTxnId]   = useState<string | null>(null)
   const [voidReason, setVoidReason] = useState('')
@@ -71,16 +69,10 @@ export default function TransactionsListPage({ scope, storeId, title }: Transact
 
   // Store list is only needed for the cross-store dot/filter — fetched live so a newly
   // added store shows up automatically (a hardcoded list here previously required a code change).
-  useEffect(() => {
-    if (scope !== 'all') return
-    fetch('/api/stores')
-      .then(r => r.json())
-      .then(({ data }: { data?: { store_id: string; name: string; theme_color: string; is_active: boolean }[] }) => {
-        const active = (data ?? []).filter(s => s.is_active)
-        if (active.length) setStores(active.map(s => ({ id: s.store_id, name: s.name, color: s.theme_color })))
-      })
-      .catch(() => {})
-  }, [scope])
+  const storesQ = useApi<{ store_id: string; name: string; theme_color: string; is_active: boolean }[]>(scope === 'all' ? '/api/stores' : null)
+  const stores: StoreRef[] = useMemo(() => (storesQ.data ?? [])
+    .filter(s => s.is_active)
+    .map(s => ({ id: s.store_id, name: s.name, color: s.theme_color })), [storesQ.data])
 
   async function handleVoid() {
     if (!voidTxnId || voidReason.trim().length < 10) {
@@ -110,24 +102,23 @@ export default function TransactionsListPage({ scope, storeId, title }: Transact
     }
   }
 
-  const fetchTransactions = useCallback(async () => {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams({ limit: scope === 'store' ? '500' : '200' })
-      const effectiveStoreId = scope === 'store' ? storeId : filterStore
-      if (effectiveStoreId) params.set('store_id', effectiveStoreId)
-      if (dateFrom) params.set('date_from', dateFrom)
-      if (dateTo)   params.set('date_to',   dateTo)
-      if (filterOp) params.set('type_operation', filterOp)
-      const res  = await fetch(`/api/transactions?${params}`)
-      const json = await res.json()
-      setTransactions(json.data || [])
-    } finally {
-      setLoading(false)
-    }
-  }, [scope, storeId, filterStore, dateFrom, dateTo, filterOp])
+  // Cached per store and period; the operation-type filter applies instantly here
+  const params = new URLSearchParams({ limit: '1000' })
+  const effectiveStoreId = scope === 'store' ? storeId : filterStore
+  if (effectiveStoreId) params.set('store_id', effectiveStoreId)
+  if (dateFrom) params.set('date_from', dateFrom)
+  if (dateTo)   params.set('date_to',   dateTo)
+  const txnsQ   = useApi<Transaction[]>(`/api/transactions?${params}`)
+  const loading = txnsQ.isLoading
+  const [manualRefresh, setManualRefresh] = useState(false)
+  const transactions = useMemo(() =>
+    (txnsQ.data ?? []).filter(t => !filterOp || t.type_operation === filterOp),
+  [txnsQ.data, filterOp])
 
-  useEffect(() => { fetchTransactions() }, [fetchTransactions])
+  const fetchTransactions = useCallback(async () => {
+    setManualRefresh(true)
+    try { await txnsQ.refresh() } finally { setManualRefresh(false) }
+  }, [txnsQ])
 
   const totalCA     = transactions.reduce((s, t) => s + (t.prix_vente ?? 0), 0)
   const totalVentes = transactions.filter(t => t.type_operation === 'vente').length
@@ -153,10 +144,10 @@ export default function TransactionsListPage({ scope, storeId, title }: Transact
           actions={
             <button
               onClick={fetchTransactions}
-              disabled={loading}
+              disabled={manualRefresh}
               className="p-2 rounded-xl border border-[#E8E5DE] bg-white text-[#6B6860] hover:bg-[#FAF5E8] transition-all"
             >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-4 h-4 ${manualRefresh ? 'animate-spin' : ''}`} />
             </button>
           }
         />

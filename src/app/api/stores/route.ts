@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { json, handleError, requireUser, requireActiveUser, HttpError, MANAGERS } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
+import { withNotify } from '@/lib/realtime'
 
 // ── GET — list all stores ─────────────────────────────────────
 export async function GET() {
@@ -20,7 +21,7 @@ export async function GET() {
 }
 
 // ── PATCH — store details (manager/owner) or is_active (owner only) ──
-export async function PATCH(request: NextRequest) {
+async function PATCH_(request: NextRequest) {
   try {
     const user = await requireActiveUser(MANAGERS)
     const { store_id, is_active, name, theme_color, address, phone } = await request.json()
@@ -62,3 +63,5 @@ export async function PATCH(request: NextRequest) {
     return handleError(err, 'PATCH /api/stores')
   }
 }
+
+export const PATCH = withNotify(PATCH_)

@@ -1,6 +1,7 @@
 'use client'
 import { useCategories, categoryLabel } from '@/lib/hooks/useCategories'
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useApi } from '@/lib/data/api'
 import { useUser } from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
 import { t } from '@/lib/i18n/t'
@@ -91,9 +92,20 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
   const { suppliers: supplierCats } = useCategories()
 
   // ── Core state ───────────────────────────────────────────────────────────────
-  const [suppliers,       setSuppliers]       = useState<Supplier[]>([])
-  const [loading,         setLoading]         = useState(true)
   const [search,          setSearch]          = useState('')
+  // All the store's suppliers are cached; search applies instantly here
+  const suppliersQ = useApi<Supplier[]>(`/api/suppliers?store_id=${storeId}`)
+  const loading    = suppliersQ.isLoading
+  const [manualRefresh, setManualRefresh] = useState(false)
+  useEffect(() => { if (suppliersQ.error) showError(suppliersQ.error.message) }, [suppliersQ.error])
+  const suppliers = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (q.length < 2) return suppliersQ.data ?? []
+    return (suppliersQ.data ?? []).filter(s => {
+      const x = s as unknown as Record<string, string | null | undefined>
+      return [x.nom, x.telephone, x.ville].some(v => v?.toLowerCase().includes(q))
+    })
+  }, [suppliersQ.data, search])
   const [selected,        setSelected]        = useState<Supplier | null>(null)
   const [formOpen,        setFormOpen]        = useState(false)
   const [editSupplier,    setEditSupplier]    = useState<Supplier | null>(null)
@@ -126,20 +138,9 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
   // ── Fetch ────────────────────────────────────────────────────────────────────
 
   const fetchSuppliers = useCallback(async () => {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams({ store_id: storeId })
-      if (search.length >= 2) params.set('search', search)
-      const res  = await fetch(`/api/suppliers?${params}`)
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error)
-      setSuppliers(json.data || [])
-    } catch (err: unknown) {
-      showError((err as Error).message)
-    } finally {
-      setLoading(false)
-    }
-  }, [storeId, search])
+    setManualRefresh(true)
+    try { await suppliersQ.refresh() } finally { setManualRefresh(false) }
+  }, [suppliersQ])
 
   async function fetchPayments(supplierId: string) {
     setPaymentsLoading(true)
@@ -200,11 +201,6 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
   }
 
   // ── Effects ──────────────────────────────────────────────────────────────────
-
-  useEffect(() => {
-    const timer = setTimeout(() => fetchSuppliers(), search ? 300 : 0)
-    return () => clearTimeout(timer)
-  }, [fetchSuppliers, search])
 
   // ── Modal controls ───────────────────────────────────────────────────────────
 
@@ -408,9 +404,9 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
           subtitle={`${suppliers.length} fournisseur${suppliers.length !== 1 ? 's' : ''}`}
           actions={
             <div className="flex items-center gap-2">
-              <button onClick={fetchSuppliers} disabled={loading}
+              <button onClick={fetchSuppliers} disabled={manualRefresh}
                 className="p-2 rounded-xl border border-[#E8E5DE] bg-white text-[#6B6860] hover:bg-[#F8F7F4] transition-all">
-                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-4 h-4 ${manualRefresh ? 'animate-spin' : ''}`} />
               </button>
               <Btn variant="primary" onClick={openAdd}
                 style={{ backgroundColor: primary } as React.CSSProperties}>

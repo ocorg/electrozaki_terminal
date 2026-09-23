@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { json, handleError, requireUser, requireActiveUser, HttpError } from '@/lib/api'
+import { withNotify } from '@/lib/realtime'
 
 export async function GET() {
   try {
@@ -12,7 +13,7 @@ export async function GET() {
   }
 }
 
-export async function POST(request: NextRequest) {
+async function POST_(request: NextRequest) {
   try {
     await requireActiveUser()
     const body = await request.json()
@@ -27,7 +28,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function DELETE(request: NextRequest) {
+async function DELETE_(request: NextRequest) {
   try {
     await requireActiveUser()
     const { catalog_id } = await request.json()
@@ -39,7 +40,7 @@ export async function DELETE(request: NextRequest) {
   }
 }
 
-export async function PATCH(request: NextRequest) {
+async function PATCH_(request: NextRequest) {
   try {
     await requireActiveUser()
     const { catalog_id, marque, serie, type, model, couleur } = await request.json()
@@ -55,3 +56,7 @@ export async function PATCH(request: NextRequest) {
     return handleError(err, 'PATCH /api/phones/catalog')
   }
 }
+
+export const POST = withNotify(POST_)
+export const DELETE = withNotify(DELETE_)
+export const PATCH = withNotify(PATCH_)

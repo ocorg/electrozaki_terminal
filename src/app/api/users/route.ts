@@ -4,6 +4,7 @@ import type { user_role } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { json, handleError, requireUser, requireActiveUser, HttpError, MANAGERS } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
+import { withNotify } from '@/lib/realtime'
 
 // Everything but password_hash / override_pin — also what goes into the activity log
 const PUBLIC_FIELDS = {
@@ -24,7 +25,7 @@ export async function GET() {
   }
 }
 
-export async function POST(request: NextRequest) {
+async function POST_(request: NextRequest) {
   try {
     const self = await requireActiveUser(MANAGERS)
     const { email, password, full_name, role, store_id, store_locked, is_active } = await request.json() as {
@@ -78,7 +79,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function PATCH(request: NextRequest) {
+async function PATCH_(request: NextRequest) {
   try {
     const self = await requireActiveUser(MANAGERS)
     const body = await request.json()
@@ -123,3 +124,6 @@ export async function PATCH(request: NextRequest) {
     return handleError(err, 'PATCH /api/users')
   }
 }
+
+export const POST = withNotify(POST_)
+export const PATCH = withNotify(PATCH_)

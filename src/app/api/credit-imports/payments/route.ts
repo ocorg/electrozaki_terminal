@@ -2,9 +2,9 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { json, handleError, requireActiveUser, todayDate, HttpError } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
-import { notifyCaisseChange } from '@/lib/realtime'
+import { withNotify } from '@/lib/realtime'
 
-export async function POST(request: NextRequest) {
+async function POST_(request: NextRequest) {
   try {
     const user = await requireActiveUser()
     const body = await request.json() as Record<string, unknown>
@@ -54,10 +54,11 @@ export async function POST(request: NextRequest) {
       ip_address:  getIpFromRequest(request),
       notes:       `Paiement de ${montant.toFixed(2)} MAD`,
     })
-    await notifyCaisseChange(store_id)
 
     return json({ data: payment }, { status: 201 })
   } catch (err) {
     return handleError(err, 'POST /api/credit-imports/payments')
   }
 }
+
+export const POST = withNotify(POST_)

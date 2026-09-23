@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
+import { useApi } from '@/lib/data/api'
 import { useUser } from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
 import { t } from '@/lib/i18n/t'
@@ -65,8 +66,10 @@ export default function MovementsModule({ storeId }: MovementsModuleProps) {
   const isAr         = language === 'ar'
   const primary      = portal.primaryColor
 
-  const [movements, setMovements]   = useState<Movement[]>([])
-  const [loading, setLoading]       = useState(true)
+  const movementsQ = useApi<Movement[]>(`/api/movements?store_id=${storeId}&limit=100`)
+  const movements  = movementsQ.data ?? []
+  const loading    = movementsQ.isLoading
+  const [manualRefresh, setManualRefresh] = useState(false)
   const [formOpen, setFormOpen]     = useState(false)
   const [form, setForm]             = useState({ ...EMPTY_FORM })
   const [submitting, setSubmitting] = useState(false)
@@ -75,17 +78,9 @@ export default function MovementsModule({ storeId }: MovementsModuleProps) {
   const canMove = user?.role === 'gerant' || user?.role === 'proprietaire'
 
   const fetchMovements = useCallback(async () => {
-    setLoading(true)
-    try {
-      const res  = await fetch(`/api/movements?store_id=${storeId}&limit=100`)
-      const json = await res.json()
-      setMovements(json.data || [])
-    } finally {
-      setLoading(false)
-    }
-  }, [storeId])
-
-  useEffect(() => { fetchMovements() }, [fetchMovements])
+    setManualRefresh(true)
+    try { await movementsQ.refresh() } finally { setManualRefresh(false) }
+  }, [movementsQ])
 
   function setF(k: keyof typeof EMPTY_FORM, v: string) {
     setForm(prev => ({ ...prev, [k]: v }))
@@ -159,9 +154,9 @@ export default function MovementsModule({ storeId }: MovementsModuleProps) {
             : `${movements.length} mouvement${movements.length !== 1 ? 's' : ''}`}
           actions={
             <div className="flex items-center gap-2">
-              <button onClick={fetchMovements} disabled={loading}
+              <button onClick={fetchMovements} disabled={manualRefresh}
                 className="p-2 rounded-xl border border-[#E8E5DE] bg-white text-[#6B6860] hover:bg-[#F8F7F4] transition-all">
-                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-4 h-4 ${manualRefresh ? 'animate-spin' : ''}`} />
               </button>
               {canMove && (
                 <Btn variant="primary" onClick={() => setFormOpen(true)}

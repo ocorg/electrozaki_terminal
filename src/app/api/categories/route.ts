@@ -3,6 +3,7 @@ import type { category_type, Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { json, handleError, requireUser, requireActiveUser, HttpError, MANAGERS } from '@/lib/api'
 import { toCode } from '@/lib/codes'
+import { withNotify } from '@/lib/realtime'
 
 export interface CategoryItem { code: string; fr: string; ar: string }
 type CatGroup = 'accessories' | 'expenses' | 'suppliers'
@@ -38,7 +39,7 @@ async function freeCode(tx: Prisma.TransactionClient, label: string) {
 }
 
 // POST { type, categories: [{ code?, fr, ar }] } — saves the full ordered list for one group.
-export async function POST(request: NextRequest) {
+async function POST_(request: NextRequest) {
   try {
     await requireActiveUser(MANAGERS)
     const body: { type: CatGroup; categories: Partial<CategoryItem>[] } = await request.json()
@@ -97,3 +98,5 @@ export async function POST(request: NextRequest) {
     return handleError(err, 'POST /api/categories')
   }
 }
+
+export const POST = withNotify(POST_)

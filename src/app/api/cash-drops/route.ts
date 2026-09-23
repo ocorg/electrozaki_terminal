@@ -2,9 +2,9 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { json, handleError, requireUser, requireActiveUser, dateOnly, todayDate, HttpError } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
-import { notifyCaisseChange } from '@/lib/realtime'
+import { withNotify } from '@/lib/realtime'
 
-export async function POST(request: NextRequest) {
+async function POST_(request: NextRequest) {
   try {
     const user = await requireActiveUser()
     const body = await request.json() as { amount: number; reason: string; store_id: string }
@@ -32,7 +32,6 @@ export async function POST(request: NextRequest) {
       after_state: data,
       ip_address:  getIpFromRequest(request),
     })
-    await notifyCaisseChange(body.store_id)
 
     return json({ data })
   } catch (err) {
@@ -56,3 +55,5 @@ export async function GET(request: NextRequest) {
     return handleError(err, 'GET /api/cash-drops')
   }
 }
+
+export const POST = withNotify(POST_)

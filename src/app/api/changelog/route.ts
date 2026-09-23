@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { json, handleError, requireUser, requireActiveUser, dateOnly, todayDate, HttpError, MANAGERS } from '@/lib/api'
+import { withNotify } from '@/lib/realtime'
 
 export async function GET() {
   try {
@@ -13,7 +14,7 @@ export async function GET() {
   }
 }
 
-export async function POST(request: NextRequest) {
+async function POST_(request: NextRequest) {
   try {
     const user = await requireActiveUser(MANAGERS)
     const body = await request.json()
@@ -35,3 +36,5 @@ export async function POST(request: NextRequest) {
     return handleError(err, 'POST /api/changelog')
   }
 }
+
+export const POST = withNotify(POST_)

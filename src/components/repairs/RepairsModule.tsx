@@ -1,5 +1,6 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useApi } from '@/lib/data/api'
 import { useUser } from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
 import { t } from '@/lib/i18n/t'
@@ -167,18 +168,23 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
   const primary      = portal.primaryColor
   const canEdit      = user?.role !== undefined
 
-  const [staffList, setStaffList] = useState<{ id: string; display_name: string }[]>([])
+  const usersQ    = useApi<{ id: string; display_name: string; is_active: boolean }[]>('/api/users')
+  const staffList = useMemo(() => (usersQ.data ?? []).filter(u => u.is_active), [usersQ.data])
 
-  useEffect(() => {
-    fetch('/api/users')
-      .then(r => r.json())
-      .then(j => setStaffList((j.data || []).filter((u: { is_active: boolean }) => u.is_active)))
-      .catch(() => {})
-  }, [])
-
-  const [repairs, setRepairs]       = useState<RepairWithExtras[]>([])
-  const [loading, setLoading]       = useState(true)
   const [search, setSearch]         = useState('')
+  // All the store's repairs are cached; search applies instantly here
+  const repairsQ = useApi<RepairWithExtras[]>(`/api/repairs?store_id=${storeId}`)
+  const loading  = repairsQ.isLoading
+  const [manualRefresh, setManualRefresh] = useState(false)
+  useEffect(() => { if (repairsQ.error) showError(repairsQ.error.message) }, [repairsQ.error])
+  const repairs = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (q.length < 2) return repairsQ.data ?? []
+    return (repairsQ.data ?? []).filter(r => {
+      const x = r as unknown as Record<string, string | null | undefined>
+      return [x.model, x.marque, x.device_serial].some(v => v?.toLowerCase().includes(q))
+    })
+  }, [repairsQ.data, search])
   const [formOpen, setFormOpen]     = useState(false)
   const [detailRep, setDetailRep]   = useState<RepairWithExtras | null>(null)
   const [form, setForm]             = useState({ ...EMPTY_FORM })
@@ -186,25 +192,9 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
   const [statusLoading, setStatusLoading] = useState<string | null>(null)
 
   const fetchRepairs = useCallback(async () => {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams({ store_id: storeId })
-      if (search.length >= 2) params.set('search', search)
-      const res  = await fetch(`/api/repairs?${params}`)
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error)
-      setRepairs(json.data || [])
-    } catch (err: unknown) {
-      showError((err as Error).message)
-    } finally {
-      setLoading(false)
-    }
-  }, [storeId, search])
-
-  useEffect(() => {
-    const timer = setTimeout(() => fetchRepairs(), search ? 300 : 0)
-    return () => clearTimeout(timer)
-  }, [fetchRepairs, search])
+    setManualRefresh(true)
+    try { await repairsQ.refresh() } finally { setManualRefresh(false) }
+  }, [repairsQ])
 
   function setF(k: keyof typeof EMPTY_FORM, v: string) {
     setForm(prev => ({ ...prev, [k]: v }))
@@ -332,10 +322,10 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
           <div className="flex items-center gap-2">
             <button
               onClick={fetchRepairs}
-              disabled={loading}
+              disabled={manualRefresh}
               className="p-2 rounded-xl border border-[#E8E5DE] bg-white text-[#6B6860] hover:bg-[#F8F7F4] transition-all disabled:opacity-50"
             >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-4 h-4 ${manualRefresh ? 'animate-spin' : ''}`} />
             </button>
             <Btn
               variant="primary"

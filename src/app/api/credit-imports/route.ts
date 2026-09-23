@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { json, handleError, requireUser, requireActiveUser, dateOnly, HttpError } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
+import { withNotify } from '@/lib/realtime'
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,7 +19,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
+async function POST_(request: NextRequest) {
   try {
     const user = await requireActiveUser()
     const { client_id, client_name_free, client_phone_free, store_id, montant_du, description, date_origine, notes } = await request.json()
@@ -58,7 +59,7 @@ export async function POST(request: NextRequest) {
 }
 
 // PATCH: retroactively link a free-text import to a real client
-export async function PATCH(request: NextRequest) {
+async function PATCH_(request: NextRequest) {
   try {
     const user = await requireActiveUser()
     const { import_id, client_id } = await request.json()
@@ -84,7 +85,7 @@ export async function PATCH(request: NextRequest) {
   }
 }
 
-export async function DELETE(request: NextRequest) {
+async function DELETE_(request: NextRequest) {
   try {
     const user = await requireActiveUser()
     if (user.role !== 'proprietaire') throw new HttpError(403, 'Réservé au propriétaire')
@@ -97,3 +98,7 @@ export async function DELETE(request: NextRequest) {
     return handleError(err, 'DELETE /api/credit-imports')
   }
 }
+
+export const POST = withNotify(POST_)
+export const PATCH = withNotify(PATCH_)
+export const DELETE = withNotify(DELETE_)

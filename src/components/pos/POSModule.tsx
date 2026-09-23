@@ -1,6 +1,7 @@
 'use client'
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useUser } from '@/lib/hooks/useUser'
+import { useApi } from '@/lib/data/api'
 import { useCategories } from '@/lib/hooks/useCategories'
 import { useLanguageStore } from '@/lib/stores/language'
 import { t } from '@/lib/i18n/t'
@@ -84,6 +85,8 @@ interface POSModuleProps {
   hasLaptops?: boolean
 }
 
+const GRID_PAGE = 48
+
 function getAccPrice(item: DeviceResult): number {
   const raw = (item as unknown as Record<string, unknown>)
   return (raw.prix_vente_recommande as number) ?? 0
@@ -119,8 +122,6 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
   const canSeeAchat = user?.role === 'gerant' || user?.role === 'proprietaire'
 
   const [search,    setSearch]    = useState('')
-  const [results,   setResults]   = useState<DeviceResult[]>([])
-  const [searching, setSearching] = useState(false)
   const [cart,      setCart]      = useState<CartItem[]>([])
   const [saleForm,  setSaleForm]  = useState<SaleForm>({ ...EMPTY_SALE })
   const { brands, seriesFor, modelsFor, couleursFor } = usePhoneCatalog()
@@ -139,101 +140,79 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
 
   const [exchangePanel, setExchangePanel] = useState<ExchangePanelState & { open: boolean } | null>(null)
   const [successTxn,    setSuccessTxn]    = useState<string | null>(null)
-  const searchRef = useRef<ReturnType<typeof setTimeout>>()
 
   const [activeCategory, setActiveCategory] = useState('phones')
-  const [gridItems,      setGridItems]      = useState<DeviceResult[]>([])
-  const [gridLoading,    setGridLoading]    = useState(false)
 
   const [clientSuggestions,  setClientSuggestions]  = useState<{ client_id: string; nom: string; telephone: string }[]>([])
   const [showClientDrop,     setShowClientDrop]      = useState(false)
-  const [clientSearching,    setClientSearching]     = useState(false)
   const [selectedClientId,   setSelectedClientId]    = useState<string | null>(null)
-  const clientSearchRef = useRef<ReturnType<typeof setTimeout>>()
+  // All the store's clients (small list): name suggestions appear as you type
+  const clientsQ = useApi<{ client_id: string; nom: string; telephone: string; telephone_2?: string | null }[]>(`/api/clients?store_id=${storeId}`)
 
   const [cashDropOpen,  setCashDropOpen]  = useState(false)
   const [priceInputs,   setPriceInputs]   = useState<Record<string, string>>({})
 
-  // ── Search: phones + accessories + laptops ─────────────────
-  useEffect(() => {
-    if (!search.trim() || search.length < 2) { setResults([]); return }
-    clearTimeout(searchRef.current)
-    setSearching(true)
-    searchRef.current = setTimeout(async () => {
-      try {
-        const q = encodeURIComponent(search)
-        const [pRes, aRes, lRes] = await Promise.all([
-          fetch(`/api/phones?status=disponible&search=${q}&store_id=${storeId}`),
-          fetch(`/api/accessories?store_id=${storeId}&search=${q}`),
-          hasLaptops
-            ? fetch(`/api/laptops?status=disponible&search=${q}&store_id=${storeId}`)
-            : Promise.resolve(null),
-        ])
-        const pJson = await pRes.json()
-        const aJson = await aRes.json()
-        const lJson = lRes ? await lRes.json() : { data: [] }
+  // ── Stock: the store's whole available stock, cached and kept current by live
+  // change events. Search and category browsing then run instantly in the browser.
+  const phonesQ = useApi<Phone[]>(`/api/phones?status=disponible&store_id=${storeId}&limit=500`)
+  const accQ    = useApi<Record<string, unknown>[]>(`/api/accessories?store_id=${storeId}`)
+  const lapQ    = useApi<Laptop[]>(hasLaptops ? `/api/laptops?status=disponible&store_id=${storeId}` : null)
+  // Sold on this device: hidden right away, before the refreshed stock arrives
+  const [soldIds, setSoldIds] = useState<Set<string>>(() => new Set())
 
-        const phones: DeviceResult[] = (pJson.data || []).map((p: Phone) => ({
-          ...p,
-          _type:        'phone' as const,
-          _displayName: `${p.marque} ${p.model}${p.stockage ? ' ' + p.stockage : ''}${p.couleur ? ' · ' + p.couleur : ''}`,
-          _id:          p.phone_id,
-        }))
-        const accessories: DeviceResult[] = (aJson.data || []).map((a: Record<string, unknown>) => ({
-          ...a,
-          _type:        'accessory' as const,
-          _id:          a.acc_id as string,
-          _displayName: [a.nom, a.marque ? `· ${a.marque}` : ''].filter(Boolean).join(' '),
-        }))
-        const laptops: DeviceResult[] = hasLaptops
-          ? (lJson?.data || []).map((l: Laptop) => ({
-              ...l,
-              _type:        'laptop' as const,
-              _displayName: `${l.marque} ${l.model}${l.stockage ? ' ' + l.stockage : ''}`,
-              _id:          l.laptop_id,
-            }))
-          : []
+  const stock = useMemo(() => {
+    const phones: DeviceResult[] = (phonesQ.data ?? []).map(p => ({
+      ...p,
+      _type:        'phone' as const,
+      _displayName: `${p.marque} ${p.model}${p.stockage ? ' ' + p.stockage : ''}${p.couleur ? ' · ' + p.couleur : ''}`,
+      _id:          p.phone_id,
+    }))
+    const accessories: DeviceResult[] = (accQ.data ?? []).map(a => ({
+      ...a,
+      _type:        'accessory' as const,
+      _id:          a.acc_id as string,
+      _displayName: [a.nom, a.marque ? `· ${a.marque}` : ''].filter(Boolean).join(' '),
+    }) as unknown as DeviceResult)
+    const laptops: DeviceResult[] = (lapQ.data ?? []).map(l => ({
+      ...l,
+      _type:        'laptop' as const,
+      _displayName: `${l.marque} ${l.model}${l.stockage ? ' ' + l.stockage : ''}`,
+      _id:          l.laptop_id,
+    }))
+    return { phones, accessories, laptops }
+  }, [phonesQ.data, accQ.data, lapQ.data])
 
-        setResults([...phones, ...accessories, ...laptops])
-      } finally {
-        setSearching(false)
-      }
-    }, 300)
-  }, [search, storeId, hasLaptops])
-
-  // ── Grid category fetch ────────────────────────────────────
-  useEffect(() => {
-    if (search) return
-    setGridLoading(true)
-    async function loadGrid() {
-      try {
-        if (activeCategory === 'phones') {
-          const res  = await fetch(`/api/phones?status=disponible&store_id=${storeId}&limit=24`)
-          const json = await res.json()
-          setGridItems((json.data || []).map((p: Phone) => ({
-            ...p, _type: 'phone' as const, _id: p.phone_id,
-            _displayName: [p.marque, p.model, p.stockage, p.couleur ? `· ${p.couleur}` : ''].filter(Boolean).join(' '),
-          })))
-        } else if (activeCategory === 'laptops') {
-          const res  = await fetch(`/api/laptops?status=disponible&store_id=${storeId}&limit=24`)
-          const json = await res.json()
-          setGridItems((json.data || []).map((l: Laptop) => ({
-            ...l, _type: 'laptop' as const, _id: l.laptop_id,
-            _displayName: [l.marque, l.model, l.stockage].filter(Boolean).join(' '),
-          })))
-        } else if (activeCategory.startsWith('acc_')) {
-          const cat  = activeCategory.replace('acc_', '')
-          const res  = await fetch(`/api/accessories?store_id=${storeId}&categorie=${encodeURIComponent(cat)}`)
-          const json = await res.json()
-          setGridItems((json.data || []).map((a: Record<string, unknown>) => ({
-            ...a, _type: 'accessory' as const, _id: a.acc_id as string,
-            _displayName: [a.nom, a.marque ? `· ${a.marque}` : ''].filter(Boolean).join(' '),
-          })))
-        }
-      } catch { /* silent */ } finally { setGridLoading(false) }
+  // ── Search: phones + accessories + laptops (IMEI, serial, barcode, brand, model, name)
+  const results = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (q.length < 2) return []
+    const tokens = q.split(/\s+/)
+    const hit = (fields: unknown[]) => {
+      const text = fields.filter(Boolean).join(' ').toLowerCase()
+      return tokens.every(tok => text.includes(tok))
     }
-    loadGrid()
-  }, [activeCategory, storeId, search])
+    const raw = (d: DeviceResult) => d as unknown as Record<string, unknown>
+    return [
+      ...stock.phones.filter(d => hit([raw(d).marque, raw(d).model, raw(d).stockage, raw(d).couleur, raw(d).imei, raw(d).imei_2])),
+      ...stock.accessories.filter(d => hit([raw(d).nom, raw(d).marque, raw(d).barcode])),
+      ...stock.laptops.filter(d => hit([raw(d).marque, raw(d).model, raw(d).stockage, raw(d).serial])),
+    ].filter(d => !soldIds.has(d._id))
+  }, [search, stock, soldIds])
+
+  // ── Grid: category browse
+  const gridItems = useMemo(() => {
+    let items: DeviceResult[] = []
+    if (activeCategory === 'phones') items = stock.phones
+    else if (activeCategory === 'laptops') items = stock.laptops
+    else if (activeCategory.startsWith('acc_')) {
+      const cat = activeCategory.slice(4)
+      items = stock.accessories.filter(a => (a as unknown as Record<string, unknown>).categorie === cat)
+    }
+    return items.filter(d => !soldIds.has(d._id))
+  }, [activeCategory, stock, soldIds])
+  const gridLoading =
+    activeCategory === 'phones'  ? phonesQ.isLoading :
+    activeCategory === 'laptops' ? lapQ.isLoading    : accQ.isLoading
 
   // ── Cart helpers ──────────────────────────────────────────
   function addToCart(device: DeviceResult) {
@@ -243,13 +222,13 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
       }
       const prix = (device as Phone).prix_vente_recommande ?? 0
       setCart(prev => [...prev, { ...device, prix_vente_saisi: prix, qty: 1 }])
-      setSearch(''); setResults([])
+      setSearch('')
       showSuccess(t(isAr, 'common.addedToCart'))
       return
     }
     const existingQty = cart.find(c => c._id === device._id)?.qty ?? 1
     setQtyPicker({ device, qty: existingQty })
-    setSearch(''); setResults([])
+    setSearch('')
   }
 
   function confirmQtyPicker() {
@@ -317,18 +296,14 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
   function handleClientNameChange(value: string) {
     setSale('client_nom', value)
     setSelectedClientId(null)
-    if (!value.trim()) { setClientSuggestions([]); setShowClientDrop(false); return }
-    clearTimeout(clientSearchRef.current)
-    setClientSearching(true)
-    clientSearchRef.current = setTimeout(async () => {
-      try {
-        const res  = await fetch(`/api/clients?search=${encodeURIComponent(value)}&store_id=${storeId}`)
-        const json = await res.json()
-        setClientSuggestions(json.data || [])
-        setShowClientDrop(true)
-      } catch { setClientSuggestions([]) }
-      finally   { setClientSearching(false) }
-    }, 200)
+    const q = value.trim().toLowerCase()
+    if (!q) { setClientSuggestions([]); setShowClientDrop(false); return }
+    const digits = q.replace(/\s/g, '')
+    setClientSuggestions((clientsQ.data ?? []).filter(c =>
+      c.nom?.toLowerCase().includes(q) ||
+      (/\d/.test(digits) && [c.telephone, c.telephone_2].some(tel => tel?.replace(/\s/g, '').includes(digits)))
+    ).slice(0, 20))
+    setShowClientDrop(true)
   }
 
   function selectClientSuggestion(c: { client_id: string; nom: string; telephone: string }) {
@@ -468,8 +443,8 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
       }
 
       // Remove sold phones/laptops from grid instantly — no re-fetch needed
-      const soldIds = new Set(cart.filter(i => i._type !== 'accessory').map(i => i._id))
-      if (soldIds.size > 0) setGridItems(prev => prev.filter(i => !soldIds.has(i._id)))
+      const sold = new Set(cart.filter(i => i._type !== 'accessory').map(i => i._id))
+      if (sold.size > 0) setSoldIds(prev => new Set([...Array.from(prev), ...Array.from(sold)]))
 
       if (saleForm.valeur_echange > 0) {
         setExchangePanel({
@@ -507,14 +482,18 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
     { key: 'phones',  label: isAr ? 'هواتف'  : 'Téléphones', icon: <Smartphone className="w-3.5 h-3.5" /> },
     ...(hasLaptops ? [{ key: 'laptops', label: isAr ? 'لابتوب' : 'Laptops', icon: <LaptopIcon className="w-3.5 h-3.5" /> }] : []),
     ...sortedAccCategories.map(cat => ({
-      key: `acc_${cat.ar}`, label: isAr ? cat.ar : cat.fr, icon: <Package className="w-3.5 h-3.5" />,
+      key: `acc_${cat.code}`, label: isAr ? cat.ar : cat.fr, icon: <Package className="w-3.5 h-3.5" />,
     })),
   ]
 
   // ── Unified display source ─────────────────────────────────
   const isSearching   = search.length >= 2
-  const displayItems  = isSearching ? results   : gridItems
-  const displayLoading = isSearching ? searching : gridLoading
+  const allItems      = isSearching ? results   : gridItems
+  // The grid renders in pages: a smaller page keeps the POS instant to open
+  const [shown, setShown] = useState(GRID_PAGE)
+  useEffect(() => setShown(GRID_PAGE), [activeCategory, search])
+  const displayItems  = allItems.slice(0, shown)
+  const displayLoading = !isSearching && gridLoading
 
   // ── Main layout ───────────────────────────────────────────
   return (
@@ -601,10 +580,8 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                 onFocus={e => { e.target.style.borderColor = primary; e.target.style.boxShadow = `0 0 0 3px ${primary}20` }}
                 onBlur={e =>  { e.target.style.borderColor = '#E8E5DE'; e.target.style.boxShadow = 'none' }}
               />
-              {searching ? (
-                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#B0ADA6]" style={{ animation: 'spin 1s linear infinite' }} />
-              ) : search ? (
-                <button onClick={() => { setSearch(''); setResults([]) }} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#B0ADA6] hover:text-[#1A1A1A]">
+              {search ? (
+                <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#B0ADA6] hover:text-[#1A1A1A]">
                   <X className="w-4 h-4" />
                 </button>
               ) : null}
@@ -678,6 +655,12 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                   </p>
                 </button>
               ))}
+              {allItems.length > shown && (
+                <button onClick={() => setShown(n => n + GRID_PAGE)}
+                  className="col-span-full py-3 text-sm font-medium text-[#6B6860] hover:bg-white rounded-xl transition-all">
+                  {isAr ? `عرض المزيد (${allItems.length - shown})` : `Afficher plus (${allItems.length - shown})`}
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -982,9 +965,6 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                     onChange={e => handleClientNameChange(e.target.value)}
                     onBlur={() => setTimeout(() => setShowClientDrop(false), 150)}
                     autoComplete="off" />
-                  {clientSearching && (
-                    <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#B0ADA6] animate-spin" />
-                  )}
                   {showClientDrop && clientSuggestions.length > 0 && (
                     <div className="absolute z-50 w-full mt-1 bg-white border border-[#E8E5DE] rounded-xl shadow-xl overflow-hidden max-h-44 overflow-y-auto">
                       {clientSuggestions.map(c => (

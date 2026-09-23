@@ -2,9 +2,10 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { json, handleError, requireActiveUser, HttpError, MANAGERS } from '@/lib/api'
 import { phoneLabel } from '@/lib/inventory'
+import { withNotify } from '@/lib/realtime'
 
 // Response `type`: trouve | hors_perimetre | non_enregistre | deja_scanne
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+async function POST_(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const body = await req.json()
     const rawImei: string = (body.imei ?? '').trim()
@@ -61,3 +62,5 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return handleError(err, 'POST /api/inventory/[id]/scan')
   }
 }
+
+export const POST = withNotify(POST_)

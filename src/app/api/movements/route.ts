@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db'
 import { json, handleError, requireUser, requireActiveUser, HttpError, MANAGERS } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { codeLabel } from '@/lib/codes'
+import { withNotify } from '@/lib/realtime'
 
 export async function GET(request: NextRequest) {
   try {
@@ -32,7 +33,7 @@ function phoneStatusFor(reason: movement_reason, to: location_type, toStoreId: s
   return 'disponible'
 }
 
-export async function POST(request: NextRequest) {
+async function POST_(request: NextRequest) {
   try {
     const user = await requireActiveUser(MANAGERS) // only manager/owner can move stock
     const body = await request.json()
@@ -138,3 +139,5 @@ export async function POST(request: NextRequest) {
     return handleError(err, 'POST /api/movements')
   }
 }
+
+export const POST = withNotify(POST_)

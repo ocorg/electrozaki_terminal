@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { json, handleError, requireUser, requireActiveUser, HttpError, MANAGERS } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
+import { withNotify } from '@/lib/realtime'
 
 // Key/value settings per store (store_id null = global)
 export async function GET() {
@@ -16,7 +17,7 @@ export async function GET() {
 }
 
 // PUT { key, store_id, value } — create or update one setting
-export async function PUT(request: NextRequest) {
+async function PUT_(request: NextRequest) {
   try {
     const user = await requireActiveUser(MANAGERS)
     const { key, store_id, value } = await request.json() as { key?: string; store_id?: string | null; value?: string }
@@ -44,3 +45,5 @@ export async function PUT(request: NextRequest) {
     return handleError(err, 'PUT /api/settings')
   }
 }
+
+export const PUT = withNotify(PUT_)

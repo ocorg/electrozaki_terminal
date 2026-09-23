@@ -3,6 +3,7 @@ import type { punch_type } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { json, handleError, requireUser, requireActiveUser, dateOnly, todayDate, HttpError } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
+import { withNotify } from '@/lib/realtime'
 
 export async function GET(request: NextRequest) {
   try {
@@ -22,7 +23,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
+async function POST_(request: NextRequest) {
   try {
     const user = await requireActiveUser()
     const body = await request.json()
@@ -58,3 +59,5 @@ export async function POST(request: NextRequest) {
     return handleError(err, 'POST /api/attendance')
   }
 }
+
+export const POST = withNotify(POST_)

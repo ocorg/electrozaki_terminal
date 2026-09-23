@@ -1,5 +1,6 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useApi } from '@/lib/data/api'
 import { useUser } from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
 import { t } from '@/lib/i18n/t'
@@ -61,8 +62,6 @@ export default function ExpensesModule({ storeId }: ExpensesModuleProps) {
   const primary      = portal.primaryColor
   const canDelete    = user?.role === 'gerant' || user?.role === 'proprietaire'
 
-  const [expenses, setExpenses]     = useState<Expense[]>([])
-  const [loading, setLoading]       = useState(true)
   const [modalOpen, setModalOpen]   = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [deleting, setDeleting]     = useState<string | null>(null)
@@ -76,22 +75,21 @@ export default function ExpensesModule({ storeId }: ExpensesModuleProps) {
   const [dateTo, setDateTo]     = useState(today)
   const [filterCat, setFilterCat] = useState('')
 
-  const fetchExpenses = useCallback(async () => {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams({ store_id: storeId, date_from: dateFrom, date_to: dateTo })
-      if (filterCat) params.set('categorie', filterCat)
-      const res  = await fetch(`/api/expenses?${params}`)
-      const json = await res.json()
-      setExpenses(json.data || [])
-    } catch {
-      showError(isAr ? 'خطأ في التحميل' : 'Erreur chargement')
-    } finally {
-      setLoading(false)
-    }
-  }, [storeId, dateFrom, dateTo, filterCat])
+  // Cached per period; the category filter applies instantly here
+  const expensesQ = useApi<Expense[]>(`/api/expenses?${new URLSearchParams({ store_id: storeId, date_from: dateFrom, date_to: dateTo })}`)
+  const loading   = expensesQ.isLoading
+  const [manualRefresh, setManualRefresh] = useState(false)
+  useEffect(() => {
+    if (expensesQ.error) showError(isAr ? 'خطأ في التحميل' : 'Erreur chargement')
+  }, [expensesQ.error]) // eslint-disable-line react-hooks/exhaustive-deps
+  const expenses = useMemo(() =>
+    (expensesQ.data ?? []).filter(e => !filterCat || e.categorie === filterCat),
+  [expensesQ.data, filterCat])
 
-  useEffect(() => { fetchExpenses() }, [fetchExpenses])
+  const fetchExpenses = useCallback(async () => {
+    setManualRefresh(true)
+    try { await expensesQ.refresh() } finally { setManualRefresh(false) }
+  }, [expensesQ])
 
   function setF(k: keyof typeof EMPTY_FORM, v: string) {
     setForm(prev => ({ ...prev, [k]: v }))
@@ -219,7 +217,7 @@ export default function ExpensesModule({ storeId }: ExpensesModuleProps) {
           onClick={fetchExpenses}
           className="p-2 rounded-xl border border-[#E8E5DE] bg-white text-[#6B6860] hover:bg-[#F8F7F4] transition-all"
         >
-          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-4 h-4 ${manualRefresh ? 'animate-spin' : ''}`} />
         </button>
       </div>
 

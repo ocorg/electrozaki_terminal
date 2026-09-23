@@ -3,8 +3,8 @@ import type { Prisma, delivery_status, device_status, device_type } from '@prism
 import { prisma } from '@/lib/db'
 import { json, handleError, requireUser, requireActiveUser, pickInput, columnsOf, HttpError, MANAGERS } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
-import { notifyCaisseChange } from '@/lib/realtime'
 import { codeLabel } from '@/lib/codes'
+import { withNotify } from '@/lib/realtime'
 
 const EDITABLE = columnsOf('deliveries', ['delivery_id', 'caisse_entry_created'])
 const TERMINAL: delivery_status[] = ['livre', 'annule', 'retour']
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
 }
 
 // ── POST — create delivery ────────────────────────────────────
-export async function POST(request: NextRequest) {
+async function POST_(request: NextRequest) {
   try {
     const user = await requireActiveUser(MANAGERS)
     const { items, ...body } = await request.json()
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
 // ── PATCH — update delivery status ───────────────────────────
 // Manager/owner only: cancelling or returning voids the linked transaction, which
 // must need the same approval as /api/transactions/void.
-export async function PATCH(request: NextRequest) {
+async function PATCH_(request: NextRequest) {
   try {
     const user = await requireActiveUser(MANAGERS)
     const { delivery_id, statut, notes } = await request.json() as { delivery_id?: string; statut?: delivery_status; notes?: string }
@@ -133,10 +133,12 @@ export async function PATCH(request: NextRequest) {
       ip_address:   getIpFromRequest(request),
       notes:        `Statut livraison : ${codeLabel('delivery_status', before.statut, 'fr')} → ${codeLabel('delivery_status', statut, 'fr')}`,
     })
-    if (statut === 'annule' || statut === 'retour') await notifyCaisseChange(before.store_id)
 
     return json({ data: updated })
   } catch (err) {
     return handleError(err, 'PATCH /api/deliveries')
   }
 }
+
+export const POST = withNotify(POST_)
+export const PATCH = withNotify(PATCH_)

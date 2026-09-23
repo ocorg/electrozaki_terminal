@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db'
 import { json, handleError, requireUser, requireActiveUser, HttpError, MANAGERS } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { phoneLabel, countByResult } from '@/lib/inventory'
+import { withNotify } from '@/lib/realtime'
 
 // ── GET /api/inventory — liste des sessions avec compteurs ──
 export async function GET(req: NextRequest) {
@@ -27,7 +28,7 @@ export async function GET(req: NextRequest) {
 }
 
 // ── POST /api/inventory — démarrer une nouvelle session ──
-export async function POST(req: NextRequest) {
+async function POST_(req: NextRequest) {
   try {
     const user = await requireActiveUser(MANAGERS)
     const body = await req.json().catch(() => ({}))
@@ -78,3 +79,5 @@ export async function POST(req: NextRequest) {
     return handleError(err, 'POST /api/inventory')
   }
 }
+
+export const POST = withNotify(POST_)

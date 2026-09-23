@@ -3,7 +3,7 @@ import { Prisma, type credit_status, type payment_method, type reprise_etat } fr
 import { prisma } from '@/lib/db'
 import { json, handleError, requireUser, requireActiveUser, todayDate, HttpError } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
-import { notifyCaisseChange } from '@/lib/realtime'
+import { withNotify } from '@/lib/realtime'
 
 // ─────────────────────────────────────────────
 // GET /api/phone-credits
@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
 // ─────────────────────────────────────────────
 // POST /api/phone-credits — créer une vente à crédit
 // ─────────────────────────────────────────────
-export async function POST(req: NextRequest) {
+async function POST_(req: NextRequest) {
   try {
     const user = await requireActiveUser()
     const body = await req.json() as Record<string, unknown>
@@ -136,10 +136,11 @@ export async function POST(req: NextRequest) {
         ...(has_reprise ? { reprise_model: credit.reprise_model, reprise_valeur } : {}),
       },
     })
-    if (firstPayment) await notifyCaisseChange(storeId)
 
     return json({ data: { credit, firstPayment } }, { status: 201 })
   } catch (err) {
     return handleError(err, 'POST /api/phone-credits')
   }
 }
+
+export const POST = withNotify(POST_)

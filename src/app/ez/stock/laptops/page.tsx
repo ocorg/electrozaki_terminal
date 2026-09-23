@@ -1,5 +1,6 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
+import { useApi } from '@/lib/data/api'
 import { useUser } from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
 import { t } from '@/lib/i18n/t'
@@ -33,33 +34,27 @@ export default function EZLaptopsPage() {
   const primary      = portal.primaryColor
   const canFinancials = user?.role === 'gerant' || user?.role === 'proprietaire'
 
-  const [laptops, setLaptops]   = useState<Laptop[]>([])
-  const [loading, setLoading]   = useState(true)
   const [search, setSearch]     = useState('')
   const [filterStatus, setFilterStatus] = useState('')
+  // All laptops are cached; filters and search apply instantly here
+  const laptopsQ = useApi<Laptop[]>(`/api/laptops?store_id=${STORE_ID}`)
+  const loading  = laptopsQ.isLoading
+  const [manualRefresh, setManualRefresh] = useState(false)
+  const laptops = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    return (laptopsQ.data ?? []).filter(l =>
+      (!filterStatus || l.status === filterStatus) &&
+      (q.length < 2  || [l.serial, l.model, l.marque].some(v => v?.toLowerCase().includes(q))))
+  }, [laptopsQ.data, filterStatus, search])
   const [formOpen, setFormOpen] = useState(false)
   const [editLaptop, setEditLaptop]   = useState<Laptop | null>(null)
   const [form, setForm]         = useState<Partial<Laptop>>({ ...EMPTY })
   const [submitting, setSubmitting]   = useState(false)
 
   const fetchLaptops = useCallback(async () => {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams({ store_id: STORE_ID })
-      if (filterStatus)    params.set('status', filterStatus)
-      if (search.length >= 2) params.set('search', search)
-      const res  = await fetch(`/api/laptops?${params}`)
-      const json = await res.json()
-      setLaptops(json.data || [])
-    } finally {
-      setLoading(false)
-    }
-  }, [search, filterStatus])
-
-  useEffect(() => {
-    const timer = setTimeout(() => fetchLaptops(), search ? 300 : 0)
-    return () => clearTimeout(timer)
-  }, [fetchLaptops, search])
+    setManualRefresh(true)
+    try { await laptopsQ.refresh() } finally { setManualRefresh(false) }
+  }, [laptopsQ])
 
   function set(field: keyof Laptop, value: unknown) {
     setForm(prev => ({ ...prev, [field]: value }))
@@ -104,9 +99,9 @@ export default function EZLaptopsPage() {
           subtitle={`${laptops.length} laptop${laptops.length !== 1 ? 's' : ''}`}
           actions={
             <div className="flex items-center gap-2">
-              <button onClick={fetchLaptops} disabled={loading}
+              <button onClick={fetchLaptops} disabled={manualRefresh}
                 className="p-2 rounded-xl border border-[#E8E5DE] bg-white text-[#6B6860] hover:bg-[#F8F7F4] transition-all">
-                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-4 h-4 ${manualRefresh ? 'animate-spin' : ''}`} />
               </button>
               <Btn variant="primary" onClick={openAdd} style={{ backgroundColor: primary } as React.CSSProperties}>
                 <Plus className="w-4 h-4" />

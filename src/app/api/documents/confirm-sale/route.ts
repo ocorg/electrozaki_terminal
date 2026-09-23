@@ -1,13 +1,13 @@
 import { prisma } from '@/lib/db'
 import { json, handleError, requireActiveUser, dateOnly, todayDate, HttpError } from '@/lib/api'
-import { notifyCaisseChange } from '@/lib/realtime'
+import { withNotify } from '@/lib/realtime'
 
 // POST /api/documents/confirm-sale — confirmation from the mini-POS popup.
 // confirm_document_sale() does, in one database transaction:
 //   1. creates the transactions row
 //   2. sets phones.status → vendu
 //   3. links ez_documents.txn_id to the new transaction
-export async function POST(request: Request) {
+async function POST_(request: Request) {
   try {
     const user = await requireActiveUser()
     const store_id = user.store_id ?? 'EZ-001'
@@ -29,10 +29,11 @@ export async function POST(request: Request) {
       ) AS result`
 
     if (!result?.success) throw new Error(result?.error ?? 'La fonction confirm_document_sale a échoué')
-    await notifyCaisseChange(store_id)
 
     return json({ status: 'success', data: { txn_id: result.txn_id } })
   } catch (err) {
     return handleError(err, 'POST /api/documents/confirm-sale')
   }
 }
+
+export const POST = withNotify(POST_)

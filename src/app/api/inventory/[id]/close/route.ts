@@ -3,8 +3,9 @@ import { prisma } from '@/lib/db'
 import { json, handleError, requireActiveUser, HttpError, MANAGERS } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { countByResult } from '@/lib/inventory'
+import { withNotify } from '@/lib/realtime'
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+async function PATCH_(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const user = await requireActiveUser(MANAGERS)
     const session = await prisma.inventory_sessions.findFirst({
@@ -43,3 +44,5 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     return handleError(err, 'PATCH /api/inventory/[id]/close')
   }
 }
+
+export const PATCH = withNotify(PATCH_)

@@ -1,5 +1,6 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useApi } from '@/lib/data/api'
 import { useUser } from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
 import { t } from '@/lib/i18n/t'
@@ -151,9 +152,6 @@ export default function EZDashboard() {
   const canFin       = user?.role === 'gerant' || user?.role === 'proprietaire'
 
   const [period,   setPeriod]   = useState<Period>('month')
-  const [data,     setData]     = useState<DashboardData | null>(null)
-  const [loading,  setLoading]  = useState(true)
-  const [lastSync, setLastSync] = useState<Date | null>(null)
 
   // Chart series toggles
   const [showRev,   setShowRev]   = useState(true)
@@ -161,98 +159,99 @@ export default function EZDashboard() {
   const [showNet,   setShowNet]   = useState(false)
   const [showCount, setShowCount] = useState(true)
 
+  // Cached per period; refreshed in the background when sales, stock, repairs,
+  // credits or expenses change. One round trip: the server runs every query in parallel.
+  const { start: pStart, end: pEnd } = periodDates(period)
+  const dashQ = useApi<Record<string, unknown>, Record<string, unknown>>(
+    user ? `/api/dashboard?store_id=${STORE_ID}&start=${pStart}&end=${pEnd}` : null,
+    { select: json => json },
+  )
+  const loading = !dashQ.data && !dashQ.error
+  const [manualRefresh, setManualRefresh] = useState(false)
+  const [lastSync, setLastSync] = useState<Date | null>(null)
+  useEffect(() => { if (dashQ.data) setLastSync(new Date()) }, [dashQ.data])
   async function fetchDashboard() {
-    setLoading(true)
-    try {
-      const { start } = periodDates(period)
-
-      // One round trip: the server runs every query in parallel (costs only for managers)
-      const { end } = periodDates(period)
-      const res  = await fetch(`/api/dashboard?store_id=${STORE_ID}&start=${start}&end=${end}`)
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error)
-
-      const periodTxns = (json.periodTxns  || []) as TxnRow[]
-      const recentRaw  = (json.recent      || []) as Record<string, unknown>[]
-      const repairs    = (json.repairs     || []) as Record<string, unknown>[]
-      const accs       = (json.accessories || []) as Record<string, unknown>[]
-      const credits    = (json.credits     || []) as Record<string, unknown>[]
-      const exps       = (json.expenses    || []) as { montant: number; date: string }[]
-      const costMap: Record<string, number> = canFin ? (json.costMap || {}) : {}
-
-      // ── KPI calculations ────────────────────────────────────
-      const ca        = periodTxns.reduce((s, t) => s + collected(t), 0)
-      const totalCost = periodTxns.reduce((s, t) => s + (costMap[t.device_id] || 0), 0)
-      const bBrut     = ca - totalCost
-      const totalExp  = exps.reduce((s, e) => s + e.montant, 0)
-      const bNet      = bBrut - totalExp
-      const nb        = periodTxns.length
-      const moy       = nb > 0 ? ca / nb : 0
-
-      // ── Payment breakdown ────────────────────────────────────
-      const breakdown = { cash: 0, transfer: 0, credit: 0, mixed: 0 }
-      for (const t of periodTxns) {
-        const v = collected(t)
-        if      (t.payment_method === 'especes')  breakdown.cash     += v
-        else if (t.payment_method === 'virement') breakdown.transfer += v
-        else if (t.payment_method === 'avance')   breakdown.credit   += v
-        else if (t.payment_method === 'mixte')    breakdown.mixed    += v
-      }
-
-      // ── Repairs ──────────────────────────────────────────────
-      const repair_counts: Record<string, number> = {}
-      for (const r of repairs) {
-        const s = r.statut as string
-        repair_counts[s] = (repair_counts[s] ?? 0) + 1
-      }
-
-      // ── Low stock ────────────────────────────────────────────
-      const lowItems = accs.filter((a: Record<string, unknown>) =>
-        (a.quantite as number) <= (a.seuil_alerte as number)
-      ) as { acc_id: string; nom: string; quantite: number; seuil_alerte: number }[]
-
-      // ── Pending credits ──────────────────────────────────────
-      const pending_credits = credits.filter((c: Record<string, unknown>) => {
-        const pv = (c.prix_vente as number) || 0
-        const av = (c.avance    as number) || 0
-        const ve = (c.valeur_echange as number) || 0
-        return c.payment_method === 'credit' || (pv - av - ve) > 0
-      }).length
-
-      // ── Recent transactions ──────────────────────────────────
-      const recent_txns: RecentTxn[] = recentRaw.map(t => ({
-        txn_id:         t.txn_id         as string,
-        device_id:      t.device_id      as string,
-        device_type:    t.device_type    as string || 'telephone',
-        type_operation: t.type_operation as string,
-        prix_vente:     t.prix_vente     as number,
-        avance:         (t.avance        as number) || 0,
-        valeur_echange: (t.valeur_echange as number) || 0,
-        payment_method: t.payment_method as string,
-        date_vente:     t.date_vente     as string,
-        client_nom:     (t.clients as Record<string, string> | null)?.nom,
-      }))
-
-      // ── Chart ────────────────────────────────────────────────
-      const { start: s, end: e } = periodDates(period)
-      const chart_data = buildChart(periodTxns, exps, costMap, s, e)
-
-      setData({
-        ca_period: ca, benefice_brut: bBrut, benefice_net: bNet,
-        nb_ventes: nb, panier_moyen: moy,
-        active_repairs: repairs.length, repair_counts,
-        low_stock_count: lowItems.length, low_stock_items: lowItems,
-        pending_credits, recent_txns, chart_data,
-        payment_breakdown: breakdown,
-      })
-      setLastSync(new Date())
-    } finally { setLoading(false) }
+    setManualRefresh(true)
+    try { await dashQ.refresh() } finally { setManualRefresh(false) }
   }
 
-  // Refetch when period changes OR when user role becomes available
-  useEffect(() => {
-    if (user !== undefined) fetchDashboard()
-  }, [period, user?.role]) // eslint-disable-line react-hooks/exhaustive-deps
+  const data = useMemo<DashboardData | null>(() => {
+    const json = dashQ.data as Record<string, any> | undefined
+    if (!json) return null
+    const periodTxns = (json.periodTxns  || []) as TxnRow[]
+    const recentRaw  = (json.recent      || []) as Record<string, unknown>[]
+    const repairs    = (json.repairs     || []) as Record<string, unknown>[]
+    const accs       = (json.accessories || []) as Record<string, unknown>[]
+    const credits    = (json.credits     || []) as Record<string, unknown>[]
+    const exps       = (json.expenses    || []) as { montant: number; date: string }[]
+    const costMap: Record<string, number> = canFin ? (json.costMap || {}) : {}
+
+    // ── KPI calculations ────────────────────────────────────
+    const ca        = periodTxns.reduce((s, t) => s + collected(t), 0)
+    const totalCost = periodTxns.reduce((s, t) => s + (costMap[t.device_id] || 0), 0)
+    const bBrut     = ca - totalCost
+    const totalExp  = exps.reduce((s, e) => s + e.montant, 0)
+    const bNet      = bBrut - totalExp
+    const nb        = periodTxns.length
+    const moy       = nb > 0 ? ca / nb : 0
+
+    // ── Payment breakdown ────────────────────────────────────
+    const breakdown = { cash: 0, transfer: 0, credit: 0, mixed: 0 }
+    for (const t of periodTxns) {
+      const v = collected(t)
+      if      (t.payment_method === 'especes')  breakdown.cash     += v
+      else if (t.payment_method === 'virement') breakdown.transfer += v
+      else if (t.payment_method === 'avance')   breakdown.credit   += v
+      else if (t.payment_method === 'mixte')    breakdown.mixed    += v
+    }
+
+    // ── Repairs ──────────────────────────────────────────────
+    const repair_counts: Record<string, number> = {}
+    for (const r of repairs) {
+      const s = r.statut as string
+      repair_counts[s] = (repair_counts[s] ?? 0) + 1
+    }
+
+    // ── Low stock ────────────────────────────────────────────
+    const lowItems = accs.filter((a: Record<string, unknown>) =>
+      (a.quantite as number) <= (a.seuil_alerte as number)
+    ) as { acc_id: string; nom: string; quantite: number; seuil_alerte: number }[]
+
+    // ── Pending credits ──────────────────────────────────────
+    const pending_credits = credits.filter((c: Record<string, unknown>) => {
+      const pv = (c.prix_vente as number) || 0
+      const av = (c.avance    as number) || 0
+      const ve = (c.valeur_echange as number) || 0
+      return c.payment_method === 'credit' || (pv - av - ve) > 0
+    }).length
+
+    // ── Recent transactions ──────────────────────────────────
+    const recent_txns: RecentTxn[] = recentRaw.map(t => ({
+      txn_id:         t.txn_id         as string,
+      device_id:      t.device_id      as string,
+      device_type:    t.device_type    as string || 'telephone',
+      type_operation: t.type_operation as string,
+      prix_vente:     t.prix_vente     as number,
+      avance:         (t.avance        as number) || 0,
+      valeur_echange: (t.valeur_echange as number) || 0,
+      payment_method: t.payment_method as string,
+      date_vente:     t.date_vente     as string,
+      client_nom:     (t.clients as Record<string, string> | null)?.nom,
+    }))
+
+    // ── Chart ────────────────────────────────────────────────
+    const { start: s, end: e } = periodDates(period)
+    const chart_data = buildChart(periodTxns, exps, costMap, s, e)
+
+    return {
+      ca_period: ca, benefice_brut: bBrut, benefice_net: bNet,
+      nb_ventes: nb, panier_moyen: moy,
+      active_repairs: repairs.length, repair_counts,
+      low_stock_count: lowItems.length, low_stock_items: lowItems,
+      pending_credits, recent_txns, chart_data,
+      payment_breakdown: breakdown,
+    }
+  }, [dashQ.data, period, canFin])
 
   const periodLabel = {
     day:   isAr ? 'اليوم'        : "Aujourd'hui",
@@ -373,10 +372,10 @@ export default function EZDashboard() {
           </div>
           <button
             onClick={fetchDashboard}
-            disabled={loading}
+            disabled={manualRefresh}
             className="p-2 rounded-xl border border-[#E8E5DE] bg-white text-[#6B6860] hover:bg-[#F8F7F4] transition-all disabled:opacity-50"
           >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-4 h-4 ${manualRefresh ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </div>

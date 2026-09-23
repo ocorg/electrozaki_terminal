@@ -1,5 +1,6 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
+import { useApi } from '@/lib/data/api'
 import { useUser } from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
 import { t } from '@/lib/i18n/t'
@@ -47,44 +48,32 @@ export default function BZGCaissePage() {
   const { user }     = useUser()
   const { language } = useLanguageStore()
   const isAr         = language === 'ar'
-  const [records, setRecords]     = useState<CaisseRecord[]>([])
-  const [loading, setLoading]     = useState(true)
   const [expanded, setExpanded]   = useState<string | null>(null)
   const [approving, setApproving] = useState<string | null>(null)
-  const [stores, setStores] = useState(STORES_FALLBACK)
-  useEffect(() => {
-    fetch('/api/stores')
-      .then(r => r.json())
-      .then(({ data }: { data?: { store_id: string; name: string; theme_color: string; is_active: boolean }[] }) => {
-        const active = (data ?? []).filter(s => s.is_active)
-        if (active.length) setStores(active.map(s => ({ id: s.store_id, name: s.name, color: s.theme_color })))
-      })
-      .catch(() => {})
-  }, [])
+  const storesQ = useApi<{ store_id: string; name: string; theme_color: string; is_active: boolean }[]>('/api/stores')
+  const stores  = useMemo(() => {
+    const active = (storesQ.data ?? []).filter(s => s.is_active)
+    return active.length ? active.map(s => ({ id: s.store_id, name: s.name, color: s.theme_color })) : STORES_FALLBACK
+  }, [storesQ.data])
   const [filterStore, setFilterStore] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
   const [selectedDate, setSelectedDate] = useState('')
 
+  // Cached per filter combination; refreshed in the background when any caisse changes
+  const params = new URLSearchParams()
+  if (filterStore)  params.set('store_id', filterStore)
+  if (filterStatus) params.set('status', filterStatus)
+  if (selectedDate) params.set('date', selectedDate)
+  const recordsQ = useApi<CaisseRecord[]>(`/api/bzg/caisse?${params}`)
+  const records  = recordsQ.data ?? []
+  const loading  = recordsQ.isLoading
+  const [manualRefresh, setManualRefresh] = useState(false)
+  useEffect(() => { if (recordsQ.error) showError(recordsQ.error.message) }, [recordsQ.error])
+
   async function fetchRecords() {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams()
-      if (filterStore)  params.set('store_id', filterStore)
-      if (filterStatus) params.set('status', filterStatus)
-      if (selectedDate) params.set('date', selectedDate)
-
-      const res  = await fetch(`/api/bzg/caisse?${params}`)
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error)
-      setRecords(json.data || [])
-    } catch (err: unknown) {
-      showError((err as Error).message)
-    } finally {
-      setLoading(false)
-    }
+    setManualRefresh(true)
+    try { await recordsQ.refresh() } finally { setManualRefresh(false) }
   }
-
-  useEffect(() => { fetchRecords() }, [filterStore, filterStatus, selectedDate])
 
   // Both approve and reject go through /api/bzg/caisse/eod — the only EOD-approval
   // path that role-checks (manager/owner) AND writes an activity_log entry. This used to
@@ -145,9 +134,9 @@ export default function BZGCaissePage() {
             ? (isAr ? `${pending.length} في انتظار الموافقة` : `${pending.length} en attente d'approbation`)
             : (isAr ? 'كل الأيام متزامنة' : 'Tout est à jour')}
           actions={
-            <button onClick={fetchRecords} disabled={loading}
+            <button onClick={fetchRecords} disabled={manualRefresh}
               className="p-2 rounded-xl border border-[#E8E5DE] bg-white text-[#6B6860] hover:bg-[#F5F3FF] transition-all">
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-4 h-4 ${manualRefresh ? 'animate-spin' : ''}`} />
             </button>
           }
         />

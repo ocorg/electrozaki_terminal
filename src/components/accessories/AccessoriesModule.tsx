@@ -1,6 +1,7 @@
 'use client'
 import { useCategories } from '@/lib/hooks/useCategories'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useApi } from '@/lib/data/api'
 import { useUser } from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
 import { t } from '@/lib/i18n/t'
@@ -17,6 +18,8 @@ import {
 } from 'lucide-react'
 
 
+
+const PAGE = 60
 
 interface Accessory {
   acc_id:                 string
@@ -73,8 +76,6 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
   const primary      = portal.primaryColor
   const canFinancials = user?.role === 'gerant' || user?.role === 'proprietaire'
 
-  const [accessories, setAccessories] = useState<Accessory[]>([])
-  const [loading, setLoading]         = useState(true)
   const [search, setSearch]           = useState('')
   const [filterCat, setFilterCat]     = useState('')
   const [onlyLowStock, setOnlyLowStock] = useState(false)
@@ -87,27 +88,36 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [deleting,      setDeleting]      = useState(false)
 
-  const fetchAccessories = useCallback(async () => {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams({ store_id: storeId })
-      if (filterCat)    params.set('categorie', filterCat)
-      if (onlyLowStock) params.set('low_stock', 'true')
-      if (search.length >= 2) params.set('search', search)
-      const res  = await fetch(`/api/accessories?${params}`)
-      const json = await res.json()
-      setAccessories(json.data || [])
-    } catch (err: unknown) {
-      showError((err as Error).message)
-    } finally {
-      setLoading(false)
-    }
-  }, [storeId, filterCat, onlyLowStock, search])
+  // The store's whole accessory list is cached; filters and search apply instantly here
+  const accQ    = useApi<Accessory[]>(`/api/accessories?store_id=${storeId}`)
+  const loading = accQ.isLoading
+  const [manualRefresh, setManualRefresh] = useState(false)
+  useEffect(() => { if (accQ.error) showError(accQ.error.message) }, [accQ.error])
 
-  useEffect(() => {
-    const timer = setTimeout(() => fetchAccessories(), search ? 300 : 0)
-    return () => clearTimeout(timer)
-  }, [fetchAccessories, search])
+  const accessories = useMemo(() => {
+    const tokens = search.trim().toLowerCase().split(/s+/).filter(Boolean)
+    return (accQ.data ?? []).filter(a =>
+      (!filterCat || a.categorie === filterCat) &&
+      (!onlyLowStock || a.is_low_stock) &&
+      (search.trim().length < 2 || tokens.every(tok =>
+        [a.nom, a.marque, a.barcode].some(v => v?.toLowerCase().includes(tok))))
+    )
+  }, [accQ.data, filterCat, onlyLowStock, search])
+
+  // Long lists render in pages so the screen stays fast
+  const [shown, setShown] = useState(PAGE)
+  useEffect(() => setShown(PAGE), [filterCat, onlyLowStock, search])
+  const visibleAccessories = accessories.slice(0, shown)
+
+  // Updates the cached list right away; the background refresh confirms it
+  const setAccessories = useCallback((update: (prev: Accessory[]) => Accessory[]) => {
+    accQ.mutate(json => json && { ...json, data: update((json as { data: Accessory[] }).data) }, { revalidate: false })
+  }, [accQ])
+
+  async function fetchAccessories() {
+    setManualRefresh(true)
+    try { await accQ.refresh() } finally { setManualRefresh(false) }
+  }
 
   function setF(k: keyof AccessoryForm, v: string) {
     setForm((prev: AccessoryForm) => ({ ...prev, [k]: v }))
@@ -186,13 +196,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
         : (t(isAr, 'common.addedOk')))
       setFormOpen(false)
       setEditAcc(null)
-      // Silent background sync — no loading state, list stays visible
-      const sp = new URLSearchParams({ store_id: storeId })
-      if (filterCat)        sp.set('categorie', filterCat)
-      if (onlyLowStock)     sp.set('low_stock', 'true')
-      if (search.length >= 2) sp.set('search', search)
-      fetch(`/api/accessories?${sp}`).then(r => r.json())
-        .then(j => { if (j.data) setAccessories(j.data) }).catch(() => {})
+      // The list refreshes in the background (live change event)
     } catch (err: unknown) {
       showError((err as Error).message)
     } finally {
@@ -228,7 +232,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
 
   const { accessories: dynamicCategories } = useCategories()
   const getCatLabel = (v: string) => {
-    const c = dynamicCategories.find(x => x.ar === v)
+    const c = dynamicCategories.find(x => x.code === v)
     return c ? (isAr ? c.ar : c.fr) : v
   }
 
@@ -246,9 +250,9 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
           subtitle={`${accessories.length} ${isAr ? 'منتج' : 'produit(s)'}`}
           actions={
             <div className="flex items-center gap-2">
-              <button onClick={fetchAccessories} disabled={loading}
+              <button onClick={fetchAccessories} disabled={manualRefresh}
                 className="p-2 rounded-xl border border-[#E8E5DE] bg-white text-[#6B6860] hover:bg-[#F8F7F4] transition-all">
-                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-4 h-4 ${manualRefresh ? 'animate-spin' : ''}`} />
               </button>
               <Btn variant="primary" onClick={openAdd}
                 style={{ backgroundColor: primary } as React.CSSProperties}>
@@ -307,7 +311,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
           >
             <option value="">{t(isAr, 'common.allCategories')}</option>
             {sortedCategories.map(c => (
-              <option key={c.ar} value={c.ar}>{isAr ? c.ar : c.fr}</option>
+              <option key={c.code} value={c.code}>{isAr ? c.ar : c.fr}</option>
             ))}
           </select>
           <button
@@ -358,7 +362,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
             />
           ) : (
             <div className="divide-y divide-[#F2F0EB]">
-              {accessories.map(acc => (
+              {visibleAccessories.map(acc => (
                 <div
                   key={acc.acc_id}
                   className={`hidden lg:grid items-center px-5 py-3.5 transition-all ${acc.is_low_stock ? 'bg-red-50/30' : 'hover:bg-[#F8F7F4]'}`}
@@ -454,7 +458,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
               ))}
 
               {/* Mobile cards */}
-              {accessories.map(acc => (
+              {visibleAccessories.map(acc => (
                 <div key={`mob-${acc.acc_id}`}
                   className={`lg:hidden flex items-center gap-4 px-4 py-3.5 transition-all ${acc.is_low_stock ? 'bg-red-50/40' : 'hover:bg-[#F8F7F4]'}`}>
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
@@ -487,6 +491,12 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
                   </div>
                 </div>
               ))}
+              {accessories.length > shown && (
+                <button onClick={() => setShown(n => n + PAGE)}
+                  className="w-full py-3 text-sm font-medium text-[#6B6860] hover:bg-[#F8F7F4] transition-all">
+                  {isAr ? `عرض المزيد (${accessories.length - shown})` : `Afficher plus (${accessories.length - shown})`}
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -543,7 +553,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
                 onChange={e => setF('categorie', e.target.value)}>
                 <option value="">{isAr ? 'اختر الفئة...' : 'Choisir...'}</option>
                 {sortedCategories.map(c => (
-                  <option key={c.ar} value={c.ar}>{isAr ? c.ar : c.fr}</option>
+                  <option key={c.code} value={c.code}>{isAr ? c.ar : c.fr}</option>
                 ))}
               </select>
             </Field>

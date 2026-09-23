@@ -15,6 +15,7 @@ import {
 import type { UserRole } from '@/types/database'
 import { useLanguageStore } from '@/lib/stores/language'
 import { codeLabel } from '@/lib/codes'
+import { clearDataCache } from '@/lib/data/cache'
 
 // ─── Nav item definition ──────────────────────────────────────
 interface NavItem {
@@ -89,6 +90,7 @@ export default function PortalSidebar({ onClose, collapsed = false, onCollapsedC
   )
 
   async function handleLogout() {
+    clearDataCache()
     await signOut({ redirect: false })
     router.push('/login')
   }

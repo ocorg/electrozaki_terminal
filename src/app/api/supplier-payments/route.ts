@@ -3,6 +3,7 @@ import type { supplier_payment_type } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { json, handleError, requireUser, requireActiveUser, dateOnly, todayDate, HttpError, MANAGERS } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
+import { withNotify } from '@/lib/realtime'
 
 const PAYMENT_TYPES: supplier_payment_type[] = ['reglement_a', 'avance_a', 'paiement_b']
 
@@ -31,7 +32,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
+async function POST_(request: NextRequest) {
   try {
     const user = await requireActiveUser(MANAGERS)
     const body = await request.json()
@@ -81,3 +82,5 @@ export async function POST(request: NextRequest) {
     return handleError(err, 'POST /api/supplier-payments')
   }
 }
+
+export const POST = withNotify(POST_)

@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { useApi } from '@/lib/data/api'
 import { Modal, Field, inputClass, selectClass, Btn } from '@/components/shared'
 import { BatteryBar } from '@/components/shared'
 import { showSuccess, showError } from '@/lib/utils/toasts'
@@ -61,13 +62,8 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
 
   const { brands, seriesFor, modelsFor, couleursFor, addEntry, loading: catalogLoading } = usePhoneCatalog()
 
-  const [suppliers, setSuppliers] = useState<{ supplier_id: string; nom: string; type_fournisseur: string }[]>([])
-  useEffect(() => {
-    fetch('/api/suppliers?mode=dropdown')
-      .then(r => r.json())
-      .then(json => setSuppliers(json.data || []))
-      .catch(() => {})
-  }, [])
+  // Same cached list as the phones screen
+  const suppliers = useApi<{ supplier_id: string; nom: string; type_fournisseur: string }[]>('/api/suppliers?mode=dropdown').data ?? []
 
   const [form, setForm]           = useState<Partial<Phone>>({ ...EMPTY })
   const [loading, setLoading]     = useState(false)

@@ -2,11 +2,11 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { json, handleError, requireActiveUser, HttpError, MANAGERS } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
-import { notifyCaisseChange } from '@/lib/realtime'
+import { withNotify } from '@/lib/realtime'
 
 // PATCH /api/bzg/caisse/eod
 // Body: { caisse_id: string, action: 'approve' | 'reject', rejection_note?: string }
-export async function PATCH(request: NextRequest) {
+async function PATCH_(request: NextRequest) {
   try {
     const user = await requireActiveUser(MANAGERS)
     const body = await request.json() as Record<string, unknown>
@@ -52,10 +52,11 @@ export async function PATCH(request: NextRequest) {
         ...(rejection_note ? { rejection_note } : {}),
       },
     })
-    await notifyCaisseChange(before.store_id)
 
     return json({ status: 'success' })
   } catch (err) {
     return handleError(err, 'PATCH /api/bzg/caisse/eod')
   }
 }
+
+export const PATCH = withNotify(PATCH_)

@@ -2,9 +2,9 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { json, handleError, requireActiveUser, HttpError, MANAGERS } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
-import { notifyCaisseChange } from '@/lib/realtime'
+import { withNotify } from '@/lib/realtime'
 
-export async function PATCH(request: NextRequest) {
+async function PATCH_(request: NextRequest) {
   try {
     const user = await requireActiveUser()
     if (!MANAGERS.includes(user.role)) {
@@ -52,10 +52,11 @@ export async function PATCH(request: NextRequest) {
       ip_address:   getIpFromRequest(request),
       notes:        `Retour — Motif : ${voided_reason}`,
     })
-    await notifyCaisseChange(before.store_id)
 
     return json({ data: after, status: 'voided' })
   } catch (err) {
     return handleError(err, 'PATCH /api/transactions/void')
   }
 }
+
+export const PATCH = withNotify(PATCH_)

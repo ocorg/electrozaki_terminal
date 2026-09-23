@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import { Toaster } from 'sonner'
 import HtmlLangSync from '@/components/shared/HtmlLangSync'
 import AuthProvider from '@/components/shared/AuthProvider'
+import DataProvider from '@/components/shared/DataProvider'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
@@ -34,7 +35,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className={`${inter.variable} font-body bg-ez-black text-ez-text antialiased`}>
         <HtmlLangSync />
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <DataProvider>{children}</DataProvider>
+        </AuthProvider>
         <Toaster
           position="top-right"
           richColors={false}

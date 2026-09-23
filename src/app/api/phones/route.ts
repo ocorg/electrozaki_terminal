@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db'
 import { json, handleError, requireUser, requireActiveUser, pickInput, todayDate, HttpError, MANAGERS } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { validateRequired, sanitizeText } from '@/lib/utils/validation'
+import { withNotify } from '@/lib/realtime'
 
 // Hidden from staff: purchase price, iCloud password, settlement and audit fields
 const STAFF_OMIT = {
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
     const search         = searchParams.get('search')?.trim()
     const store_id       = searchParams.get('store_id')
     const fournisseur_id = searchParams.get('fournisseur_id')
-    const limit          = Math.min(parseInt(searchParams.get('limit') || '200', 10), 500)
+    const limit          = Math.min(parseInt(searchParams.get('limit') || '200', 10), 5000)
 
     const where: Prisma.phonesWhereInput = {
       is_deleted: false,
@@ -65,7 +66,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
+async function POST_(request: NextRequest) {
   try {
     const user = await requireActiveUser()
     const body = await request.json() as Record<string, unknown>
@@ -102,7 +103,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function PATCH(request: NextRequest) {
+async function PATCH_(request: NextRequest) {
   try {
     const user = await requireActiveUser()
     const body = await request.json() as Record<string, unknown>
@@ -133,7 +134,7 @@ export async function PATCH(request: NextRequest) {
   }
 }
 
-export async function DELETE(request: NextRequest) {
+async function DELETE_(request: NextRequest) {
   try {
     const user = await requireActiveUser(MANAGERS)
     const phone_id = new URL(request.url).searchParams.get('phone_id')
@@ -160,3 +161,7 @@ export async function DELETE(request: NextRequest) {
     return handleError(err, 'DELETE /api/phones')
   }
 }
+
+export const POST = withNotify(POST_)
+export const PATCH = withNotify(PATCH_)
+export const DELETE = withNotify(DELETE_)

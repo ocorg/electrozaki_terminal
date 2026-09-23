@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useApi } from '@/lib/data/api'
 import { useUser }          from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
 import { usePortal }        from '@/lib/context/portal'
@@ -255,8 +256,10 @@ export default function DeliveriesModule({ storeId }: DeliveriesModuleProps) {
   const portal       = usePortal()
   const primary      = portal.primaryColor
 
-  const [deliveries, setDeliveries] = useState<Delivery[]>([])
-  const [loading,    setLoading]    = useState(true)
+  const deliveriesQ = useApi<Delivery[]>(`/api/deliveries?store_id=${storeId}`)
+  const deliveries  = deliveriesQ.data ?? []
+  const loading     = deliveriesQ.isLoading
+  useEffect(() => { if (deliveriesQ.error) showError(deliveriesQ.error.message) }, [deliveriesQ.error])
   const [formOpen,   setFormOpen]   = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [form,       setForm]       = useState({ ...EMPTY_FORM })
@@ -267,20 +270,7 @@ export default function DeliveriesModule({ storeId }: DeliveriesModuleProps) {
     device_name: string
   } | null>(null)
 
-  const fetchDeliveries = useCallback(async () => {
-    setLoading(true)
-    try {
-      const res  = await fetch(`/api/deliveries?store_id=${storeId}`)
-      const json = await res.json()
-      setDeliveries(json.data || [])
-    } catch (e: unknown) {
-      showError((e as Error).message)
-    } finally {
-      setLoading(false)
-    }
-  }, [storeId])
-
-  useEffect(() => { fetchDeliveries() }, [fetchDeliveries])
+  const fetchDeliveries = useCallback(() => deliveriesQ.refresh(), [deliveriesQ])
 
   async function handleCreate() {
     if (

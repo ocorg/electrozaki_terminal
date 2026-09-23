@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { json, handleError, requireUser, requireActiveUser, HttpError, MANAGERS } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
-import { notifyCaisseChange } from '@/lib/realtime'
+import { withNotify } from '@/lib/realtime'
 
 export async function GET(request: NextRequest) {
   try {
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
+async function POST_(request: NextRequest) {
   try {
     const user = await requireActiveUser()
     const { client_id, montant, payment_method, store_id, txn_id, payment_ref, notes } = await request.json()
@@ -56,7 +56,6 @@ export async function POST(request: NextRequest) {
       ip_address:  getIpFromRequest(request),
       notes:       `Paiement crédit ${montant} MAD — client ${client_id}`,
     })
-    await notifyCaisseChange(data.store_id)
 
     return json({ data }, { status: 201 })
   } catch (err) {
@@ -64,7 +63,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function DELETE(request: NextRequest) {
+async function DELETE_(request: NextRequest) {
   try {
     const user = await requireActiveUser(MANAGERS)
     const payment_id = new URL(request.url).searchParams.get('payment_id')
@@ -84,10 +83,12 @@ export async function DELETE(request: NextRequest) {
       before_state: before,
       ip_address:   getIpFromRequest(request),
     })
-    await notifyCaisseChange(before.store_id)
 
     return json({ status: 'success' })
   } catch (err) {
     return handleError(err, 'DELETE /api/credits')
   }
 }
+
+export const POST = withNotify(POST_)
+export const DELETE = withNotify(DELETE_)

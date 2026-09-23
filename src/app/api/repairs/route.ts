@@ -3,8 +3,8 @@ import type { Prisma, repair_status } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { json, handleError, requireUser, requireActiveUser, pickInput, columnsOf, HttpError } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
-import { notifyCaisseChange } from '@/lib/realtime'
 import { codeLabel } from '@/lib/codes'
+import { withNotify } from '@/lib/realtime'
 
 const EDITABLE = columnsOf('reparations', ['rep_id'])
 
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
+async function POST_(request: NextRequest) {
   try {
     const user = await requireActiveUser()
     const body = await request.json()
@@ -66,7 +66,6 @@ export async function POST(request: NextRequest) {
       ip_address:  getIpFromRequest(request),
       notes:       `${data.marque ?? ''} ${data.model} — ${data.probleme}`.trim(),
     })
-    await notifyCaisseChange(data.store_id)
 
     return json({ data }, { status: 201 })
   } catch (err) {
@@ -74,7 +73,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function PATCH(request: NextRequest) {
+async function PATCH_(request: NextRequest) {
   try {
     const user = await requireActiveUser()
     const body = await request.json()
@@ -99,10 +98,12 @@ export async function PATCH(request: NextRequest) {
       ip_address:   getIpFromRequest(request),
       notes:        body.statut ? `Statut → ${codeLabel('repair_status', data.statut, 'fr')}` : undefined,
     })
-    await notifyCaisseChange(data.store_id)
 
     return json({ data })
   } catch (err) {
     return handleError(err, 'PATCH /api/repairs')
   }
 }
+
+export const POST = withNotify(POST_)
+export const PATCH = withNotify(PATCH_)

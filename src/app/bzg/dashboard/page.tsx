@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { useApi } from '@/lib/data/api'
 import { useUser } from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
 import { t } from '@/lib/i18n/t'
@@ -9,21 +10,6 @@ import {
   TrendingUp, Wrench, Vault, Users,
   RefreshCw, Clock, CheckCircle, XCircle, AlertTriangle
 } from 'lucide-react'
-
-// Simple fetch with retry helper used by this dashboard
-async function fetchWithRetry(input: RequestInfo, init?: RequestInit, retries = 2, backoff = 500) {
-  let lastErr: any
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    try {
-      const res = await fetch(input, init)
-      return res
-    } catch (err) {
-      lastErr = err
-      if (attempt < retries) await new Promise(r => setTimeout(r, backoff * (attempt + 1)))
-    }
-  }
-  throw lastErr
-}
 
 const STORES = [
   { id: 'EZ-001', name: 'Electro Zaki', color: '#C9A440', bg: '#FAF5E8' },
@@ -62,27 +48,24 @@ export default function BZGDashboard() {
   const { language } = useLanguageStore()
   const isAr         = language === 'ar'
 
-  const [snapshots, setSnapshots]     = useState<StoreSnapshot[]>([])
-  const [pendingEOD, setPendingEOD]   = useState<PendingEOD[]>([])
-  const [staffToday, setStaffToday]   = useState<StaffPunch[]>([])
-  const [loading, setLoading]         = useState(true)
-  const [lastSync, setLastSync]       = useState<Date | null>(null)
   const [approving, setApproving]     = useState<string | null>(null)
 
-  async function fetchAll() {
-    setLoading(true)
-    try {
-      const res  = await fetchWithRetry('/api/bzg/dashboard')
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error ?? 'Erreur chargement dashboard')
+  // Cached; refreshed in the background whenever a store's sales, caisse or attendance change
+  const dashQ = useApi<
+    { snapshots?: StoreSnapshot[]; pendingEOD?: PendingEOD[]; staffToday?: StaffPunch[] },
+    { snapshots?: StoreSnapshot[]; pendingEOD?: PendingEOD[]; staffToday?: StaffPunch[] }
+  >('/api/bzg/dashboard', { select: json => json })
+  const snapshots  = dashQ.data?.snapshots  ?? []
+  const pendingEOD = dashQ.data?.pendingEOD ?? []
+  const staffToday = dashQ.data?.staffToday ?? []
+  const loading    = !dashQ.data && !dashQ.error
+  const [manualRefresh, setManualRefresh] = useState(false)
+  const [lastSync, setLastSync] = useState<Date | null>(null)
+  useEffect(() => { if (dashQ.data) setLastSync(new Date()) }, [dashQ.data])
 
-      setSnapshots(json.snapshots   ?? [])
-      setPendingEOD(json.pendingEOD ?? [])
-      setStaffToday(json.staffToday ?? [])
-      setLastSync(new Date())
-    } finally {
-      setLoading(false)
-    }
+  async function fetchAll() {
+    setManualRefresh(true)
+    try { await dashQ.refresh() } finally { setManualRefresh(false) }
   }
 
   async function approveEOD(caisseId: string) {
@@ -119,7 +102,6 @@ export default function BZGDashboard() {
     }
   }
 
-  useEffect(() => { fetchAll() }, [])
 
   const totalCaToday  = snapshots.reduce((s, snap) => s + snap.ca_today,  0)
   const totalCaMonth  = snapshots.reduce((s, snap) => s + snap.ca_month,  0)
@@ -152,10 +134,10 @@ export default function BZGDashboard() {
             )}
           </p>
         </div>
-        <button onClick={fetchAll} disabled={loading}
+        <button onClick={fetchAll} disabled={manualRefresh}
           className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm border bg-white hover:bg-[#F5F3FF] transition-all disabled:opacity-50"
           style={{ borderColor: '#C4B5FD', color: '#6B6860' }}>
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-3.5 h-3.5 ${manualRefresh ? 'animate-spin' : ''}`} />
           {t(isAr, 'common.refresh')}
         </button>
       </div>

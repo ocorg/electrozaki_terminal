@@ -1,5 +1,6 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
+import { useApi, apiWrite } from '@/lib/data/api'
 
 export interface CatalogEntry {
   catalog_id: string
@@ -34,18 +35,11 @@ function stripBrandPrefix(serie: string, model: string): string {
 }
 
 export function usePhoneCatalog(): CatalogState {
-  const [catalog, setCatalog] = useState<CatalogEntry[]>([])
-  const [loading, setLoading] = useState(true)
+  // Shared cache: loaded once for every screen that offers catalog suggestions
+  const { data, isLoading: loading } = useApi<CatalogEntry[]>('/api/phones/catalog')
+  const catalog = useMemo(() => data ?? [], [data])
 
-  useEffect(() => {
-    fetch('/api/phones/catalog')
-      .then(r => r.json())
-      .then(json => { if (json.data?.length) setCatalog(json.data) })
-      .catch(err => console.error('[usePhoneCatalog]', err))
-      .finally(() => setLoading(false))
-  }, [])
-
-  const brands = Array.from(new Set(catalog.map(e => e.marque))).sort()
+  const brands = useMemo(() => Array.from(new Set(catalog.map(e => e.marque))).sort(), [catalog])
 
   const seriesFor = useCallback((brand: string) =>
     Array.from(new Set(catalog.filter(e => e.marque === brand).map(e => e.serie))).sort()
@@ -79,15 +73,8 @@ export function usePhoneCatalog(): CatalogState {
     )
     if (exists) return
 
-    const res = await fetch('/api/phones/catalog', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify(entry),
-    })
-    if (res.ok) {
-      const { data } = await res.json()
-      setCatalog(prev => [...prev, data])
-    }
+    // refreshes the shared catalog on success
+    await apiWrite('/api/phones/catalog', { method: 'POST', body: entry }).catch(() => {})
   }, [catalog])
 
   return { brands, seriesFor, modelsFor, couleursFor, addEntry, loading }

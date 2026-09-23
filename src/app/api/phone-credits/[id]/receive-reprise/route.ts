@@ -2,10 +2,11 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { json, handleError, requireActiveUser, HttpError } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
+import { withNotify } from '@/lib/realtime'
 
 // POST /api/phone-credits/[id]/receive-reprise
 // Marks the trade-in phone as physically received. No stock entry — that happens at discharge.
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+async function POST_(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const user     = await requireActiveUser()
     const body     = await req.json().catch(() => ({})) as Record<string, unknown>
@@ -43,3 +44,5 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return handleError(err, 'POST /api/phone-credits/[id]/receive-reprise')
   }
 }
+
+export const POST = withNotify(POST_)

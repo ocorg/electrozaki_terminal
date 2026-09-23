@@ -1,6 +1,7 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useUser } from '@/lib/hooks/useUser'
+import { useApi } from '@/lib/data/api'
 import { useEscapeKey } from '@/lib/hooks/useEscapeKey'
 import { useLanguageStore } from '@/lib/stores/language'
 import { t } from '@/lib/i18n/t'
@@ -24,6 +25,8 @@ import type { DeviceStatus } from '@/types/database'
 const STATUSES = ['disponible', 'reserve', 'vendu', 'echange', 'en_reparation', 'en_livraison', 'en_transfert'] as const
 const MARQUES  = ['Apple', 'Samsung', 'Xiaomi', 'Redmi', 'Huawei', 'Oppo', 'Realme']
 const LOCATIONS = ['magasin_principal', 'magasin_secondaire', 'externe']
+const EMPTY: never[] = []
+const PAGE = 60
 
 interface PhonesModuleProps {
   storeId: string
@@ -37,8 +40,6 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
   const primary      = portal.primaryColor
   const canSeeFinancials = user?.role === 'gerant' || user?.role === 'proprietaire'
 
-  const [phones, setPhones]           = useState<Phone[]>([])
-  const [loading, setLoading]         = useState(true)
   const [formOpen, setFormOpen]       = useState(false)
   const [editPhone, setEditPhone]     = useState<Phone | null>(null)
   const [showFilters, setShowFilters] = useState(false)
@@ -47,10 +48,10 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
   const [creditPhone,    setCreditPhone]    = useState<Phone | null>(null)
   useEscapeKey(() => setCreditPhone(null), creditPhone != null)
   const [deleting,       setDeleting]       = useState(false)
-  const [openProspects,  setOpenProspects]  = useState<Prospect[]>([])
-  const [suppliers,      setSuppliers]      = useState<{ supplier_id: string; nom: string; type_fournisseur: string }[]>([])
   const [catalogOpen, setCatalogOpen]   = useState(false)
-  const [catalogItems, setCatalogItems] = useState<{ catalog_id: string; marque: string; serie: string; type: string; model: string; couleur: string }[]>([])
+  // Loaded when the catalog panel is first opened, then cached
+  const catalogQ = useApi<{ catalog_id: string; marque: string; serie: string; type: string; model: string; couleur: string }[]>(catalogOpen ? '/api/phones/catalog' : null)
+  const catalogItems = catalogQ.data ?? EMPTY
   const [catForm, setCatForm]           = useState({ marque: '', serie: '', type: 'Normal', model: '', couleur: '' })
   const [catSaving,    setCatSaving]    = useState(false)
   const [catDeleting,  setCatDeleting]  = useState<string | null>(null)
@@ -98,10 +99,8 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
     }
   }
 
-  async function fetchCatalog() {
-    const res  = await fetch('/api/phones/catalog')
-    const json = await res.json()
-    setCatalogItems(json.data || [])
+  function fetchCatalog() {
+    catalogQ.refresh()
   }
 
   async function saveCatalogEntry() {
@@ -129,16 +128,8 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
   const [filterStorage, setFilterStorage] = useState('')
   const [filterPromo,   setFilterPromo]   = useState('')
 
-  useEffect(() => {
-    fetch(`/api/prospects?store_id=${storeId}&open=1`)
-      .then(r => r.json())
-      .then(json => setOpenProspects(json.data || []))
-      .catch(() => {})
-    fetch('/api/suppliers?mode=dropdown')
-      .then(r => r.json())
-      .then(json => setSuppliers(json.data || []))
-      .catch(() => {})
-  }, [storeId])
+  const openProspects = useApi<Prospect[]>(`/api/prospects?store_id=${storeId}&open=1`).data ?? EMPTY
+  const suppliers     = useApi<{ supplier_id: string; nom: string; type_fournisseur: string }[]>('/api/suppliers?mode=dropdown').data ?? EMPTY
 
   const getSupplierBadge = (fournisseur_id: string | null | undefined) =>
     fournisseur_id ? (suppliers.find(s => s.supplier_id === fournisseur_id) ?? null) : null
@@ -154,32 +145,39 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
       return !!(p.budget_max && phone.prix_vente_recommande && phone.prix_vente_recommande <= p.budget_max)
     }).length
 
-  const fetchPhones = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true)
-    try {
-      const params = new URLSearchParams({ store_id: storeId })
-      if (filterStatus)   params.set('status', filterStatus)
-      if (filterMarque)   params.set('marque', filterMarque)
-      if (filterLocation) params.set('location', filterLocation)
-      if (filterStorage)  params.set('stockage', filterStorage)
-      if (filterPromo)    params.set('promo', filterPromo)
-      if (search.length >= 2) params.set('search', search)
+  // The store's whole phone list is cached; filters and search apply instantly here
+  const phonesQ = useApi<Phone[]>(`/api/phones?store_id=${storeId}&limit=5000`)
+  const loading = phonesQ.isLoading
+  const [manualRefresh, setManualRefresh] = useState(false)
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(() => new Set())
+  useEffect(() => { if (phonesQ.error) showError(phonesQ.error.message) }, [phonesQ.error])
 
-      const res  = await fetch(`/api/phones?${params}`)
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error)
-      setPhones(json.data || [])
-    } catch (err: unknown) {
-      showError((err as Error).message)
-    } finally {
-      if (!silent) setLoading(false)
-    }
-  }, [storeId, filterStatus, filterMarque, filterLocation, filterStorage, filterPromo, search])
+  const phones = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    const byImei = /^\d{6,}$/.test(q)
+    return (phonesQ.data ?? []).filter(p =>
+      !deletedIds.has(p.phone_id) &&
+      (!filterStatus   || p.status   === filterStatus) &&
+      (!filterMarque   || p.marque?.toLowerCase().includes(filterMarque.toLowerCase())) &&
+      (!filterLocation || p.location === filterLocation) &&
+      (!filterStorage  || p.stockage === filterStorage) &&
+      (filterPromo !== '1' || p.promo_type != null) &&
+      (q.length < 2 || (byImei
+        ? [p.imei, (p as Phone & { imei_2?: string | null }).imei_2].some(v => v?.includes(q))
+        : q.split(/\s+/).every(tok => `${p.marque} ${p.model} ${p.stockage ?? ''} ${p.couleur ?? ''}`.toLowerCase().includes(tok))))
+    )
+  }, [phonesQ.data, deletedIds, filterStatus, filterMarque, filterLocation, filterStorage, filterPromo, search])
 
-  useEffect(() => {
-    const timer = setTimeout(() => fetchPhones(), search ? 300 : 0)
-    return () => clearTimeout(timer)
-  }, [fetchPhones, search])
+  // Long lists render in pages so the screen stays fast
+  const [shown, setShown] = useState(PAGE)
+  useEffect(() => setShown(PAGE), [filterStatus, filterMarque, filterLocation, filterStorage, filterPromo, search])
+  const visiblePhones = phones.slice(0, shown)
+
+  const fetchPhones = useCallback(async () => { await phonesQ.refresh() }, [phonesQ])
+  async function handleManualRefresh() {
+    setManualRefresh(true)
+    try { await fetchPhones() } finally { setManualRefresh(false) }
+  }
 
   function openAdd() { setEditPhone(null); setFormOpen(true) }
   async function handleDelete(phone_id: string) {
@@ -188,7 +186,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
       const res = await fetch(`/api/phones?phone_id=${phone_id}`, { method: 'DELETE' })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
-      setPhones(prev => prev.filter(p => p.phone_id !== phone_id))
+      setDeletedIds(prev => new Set([...Array.from(prev), phone_id]))
       showSuccess(t(isAr, 'common.deletedOk'))
       setConfirmDelete(null)
     } catch (err: unknown) {
@@ -257,14 +255,14 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                 )}
               </button>
               <button
-                onClick={() => fetchPhones()}
-                disabled={loading}
+                onClick={handleManualRefresh}
+                disabled={manualRefresh}
                 className="p-2 rounded-xl border border-[#E8E5DE] bg-white text-[#6B6860] hover:bg-[#F8F7F4] transition-all disabled:opacity-50"
               >
-                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-4 h-4 ${manualRefresh ? 'animate-spin' : ''}`} />
               </button>
               {canSeeFinancials && (
-                <Btn variant="secondary" onClick={() => { setCatalogOpen(true); fetchCatalog() }}>
+                <Btn variant="secondary" onClick={() => setCatalogOpen(true)}>
                   <span className="text-xs">📋</span>
                   {isAr ? 'إدارة الكتالوج' : 'Catalogue'}
                 </Btn>
@@ -433,7 +431,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
             />
           ) : (
             <div className="divide-y divide-[#F2F0EB]">
-              {phones.map(phone => {
+              {visiblePhones.map(phone => {
                 const warrantyFlag = getWarrantyFlag(phone.date_entree
                   ? new Date(new Date(phone.date_entree).getTime() + (phone.warranty_months ?? 6) * 30 * 86400000).toISOString()
                   : null)
@@ -647,7 +645,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
               })}
 
               {/* Mobile cards */}
-              {phones.map(phone => {
+              {visiblePhones.map(phone => {
                 const cleanModel = phone.model.replace(/\s*\d+(GB|TB)\s*$/i, '').trim()
                 const baseName   = cleanModel.toLowerCase().startsWith(phone.marque.toLowerCase())
                   ? cleanModel
@@ -752,6 +750,12 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                   </div>
                 )
               })}
+              {phones.length > shown && (
+                <button onClick={() => setShown(n => n + PAGE)}
+                  className="w-full py-3 text-sm font-medium text-[#6B6860] hover:bg-[#F8F7F4] transition-all">
+                  {isAr ? `عرض المزيد (${phones.length - shown})` : `Afficher plus (${phones.length - shown})`}
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -791,7 +795,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
       <PhoneForm
         open={formOpen}
         onClose={() => setFormOpen(false)}
-        onSaved={() => fetchPhones(true)}
+        onSaved={() => fetchPhones()}
         phone={editPhone}
         role={user?.role}
         storeId={storeId}
@@ -832,7 +836,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                 storeId={storeId}
                 userId={user?.id ?? ''}
                 userName={''}
-                onCreditCreated={() => fetchPhones(true)}
+                onCreditCreated={() => fetchPhones()}
               />
             </div>
           </div>

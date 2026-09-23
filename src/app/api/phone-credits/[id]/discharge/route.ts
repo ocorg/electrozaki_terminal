@@ -3,13 +3,13 @@ import type { device_condition } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { json, handleError, requireActiveUser, HttpError } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
-import { notifyCaisseChange } from '@/lib/realtime'
+import { withNotify } from '@/lib/realtime'
 
 // Trade-in state → condition of the phone entering stock
 const CONDITION_FOR_ETAT: Record<string, device_condition> = { bon: 'occasion', moyen: 'occasion', mauvais: 'defectueux' }
 
 // POST /api/phone-credits/[id]/discharge
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+async function POST_(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const user     = await requireActiveUser()
     const creditId = params.id
@@ -89,7 +89,6 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         ...(repriseWarning ? { warning: repriseWarning } : {}),
       },
     })
-    if (hasReprise) await notifyCaisseChange(storeId)
 
     return json({
       data: {
@@ -112,3 +111,5 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return handleError(err, 'POST /api/phone-credits/[id]/discharge')
   }
 }
+
+export const POST = withNotify(POST_)

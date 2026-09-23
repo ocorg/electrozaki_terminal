@@ -7,7 +7,7 @@ import { usePortal } from '@/lib/context/portal'
 import { formatMAD, formatDate, getBusinessDate, fetchWithRetry } from '@/lib/utils'
 import { Btn, Field, inputClass, Modal } from '@/components/shared'
 import { showSuccess, showError } from '@/lib/utils/toasts'
-import { useCaisseRealtime } from '@/lib/hooks/useCaisseRealtime'
+import { useApi } from '@/lib/data/api'
 import {
   Vault, TrendingUp, Receipt, Wrench,
   CheckCircle, Clock, XCircle, RefreshCw,
@@ -49,9 +49,8 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
   const isAr         = language === 'ar'
   const primary      = portal.primaryColor
 
-  const [caisse, setCaisse]         = useState<CaisseData | null>(null)
-  const [loading, setLoading]       = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  const [manualRefresh, setManualRefresh] = useState(false)
 
   // BOD form
   const [bodOpen, setBodOpen]       = useState(false)
@@ -64,35 +63,28 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
 
   const today = getBusinessDate()
 
-  // silent: live refresh from Pusher — update the figures without the loading state
-  const fetchCaisse = useCallback(async (opts?: { silent?: boolean }) => {
-    if (!opts?.silent) setLoading(true)
-    try {
-      const bizDate = getBusinessDate()
-      let res  = await fetch(`/api/caisse?store_id=${storeId}&date=${bizDate}`)
-      let json = await res.json()
+  // Cached and refreshed in the background whenever the caisse changes on any device
+  const prev = new Date()
+  prev.setDate(prev.getDate() - 1)
+  const prevDate = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}-${String(prev.getDate()).padStart(2, '0')}`
+  const todayQ = useApi<CaisseData | null>(`/api/caisse?store_id=${storeId}&date=${getBusinessDate()}`)
+  // No caisse for today → check if yesterday's is still open (overnight shift)
+  const prevQ  = useApi<CaisseData | null>(todayQ.data === null ? `/api/caisse?store_id=${storeId}&date=${prevDate}` : null)
+  const caisse  = todayQ.data ?? (prevQ.data?.status === 'ouverte' ? prevQ.data : null)
+  const loading = todayQ.isLoading || prevQ.isLoading
 
-      // No caisse for today → check if yesterday's is still open (overnight shift)
-      if (!json.data) {
-        const prev = new Date()
-        prev.setDate(prev.getDate() - 1)
-        const prevDate = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}-${String(prev.getDate()).padStart(2, '0')}`
-        const res2  = await fetch(`/api/caisse?store_id=${storeId}&date=${prevDate}`)
-        const json2 = await res2.json()
-        if (json2.data?.status === 'ouverte') json = json2
-      }
+  useEffect(() => {
+    if (todayQ.error || prevQ.error) showError(isAr ? 'خطأ في تحميل صندوق الدفع' : 'Erreur chargement caisse')
+  }, [todayQ.error, prevQ.error]) // eslint-disable-line react-hooks/exhaustive-deps
 
-      setCaisse(json.data ?? null)
-    } catch {
-      showError(isAr ? 'خطأ في تحميل صندوق الدفع' : 'Erreur chargement caisse')
-    } finally {
-      setLoading(false)
-    }
-  }, [storeId]) // eslint-disable-line react-hooks/exhaustive-deps
+  const fetchCaisse = useCallback(async () => {
+    await Promise.all([todayQ.refresh(), prevQ.refresh()])
+  }, [todayQ, prevQ])
 
-  useEffect(() => { fetchCaisse() }, [fetchCaisse])
-
-  useCaisseRealtime(storeId, () => fetchCaisse({ silent: true }))
+  async function handleManualRefresh() {
+    setManualRefresh(true)
+    try { await fetchCaisse() } finally { setManualRefresh(false) }
+  }
 
   async function handleBOD() {
     const amount = parseFloat(bodAmount)
@@ -374,12 +366,12 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
           </p>
         </div>
         <button
-          onClick={() => fetchCaisse()}
-          disabled={loading}
+          onClick={handleManualRefresh}
+          disabled={manualRefresh}
           className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm border bg-white transition-all disabled:opacity-50"
           style={{ borderColor: `${primary}40`, color: '#6B6860' }}
         >
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-3.5 h-3.5 ${manualRefresh ? 'animate-spin' : ''}`} />
           {t(isAr, 'common.refresh')}
         </button>
       </div>

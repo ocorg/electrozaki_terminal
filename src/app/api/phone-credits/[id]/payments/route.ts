@@ -3,10 +3,10 @@ import type { payment_method } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { json, handleError, requireActiveUser, dateOnly, todayDate, HttpError } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
-import { notifyCaisseChange } from '@/lib/realtime'
+import { withNotify } from '@/lib/realtime'
 
 // POST /api/phone-credits/[id]/payments
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+async function POST_(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const user     = await requireActiveUser()
     const creditId = params.id
@@ -65,7 +65,6 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         new_montant_paye: newMontantPaye, is_fully_paid: isFullyPaid,
       },
     })
-    await notifyCaisseChange(storeId)
 
     return json({
       data: {
@@ -77,3 +76,5 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return handleError(err, 'POST /api/phone-credits/[id]/payments')
   }
 }
+
+export const POST = withNotify(POST_)

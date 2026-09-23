@@ -1,5 +1,6 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useApi } from '@/lib/data/api'
 import { useUser } from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
 import { t } from '@/lib/i18n/t'
@@ -49,9 +50,18 @@ export default function ClientsModule({ storeId }: ClientsModuleProps) {
   const isAr         = language === 'ar'
   const primary      = portal.primaryColor
 
-  const [clients, setClients]       = useState<Client[]>([])
-  const [loading, setLoading]       = useState(true)
   const [search, setSearch]         = useState('')
+  // All the store's clients are cached; search applies instantly here
+  const clientsQ = useApi<Client[]>(`/api/clients?store_id=${storeId}`)
+  const loading  = clientsQ.isLoading
+  const [manualRefresh, setManualRefresh] = useState(false)
+  useEffect(() => { if (clientsQ.error) showError(clientsQ.error.message) }, [clientsQ.error])
+  const clients = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (q.length < 2) return clientsQ.data ?? []
+    return (clientsQ.data ?? []).filter(c =>
+      [c.nom, c.telephone, c.telephone_2].some(v => v?.toLowerCase().includes(q)))
+  }, [clientsQ.data, search])
   const [selected, setSelected]     = useState<Client | null>(null)
     async function loadClientHistory(clientId: string) {
     setHistoryLoading(true)
@@ -77,25 +87,9 @@ export default function ClientsModule({ storeId }: ClientsModuleProps) {
   const [submitting, setSubmitting] = useState(false)
 
   const fetchClients = useCallback(async () => {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams({ store_id: storeId })
-      if (search.length >= 2) params.set('search', search)
-      const res  = await fetch(`/api/clients?${params}`)
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error)
-      setClients(json.data || [])
-    } catch (err: unknown) {
-      showError((err as Error).message)
-    } finally {
-      setLoading(false)
-    }
-  }, [storeId, search])
-
-  useEffect(() => {
-    const timer = setTimeout(() => fetchClients(), search ? 300 : 0)
-    return () => clearTimeout(timer)
-  }, [fetchClients, search])
+    setManualRefresh(true)
+    try { await clientsQ.refresh() } finally { setManualRefresh(false) }
+  }, [clientsQ])
 
   function openAdd() {
     setEditClient(null)
@@ -179,9 +173,9 @@ export default function ClientsModule({ storeId }: ClientsModuleProps) {
             : `${totalClients} client${totalClients !== 1 ? 's' : ''} enregistré${totalClients !== 1 ? 's' : ''}`}
           actions={
             <div className="flex items-center gap-2">
-              <button onClick={fetchClients} disabled={loading}
+              <button onClick={fetchClients} disabled={manualRefresh}
                 className="p-2 rounded-xl border border-[#E8E5DE] bg-white text-[#6B6860] hover:bg-[#F8F7F4] transition-all disabled:opacity-50">
-                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-4 h-4 ${manualRefresh ? 'animate-spin' : ''}`} />
               </button>
               <Btn variant="primary" onClick={openAdd}
                 style={{ backgroundColor: primary } as React.CSSProperties}>

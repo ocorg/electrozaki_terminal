@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { json, handleError, requireUser, requireActiveUser, dateOnly, todayDate, HttpError } from '@/lib/api'
+import { withNotify } from '@/lib/realtime'
 
 const TYPE_MAP: Record<string, { prefix: string; seq: string }> = {
   FAC: { prefix: 'EZ',  seq: 'ez_fac_seq' },
@@ -61,7 +62,7 @@ export async function GET(request: Request) {
 // ── POST /api/documents ───────────────────────────────────────────────────────
 // Creates the document and its reference when the user clicks "Imprimer".
 // txn_id stays null here — set later by /confirm-sale.
-export async function POST(request: Request) {
+async function POST_(request: Request) {
   try {
     const user = await requireActiveUser()
     const body = await request.json()
@@ -100,3 +101,5 @@ export async function POST(request: Request) {
     return handleError(err, 'POST /api/documents')
   }
 }
+
+export const POST = withNotify(POST_)

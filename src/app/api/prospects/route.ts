@@ -3,6 +3,7 @@ import type { Prisma, prospect_demand, prospect_source, prospect_status } from '
 import { prisma } from '@/lib/db'
 import { json, handleError, requireUser, requireActiveUser, pickInput, columnsOf, HttpError } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
+import { withNotify } from '@/lib/realtime'
 
 const EDITABLE = columnsOf('prospects', ['prospect_id'])
 
@@ -34,7 +35,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
+async function POST_(request: NextRequest) {
   try {
     const user = await requireActiveUser()
     const body = await request.json()
@@ -64,7 +65,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function PATCH(request: NextRequest) {
+async function PATCH_(request: NextRequest) {
   try {
     const user = await requireActiveUser()
     const body = await request.json()
@@ -95,7 +96,7 @@ export async function PATCH(request: NextRequest) {
   }
 }
 
-export async function DELETE(request: NextRequest) {
+async function DELETE_(request: NextRequest) {
   try {
     const user = await requireActiveUser()
     const prospect_id = new URL(request.url).searchParams.get('prospect_id')
@@ -122,3 +123,7 @@ export async function DELETE(request: NextRequest) {
     return handleError(err, 'DELETE /api/prospects')
   }
 }
+
+export const POST = withNotify(POST_)
+export const PATCH = withNotify(PATCH_)
+export const DELETE = withNotify(DELETE_)

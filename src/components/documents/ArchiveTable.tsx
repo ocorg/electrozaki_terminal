@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useApi } from '@/lib/data/api'
 import {
   Search, RefreshCw, Eye, X,
   FileText, ChevronDown, Calendar,
@@ -49,39 +50,37 @@ const fmtMAD = (n: number | null) =>
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function ArchiveTable() {
-  const [docs,       setDocs]       = useState<DocRecord[]>([])
-  const [loading,    setLoading]    = useState(true)
   const [search,     setSearch]     = useState('')
   const [typeFilter, setTypeFilter] = useState('')
   const [fromDate,   setFromDate]   = useState('')
   const [toDate,     setToDate]     = useState('')
-  const [hasMore,    setHasMore]    = useState(false)
   const [preview,    setPreview]    = useState<DocRecord | null>(null)
 
+  // Search is sent once typing pauses; each result set is cached
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 250)
+    return () => clearTimeout(timer)
+  }, [search])
+
+  const params = new URLSearchParams({ limit: '50' })
+  if (debouncedSearch) params.set('search',  debouncedSearch)
+  if (typeFilter)      params.set('type',    typeFilter)
+  if (fromDate)        params.set('from',    fromDate)
+  if (toDate)          params.set('to',      toDate)
+  const docsQ   = useApi<DocRecord[], { status?: string; data?: DocRecord[] }>(`/api/documents?${params}`, {
+    select: json => json.data ?? [],
+  })
+  const docs    = docsQ.data ?? []
+  const hasMore = docs.length === 50
+  const [manualRefresh, setManualRefresh] = useState(false)
+  const loading = docsQ.isLoading || manualRefresh
+  useEffect(() => { if (docsQ.error) toast.error('Erreur lors du chargement des documents') }, [docsQ.error])
+
   const fetchDocs = useCallback(async () => {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams({ limit: '50' })
-      if (search)     params.set('search',  search)
-      if (typeFilter) params.set('type',    typeFilter)
-      if (fromDate)   params.set('from',    fromDate)
-      if (toDate)     params.set('to',      toDate)
-
-      const res  = await fetch(`/api/documents?${params}`)
-      const json = await res.json()
-      if (json.status !== 'success') throw new Error()
-
-      const fetched: DocRecord[] = json.data
-      setDocs(fetched)
-      setHasMore(fetched.length === 50)
-    } catch {
-      toast.error('Erreur lors du chargement des documents')
-    } finally {
-      setLoading(false)
-    }
-  }, [search, typeFilter, fromDate, toDate])
-
-  useEffect(() => { fetchDocs() }, [fetchDocs])
+    setManualRefresh(true)
+    try { await docsQ.refresh() } finally { setManualRefresh(false) }
+  }, [docsQ])
 
   // ── Render ─────────────────────────────────────────────────────────────────
 

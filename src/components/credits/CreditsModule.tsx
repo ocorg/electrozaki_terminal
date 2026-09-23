@@ -1,5 +1,6 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useApi } from '@/lib/data/api'
 import { useUser } from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
 import { t } from '@/lib/i18n/t'
@@ -67,9 +68,17 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
   const isAr         = language === 'ar'
 
   const [tab, setTab]           = useState<'credits' | 'imports'>('credits')
-  const [credits, setCredits]   = useState<ClientWithCredit[]>([])
-  const [imports, setImports]   = useState<CreditImport[]>([])
-  const [loading, setLoading]   = useState(true)
+  // Same cached client list as the Clients and POS screens
+  const clientsQ = useApi<ClientWithCredit[]>(`/api/clients?store_id=${storeId}`)
+  const importsQ = useApi<CreditImport[]>(`/api/credit-imports?store_id=${storeId}`)
+  const loading  = clientsQ.isLoading
+  const [manualRefresh, setManualRefresh] = useState(false)
+  const credits = useMemo(() => (clientsQ.data ?? [])
+    .filter(c => (c.solde_impaye ?? 0) > 0)
+    .sort((a, b) => b.solde_impaye - a.solde_impaye), [clientsQ.data])
+  const imports = importsQ.data ?? []
+  useEffect(() => { if (clientsQ.error) showError('Erreur chargement crédits') }, [clientsQ.error])
+  useEffect(() => { if (importsQ.error) showError('Erreur chargement imports') }, [importsQ.error])
   const [submitting, setSubmitting] = useState(false)
 
   // Payment modal
@@ -99,33 +108,19 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
   })
 
   // ── Fetch credits list (clients with solde_impaye > 0) ─────
-  const fetchCredits = useCallback(async () => {
-    setLoading(true)
-    try {
-      const res  = await fetch(`/api/clients?store_id=${storeId}`)
-      const json = await res.json()
-      const withCredit = (json.data || [])
-        .filter((c: ClientWithCredit) => (c.solde_impaye ?? 0) > 0)
-        .sort((a: ClientWithCredit, b: ClientWithCredit) => b.solde_impaye - a.solde_impaye)
-      setCredits(withCredit)
-    } catch {
-      showError('Erreur chargement crédits')
-    } finally {
-      setLoading(false)
-    }
-  }, [storeId])
+  const fetchCredits = useCallback(async () => { await clientsQ.refresh() }, [clientsQ])
+  const fetchImports = useCallback(async () => { await importsQ.refresh() }, [importsQ])
+  async function handleManualRefresh() {
+    setManualRefresh(true)
+    try { await Promise.all([fetchCredits(), fetchImports()]) } finally { setManualRefresh(false) }
+  }
 
-  const fetchImports = useCallback(async () => {
-    try {
-      const res  = await fetch(`/api/credit-imports?store_id=${storeId}`)
-      const json = await res.json()
-      setImports(json.data || [])
-    } catch {
-      showError('Erreur chargement imports')
-    }
-  }, [storeId])
-
-  useEffect(() => { fetchCredits(); fetchImports() }, [fetchCredits, fetchImports])
+  // Client name/phone suggestions, straight from the cached list
+  const matchClients = useCallback((text: string) => {
+    const q = text.trim().toLowerCase()
+    return (clientsQ.data ?? []).filter(c =>
+      [c.nom, c.telephone].some(v => (v as string | null | undefined)?.toLowerCase().includes(q))).slice(0, 20)
+  }, [clientsQ.data])
 
   // ── Client autocomplete for import form ───────────────────
   useEffect(() => {
@@ -134,29 +129,15 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
       setShowClientDrop(false)
       return
     }
-    const timer = setTimeout(async () => {
-      try {
-        const res  = await fetch(`/api/clients?search=${encodeURIComponent(clientSearch)}&store_id=${storeId}`)
-        const json = await res.json()
-        setClientSuggestions(json.data || [])
-        setShowClientDrop(true)
-      } catch { setClientSuggestions([]) }
-    }, 200)
-    return () => clearTimeout(timer)
-  }, [clientSearch, storeId])
+    setClientSuggestions(matchClients(clientSearch))
+    setShowClientDrop(true)
+  }, [clientSearch, matchClients])
 
   // ── Client autocomplete for link modal ────────────────────
   useEffect(() => {
     if (!linkSearch.trim() || linkSearch.length < 1) { setLinkSuggestions([]); return }
-    const timer = setTimeout(async () => {
-      try {
-        const res  = await fetch(`/api/clients?search=${encodeURIComponent(linkSearch)}&store_id=${storeId}`)
-        const json = await res.json()
-        setLinkSuggestions(json.data || [])
-      } catch { setLinkSuggestions([]) }
-    }, 200)
-    return () => clearTimeout(timer)
-  }, [linkSearch, storeId])
+    setLinkSuggestions(matchClients(linkSearch))
+  }, [linkSearch, matchClients])
 
   // ── Record payment ────────────────────────────────────────
   async function submitPayment() {
@@ -331,9 +312,9 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
             ? `${credits.length} عميل لديه دين مفتوح · إجمالي: ${formatMAD(totalDue)}`
             : `${credits.length} client(s) avec solde ouvert · Total : ${formatMAD(totalDue)}`}
           actions={
-            <button onClick={() => { fetchCredits(); fetchImports() }} disabled={loading}
+            <button onClick={handleManualRefresh} disabled={manualRefresh}
               className="p-2 rounded-xl border border-[#E8E5DE] bg-white text-[#6B6860] hover:bg-[#F5F3FF] transition-all">
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-4 h-4 ${manualRefresh ? 'animate-spin' : ''}`} />
             </button>
           }
         />

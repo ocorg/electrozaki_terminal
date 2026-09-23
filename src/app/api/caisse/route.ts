@@ -3,7 +3,7 @@ import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { json, handleError, requireUser, requireActiveUser, dateOnly, HttpError } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
-import { notifyCaisseChange } from '@/lib/realtime'
+import { withNotify } from '@/lib/realtime'
 
 // ─── Shared aggregation — single source of truth for GET (live view) and PATCH (EOD submit) ───
 //
@@ -186,7 +186,7 @@ export async function GET(request: NextRequest) {
 }
 
 // BOD — open the drawer for today
-export async function POST(request: NextRequest) {
+async function POST_(request: NextRequest) {
   try {
     const user     = await requireActiveUser()
     const body     = await request.json()
@@ -213,7 +213,6 @@ export async function POST(request: NextRequest) {
       ip_address:  getIpFromRequest(request),
       notes:       `Ouverture de caisse : ${ouverture} MAD`,
     })
-    await notifyCaisseChange(store_id)
 
     return json({ data }, { status: 201 })
   } catch (err) {
@@ -222,7 +221,7 @@ export async function POST(request: NextRequest) {
 }
 
 // EOD — submit closure for approval
-export async function PATCH(request: NextRequest) {
+async function PATCH_(request: NextRequest) {
   try {
     const user = await requireActiveUser()
     const { caisse_id, solde_reel, notes } = await request.json()
@@ -270,7 +269,6 @@ export async function PATCH(request: NextRequest) {
       ip_address:   getIpFromRequest(request),
       notes:        `Clôture soumise — Réel : ${solde_reel} MAD | Écart : ${ecart} MAD`,
     })
-    await notifyCaisseChange(current.store_id)
 
     return json({ data })
   } catch (err) {
@@ -280,3 +278,6 @@ export async function PATCH(request: NextRequest) {
 
 // EOD approval/rejection lives solely in /api/bzg/caisse/eod (PATCH) — it's the only path that
 // role-checks AND writes an activity_log entry, and it supports both approve and reject.
+
+export const POST = withNotify(POST_)
+export const PATCH = withNotify(PATCH_)

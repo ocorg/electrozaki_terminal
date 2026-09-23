@@ -5,6 +5,7 @@ import { signOut } from 'next-auth/react'
 import { useUser } from '@/lib/hooks/useUser'
 import { codeLabel } from '@/lib/codes'
 import { Loader2, LogOut } from 'lucide-react'
+import { clearDataCache } from '@/lib/data/cache'
 
 const PORTALS = [
   {
@@ -45,6 +46,7 @@ export default function SelectStorePage() {
 
   async function handleLogout() {
     setLoggingOut(true)
+    clearDataCache()
     await signOut({ redirect: false })
     router.push('/login')
   }
