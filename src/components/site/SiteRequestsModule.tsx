@@ -1,14 +1,16 @@
 'use client'
 import { useState } from 'react'
-import { Wrench, Mail, Phone, MessageCircle } from 'lucide-react'
+import Link from 'next/link'
+import { Wrench, Mail, Phone, MessageCircle, ClipboardPlus, ExternalLink } from 'lucide-react'
 import { useApi, apiWrite } from '@/lib/data/api'
-import { PageHeader, EmptyState, SkeletonRow, selectClass } from '@/components/shared'
-import { showError } from '@/lib/utils/toasts'
+import { PageHeader, EmptyState, SkeletonRow, selectClass, Btn } from '@/components/shared'
+import { showError, showSuccess } from '@/lib/utils/toasts'
 import { useSiteLang, Tabs, Chip, REPAIR_STATUS, whatsappLink, dateTime } from './common'
 
 interface Repair {
   id: string; customerName: string; customerPhone: string; deviceBrand: string; deviceModel: string
   problemAreas: string[]; notes: string | null; status: string; createdAt: string
+  ticket: { rep_id: string; statut: string } | null
 }
 interface Message { id: string; name: string; phone: string | null; email: string | null; message: string; createdAt: string }
 
@@ -24,6 +26,25 @@ export default function SiteRequestsModule() {
   const q = useApi<{ repairs: Repair[]; messages: Message[] }>('/api/site/requests')
   const repairs  = q.data?.repairs ?? []
   const messages = q.data?.messages ?? []
+
+  const [converting, setConverting] = useState<string | null>(null)
+
+  async function convert(r: Repair) {
+    if (!window.confirm(L(
+      `Le client a déposé l'appareil ? Créer la fiche de réparation pour ${r.customerName} (${r.deviceBrand} ${r.deviceModel}) ?`,
+      `هل سلم العميل الجهاز؟ إنشاء بطاقة إصلاح لـ ${r.customerName}؟`))) return
+    setConverting(r.id)
+    try {
+      const res = await apiWrite<{ rep_id: string; existing?: boolean }>(`/api/site/requests/${r.id}/convert`, { method: 'POST' })
+      showSuccess(res.existing
+        ? L(`Fiche déjà créée : ${res.rep_id}`, `البطاقة موجودة : ${res.rep_id}`)
+        : L(`Réparation ${res.rep_id} créée — à compléter dans Réparations`, `تم إنشاء الإصلاح ${res.rep_id}`))
+    } catch (e) {
+      showError((e as Error).message)
+    } finally {
+      setConverting(null)
+    }
+  }
 
   async function setStatus(r: Repair, status: string) {
     try { await apiWrite('/api/site/requests', { method: 'PATCH', body: { id: r.id, status } }) } catch (e) { showError((e as Error).message) }
@@ -60,6 +81,16 @@ export default function SiteRequestsModule() {
                   <select value={r.status} onChange={e => setStatus(r, e.target.value)} className={selectClass}>
                     {Object.entries(REPAIR_STATUS).map(([k, v]) => <option key={k} value={k}>{isAr ? v.ar : v.fr}</option>)}
                   </select>
+                  {r.ticket ? (
+                    <Link href="/ez/repairs" className="flex items-center justify-between gap-2 rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2 text-sm text-emerald-800">
+                      <span>{L('Fiche', 'بطاقة')} <b className="font-mono">{r.ticket.rep_id}</b></span>
+                      <span className="inline-flex items-center gap-1 text-xs">{L('Ouvrir Réparations', 'فتح الإصلاحات')}<ExternalLink className="w-3 h-3" /></span>
+                    </Link>
+                  ) : r.status !== 'CANCELLED' && (
+                    <Btn variant="secondary" className="w-full" loading={converting === r.id} onClick={() => convert(r)}>
+                      <ClipboardPlus className="w-4 h-4" />{L('Créer la réparation', 'إنشاء الإصلاح')}
+                    </Btn>
+                  )}
                 </div>
               ))}
             </div>

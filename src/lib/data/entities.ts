@@ -68,6 +68,8 @@ const WRITE_ENTITIES: [prefix: string, entities: Entity[]][] = [
   ['/api/users',              ['users']],
   ['/api/stores',             ['stores']],
   ['/api/changelog',          ['changelog']],
+  // Turning a website repair request into a ticket also changes Réparations.
+  ['/api/site/requests',      ['site', 'repairs']],
   ['/api/site',               ['site']],
 ]
 

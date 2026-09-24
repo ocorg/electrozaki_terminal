@@ -17,6 +17,7 @@ import type { UserRole } from '@/types/database'
 import { useLanguageStore } from '@/lib/stores/language'
 import { codeLabel } from '@/lib/codes'
 import { clearDataCache } from '@/lib/data/cache'
+import { useApi } from '@/lib/data/api'
 
 // ─── Nav item definition ──────────────────────────────────────
 interface NavItem {
@@ -25,6 +26,8 @@ interface NavItem {
   label:   string
   roles:   UserRole[]
   divider?: true
+  /** key in /api/site/counts whose number is shown as a badge */
+  badge?:  'orders' | 'repairs'
 }
 
 // ─── Nav items per portal ─────────────────────────────────────
@@ -67,8 +70,8 @@ function getNavItems(portalBase: string, portalType: string): NavItem[] {
     { href: `${portalBase}/movements`,        icon: ArrowLeftRight,  label: 'Transferts stock',   roles: ['gerant','proprietaire'] },
     { href: `${portalBase}/credits`,          icon: CreditCard,      label: 'Crédits clients',    roles: ['gerant','proprietaire'] },
     { divider: true, label: 'SITE WEB',                                                           roles: ['employe','gerant','proprietaire'] },
-    { href: `${portalBase}/site/orders`,      icon: ShoppingBag,     label: 'Commandes web',      roles: ['employe','gerant','proprietaire'] },
-    { href: `${portalBase}/site/requests`,    icon: Inbox,           label: 'Demandes du site',   roles: ['employe','gerant','proprietaire'] },
+    { href: `${portalBase}/site/orders`,      icon: ShoppingBag,     label: 'Commandes web',      roles: ['employe','gerant','proprietaire'], badge: 'orders' },
+    { href: `${portalBase}/site/requests`,    icon: Inbox,           label: 'Demandes du site',   roles: ['employe','gerant','proprietaire'], badge: 'repairs' },
     { href: `${portalBase}/site/catalog`,     icon: Globe,           label: 'Catalogue du site',  roles: ['gerant','proprietaire'] },
     { href: `${portalBase}/site/promos`,      icon: Tag,             label: 'Promos & packs',     roles: ['gerant','proprietaire'] },
   ]
@@ -100,6 +103,13 @@ export default function PortalSidebar({ onClose, collapsed = false, onCollapsedC
     await signOut({ redirect: false })
     router.push('/login')
   }
+
+  // New web orders / repair requests. Website submissions don't reach the
+  // ERP's live events, so this also re-checks every minute.
+  const siteCounts = useApi<{ orders: number; repairs: number }>(
+    portal.type === 'ez' ? '/api/site/counts' : null,
+    { refreshInterval: 60_000, shouldRetryOnError: false },
+  ).data
 
   const primary    = portal.primaryColor
   const sidebarBg  = portal.sidebarBg
@@ -214,10 +224,21 @@ export default function PortalSidebar({ onClose, collapsed = false, onCollapsedC
                 }
               }}
             >
-              <Icon className="w-4 h-4 flex-shrink-0" />
+              <span className="relative flex-shrink-0">
+                <Icon className="w-4 h-4" />
+                {collapsed && item.badge && (siteCounts?.[item.badge] ?? 0) > 0 && (
+                  <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500" />
+                )}
+              </span>
               {!collapsed && (
                 <>
                   <span className="flex-1">{item.label}</span>
+                  {item.badge && (siteCounts?.[item.badge] ?? 0) > 0 && (
+                    <span className="min-w-5 h-5 px-1.5 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center"
+                          title={item.badge === 'orders' ? 'Nouvelles commandes' : 'Nouvelles demandes'}>
+                      {siteCounts![item.badge]}
+                    </span>
+                  )}
                   {isActive && <ChevronRight className="w-3 h-3 opacity-50" />}
                 </>
               )}
