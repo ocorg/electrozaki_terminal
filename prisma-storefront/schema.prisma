@@ -627,3 +627,40 @@ model LandingPageProduct {
   @@id([landingPageId, productId])
   @@index([productId])
 }
+
+// ── Site statistics (read by the ERP: Site web → Statistiques) ──────────
+//
+// Anonymous by design: no cookie, no IP, no name. visitorHash is an HMAC of
+// (day, IP, browser) that changes every day, so a visitor can't be followed
+// from one day to the next. Kept 13 months (the ERP's daily cron deletes
+// older rows).
+model AnalyticsEvent {
+  id          BigInt   @id @default(autoincrement())
+  createdAt   DateTime @default(now())
+  type        String // view | add_to_cart | search
+  path        String // page path, no query string
+  productId   String? // add_to_cart
+  value       Decimal? @db.Decimal(10, 2) // add_to_cart: price × quantity
+  query       String? // search: what was typed (lower-case, 60 chars max)
+  results     Int? // search: how many products were found
+  source      String // instagram, tiktok, facebook, google, whatsapp, qr, direct…
+  device      String // mobile | tablet | desktop
+  visitorHash String
+  loadMs      Int? // view: full load time of the first page of a visit
+
+  @@index([createdAt])
+  @@index([type, createdAt])
+}
+
+// Robots, counted per day (one counter, never a row per request).
+// category: ai | search | social | seo | monitor | script | other, plus
+// probe (vulnerability scans refused by proxy.ts) and blocked (rate limits).
+model BotHit {
+  day      DateTime @db.Date
+  category String
+  name     String
+  count    Int      @default(0)
+
+  @@id([day, category, name])
+  @@index([day])
+}

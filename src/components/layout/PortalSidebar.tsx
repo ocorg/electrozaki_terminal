@@ -11,7 +11,7 @@ import {
   Settings, LogOut, Globe, ChevronRight,
   PanelLeftClose, PanelLeftOpen, Store, FileText, Clock,
   BarChart3, UserCheck, ScrollText, Shield, PackageCheck, CreditCard, List, PackageSearch,
-  ShoppingBag, Tag, Inbox, Megaphone
+  ShoppingBag, Tag, Inbox, Megaphone, Activity
 } from 'lucide-react'
 import type { UserRole } from '@/types/database'
 import { useLanguageStore } from '@/lib/stores/language'
@@ -75,6 +75,7 @@ function getNavItems(portalBase: string, portalType: string): NavItem[] {
     { href: `${portalBase}/site/catalog`,     icon: Globe,           label: 'Catalogue du site',  roles: ['gerant','proprietaire'] },
     { href: `${portalBase}/site/promos`,      icon: Tag,             label: 'Promos & packs',     roles: ['gerant','proprietaire'] },
     { href: `${portalBase}/site/landing`,     icon: Megaphone,       label: 'Pages promo',        roles: ['gerant','proprietaire'] },
+    { href: `${portalBase}/site/stats`,       icon: Activity,        label: 'Statistiques',       roles: ['gerant','proprietaire'] },
   ]
 }
 

@@ -1,7 +1,7 @@
 import { createHash, timingSafeEqual } from 'node:crypto'
 import { json } from '@/lib/api'
 import { syncStorefront } from '@/lib/storefront/sync'
-import { storefrontConfigured } from '@/lib/storefront/db'
+import { storefrontConfigured, storefrontDb } from '@/lib/storefront/db'
 import { repairTrackingQuietly } from '@/lib/storefront/tracking'
 
 export const maxDuration = 60
@@ -25,6 +25,11 @@ export async function GET(request: Request) {
   try {
     const stock = await syncStorefront()
     await repairTrackingQuietly('cron')
+    // Site statistics are kept 13 months (free database plan).
+    const cutoff = new Date(Date.now() - 400 * 86_400_000)
+    const db = storefrontDb()
+    await db.analyticsEvent.deleteMany({ where: { createdAt: { lt: cutoff } } })
+    await db.botHit.deleteMany({ where: { day: { lt: cutoff } } })
     return json({ ok: true, ...stock })
   } catch (err) {
     console.error('[cron site-sync]', err)

@@ -155,7 +155,7 @@ export default function SiteLandingModule() {
       </div>
 
       {editing && <LandingEditor initial={editing} onClose={() => setEditing(null)} />}
-      {qrFor && <QrModal url={urlOf(qrFor)} title={qrFor.title} slug={qrFor.slug} onClose={() => setQrFor(null)} />}
+      {qrFor && <QrModal url={`${urlOf(qrFor)}?utm_source=qr`} title={qrFor.title} slug={qrFor.slug} onClose={() => setQrFor(null)} />}
     </div>
   )
 }
