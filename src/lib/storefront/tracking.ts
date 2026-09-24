@@ -1,5 +1,6 @@
 import { createHmac } from 'node:crypto'
 import { prisma } from '@/lib/db'
+import type { Prisma } from '@/generated/storefront/client'
 import { storefrontDb, storefrontConfigured } from './db'
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -42,6 +43,7 @@ export async function syncRepairTracking(): Promise<{ written: number }> {
   const existing = new Map((await db.repairTracking.findMany()).map(r => [r.ref, r]))
 
   let written = 0
+  const creates: Prisma.RepairTrackingCreateManyInput[] = []
   for (const t of tickets) {
     const phone = t.clients?.telephone
     if (!phone || phone.replace(/\D/g, '').length < 9) continue // no way to prove ownership
@@ -56,7 +58,7 @@ export async function syncRepairTracking(): Promise<{ written: number }> {
     }
     const cur = existing.get(t.rep_id)
     if (!cur) {
-      await db.repairTracking.create({ data: { ref: t.rep_id, ...row } })
+      creates.push({ ref: t.rep_id, ...row })
       written++
     } else if (
       cur.phoneHash !== row.phoneHash || cur.kind !== row.kind || cur.status !== row.status || cur.device !== row.device ||
@@ -72,6 +74,7 @@ export async function syncRepairTracking(): Promise<{ written: number }> {
       written++
     }
   }
+  if (creates.length) await db.repairTracking.createMany({ data: creates, skipDuplicates: true })
   return { written }
 }
 
