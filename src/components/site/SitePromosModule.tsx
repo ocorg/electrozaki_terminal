@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import Link from 'next/link'
 import { Tag, Package, Plus, Pencil, Trash2, Smartphone } from 'lucide-react'
 import { useApi, apiWrite } from '@/lib/data/api'
 import { Modal, Btn, PageHeader, EmptyState, SkeletonRow, Field, inputClass, selectClass, Select } from '@/components/shared'
@@ -201,6 +202,8 @@ function BundlesTab({ isManager }: { isManager: boolean }) {
 
   // Packs can't pick a unit/colour, so only accessories (and simple products).
   const choices = (catalogQ.data ?? []).filter(p => !p.isPhone && p.published && p.availability !== 'DISCONTINUED')
+  // Synced accessories stay hidden until staff give them a public name.
+  const hidden  = (catalogQ.data ?? []).filter(p => !p.isPhone && !p.published && p.availability !== 'DISCONTINUED').length
   const normal  = editing?.items.reduce((sum, i) => sum + (choices.find(c => c.id === i.productId)?.recommendedSalePrice ?? 0) * i.quantity, 0) ?? 0
 
   async function save() {
@@ -253,6 +256,21 @@ function BundlesTab({ isManager }: { isManager: boolean }) {
             </Field>
             <div className="space-y-2">
               <p className="text-xs uppercase tracking-widest text-ez-subtle font-medium">{L('Produits (2 minimum)', 'المنتجات')}</p>
+              {!catalogQ.isLoading && choices.length < 2 && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 space-y-1.5">
+                  <p className="font-semibold">
+                    {L(`Seuls les accessoires publiés sur le site peuvent entrer dans un pack — il y en a ${choices.length}.`,
+                      `فقط الإكسسوارات المنشورة يمكن إضافتها — العدد: ${choices.length}`)}
+                  </p>
+                  {hidden > 0 && (
+                    <p>
+                      {L(`${hidden} accessoires attendent un nom public : dans « Catalogue du site », donnez-leur un nom (et si possible une photo), puis cochez « Publié ».`,
+                        `${hidden} إكسسوار بدون اسم عمومي: أضف الاسم في كتالوج الموقع ثم انشره`)}
+                    </p>
+                  )}
+                  <Link href="/ez/site/catalog" className="inline-block font-bold underline">{L('Ouvrir le Catalogue du site →', 'فتح كتالوج الموقع ←')}</Link>
+                </div>
+              )}
               {editing.items.map((it, idx) => (
                 <div key={idx} className="flex gap-2">
                   <Select value={it.productId} onChange={e => setEditing({ ...editing, items: editing.items.map((x, j) => j === idx ? { ...x, productId: e.target.value } : x) })} className={selectClass}>
@@ -263,7 +281,7 @@ function BundlesTab({ isManager }: { isManager: boolean }) {
                   <button onClick={() => setEditing({ ...editing, items: editing.items.filter((_, j) => j !== idx) })} className="p-2 text-red-500"><Trash2 className="w-4 h-4" /></button>
                 </div>
               ))}
-              <Btn size="sm" variant="secondary" onClick={() => setEditing({ ...editing, items: [...editing.items, { productId: '', quantity: 1 }] })}><Plus className="w-3.5 h-3.5" />{L('Ajouter un produit', 'إضافة منتج')}</Btn>
+              <Btn size="sm" variant="secondary" disabled={choices.length === 0} onClick={() => setEditing({ ...editing, items: [...editing.items, { productId: '', quantity: 1 }] })}><Plus className="w-3.5 h-3.5" />{L('Ajouter un produit', 'إضافة منتج')}</Btn>
             </div>
             <Field label={L('Prix du pack (DH)', 'سعر الباقة')} required hint={normal ? `${L('Prix normal', 'السعر العادي')} : ${mad(normal)}` : undefined}>
               <input type="number" min={1} value={editing.bundlePrice || ''} onChange={e => setEditing({ ...editing, bundlePrice: Number(e.target.value) })} className={inputClass} />
