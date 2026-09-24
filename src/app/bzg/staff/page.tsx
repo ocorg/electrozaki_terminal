@@ -4,6 +4,7 @@ import { useLanguageStore } from '@/lib/stores/language'
 import { t } from '@/lib/i18n/t'
 import { PageHeader, SkeletonRow, EmptyState } from '@/components/shared'
 import { Users, RefreshCw, LogIn, LogOut, Calendar } from 'lucide-react'
+import { STORE_TIME_ZONE } from '@/lib/time'
 
 interface Punch {
   attendance_id: string
@@ -146,7 +147,7 @@ export default function BZGStaffPage() {
                                     ? (t(isAr, 'common.present'))
                                     : (t(isAr, 'common.exited'))}
                                   {' · '}
-                                  {new Date(latest.punched_at).toLocaleTimeString('fr-FR', {
+                                  {new Date(latest.punched_at).toLocaleTimeString('fr-FR', { timeZone: STORE_TIME_ZONE,
                                     hour: '2-digit', minute: '2-digit',
                                   })}
                                 </p>
@@ -172,7 +173,7 @@ export default function BZGStaffPage() {
                                   ? <LogIn className="w-3 h-3" />
                                   : <LogOut className="w-3 h-3" />
                                 }
-                                {new Date(p.punched_at).toLocaleTimeString('fr-FR', {
+                                {new Date(p.punched_at).toLocaleTimeString('fr-FR', { timeZone: STORE_TIME_ZONE,
                                   hour: '2-digit', minute: '2-digit',
                                 })}
                               </div>

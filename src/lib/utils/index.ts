@@ -1,5 +1,7 @@
 import { type ClassValue, clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
+import { STORE_TIME_ZONE } from '@/lib/time'
+import { storeParts, storeDate } from '@/lib/time'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -19,7 +21,7 @@ export function formatMAD(amount: number | null | undefined): string {
 export function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return '—'
   const d = new Date(dateStr)
-  return d.toLocaleDateString('fr-FR')
+  return d.toLocaleDateString('fr-FR', { timeZone: STORE_TIME_ZONE })
 }
 
 /** Compute FARIQ for a transaction */
@@ -81,9 +83,9 @@ export function isBelowMinimum(price: number, minimum: number | null | undefined
  * Use this everywhere instead of new Date().toISOString().split('T')[0].
  */
 export function getBusinessDate(): string {
-  const d = new Date()
-  if (d.getHours() < 4) d.setDate(d.getDate() - 1)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  // Read on the store's clock (src/lib/time.ts), not the device's time zone.
+  const now = Date.now()
+  return storeParts(now).hours < 4 ? storeDate(now - 86_400_000) : storeDate(now)
 }
 
 /** Moroccan phone number validation */

@@ -6,6 +6,7 @@ import { useLanguageStore } from '@/lib/stores/language'
 import { usePortal } from '@/lib/context/portal'
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import { Clock, LogIn, LogOut, Loader2 } from 'lucide-react'
+import { STORE_TIME_ZONE } from '@/lib/time'
 
 interface Punch {
   attendance_id: string
@@ -86,7 +87,7 @@ export default function AttendanceWidget({ storeId }: AttendanceWidgetProps) {
                 ? (lastPunch.punch_type === 'entree' ? 'دخل في' : 'خرج في')
                 : (lastPunch.punch_type === 'entree' ? 'Entrée à' : 'Sortie à')}
               {' '}
-              {new Date(lastPunch.punched_at).toLocaleTimeString('fr-FR', {
+              {new Date(lastPunch.punched_at).toLocaleTimeString('fr-FR', { timeZone: STORE_TIME_ZONE,
                 hour: '2-digit', minute: '2-digit',
               })}
             </p>
@@ -133,7 +134,7 @@ export default function AttendanceWidget({ storeId }: AttendanceWidgetProps) {
                   ? <LogIn className="w-3 h-3" />
                   : <LogOut className="w-3 h-3" />
                 }
-                {new Date(p.punched_at).toLocaleTimeString('fr-FR', {
+                {new Date(p.punched_at).toLocaleTimeString('fr-FR', { timeZone: STORE_TIME_ZONE,
                   hour: '2-digit', minute: '2-digit',
                 })}
               </div>

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Printer, Loader2, User, Phone, CreditCard, CheckCircle2, Circle } from 'lucide-react'
 import { toast } from 'sonner'
+import { STORE_TIME_ZONE } from '@/lib/time'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -46,7 +47,7 @@ const CHECKLIST = [
 ]
 
 const fmtDate = (d: Date) =>
-  d.toLocaleDateString('fr-MA', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  d.toLocaleDateString('fr-MA', { timeZone: STORE_TIME_ZONE, day: '2-digit', month: '2-digit', year: 'numeric' })
 
 // ── Component ─────────────────────────────────────────────────────────────────
 

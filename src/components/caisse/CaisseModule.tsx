@@ -13,6 +13,8 @@ import {
   CheckCircle, Clock, XCircle, RefreshCw,
   ArrowDown, ArrowUp, AlertTriangle, Loader2
 } from 'lucide-react'
+import { STORE_TIME_ZONE } from '@/lib/time'
+import { storeDate } from '@/lib/time'
 
 interface CaisseData {
   caisse_id:               string
@@ -64,9 +66,7 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
   const today = getBusinessDate()
 
   // Cached and refreshed in the background whenever the caisse changes on any device
-  const prev = new Date()
-  prev.setDate(prev.getDate() - 1)
-  const prevDate = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}-${String(prev.getDate()).padStart(2, '0')}`
+  const prevDate = storeDate(Date.now() - 86_400_000)
   const todayQ = useApi<CaisseData | null>(`/api/caisse?store_id=${storeId}&date=${getBusinessDate()}`)
   // No caisse for today → check if yesterday's is still open (overnight shift)
   const prevQ  = useApi<CaisseData | null>(todayQ.data === null ? `/api/caisse?store_id=${storeId}&date=${prevDate}` : null)
@@ -256,7 +256,7 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
           {caisse.eod_submitted_at && (
             <p className="text-xs text-[#B0ADA6] mt-2">
               {t(isAr, 'common.submittedAt')}{' '}
-              {new Date(caisse.eod_submitted_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+              {new Date(caisse.eod_submitted_at).toLocaleTimeString('fr-FR', { timeZone: STORE_TIME_ZONE, hour: '2-digit', minute: '2-digit' })}
             </p>
           )}
         </div>
