@@ -95,5 +95,9 @@ export function whatsappLink(phone: string) {
 export const mad = (n: number | null | undefined) =>
   n === null || n === undefined ? '—' : `${new Intl.NumberFormat('fr-MA').format(n)} DH`
 
+/** 'jeu. 25/09' for a delivery date ('YYYY-MM-DD'). */
+export const shortDay = (isoDate: string) =>
+  new Date(`${isoDate.slice(0, 10)}T12:00:00Z`).toLocaleDateString('fr-FR', { timeZone: 'UTC', weekday: 'short', day: '2-digit', month: '2-digit' })
+
 export const dateTime = (iso: string) =>
   new Date(iso).toLocaleString('fr-FR', { timeZone: STORE_TIME_ZONE, day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })

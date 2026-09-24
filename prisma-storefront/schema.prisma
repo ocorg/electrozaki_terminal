@@ -313,6 +313,15 @@ model OrderRequest {
   customerName     String
   customerPhone    String
   deliveryAddress  String?            @db.Text
+  // Ameex delivery (lib/delivery): destination picked from the tariff list,
+  // its fee (added to totalEstimate) and the promised delivery date — all
+  // computed on the server at submission and locked in, like the prices.
+  // deliveryUnavailable = Ameex doesn't serve that destination; the customer
+  // was warned and staff must arrange something.
+  deliveryCity        String?
+  deliveryFee         Decimal   @default(0) @db.Decimal(10, 2)
+  deliveryEstimate    DateTime? @db.Date
+  deliveryUnavailable Boolean   @default(false)
   status           OrderRequestStatus @default(NEW)
   totalEstimate    Decimal            @db.Decimal(10, 2)
   whatsappOpenedAt DateTime? // set once the WhatsApp prefill was triggered client-side
