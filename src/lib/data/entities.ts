@@ -11,7 +11,7 @@ export type Entity =
 const LOG = '/api/log'
 
 export const AFFECTS: Record<Entity, string[]> = {
-  transactions: ['/api/transactions', '/api/caisse', '/api/dashboard', '/api/bzg', '/api/phones', '/api/laptops', '/api/accessories', '/api/clients', '/api/warranty', '/api/credits', LOG],
+  transactions: ['/api/transactions', '/api/retours', '/api/caisse', '/api/dashboard', '/api/bzg', '/api/phones', '/api/laptops', '/api/accessories', '/api/clients', '/api/warranty', '/api/credits', LOG],
   phones:       ['/api/phones', '/api/dashboard', '/api/suppliers', '/api/supplier-payments', '/api/documents', '/api/inventory', LOG],
   laptops:      ['/api/laptops', LOG],
   accessories:  ['/api/accessories', '/api/dashboard', LOG],
@@ -41,6 +41,8 @@ export const AFFECTS: Record<Entity, string[]> = {
 // API path of a write → the entities it changes
 const WRITE_ENTITIES: [prefix: string, entities: Entity[]][] = [
   ['/api/transactions',       ['transactions']],
+  // A return refunds a sale and puts the item back (stock, repair, damaged).
+  ['/api/retours',            ['transactions', 'phones', 'laptops', 'accessories']],
   ['/api/phones/catalog',     ['catalog']],
   ['/api/phones',             ['phones']],
   ['/api/laptops',            ['laptops']],

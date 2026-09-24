@@ -11,7 +11,7 @@ import { useApi } from '@/lib/data/api'
 import {
   Vault, TrendingUp, Receipt, Wrench,
   CheckCircle, Clock, XCircle, RefreshCw,
-  ArrowDown, ArrowUp, AlertTriangle, Loader2
+  ArrowDown, ArrowUp, AlertTriangle, Loader2, RotateCcw
 } from 'lucide-react'
 import { STORE_TIME_ZONE } from '@/lib/time'
 import { storeDate } from '@/lib/time'
@@ -28,13 +28,14 @@ interface CaisseData {
   solde_reel:              number | null
   ecart:                   number | null
   status:                  'ouverte' | 'en_attente_cloture' | 'cloturee'
-  payment_breakdown:       { cash: number; transfer: number; credit: number; reprises?: number }
+  payment_breakdown:       { cash: number; transfer: number; credit: number; reprises?: number; retours_cash?: number; retours_transfer?: number }
   nb_transactions:         number
   // Champs optionnels — présents uniquement dans la vue live (GET open)
   total_reprises?:         number
   total_credit_versements?: number
   nb_credit_versements?:   number
   nb_reprises?:            number
+  nb_retours?:             number
   notes:                   string | null
   rejection_note:          string | null
   eod_submitted_at:        string | null
@@ -449,6 +450,25 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
               </div>
             ))}
           </div>
+
+          {/* Retours remboursés ce jour — the cash part already comes off the drawer */}
+          {((caisse.payment_breakdown.retours_cash ?? 0) + (caisse.payment_breakdown.retours_transfer ?? 0)) > 0 && (
+            <div className="mt-3 flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl border border-red-200 bg-red-50">
+              <div className="flex items-center gap-2 min-w-0">
+                <RotateCcw className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
+                <span className="text-xs font-medium text-red-700">
+                  {isAr ? 'مرتجعات مستردة' : 'Retours remboursés'}
+                </span>
+                {(caisse.nb_retours ?? 0) > 0 && <span className="text-[10px] text-red-400">{caisse.nb_retours} op.</span>}
+              </div>
+              <span className="text-xs text-red-700 text-right">
+                <b className="text-sm">- {formatMAD(caisse.payment_breakdown.retours_cash ?? 0)}</b> {isAr ? 'نقدًا' : 'espèces'}
+                {(caisse.payment_breakdown.retours_transfer ?? 0) > 0 && (
+                  <> · {formatMAD(caisse.payment_breakdown.retours_transfer ?? 0)} {isAr ? 'تحويل' : 'virement'}</>
+                )}
+              </span>
+            </div>
+          )}
 
           {/* Reprises — non-cash, affichées uniquement si > 0 ce jour */}
           {(caisse.total_reprises ?? 0) > 0 && (

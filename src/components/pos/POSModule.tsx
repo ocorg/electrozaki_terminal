@@ -13,7 +13,7 @@ import { showSuccess, showError } from '@/lib/utils/toasts'
 import type { Phone, Laptop, PaymentMethod, OperationType } from '@/types/database'
 import ScanButton from '@/components/scanner/ScanButton'
 import ComboBox from '@/components/phones/ComboBox'
-import RetourModal          from '@/components/pos/RetourModal'
+import RetourModal, { type AppliedAvoir } from '@/components/pos/RetourModal'
 import CashDropModal        from '@/components/pos/CashDropModal'
 import QtyPickerModal       from '@/components/pos/QtyPickerModal'
 import OverridePinModal     from '@/components/pos/OverridePinModal'
@@ -134,6 +134,8 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
 
   const [submitting,  setSubmitting]  = useState(false)
   const [retourOpen,  setRetourOpen]  = useState(false)
+  // Store credit (avoir) from a return, spent on this sale
+  const [avoir,       setAvoir]       = useState<AppliedAvoir | null>(null)
   const [receiptOpen, setReceiptOpen] = useState(false)
   const [receiptData, setReceiptData] = useState<ReceiptData | null>(null)
 
@@ -321,7 +323,9 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
   // What the client hands over: the cart minus the trade-in value (a 5 000 phone
   // with a 2 000 trade-in = 3 000 to pay); negative when the trade-in is worth more
   const valeurEchange  = saleForm.type_operation === 'echange' ? saleForm.valeur_echange : 0
-  const netAPayer      = totalVente - valeurEchange
+  // A store credit covers the cart up to its balance; any rest stays on the avoir
+  const avoirUsed      = avoir ? Math.min(avoir.solde, Math.max(totalVente - valeurEchange, 0)) : 0
+  const netAPayer      = totalVente - valeurEchange - avoirUsed
   const aEncaisser     =
     saleForm.payment_method === 'credit' ? 0
     : saleForm.payment_method === 'avance' ? saleForm.avance
@@ -341,6 +345,9 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
     }
     if (saleForm.payment_method === 'avance' && saleForm.avance > 0 && !saleForm.avance_sub_method) {
       showError(isAr ? 'يرجى تحديد طريقة دفع التسبيق' : "Précisez le mode de paiement de l'avance"); return
+    }
+    if (avoir && (saleForm.payment_method === 'credit' || saleForm.payment_method === 'avance')) {
+      showError(isAr ? 'لا يمكن استعمال الرصيد مع البيع بالدين أو التسبيق' : "Un avoir s'utilise avec un paiement comptant (espèces, virement ou mixte)"); return
     }
     if (saleForm.payment_method === 'credit' && !saleForm.client_nom.trim()) {
       showError(isAr ? 'اسم العميل مطلوب للبيع الآجل' : 'Nom du client obligatoire pour une vente à crédit'); return
@@ -362,7 +369,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
       // per-sale totals (avance / montant_especes / montant_carte / valeur_echange) must be
       // PRORATED across rows by each item's share of the cart — stamping the full amount on
       // every row would make caisse count the same cash multiple times for one payment.
-      let allocAvance = 0, allocEspeces = 0, allocCarte = 0, allocEchange = 0
+      let allocAvance = 0, allocEspeces = 0, allocCarte = 0, allocEchange = 0, allocAvoir = 0
       for (let i = 0; i < cart.length; i++) {
         const item   = cart[i]
         const isLast = i === cart.length - 1
@@ -373,6 +380,8 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
         const itemEspeces = isLast ? round2(saleForm.montant_especes - allocEspeces) : round2(saleForm.montant_especes * share)
         const itemCarte   = isLast ? round2(saleForm.montant_carte   - allocCarte  ) : round2(saleForm.montant_carte   * share)
         const itemEchange = isLast ? round2(saleForm.valeur_echange  - allocEchange) : round2(saleForm.valeur_echange  * share)
+        const itemAvoir   = isLast ? round2(avoirUsed                - allocAvoir  ) : round2(avoirUsed                * share)
+        allocAvoir   += itemAvoir
         allocAvance  += itemAvance
         allocEspeces += itemEspeces
         allocCarte   += itemCarte
@@ -404,6 +413,8 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
             warranty_start:  new Date().toISOString().split('T')[0],
             notes:           saleForm.notes           || undefined,
             montant_rendu:   montantRendu > 0 ? montantRendu : 0,
+            avoir_montant:   itemAvoir > 0 ? itemAvoir : undefined,
+            avoir_retour_id: itemAvoir > 0 ? avoir?.retour_id : undefined,
             override_required: overrideAuthorizedBy != null ? true : undefined,
             override_by:       overrideAuthorizedBy ?? undefined,
             override_reason:   overrideAuthorizedBy != null ? overrideReason : undefined,
@@ -426,6 +437,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
         total: totalVente,
         avance:         saleForm.avance        > 0 ? saleForm.avance        : undefined,
         valeur_echange: saleForm.valeur_echange > 0 ? saleForm.valeur_echange : undefined,
+        avoir:          avoirUsed > 0 ? avoirUsed : undefined,
         fariq, payment_method: saleForm.payment_method,
         montant_especes: saleForm.montant_especes || undefined,
         montant_carte:   saleForm.montant_carte   || undefined,
@@ -475,7 +487,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
           echange_vers_reparation: saleForm.echange_vers_reparation ?? false,
         })
       }
-      setCart([]); setPriceInputs({}); setSaleForm({ ...EMPTY_SALE }); setOverrideAuthorizedBy(null); setOverrideReason(''); setSelectedClientId(null); setClientSuggestions([])
+      setCart([]); setPriceInputs({}); setSaleForm({ ...EMPTY_SALE }); setOverrideAuthorizedBy(null); setOverrideReason(''); setSelectedClientId(null); setClientSuggestions([]); setAvoir(null)
     } catch (err: unknown) {
       showError((err as Error).message)
     } finally { setSubmitting(false) }
@@ -1016,6 +1028,21 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                 <span className="text-[#1A1A1A]">- {formatMAD(saleForm.valeur_echange)}</span>
               </div>
             )}
+            {avoir && (
+              <div className="flex items-center justify-between gap-2 text-sm rounded-lg bg-emerald-50 border border-emerald-200 px-2 py-1.5">
+                <span className="text-emerald-800 min-w-0 truncate">
+                  {isAr ? 'رصيد' : 'Avoir'} <b className="font-mono">{avoir.retour_id}</b>
+                  {avoir.solde > avoirUsed && (
+                    <span className="text-[11px] text-emerald-600"> · {isAr ? 'يبقى' : 'reste'} {formatMAD(avoir.solde - avoirUsed)}</span>
+                  )}
+                </span>
+                <span className="flex items-center gap-2 flex-shrink-0">
+                  <span className="font-bold text-emerald-800">- {formatMAD(avoirUsed)}</span>
+                  <button type="button" onClick={() => setAvoir(null)} title={isAr ? 'إزالة' : "Retirer l'avoir"}
+                    className="text-emerald-600 hover:text-red-500">×</button>
+                </span>
+              </div>
+            )}
             {saleForm.type_operation === 'echange' && netAPayer < 0 && (
               <div className="flex justify-between text-sm font-bold text-amber-700">
                 <span>{isAr ? 'يُرجَع للعميل' : 'À rendre au client'}</span>
@@ -1055,7 +1082,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
 
           {/* Reset */}
           <button type="button"
-            onClick={() => { setCart([]); setPriceInputs({}); setSaleForm({ ...EMPTY_SALE }); setOverrideAuthorizedBy(null); setOverrideReason(''); setSelectedClientId(null); setClientSuggestions([]) }}
+            onClick={() => { setCart([]); setPriceInputs({}); setSaleForm({ ...EMPTY_SALE }); setOverrideAuthorizedBy(null); setOverrideReason(''); setSelectedClientId(null); setClientSuggestions([]); setAvoir(null) }}
             className="w-full py-2.5 rounded-2xl text-xs font-bold border border-[#E8E5DE] text-[#B0ADA6] hover:border-red-300 hover:text-red-400 transition-all">
             {isAr ? '× مسح الكل' : '× Réinitialiser'}
           </button>
@@ -1096,7 +1123,8 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
 
       {/* Retour modal */}
       <RetourModal open={retourOpen} onClose={() => setRetourOpen(false)} storeId={storeId} primary={primary}
-        onRetourDone={() => { setCart([]); setSaleForm({ ...EMPTY_SALE }) }} />
+        onRetourDone={() => { setCart([]); setSaleForm({ ...EMPTY_SALE }); setAvoir(null) }}
+        onAvoir={a => setAvoir(a)} />
 
       <OverridePinModal
         open={overrideOpen}

@@ -14,14 +14,31 @@ async function PATCH_(request: NextRequest) {
     const { txn_id, voided_reason } = await request.json()
     if (!txn_id || !voided_reason) throw new HttpError(400, 'txn_id et voided_reason requis')
 
+    // Cancelling is for correcting a mistake while the sale's day is still open.
+    // Anything later is a return (POS → Retour): a refund dated the day it
+    // happens, so a closed caisse is never rewritten.
     const { before, after } = await prisma.$transaction(async (tx) => {
       const before = await tx.transactions.findUnique({ where: { txn_id } })
+      if (before?.store_id) {
+        const caisse = await tx.caisse.findFirst({ where: { store_id: before.store_id, date: before.date_vente }, select: { status: true } })
+        if (caisse && caisse.status !== 'ouverte') {
+          throw new HttpError(409, 'La caisse de ce jour est clôturée : faites un retour depuis le POS (bouton Retour).')
+        }
+      }
+      if (await tx.retours.count({ where: { txn_id } })) {
+        throw new HttpError(409, 'Cette vente a déjà un retour : elle ne peut plus être annulée.')
+      }
       // Conditional update: a second concurrent void finds nothing to update
       const { count } = await tx.transactions.updateMany({
         where: { txn_id, voided: false },
         data:  { voided: true, voided_by: user.id, voided_at: new Date(), voided_reason, updated_by: user.id },
       })
       if (!before || count === 0) throw new HttpError(404, 'Transaction introuvable ou déjà annulée')
+
+      // Paid with a store credit: the credit goes back to the customer
+      if (before.avoir_retour_id && Number(before.avoir_montant) > 0) {
+        await tx.retours.update({ where: { retour_id: before.avoir_retour_id }, data: { avoir_solde: { increment: before.avoir_montant } } })
+      }
 
       // Put the device back in stock
       if (before.device_type === 'telephone') {
@@ -39,7 +56,7 @@ async function PATCH_(request: NextRequest) {
       return { before, after }
     })
 
-    // Caisse totals aggregate live from transactions WHERE voided = false — no caisse mutation needed.
+    // Caisse totals aggregate live from transactions WHERE voided = false — the day is still open, so no caisse mutation needed.
     await logActivity({
       store_id:     before.store_id,
       user_id:      user.id,

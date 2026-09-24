@@ -22,6 +22,7 @@ export interface ReceiptData {
   total:            number
   avance?:          number
   valeur_echange?:  number
+  avoir?:           number   // paid with a store credit from a return
   fariq?:           number
   payment_method:   string
   montant_especes?: number
@@ -66,7 +67,7 @@ const PM_LABELS: Record<string, string> = {
 // ─── Component ────────────────────────────────────────────────
 export function ReceiptPrint({ data, onClose }: ReceiptPrintProps) {
   const fariq = data.fariq ?? (
-    data.total - (data.avance ?? 0) - (data.valeur_echange ?? 0)
+    data.total - (data.avance ?? 0) - (data.valeur_echange ?? 0) - (data.avoir ?? 0)
   )
 
   return (
@@ -191,6 +192,13 @@ export function ReceiptPrint({ data, onClose }: ReceiptPrintProps) {
                 <div className="flex justify-between text-[11px] text-blue-700">
                   <span>Reprise échange / الاستبدال</span>
                   <span>- {fmtMAD(data.valeur_echange!)}</span>
+                </div>
+              )}
+
+              {(data.avoir ?? 0) > 0 && (
+                <div className="flex justify-between text-[11px] text-emerald-700">
+                  <span>Avoir / رصيد</span>
+                  <span>- {fmtMAD(data.avoir!)}</span>
                 </div>
               )}
 

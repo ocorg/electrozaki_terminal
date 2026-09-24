@@ -15,7 +15,7 @@ export async function GET() {
     const today      = todayDate()
     const monthStart = dateOnly(`${day(today).slice(0, 7)}-01`)!
 
-    const [txns, repairs, caisses, staffToday] = await Promise.all([
+    const [txns, repairs, caisses, staffToday, retours] = await Promise.all([
       prisma.transactions.findMany({
         where:  { voided: false, date_vente: { gte: monthStart } },
         select: { store_id: true, prix_vente: true, date_vente: true },
@@ -31,15 +31,20 @@ export async function GET() {
         select:  { user_name: true, store_id: true, punch_type: true, punched_at: true },
         orderBy: { punched_at: 'desc' },
       }),
+      // Returns refunded this month lower the sales of the day they happen
+      prisma.retours.findMany({ where: { type: 'retour', date: { gte: monthStart } }, select: { store_id: true, date: true, montant: true } }),
     ])
 
     const snapshots = Object.keys(STORE_MAP).map(storeId => {
       const storeTxns   = txns.filter(t => t.store_id === storeId)
+      const storeRets   = retours.filter(r => r.store_id === storeId)
+      const refunds     = (rows: typeof storeRets) => rows.reduce((s, r) => s + Number(r.montant), 0)
       const todayCaisse = caisses.find(c => c.store_id === storeId && day(c.date) === day(today))
       return {
         store_id:       storeId,
-        ca_today:       storeTxns.filter(t => day(t.date_vente) === day(today)).reduce((s, t) => s + Number(t.prix_vente), 0),
-        ca_month:       storeTxns.reduce((s, t) => s + Number(t.prix_vente), 0),
+        ca_today:       storeTxns.filter(t => day(t.date_vente) === day(today)).reduce((s, t) => s + Number(t.prix_vente), 0)
+                        - refunds(storeRets.filter(r => day(r.date) === day(today))),
+        ca_month:       storeTxns.reduce((s, t) => s + Number(t.prix_vente), 0) - refunds(storeRets),
         nb_ventes:      storeTxns.length,
         active_repairs: repairs.filter(r => r.store_id === storeId).length,
         caisse_status:  todayCaisse ? todayCaisse.status : 'none',

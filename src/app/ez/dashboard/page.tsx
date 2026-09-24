@@ -87,12 +87,19 @@ function periodDates(p: Period): { start: string; end: string } {
   return { start: today.slice(0, 7) + '-01', end: today }
 }
 
+// A return lowers the day's sales by what was refunded; an item put back in
+// stock also gives back its purchase cost (it will be sold again).
+type ReturnRow = { date: string; montant: number; qty: number; destination: string | null; device_id: string; device_type: string }
+const returnedCost = (r: ReturnRow, costs: Record<string, number>) =>
+  r.destination === 'stock' ? (costs[r.device_id] || 0) * (r.device_type === 'accessoire' ? r.qty : 1) : 0
+
 function buildChart(
   txns: TxnRow[],
   exps: { montant: number; date: string }[],
   costs: Record<string, number>,
   start: string,
   end: string,
+  returns: ReturnRow[] = [],
 ): ChartPoint[] {
   const dates: string[] = []
   const d = new Date(start + 'T12:00:00Z')
@@ -110,8 +117,9 @@ function buildChart(
       ? dt.toLocaleDateString('fr-FR', { timeZone: STORE_TIME_ZONE, weekday: 'short', day: 'numeric' })
       : String(dt.getUTCDate())
     const dayT    = txns.filter(t => t.date_vente === date)
-    const revenue = dayT.reduce((s, t) => s + collected(t), 0)
-    const cost    = dayT.reduce((s, t) => s + (costs[t.device_id] || 0), 0)
+    const dayR    = returns.filter(r => r.date.slice(0, 10) === date)
+    const revenue = dayT.reduce((s, t) => s + collected(t), 0) - dayR.reduce((s, r) => s + r.montant, 0)
+    const cost    = dayT.reduce((s, t) => s + (costs[t.device_id] || 0), 0) - dayR.reduce((s, r) => s + returnedCost(r, costs), 0)
     const expDay  = exps.filter(ex => ex.date === date).reduce((s, ex) => s + ex.montant, 0)
     const profit  = revenue - cost
     return { label, revenue, profit, net: profit - expDay, count: dayT.length }
@@ -186,10 +194,12 @@ export default function EZDashboard() {
     const credits    = (json.credits     || []) as Record<string, unknown>[]
     const exps       = (json.expenses    || []) as { montant: number; date: string }[]
     const costMap: Record<string, number> = canFin ? (json.costMap || {}) : {}
+    const returns    = (json.returns     || []) as ReturnRow[]
 
     // ── KPI calculations ────────────────────────────────────
-    const ca        = periodTxns.reduce((s, t) => s + collected(t), 0)
-    const totalCost = periodTxns.reduce((s, t) => s + (costMap[t.device_id] || 0), 0)
+    // Net of returns refunded in the period
+    const ca        = periodTxns.reduce((s, t) => s + collected(t), 0) - returns.reduce((s, r) => s + r.montant, 0)
+    const totalCost = periodTxns.reduce((s, t) => s + (costMap[t.device_id] || 0), 0) - returns.reduce((s, r) => s + returnedCost(r, costMap), 0)
     const bBrut     = ca - totalCost
     const totalExp  = exps.reduce((s, e) => s + e.montant, 0)
     const bNet      = bBrut - totalExp
@@ -242,7 +252,7 @@ export default function EZDashboard() {
 
     // ── Chart ────────────────────────────────────────────────
     const { start: s, end: e } = periodDates(period)
-    const chart_data = buildChart(periodTxns, exps, costMap, s, e)
+    const chart_data = buildChart(periodTxns, exps, costMap, s, e, returns)
 
     return {
       ca_period: ca, benefice_brut: bBrut, benefice_net: bNet,

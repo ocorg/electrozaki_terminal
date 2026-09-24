@@ -156,6 +156,16 @@ export const CODES = {
     budget: { fr: 'Budget', ar: 'الميزانية' },
     modele: { fr: 'Modèle', ar: 'الموديل' },
   },
+  retour_mode: {
+    especes:  { fr: 'Espèces',  ar: 'نقدًا' },
+    virement: { fr: 'Virement', ar: 'تحويل' },
+    avoir:    { fr: 'Avoir',    ar: 'رصيد' },
+  },
+  retour_destination: {
+    stock:      { fr: 'Remis en vente',     ar: 'إرجاع للبيع' },
+    reparation: { fr: 'Envoyé en réparation', ar: 'إلى الإصلاح' },
+    defectueux: { fr: 'Défectueux',         ar: 'معطوب' },
+  },
   promo_type: {
     valeur:      { fr: 'Valeur',      ar: 'قيمة' },
     pourcentage: { fr: 'Pourcentage', ar: 'نسبة' },

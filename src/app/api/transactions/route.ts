@@ -1,11 +1,12 @@
 import { NextRequest } from 'next/server'
 import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
-import { json, handleError, requireUser, requireActiveUser, requireFields, dateOnly, todayDate } from '@/lib/api'
+import { json, handleError, requireUser, requireActiveUser, requireFields, dateOnly, todayDate, HttpError } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { codeLabel } from '@/lib/codes'
 import { computeStatutPaiement } from '@/lib/utils'
 import { withNotify } from '@/lib/realtime'
+import { deviceLabels } from '@/lib/device-labels'
 
 export async function GET(request: NextRequest) {
   try {
@@ -55,22 +56,6 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// "Apple iPhone 13 128Go · Noir" / "Chargeur · Oraimo" — one query per device type
-async function deviceLabels(rows: { device_type: string; device_id: string }[]) {
-  const ids = (type: string) => rows.filter(r => r.device_type === type).map(r => r.device_id)
-  const [phones, accessories, laptops] = await Promise.all([
-    prisma.phones.findMany({ where: { phone_id: { in: ids('telephone') } }, select: { phone_id: true, marque: true, model: true, stockage: true, couleur: true } }),
-    prisma.accessories.findMany({ where: { acc_id: { in: ids('accessoire') } }, select: { acc_id: true, nom: true, marque: true } }),
-    prisma.laptops.findMany({ where: { laptop_id: { in: ids('laptop') } }, select: { laptop_id: true, marque: true, model: true, stockage: true } }),
-  ])
-  const join = (parts: (string | null | undefined)[]) => parts.filter(Boolean).join(' ')
-  const labels = new Map<string, string>()
-  for (const p of phones)      labels.set(p.phone_id,  join([p.marque, p.model, p.stockage, p.couleur && `· ${p.couleur}`]))
-  for (const a of accessories) labels.set(a.acc_id,    join([a.nom, a.marque && `· ${a.marque}`]))
-  for (const l of laptops)     labels.set(l.laptop_id, join([l.marque, l.model, l.stockage]))
-  return labels
-}
-
 const str  = (v: unknown) => (v === undefined || v === null || v === '' ? null : String(v))
 const nums = (v: unknown) => (v === undefined || v === null || v === '' ? null : Number(v))
 
@@ -96,9 +81,27 @@ async function POST_(request: NextRequest) {
     const warrantyExpiry = new Date(warrantyStart)
     warrantyExpiry.setUTCMonth(warrantyExpiry.getUTCMonth() + warrantyMonths)
 
+    // Part paid with a store credit (avoir) from a return
+    const avoirMontant = Math.round((Number(body.avoir_montant) || 0) * 100) / 100
+    const avoirId      = str(body.avoir_retour_id)
+    if (avoirMontant < 0) throw new HttpError(400, 'Avoir invalide')
+    if (avoirMontant > 0) {
+      if (!avoirId) throw new HttpError(400, 'Avoir manquant')
+      if (body.payment_method === 'credit') throw new HttpError(400, 'Un avoir ne peut pas servir pour une vente à crédit')
+      if (avoirMontant > Number(body.prix_vente)) throw new HttpError(400, "L'avoir dépasse le prix de l'article")
+    }
+
     // One sale = one database transaction: the row, the device status and the stock
     // change either all happen or none do.
     const data = await prisma.$transaction(async (tx) => {
+      if (avoirMontant > 0) {
+        // Conditional decrement: the same credit can't be spent twice.
+        const { count } = await tx.retours.updateMany({
+          where: { retour_id: avoirId!, type: 'retour', mode: 'avoir', avoir_solde: { gte: avoirMontant } },
+          data:  { avoir_solde: { decrement: avoirMontant } },
+        })
+        if (count === 0) throw new HttpError(409, 'Avoir introuvable ou solde insuffisant')
+      }
       const txn = await tx.transactions.create({
         data: {
           device_type:           deviceType,
@@ -130,6 +133,8 @@ async function POST_(request: NextRequest) {
           override_by:           str(body.override_by),
           override_reason:       str(body.override_reason),
           facture_ref:           str(body.facture_ref),
+          avoir_montant:         avoirMontant,
+          avoir_retour_id:       avoirMontant > 0 ? avoirId : null,
           notes:                 str(body.notes),
           store_id:              body.store_id ?? user.store_id ?? null,
           created_by:            user.id,

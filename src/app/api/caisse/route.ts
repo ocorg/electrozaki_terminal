@@ -20,15 +20,19 @@ type CaisseTotals = {
   total_cash_drops:        number
   total_credit_versements: number   // gross credit repayments (phone-credit + ad-hoc + imported), all payment methods — display only
   total_reprises:          number   // trade-in devices discharged — non-cash, informational
+  total_retours:           number   // refunds paid back today (returns + store-credit payouts), cash + transfer
   nb_transactions:         number
   nb_cash_drops:           number
   nb_credit_versements:    number
   nb_reprises:             number
+  nb_retours:              number
   payment_breakdown: {
     cash:     number   // physical cash actually collected — THE figure behind solde_theorique
     transfer: number
     credit:   number   // remaining balance still due on credit sales (not yet collected)
     reprises: number
+    retours_cash:     number   // refunds paid in cash today — leave the drawer
+    retours_transfer: number   // refunds paid by transfer today — never touch the drawer
   }
 }
 
@@ -41,11 +45,11 @@ async function computeCaisseTotals(store_id: string, date: Date): Promise<Caisse
 
   const [
     txns, repsDelivered, repsDepot, exps, drops,
-    phoneCreditPmts, manualCreditPmts, importCreditPmts, reprises,
+    phoneCreditPmts, manualCreditPmts, importCreditPmts, reprises, retours,
   ] = await Promise.all([
     prisma.transactions.findMany({
       where:  { store_id, date_vente: date, voided: false },
-      select: { prix_vente: true, payment_method: true, avance: true, valeur_echange: true, montant_especes: true, montant_carte: true },
+      select: { prix_vente: true, payment_method: true, avance: true, valeur_echange: true, montant_especes: true, montant_carte: true, avoir_montant: true },
     }),
     // Cash only: cancelled tickets and repairs paid by bank transfer never
     // reach the drawer (mode_paiement NULL = older tickets, all cash).
@@ -69,39 +73,43 @@ async function computeCaisseTotals(store_id: string, date: Date): Promise<Caisse
       where:  { store_id, has_reprise: true, reprise_phone_id: { not: null }, discharged_at: { gte: date, lt: nextDay } },
       select: { reprise_valeur: true },
     }),
+    // Returns paid back today (the sale itself stays in its own day). A store
+    // credit (avoir) moves no money now: it is spent on a later sale.
+    prisma.retours.findMany({ where: { store_id, date, mode: { in: ['especes', 'virement'] } }, select: { montant: true, mode: true } }),
   ])
 
   // Combine all three client-repayment streams — each is a real cash/transfer event
   const creditPmts = [...phoneCreditPmts, ...manualCreditPmts, ...importCreditPmts]
 
+  // The part of a sale paid with a store credit (avoir_montant) is not new money.
   const total_ventes = sum(txns, t => {
-    const pv = num(t.prix_vente), av = num(t.avance), ve = num(t.valeur_echange)
-    if (t.payment_method === 'echange') return pv - ve
+    const pv = num(t.prix_vente), av = num(t.avance), ve = num(t.valeur_echange), ao = num(t.avoir_montant)
+    if (t.payment_method === 'echange') return pv - ve - ao
     if (t.payment_method === 'credit')  return av
     const isPartial = av > 0 && (pv - av - ve) > 0
-    return isPartial ? av : pv - ve
+    return isPartial ? av : pv - ve - ao
   })
 
   // Cash physically collected from sales today — excludes virement entirely and the card portion of mixte
   const ventes_cash = sum(txns, t => {
-    const pv = num(t.prix_vente), av = num(t.avance), ve = num(t.valeur_echange)
+    const pv = num(t.prix_vente), av = num(t.avance), ve = num(t.valeur_echange), ao = num(t.avoir_montant)
     switch (t.payment_method) {
       case 'especes': {
         const isPartial = av > 0 && (pv - av - ve) > 0
-        return isPartial ? av : Math.max(pv - ve, 0)
+        return isPartial ? av : Math.max(pv - ve - ao, 0)
       }
       case 'mixte':   return num(t.montant_especes)
-      case 'echange': return Math.max(pv - ve, 0)
+      case 'echange': return Math.max(pv - ve - ao, 0)
       case 'credit':  return av   // down payment taken at signing — assumed cash
       default:        return 0    // virement — bank money, never enters the drawer
     }
   })
 
   const ventes_transfer = sum(txns, t => {
-    const pv = num(t.prix_vente), av = num(t.avance)
+    const pv = num(t.prix_vente), av = num(t.avance), ao = num(t.avoir_montant)
     if (t.payment_method === 'virement') {
       const isPartial = av > 0 && (pv - av) > 0
-      return isPartial ? av : pv
+      return isPartial ? av : Math.max(pv - ao, 0)
     }
     if (t.payment_method === 'mixte') return num(t.montant_carte)
     return 0
@@ -123,6 +131,9 @@ async function computeCaisseTotals(store_id: string, date: Date): Promise<Caisse
 
   const total_reprises = sum(reprises, r => num(r.reprise_valeur))
 
+  const retours_cash     = sum(retours.filter(r => r.mode === 'especes'),  r => num(r.montant))
+  const retours_transfer = sum(retours.filter(r => r.mode === 'virement'), r => num(r.montant))
+
   return {
     total_ventes,
     total_reparations,
@@ -130,15 +141,20 @@ async function computeCaisseTotals(store_id: string, date: Date): Promise<Caisse
     total_cash_drops,
     total_credit_versements,
     total_reprises,
+    total_retours:        retours_cash + retours_transfer,
     nb_transactions:      txns.length,
     nb_cash_drops:        drops.length,
     nb_credit_versements: creditPmts.length,
     nb_reprises:          reprises.length,
+    nb_retours:           retours.length,
     payment_breakdown: {
-      cash:     ventes_cash + total_cash_drops + credit_cash,
+      // cash refunds leave the drawer
+      cash:     ventes_cash + total_cash_drops + credit_cash - retours_cash,
       transfer: ventes_transfer + credit_transfer,
       credit:   ventes_credit_due,
       reprises: total_reprises,
+      retours_cash,
+      retours_transfer,
     },
   }
 }
@@ -176,6 +192,8 @@ export async function GET(request: NextRequest) {
         payment_breakdown:       totals.payment_breakdown,
         total_credit_versements: totals.total_credit_versements,
         total_reprises:          totals.total_reprises,
+        total_retours:           totals.total_retours,
+        nb_retours:              totals.nb_retours,
         nb_transactions:         totals.nb_transactions,
         nb_cash_drops:           totals.nb_cash_drops,
         nb_credit_versements:    totals.nb_credit_versements,

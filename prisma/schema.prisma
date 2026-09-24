@@ -63,6 +63,27 @@ enum operation_type {
   retour
 }
 
+// Returns (Retour de vente): how the customer is paid back, and where the
+// returned item goes. "avoir" = store credit, spent on a later sale.
+enum retour_mode {
+  especes
+  virement
+  avoir
+}
+
+enum retour_destination {
+  stock
+  reparation
+  defectueux
+}
+
+// retour = an item brought back; solde_avoir = the rest of a store credit
+// paid back to the customer (no item involved).
+enum retour_type {
+  retour
+  solde_avoir
+}
+
 enum payment_method {
   especes
   virement
@@ -999,6 +1020,12 @@ model transactions {
   voided_reason                         String?
   facture_ref                           String?
   qty                                   Int               @default(1)
+  // Part of this sale paid with a store credit (avoir) from a return —
+  // not new money: the caisse doesn't count it as collected.
+  avoir_montant                         Decimal           @default(0) @db.Decimal(10, 2)
+  avoir_retour_id                       String?
+  avoir                                 retours?          @relation("avoir_spent", fields: [avoir_retour_id], references: [retour_id], onDelete: NoAction, onUpdate: NoAction)
+  retours                               retours[]         @relation("retour_of_sale")
   credit_payments                       credit_payments[]
   delivery_items                        delivery_items[]
   ez_documents                          ez_documents[]
@@ -1097,4 +1124,34 @@ model warranty_events {
 
   @@index([facture_ref], map: "idx_warranty_events_facture_ref")
   @@index([txn_id], map: "idx_warranty_events_txn_id")
+}
+
+// A return of (part of) a sale, dated the day it happens: the original sale
+// stays untouched in its own day and its closed caisse; the refund comes out
+// of the caisse of the return day (cash only — a transfer never touched the
+// drawer, a store credit is spent later). See src/app/api/retours.
+model retours {
+  retour_id    String              @id @default(dbgenerated("('RET-'::text || lpad((nextval('retours_seq'::regclass))::text, 4, '0'::text))"))
+  type         retour_type         @default(retour)
+  txn_id       String
+  sale         transactions        @relation("retour_of_sale", fields: [txn_id], references: [txn_id], onDelete: NoAction, onUpdate: NoAction)
+  // solde_avoir rows: the store credit whose rest was paid back
+  avoir_id     String?
+  avoir        retours?            @relation("avoir_payout", fields: [avoir_id], references: [retour_id], onDelete: NoAction, onUpdate: NoAction)
+  payouts      retours[]           @relation("avoir_payout")
+  store_id     String?
+  date         DateTime            @db.Date
+  qty          Int                 @default(1)
+  montant      Decimal             @db.Decimal(10, 2)
+  mode         retour_mode
+  destination  retour_destination?
+  motif        String
+  // store credit still available (mode avoir only)
+  avoir_solde  Decimal             @default(0) @db.Decimal(10, 2)
+  spent_on     transactions[]      @relation("avoir_spent")
+  created_at   DateTime            @default(now()) @db.Timestamptz(6)
+  created_by   String?             @db.Uuid
+
+  @@index([txn_id])
+  @@index([store_id, date])
 }
