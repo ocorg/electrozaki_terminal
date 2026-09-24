@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
       select: {
         id: true, customerName: true, customerPhone: true, status: true, totalEstimate: true,
         discountAmount: true, requiresAdvance: true, advancePaymentStatus: true, whatsappOpenedAt: true, createdAt: true,
+        deliveryCity: true, deliveryFee: true, deliveryEstimate: true, deliveryUnavailable: true,
         items: { select: { productNameSnapshot: true, quantity: true, isGift: true } },
       },
     })

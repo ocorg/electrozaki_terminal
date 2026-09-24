@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import AttendanceWidget from '@/components/attendance/AttendanceWidget'
+import { STORE_TIME_ZONE } from '@/lib/time'
 
 // ─── Types ────────────────────────────────────────────────────
 type Period = 'day' | 'week' | 'month'
@@ -104,10 +105,10 @@ function buildChart(
     const dt      = new Date(date + 'T12:00:00Z')
     const n       = dates.length
     const label   = n === 1
-      ? dt.toLocaleDateString('fr-FR', { weekday: 'long' })
+      ? dt.toLocaleDateString('fr-FR', { timeZone: STORE_TIME_ZONE, weekday: 'long' })
       : n <= 7
-      ? dt.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' })
-      : String(dt.getDate())
+      ? dt.toLocaleDateString('fr-FR', { timeZone: STORE_TIME_ZONE, weekday: 'short', day: 'numeric' })
+      : String(dt.getUTCDate())
     const dayT    = txns.filter(t => t.date_vente === date)
     const revenue = dayT.reduce((s, t) => s + collected(t), 0)
     const cost    = dayT.reduce((s, t) => s + (costs[t.device_id] || 0), 0)
@@ -345,7 +346,7 @@ export default function EZDashboard() {
             {lastSync && (
               <span className="text-[#B0ADA6] text-xs flex items-center gap-1">
                 <Clock className="w-3 h-3" />
-                {lastSync.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                {lastSync.toLocaleTimeString('fr-FR', { timeZone: STORE_TIME_ZONE, hour: '2-digit', minute: '2-digit' })}
               </span>
             )}
           </p>

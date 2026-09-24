@@ -10,6 +10,7 @@ import { usePortal } from '@/lib/context/portal'
 import { useEscapeKey } from '@/lib/hooks/useEscapeKey'
 import type { InventorySession, InventorySessionItem, InventoryResultat, DeviceStatus } from '@/types/database'
 import { codeLabel } from '@/lib/codes'
+import { STORE_TIME_ZONE } from '@/lib/time'
 
 // ── Types internes ─────────────────────────────────────────
 interface SessionWithCounts extends InventorySession {
@@ -35,7 +36,7 @@ const RC: Record<string, { label: string; color: string; bg: string; border: str
 }
 
 const formatDate = (iso: string) =>
-  new Date(iso).toLocaleDateString('fr-FR', {
+  new Date(iso).toLocaleDateString('fr-FR', { timeZone: STORE_TIME_ZONE,
     day: '2-digit', month: '2-digit', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
   })
@@ -683,7 +684,7 @@ export default function InventoryModule({ role }: { role: string }) {
                     <div className="flex items-center gap-2 shrink-0">
                       {item.scanned_at && (
                         <span className="text-zinc-600 text-xs">
-                          {new Date(item.scanned_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                          {new Date(item.scanned_at).toLocaleTimeString('fr-FR', { timeZone: STORE_TIME_ZONE, hour: '2-digit', minute: '2-digit' })}
                         </span>
                       )}
                       {activeTab === 'non_enregistre' && (

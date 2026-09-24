@@ -11,6 +11,7 @@ import {
   Loader2, Plus, Package, Truck,
   List, LayoutGrid, Download, Printer,
 } from 'lucide-react'
+import { STORE_TIME_ZONE } from '@/lib/time'
 
 // ─── Types ────────────────────────────────────────────────────
 interface DeliveryItem {
@@ -206,7 +207,7 @@ function DeliveryLabel({ delivery, device_name, open, onClose }: LabelProps) {
 
               {/* Footer */}
               <p style={{ fontSize: '7px', color: '#B0ADA6' }}>
-                Handle with Care / يُرجى التعامل بحذر — {new Date().toLocaleDateString('fr-FR')}
+                Handle with Care / يُرجى التعامل بحذر — {new Date().toLocaleDateString('fr-FR', { timeZone: STORE_TIME_ZONE })}
               </p>
             </div>
           </div>

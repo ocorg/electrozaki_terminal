@@ -12,6 +12,7 @@ import ComboBox from '@/components/phones/ComboBox'
 import { usePhoneCatalog } from '@/lib/hooks/usePhoneCatalog'
 import { useEscapeKey } from '@/lib/hooks/useEscapeKey'
 import { codeLabel, type Code } from '@/lib/codes'
+import { STORE_TIME_ZONE } from '@/lib/time'
 
 // ── Types ───────────────────────────────────────────────────────────
 interface CreditSale {
@@ -399,7 +400,7 @@ export default function PhoneCreditPanel({
                   : 'bg-amber-500/20 text-amber-400'
               }`}>
                 {credit.reprise_remise
-                  ? `Reçu le ${new Date(credit.reprise_remise_at! + '').toLocaleDateString('fr-MA', { day: '2-digit', month: 'short' })}`
+                  ? `Reçu le ${new Date(credit.reprise_remise_at! + '').toLocaleDateString('fr-MA', { timeZone: STORE_TIME_ZONE, day: '2-digit', month: 'short' })}`
                   : 'À recevoir'}
               </span>
               {!credit.reprise_remise && credit.statut === 'en_cours' && (
@@ -444,7 +445,7 @@ export default function PhoneCreditPanel({
                       : <Landmark  className="w-3.5 h-3.5 text-blue-400/70" />
                     }
                     <span className="text-xs text-white/60">
-                      {new Date(p.date_paiement + 'T00:00:00').toLocaleDateString('fr-MA', {
+                      {new Date(p.date_paiement + 'T12:00:00Z').toLocaleDateString('fr-MA', { timeZone: STORE_TIME_ZONE,
                         day: '2-digit', month: 'short', year: 'numeric',
                       })}
                     </span>

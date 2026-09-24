@@ -9,6 +9,7 @@ import {
   ChevronDown, ChevronUp, Calendar
 } from 'lucide-react'
 import { CODES, codeLabel, type Code } from '@/lib/codes'
+import { STORE_TIME_ZONE } from '@/lib/time'
 
 interface LogEntry {
   log_id:        string
@@ -287,7 +288,7 @@ export default function BZGLogsPage() {
                       {storeName}
                     </span>
                     <span className="text-xs text-[#B0ADA6] tabular-nums">
-                      {new Date(log.created_at).toLocaleString('fr-FR', {
+                      {new Date(log.created_at).toLocaleString('fr-FR', { timeZone: STORE_TIME_ZONE,
                         day:    '2-digit',
                         month:  '2-digit',
                         hour:   '2-digit',
@@ -326,7 +327,7 @@ export default function BZGLogsPage() {
                           {isAr ? 'التاريخ' : 'Date complète'}
                         </p>
                         <p className="text-[#6B6860]">
-                          {new Date(log.created_at).toLocaleString('fr-FR')}
+                          {new Date(log.created_at).toLocaleString('fr-FR', { timeZone: STORE_TIME_ZONE })}
                         </p>
                       </div>
                     </div>

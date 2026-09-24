@@ -1,15 +1,16 @@
 'use client'
 import { useMemo, useState } from 'react'
-import { ShoppingBag, Phone, MessageCircle, RefreshCw, Receipt, CheckCircle2, XCircle, Store } from 'lucide-react'
+import { ShoppingBag, Phone, MessageCircle, RefreshCw, Receipt, CheckCircle2, XCircle, Store, Truck } from 'lucide-react'
 import { useApi, apiWrite } from '@/lib/data/api'
 import { Modal, Btn, PageHeader, EmptyState, SkeletonRow } from '@/components/shared'
 import { showSuccess, showError } from '@/lib/utils/toasts'
-import { useSiteLang, Tabs, Chip, ORDER_STATUS, PAYMENT_STATUS, whatsappLink, mad, dateTime } from './common'
+import { useSiteLang, Tabs, Chip, ORDER_STATUS, PAYMENT_STATUS, whatsappLink, mad, dateTime, shortDay } from './common'
 
 interface OrderRow {
   id: string; ref: string; customerName: string; customerPhone: string; status: string
   totalEstimate: number; discountAmount: number; requiresAdvance: boolean; advancePaymentStatus: string
   whatsappOpenedAt: string | null; createdAt: string
+  deliveryCity: string | null; deliveryFee: number; deliveryEstimate: string | null; deliveryUnavailable: boolean
   items: { productNameSnapshot: string; quantity: number; isGift: boolean }[]
 }
 
@@ -77,6 +78,14 @@ export default function SiteOrdersModule() {
                     <Chip tone={st.tone}>{isAr ? st.ar : st.fr}</Chip>
                   </div>
                   <p className="font-bold text-ez-text">{o.customerName}</p>
+                  {o.deliveryCity && (
+                    <p className="text-xs text-ez-subtle flex flex-wrap items-center gap-1.5">
+                      <Truck className="w-3.5 h-3.5" />{o.deliveryCity}
+                      {o.deliveryUnavailable
+                        ? <Chip tone="red">{L('Hors zone Ameex', 'خارج منطقة Ameex')}</Chip>
+                        : o.deliveryEstimate && <span>· {L('livraison', 'التسليم')} {shortDay(o.deliveryEstimate)}</span>}
+                    </p>
+                  )}
                   <p className="text-xs text-ez-subtle line-clamp-2">
                     {o.items.map(i => `${i.quantity}× ${i.productNameSnapshot}`).join(' · ')}
                   </p>
@@ -136,6 +145,20 @@ function OrderModal({ id, isManager, onClose }: { id: string; isManager: boolean
               <a href={`tel:${o.customerPhone}`} className="inline-flex items-center gap-1 text-ez-text font-mono"><Phone className="w-3.5 h-3.5" />{o.customerPhone}</a>
               <a href={whatsappLink(o.customerPhone)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-emerald-700"><MessageCircle className="w-3.5 h-3.5" />WhatsApp</a>
             </div>
+            {o.deliveryCity && (
+              <p className="flex items-center gap-1.5 font-medium text-ez-text">
+                <Truck className="w-3.5 h-3.5" />{o.deliveryCity} · {mad(o.deliveryFee)}
+                {!o.deliveryUnavailable && o.deliveryEstimate && (
+                  <span className="font-normal text-ez-subtle">· {L('livraison estimée', 'التسليم المتوقع')} {shortDay(o.deliveryEstimate)}</span>
+                )}
+              </p>
+            )}
+            {o.deliveryUnavailable && (
+              <p className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-red-700 text-xs">
+                {L('Ameex ne dessert pas cette localité : le client a été prévenu à la commande. Appelez-le pour convenir d’une solution (ville voisine, retrait…).',
+                   'Ameex لا يوصل إلى هذه المنطقة: اتصل بالعميل لإيجاد حل.')}
+              </p>
+            )}
             {o.deliveryAddress && <p className="text-ez-subtle">{o.deliveryAddress}</p>}
             {o.notes && <p className="text-ez-subtle italic">« {o.notes} »</p>}
           </div>

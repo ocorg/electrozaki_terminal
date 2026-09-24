@@ -11,6 +11,7 @@ import {
   Vault, RefreshCw, CheckCircle, XCircle,
   Clock, AlertTriangle, ChevronDown, ChevronUp, Calendar
 } from 'lucide-react'
+import { STORE_TIME_ZONE } from '@/lib/time'
 
 interface CaisseRecord {
   caisse_id:         string
@@ -311,7 +312,7 @@ export default function BZGCaissePage() {
                           <p className="text-xs text-[#B0ADA6] mt-2 flex items-center gap-1">
                             <Clock className="w-3 h-3" />
                             {t(isAr, 'common.submittedAt')}{' '}
-                            {new Date(rec.eod_submitted_at).toLocaleString('fr-FR')}
+                            {new Date(rec.eod_submitted_at).toLocaleString('fr-FR', { timeZone: STORE_TIME_ZONE })}
                           </p>
                         )}
                       </div>

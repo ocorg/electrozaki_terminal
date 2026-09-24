@@ -27,6 +27,7 @@ import {
   Smartphone, Laptop as LaptopIcon, Package, Plus, Minus,
   Printer, RotateCcw
 } from 'lucide-react'
+import { STORE_TIME_ZONE } from '@/lib/time'
 
 // ─── Types ────────────────────────────────────────────────────
 type DeviceResult = (Phone | Laptop) & {
@@ -94,11 +95,11 @@ function getAccPrice(item: DeviceResult): number {
 
 function LiveClock() {
   const [time, setTime] = useState(() =>
-    new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    new Date().toLocaleTimeString('fr-FR', { timeZone: STORE_TIME_ZONE, hour: '2-digit', minute: '2-digit', second: '2-digit' })
   )
   useEffect(() => {
     const id = setInterval(() =>
-      setTime(new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }))
+      setTime(new Date().toLocaleTimeString('fr-FR', { timeZone: STORE_TIME_ZONE, hour: '2-digit', minute: '2-digit', second: '2-digit' }))
     , 1000)
     return () => clearInterval(id)
   }, [])

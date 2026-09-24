@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { WarrantyBadge } from './WarrantyBadge'
+import { STORE_TIME_ZONE } from '@/lib/time'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -42,7 +43,7 @@ interface DocRecord {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const fmtDate = (d: string) =>
-  new Date(d).toLocaleDateString('fr-MA', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  new Date(d).toLocaleDateString('fr-MA', { timeZone: STORE_TIME_ZONE, day: '2-digit', month: '2-digit', year: 'numeric' })
 
 const fmtMAD = (n: number | null) =>
   n != null ? `${n.toLocaleString('fr-MA')} MAD` : '—'

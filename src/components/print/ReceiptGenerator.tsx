@@ -1,5 +1,6 @@
 'use client'
 import React from 'react'
+import { storeDate, storeTime } from '@/lib/time'
 
 // ─── Types ────────────────────────────────────────────────────
 export interface ReceiptItem {
@@ -41,16 +42,16 @@ function fmtMAD(n: number): string {
   return n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + ' MAD'
 }
 
+// Store clock (src/lib/time.ts), whatever the printing device's time zone.
 function fmtDate(s?: string): string {
   if (!s) return '—'
-  const d = new Date(s)
-  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`
+  const [y, m, d] = storeDate(s).split('-')
+  return `${d}/${m}/${y}`
 }
 
 function fmtDateTime(s?: string): string {
   if (!s) return '—'
-  const d = new Date(s)
-  return `${fmtDate(s)} — ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  return `${fmtDate(s)} — ${storeTime(s)}`
 }
 
 const PM_LABELS: Record<string, string> = {

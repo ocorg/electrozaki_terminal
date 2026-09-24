@@ -10,6 +10,7 @@ import {
   TrendingUp, Wrench, Vault, Users,
   RefreshCw, Clock, CheckCircle, XCircle, AlertTriangle
 } from 'lucide-react'
+import { STORE_TIME_ZONE } from '@/lib/time'
 
 const STORES = [
   { id: 'EZ-001', name: 'Electro Zaki', color: '#C9A440', bg: '#FAF5E8' },
@@ -129,7 +130,7 @@ export default function BZGDashboard() {
             {lastSync && (
               <span className="ml-3 text-[#B0ADA6] text-xs">
                 <Clock className="w-3 h-3 inline mb-0.5" />
-                {' '}{lastSync.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                {' '}{lastSync.toLocaleTimeString('fr-FR', { timeZone: STORE_TIME_ZONE, hour: '2-digit', minute: '2-digit' })}
               </span>
             )}
           </p>
@@ -326,7 +327,7 @@ export default function BZGDashboard() {
                         {isIn ? (t(isAr, 'common.present')) : (t(isAr, 'common.exited'))}
                       </p>
                       <p className="text-xs text-[#B0ADA6]">
-                        {new Date(p.punched_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                        {new Date(p.punched_at).toLocaleTimeString('fr-FR', { timeZone: STORE_TIME_ZONE, hour: '2-digit', minute: '2-digit' })}
                       </p>
                     </div>
                   </div>

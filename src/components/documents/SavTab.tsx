@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Search, Printer, Loader2, CheckSquare, Square, AlertCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { WarrantyBadge } from './WarrantyBadge'
+import { STORE_TIME_ZONE } from '@/lib/time'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -60,7 +61,7 @@ const addWorkingDays = (d: Date, n: number) => {
 }
 
 const fmtDate = (d: Date) =>
-  d.toLocaleDateString('fr-MA', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  d.toLocaleDateString('fr-MA', { timeZone: STORE_TIME_ZONE, day: '2-digit', month: '2-digit', year: 'numeric' })
 
 const DEFAULT: SavForm = {
   lookup_query: '', warranty_info: null,
