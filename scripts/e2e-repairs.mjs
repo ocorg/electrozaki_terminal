@@ -181,8 +181,8 @@ try {
 
   // ── 6. Website requests → tickets, cancel with reason ─────────────────
   const reqId = `e2e${crypto.randomBytes(8).toString('hex')}`
-  await web.query(`insert into "RepairRequest" (id, kind, "customerName", "customerPhone", "deviceBrand", "deviceModel", "problemAreas", "preferredSlot", "updatedAt")
-                   values ($1, 'SOFTWARE', 'E2E Client Réparation', $2, 'Apple', 'iPhone 11', '{donnees,compte_config}', 'après 18h', now())`, [reqId, PHONE.replace(/^0/, '+212 ')])
+  await web.query(`insert into "RepairRequest" (id, ref, kind, "customerName", "customerPhone", "deviceBrand", "deviceModel", "problemAreas", "preferredSlot", "updatedAt")
+                   values ($1, 'DEM-' || upper(substr(md5($1), 1, 6)), 'SOFTWARE', 'E2E Client Réparation', $2, 'Apple', 'iPhone 11', '{donnees,compte_config}', 'après 18h', now())`, [reqId, PHONE.replace(/^0/, '+212 ')])
   cleanups.push(() => web.query(`delete from "RepairRequest" where id = $1`, [reqId]))
   const conv = await employee.api(`/api/site/requests/${reqId}/convert`, { method: 'POST' })
   if (conv.data?.rep_id) createdReps.push(conv.data.rep_id)
@@ -194,8 +194,8 @@ try {
   check('website request → second click gives the same ticket', again.data?.existing === true && again.data?.rep_id === conv.data?.rep_id, again.data)
 
   const req2 = `e2e${crypto.randomBytes(8).toString('hex')}`
-  await web.query(`insert into "RepairRequest" (id, "customerName", "customerPhone", "deviceBrand", "deviceModel", "problemAreas", "updatedAt")
-                   values ($1, 'E2E Spam', '0600000000', 'Autre', 'X', '{ecran}', now())`, [req2])
+  await web.query(`insert into "RepairRequest" (id, ref, "customerName", "customerPhone", "deviceBrand", "deviceModel", "problemAreas", "updatedAt")
+                   values ($1, 'DEM-' || upper(substr(md5($1), 1, 6)), 'E2E Spam', '0600000000', 'Autre', 'X', '{ecran}', now())`, [req2])
   cleanups.push(() => web.query(`delete from "RepairRequest" where id = $1`, [req2]))
   const empReq = await employee.api('/api/site/requests', { method: 'PATCH', body: { id: req2, status: 'CANCELLED', reason: 'spam évident' } })
   check('website request cancel: employee refused (403)', empReq.status === 403, empReq)
