@@ -11,6 +11,7 @@ import { StatusBadge, BatteryBar, EmptyState, SkeletonRow, PageHeader, Btn, Moda
 import PhoneForm from '@/components/phones/PhoneForm'
 import PhoneCreditPanel from '@/components/phones/PhoneCreditPanel'
 import type { Phone, Prospect } from '@/types/database'
+import { phoneMatchesProspect } from '@/lib/prospects'
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import ScanButton from '@/components/scanner/ScanButton'
 import LabelGenerator, { type LabelProduct } from '@/components/print/LabelGenerator'
@@ -135,15 +136,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
     fournisseur_id ? (suppliers.find(s => s.supplier_id === fournisseur_id) ?? null) : null
 
   const getProspectMatchCount = (phone: Phone): number =>
-    openProspects.filter(p => {
-      if (p.demand_type === 'modele') {
-        const marqueOk   = !p.marque   || p.marque.toLowerCase() === phone.marque.toLowerCase()
-        const modelOk    = !p.model    || phone.model.toLowerCase().includes(p.model.toLowerCase())
-        const stockageOk = !p.stockage || p.stockage             === phone.stockage
-        return marqueOk && modelOk && stockageOk
-      }
-      return !!(p.budget_max && phone.prix_vente_recommande && phone.prix_vente_recommande <= p.budget_max)
-    }).length
+    openProspects.filter(p => phoneMatchesProspect(p, phone)).length
 
   // The store's whole phone list is cached; filters and search apply instantly here
   const phonesQ = useApi<Phone[]>(`/api/phones?store_id=${storeId}&limit=5000`)

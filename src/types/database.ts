@@ -107,6 +107,7 @@ export interface Prospect {
   marque?:      string | null
   model?:       string | null
   stockage?:    string | null
+  budget_min?:  number | null
   budget_max?:  number | null
   notes?:       string | null
   statut:       ProspectStatus

@@ -738,6 +738,7 @@ model prospects {
   marque      String?
   model       String?
   stockage    String?
+  budget_min  Decimal?        @db.Decimal
   budget_max  Decimal?        @db.Decimal
   notes       String?
   statut      prospect_status @default(nouveau)

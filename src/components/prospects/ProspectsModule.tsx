@@ -14,9 +14,10 @@ import { showSuccess, showError } from '@/lib/utils/toasts'
 import type { Prospect, Phone } from '@/types/database'
 import {
   Plus, Search, X, RefreshCw, Edit2, Trash2,
-  CheckCircle, XCircle, ClipboardList,
+  CheckCircle, XCircle, ClipboardList, ChevronDown, BatteryMedium,
 } from 'lucide-react'
 import { codeLabel, type Lang } from '@/lib/codes'
+import { prospectMatches } from '@/lib/prospects'
 
 // ── Constants ──────────────────────────────────────────────────
 const SOURCES  = ['tiktok', 'instagram', 'whatsapp', 'en_magasin', 'autre'] as const
@@ -46,9 +47,15 @@ const EMPTY_FORM = {
   marque:      '',
   model:       '',
   stockage:    '',
+  budget_min:  '' as string | number,
   budget_max:  '' as string | number,
   notes:       '',
 }
+
+// How many matching phones a card shows before "Voir les N"
+const PREVIEW = 3
+
+const mad = (n: unknown) => Number(n ?? 0).toLocaleString('fr-MA')
 
 // ── Component ──────────────────────────────────────────────────
 interface ProspectsModuleProps {
@@ -74,6 +81,14 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
   const [filterSource,    setFilterSource]    = useState('')
   const [filterType,      setFilterType]      = useState('')
   const [form,            setForm]            = useState({ ...EMPTY_FORM })
+  // Cards whose matching-phone list is open, and those showing every match
+  const [openLists,       setOpenLists]       = useState<Set<string>>(() => new Set())
+  const [fullLists,       setFullLists]       = useState<Set<string>>(() => new Set())
+  const toggleIn = (set: Set<string>, id: string) => {
+    const next = new Set(set)
+    if (next.has(id)) next.delete(id); else next.add(id)
+    return next
+  }
 
   // Available stock for matching: same cached list as the POS
   const availablePhones = useApi<Phone[]>(`/api/phones?status=disponible&store_id=${storeId}&limit=500`).data ?? []
@@ -98,23 +113,8 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
     try { await prospectsQ.refresh() } finally { setManualRefresh(false) }
   }, [prospectsQ])
 
-  // Stock match — returns matching available phones for a given prospect
-  const getStockMatches = (p: Prospect): Phone[] => {
-    if (p.demand_type === 'modele') {
-      return availablePhones.filter(ph => {
-        const marqueOk   = !p.marque   || p.marque.toLowerCase()  === ph.marque.toLowerCase()
-        const modelOk    = !p.model    || ph.model.toLowerCase().includes(p.model.toLowerCase())
-        const stockageOk = !p.stockage || p.stockage              === ph.stockage
-        return marqueOk && modelOk && stockageOk
-      })
-    }
-    if (p.demand_type === 'budget') {
-      return availablePhones.filter(ph =>
-        !!(p.budget_max && ph.prix_vente_recommande && ph.prix_vente_recommande <= p.budget_max)
-      )
-    }
-    return []
-  }
+  // Stock match — available phones for a given prospect, most relevant first
+  const getStockMatches = (p: Prospect): Phone[] => prospectMatches(p, availablePhones)
 
   // Form field helper
   const setF = (k: keyof typeof EMPTY_FORM, v: unknown) =>
@@ -136,6 +136,7 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
       marque:      p.marque     ?? '',
       model:       p.model      ?? '',
       stockage:    p.stockage   ?? '',
+      budget_min:  p.budget_min ?? '',
       budget_max:  p.budget_max ?? '',
       notes:       p.notes      ?? '',
     })
@@ -159,7 +160,11 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
       return
     }
     if (form.demand_type === 'budget' && !form.budget_max) {
-      showError(isAr ? 'الميزانية مطلوبة' : 'Budget obligatoire')
+      showError(isAr ? 'الميزانية القصوى مطلوبة' : 'Budget maximum obligatoire')
+      return
+    }
+    if (form.demand_type === 'budget' && form.budget_min && Number(form.budget_min) > Number(form.budget_max)) {
+      showError(isAr ? 'الحد الأدنى أكبر من الحد الأقصى' : 'Le budget minimum dépasse le maximum')
       return
     }
     setSaving(true)
@@ -167,6 +172,7 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
       const payload = {
         ...form,
         store_id:   storeId,
+        budget_min: form.demand_type === 'budget' && form.budget_min ? Number(form.budget_min) : null,
         budget_max: form.budget_max ? Number(form.budget_max) : null,
         marque:     form.demand_type === 'budget' ? null : (form.marque   || null),
         model:      form.demand_type === 'budget' ? null : (form.model    || null),
@@ -386,23 +392,75 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
                           {isAr ? 'ميزانية' : 'BUDGET'}
                         </span>
                         <span className="text-sm font-bold text-[#1A1A1A]">
-                          ≤ {p.budget_max?.toLocaleString('fr-MA')} MAD
+                          {p.budget_min
+                            ? `${mad(p.budget_min)} – ${mad(p.budget_max)} MAD`
+                            : `≤ ${mad(p.budget_max)} MAD`}
                         </span>
                       </div>
                     )}
                   </div>
 
-                  {/* Stock match */}
-                  {matches.length > 0 && !isClosed && (
-                    <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-emerald-50 border border-emerald-200 rounded-xl">
-                      <CheckCircle className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
-                      <p className="text-xs font-bold text-emerald-700">
-                        {isAr
-                          ? `${matches.length} جهاز متوفر الآن`
-                          : `${matches.length} appareil${matches.length > 1 ? 's' : ''} disponible${matches.length > 1 ? 's' : ''} en stock`}
-                      </p>
-                    </div>
-                  )}
+                  {/* Stock match — click to see the matching phones right here */}
+                  {matches.length > 0 && !isClosed && (() => {
+                    const listOpen = openLists.has(p.prospect_id)
+                    const shown    = fullLists.has(p.prospect_id) ? matches : matches.slice(0, PREVIEW)
+                    return (
+                      <div className="bg-emerald-50 border border-emerald-200 rounded-xl overflow-hidden">
+                        <button type="button"
+                          onClick={() => setOpenLists(s => toggleIn(s, p.prospect_id))}
+                          aria-expanded={listOpen}
+                          className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-left hover:bg-emerald-100/60 transition-colors">
+                          <CheckCircle className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+                          <span className="flex-1 text-xs font-bold text-emerald-700">
+                            {isAr
+                              ? `${matches.length} جهاز متوفر الآن`
+                              : `${matches.length} appareil${matches.length > 1 ? 's' : ''} disponible${matches.length > 1 ? 's' : ''} en stock`}
+                          </span>
+                          <span className="text-[10px] font-bold text-emerald-700">
+                            {listOpen ? (isAr ? 'إخفاء' : 'Masquer') : (isAr ? 'عرض' : 'Voir')}
+                          </span>
+                          <ChevronDown className={`w-3.5 h-3.5 text-emerald-700 transition-transform ${listOpen ? 'rotate-180' : ''}`} />
+                        </button>
+                        {listOpen && (
+                          <ul className="border-t border-emerald-200 bg-white divide-y divide-[#F2F0EB]">
+                            {shown.map(ph => (
+                              <li key={ph.phone_id} className="flex items-center gap-2 px-2.5 py-2">
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-xs font-bold text-[#1A1A1A] truncate">
+                                    {[ph.marque, ph.model, ph.stockage].filter(Boolean).join(' ')}
+                                  </p>
+                                  <p className="text-[10px] text-[#6B6860] flex items-center gap-1.5 flex-wrap">
+                                    <span className="font-mono">{ph.phone_id}</span>
+                                    <span>· {codeLabel('device_condition', ph.condition, lang)}</span>
+                                    {ph.couleur && <span>· {ph.couleur}</span>}
+                                    {ph.battery_level != null && (
+                                      <span className="inline-flex items-center gap-0.5">
+                                        · <BatteryMedium className="w-3 h-3" />{ph.battery_level} %
+                                      </span>
+                                    )}
+                                  </p>
+                                </div>
+                                <span className="text-xs font-bold text-[#1A1A1A] tabular-nums flex-shrink-0">
+                                  {mad(ph.prix_vente_recommande)} MAD
+                                </span>
+                              </li>
+                            ))}
+                            {matches.length > PREVIEW && (
+                              <li>
+                                <button type="button"
+                                  onClick={() => setFullLists(s => toggleIn(s, p.prospect_id))}
+                                  className="w-full px-2.5 py-1.5 text-[11px] font-bold text-emerald-700 hover:bg-emerald-50 transition-colors">
+                                  {fullLists.has(p.prospect_id)
+                                    ? (isAr ? 'عرض أقل' : 'Voir moins')
+                                    : (isAr ? `عرض الكل (${matches.length})` : `Voir les ${matches.length}`)}
+                                </button>
+                              </li>
+                            )}
+                          </ul>
+                        )}
+                      </div>
+                    )
+                  })()}
 
                   {/* Notes */}
                   {p.notes && (
@@ -550,12 +608,20 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
               />
             </div>
           ) : (
-            <Field label={isAr ? 'الميزانية القصوى (درهم) *' : 'Budget maximum (MAD) *'}>
-              <input type="number" min={0} step={50} className={inputClass}
-                placeholder="2000"
-                value={form.budget_max as string}
-                onChange={e => setF('budget_max', e.target.value)} />
-            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label={isAr ? 'الميزانية الدنيا (درهم)' : 'Budget minimum (MAD)'}>
+                <input type="number" min={0} step={50} className={inputClass}
+                  placeholder={isAr ? 'اختياري' : 'Optionnel'}
+                  value={form.budget_min as string}
+                  onChange={e => setF('budget_min', e.target.value)} />
+              </Field>
+              <Field label={isAr ? 'الميزانية القصوى (درهم) *' : 'Budget maximum (MAD) *'}>
+                <input type="number" min={0} step={50} className={inputClass}
+                  placeholder="6000"
+                  value={form.budget_max as string}
+                  onChange={e => setF('budget_max', e.target.value)} />
+              </Field>
+            </div>
           )}
 
           {/* Notes */}
