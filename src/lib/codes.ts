@@ -59,10 +59,32 @@ export const CODES = {
     credit:   { fr: 'Crédit',   ar: 'آجل' },
   },
   repair_status: {
-    en_attente: { fr: 'En attente', ar: 'معلق' },
-    en_cours:   { fr: 'En cours',   ar: 'قيد الإصلاح' },
+    en_attente:   { fr: 'En attente',   ar: 'معلق' },
+    devis_envoye: { fr: 'Devis envoyé', ar: 'تم إرسال السعر' },
+    en_cours:     { fr: 'En cours',     ar: 'قيد الإصلاح' },
     pret:       { fr: 'Prêt',       ar: 'جاهز' },
     recupere:   { fr: 'Récupéré',   ar: 'تم الاستلام' },
+  },
+  repair_kind: {
+    materiel:     { fr: 'Matériel',             ar: 'عتاد' },
+    logiciel:     { fr: 'Logiciel',             ar: 'برمجيات' },
+    consultation: { fr: 'Consultation en ligne', ar: 'استشارة عن بعد' },
+  },
+  // Same keys as the website's repair form (electrozaki-storefront
+  // lib/repair-problems.ts) — keep both lists in step.
+  repair_problem: {
+    ecran:          { fr: 'Écran',                                  ar: 'الشاشة' },
+    batterie:       { fr: 'Batterie',                               ar: 'البطارية' },
+    camera:         { fr: 'Appareil photo',                         ar: 'الكاميرا' },
+    connecteur:     { fr: 'Port de charge',                         ar: 'منفذ الشحن' },
+    son:            { fr: 'Son / Micro',                            ar: 'الصوت / الميكروفون' },
+    reseau:         { fr: 'Désimlockage réseau',                    ar: 'فك الشبكة' },
+    autre_materiel: { fr: 'Autre panne matérielle',                 ar: 'عطل عتاد آخر' },
+    systeme_bloque: { fr: 'Bloqué / lent / redémarre en boucle',    ar: 'معطل / بطيء / يعيد التشغيل' },
+    mise_a_jour:    { fr: 'Mise à jour / réinstallation',           ar: 'تحديث / إعادة تثبيت' },
+    donnees:        { fr: 'Récupération & transfert de données',    ar: 'استرجاع ونقل البيانات' },
+    compte_config:  { fr: 'Compte & configuration',                 ar: 'الحساب والإعدادات' },
+    consultation:   { fr: 'Consultation / diagnostic à distance',   ar: 'استشارة / تشخيص عن بعد' },
   },
   user_role: {
     employe:      { fr: 'Employé',      ar: 'موظف' },

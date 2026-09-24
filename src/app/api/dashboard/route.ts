@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
         orderBy: { created_at: 'desc' },
         take:    8,
       }),
-      prisma.reparations.findMany({ where: { store_id, statut: { not: 'recupere' } }, select: { rep_id: true, statut: true } }),
+      prisma.reparations.findMany({ where: { store_id, statut: { not: 'recupere' }, is_deleted: false }, select: { rep_id: true, statut: true } }),
       prisma.accessories.findMany({ where: { store_id, is_deleted: false }, select: { acc_id: true, nom: true, quantite: true, seuil_alerte: true } }),
       // Open credits: partial advances and deferred sales
       prisma.transactions.findMany({

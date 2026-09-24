@@ -1,7 +1,7 @@
 'use client'
 
 // Uploads a file to R2 through a signed URL and returns its public URL.
-export async function uploadFile(file: File, folder: 'avatars' | 'receipts'): Promise<string> {
+export async function uploadFile(file: File, folder: 'avatars' | 'receipts' | 'repairs'): Promise<string> {
   const res  = await fetch('/api/uploads', {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },

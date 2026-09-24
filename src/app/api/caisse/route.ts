@@ -15,7 +15,7 @@ import { withNotify } from '@/lib/realtime'
 // that actually drives solde_theorique.
 type CaisseTotals = {
   total_ventes:            number   // gross sales, all payment methods — display only
-  total_reparations:       number   // repairs have no payment_method column — assumed cash
+  total_reparations:       number   // cash repairs only (mode_paiement NULL/especes), cancelled tickets excluded
   total_depenses:          number   // expenses have no payment_method column — assumed cash
   total_cash_drops:        number
   total_credit_versements: number   // gross credit repayments (phone-credit + ad-hoc + imported), all payment methods — display only
@@ -47,12 +47,14 @@ async function computeCaisseTotals(store_id: string, date: Date): Promise<Caisse
       where:  { store_id, date_vente: date, voided: false },
       select: { prix_vente: true, payment_method: true, avance: true, valeur_echange: true, montant_especes: true, montant_carte: true },
     }),
+    // Cash only: cancelled tickets and repairs paid by bank transfer never
+    // reach the drawer (mode_paiement NULL = older tickets, all cash).
     prisma.reparations.findMany({
-      where:  { store_id, date_livraison: date, statut: 'recupere' },
+      where:  { store_id, date_livraison: date, statut: 'recupere', is_deleted: false, OR: [{ mode_paiement: null }, { mode_paiement: 'especes' }] },
       select: { cout_reparation: true, avance_rep: true },
     }),
     prisma.reparations.findMany({
-      where:  { store_id, date_depot: date, avance_rep: { gt: 0 } },
+      where:  { store_id, date_depot: date, avance_rep: { gt: 0 }, is_deleted: false, OR: [{ mode_paiement: null }, { mode_paiement: 'especes' }] },
       select: { avance_rep: true },
     }),
     prisma.expenses.findMany({ where: { store_id, date, is_deleted: false }, select: { montant: true } }),

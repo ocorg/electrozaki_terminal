@@ -5,14 +5,12 @@ import { withNotify } from '@/lib/realtime'
 import { logActivity } from '@/lib/utils/logger'
 import { site, orderRef, logSite } from '@/lib/storefront/access'
 import { storeDate } from '@/lib/time'
+import { codeLabel } from '@/lib/codes'
+import { PROBLEMS_BY_KIND } from '@/lib/repairs'
 
 type Ctx = { params: { id: string } }
 
-// Website problem keys (storefront RepairDiagnostic) → wording on the ticket.
-const AREA: Record<string, string> = {
-  ecran: 'Écran', batterie: 'Batterie', camera: 'Appareil photo',
-  connecteur: 'Port de charge', son: 'Son / Micro', reseau: 'Désimlockage réseau',
-}
+const KIND = { HARDWARE: 'materiel', SOFTWARE: 'logiciel', CONSULTATION: 'consultation' } as const
 
 /** Marker written in the ticket's notes — also what prevents a second ticket. */
 const marker = (id: string) => `[Demande site web ${orderRef(id)}]`
@@ -28,6 +26,7 @@ async function POST_(_request: NextRequest, { params }: Ctx) {
     const user = await requireActiveUser()
     const req  = await site().repairRequest.findUnique({ where: { id: params.id } })
     if (!req) throw new HttpError(404, 'Demande introuvable')
+    if (req.status === 'CANCELLED') throw new HttpError(409, 'Demande annulée')
 
     const tag = marker(req.id)
     const already = await prisma.reparations.findFirst({
@@ -51,13 +50,18 @@ async function POST_(_request: NextRequest, { params }: Ctx) {
           select: { client_id: true },
         })
       }
-      const problems = req.problemAreas.map(a => AREA[a] ?? a).join(', ')
+      // The website uses the same problem codes as the ERP (codes.ts).
+      const kind     = KIND[req.kind]
+      const codes    = req.problemAreas.filter(p => (PROBLEMS_BY_KIND[kind] as string[]).includes(p)) as typeof PROBLEMS_BY_KIND[typeof kind]
+      const problems = codes.map(p => codeLabel('repair_problem', p, 'fr')).join(', ')
       return tx.reparations.create({
         data: {
-          client_id:  client.client_id,
-          marque:     req.deviceBrand,
-          model:      req.deviceModel,
-          probleme:   problems || 'À diagnostiquer',
+          client_id:       client.client_id,
+          type_reparation: kind,
+          problemes:       codes,
+          marque:          req.deviceBrand || null,
+          model:           req.deviceModel || (kind === 'consultation' ? 'Consultation' : 'Appareil'),
+          probleme:        [problems, req.preferredSlot ? `Créneau souhaité : ${req.preferredSlot}` : null].filter(Boolean).join(' — ') || 'À diagnostiquer',
           statut:     'en_attente',
           date_depot: new Date(`${storeDate()}T00:00:00Z`),
           notes:      [tag, req.notes].filter(Boolean).join(' — '),

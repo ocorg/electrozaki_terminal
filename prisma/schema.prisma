@@ -74,9 +74,16 @@ enum payment_method {
 
 enum repair_status {
   en_attente
+  devis_envoye
   en_cours
   pret
   recupere
+}
+
+enum repair_kind {
+  materiel
+  logiciel
+  consultation
 }
 
 enum user_role {
@@ -770,6 +777,16 @@ model reparations {
   store_id                            String?
   is_deleted                          Boolean             @default(false)
   technicien_id                       String?             @db.Uuid
+  type_reparation                     repair_kind         @default(materiel)
+  problemes                           String[]            @default([])
+  mode_paiement                       payment_method?
+  devis_envoye_le                     DateTime?           @db.Timestamptz(6)
+  devis_accepte_le                    DateTime?           @db.Timestamptz(6)
+  devis_refuse_le                     DateTime?           @db.Timestamptz(6)
+  photos_depot                        String[]            @default([])
+  annule_le                           DateTime?           @db.Timestamptz(6)
+  annule_par                          String?             @db.Uuid
+  motif_annulation                    String?
   clients                             clients?            @relation(fields: [client_id], references: [client_id], onDelete: NoAction, onUpdate: NoAction)
   users_reparations_created_byTousers user_profiles?      @relation("reparations_created_byTousers", fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
   stores                              stores?             @relation(fields: [store_id], references: [store_id], onDelete: NoAction, onUpdate: NoAction)
