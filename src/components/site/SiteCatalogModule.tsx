@@ -83,11 +83,21 @@ function ProductsTab({ products, categories, isManager }: { products: Product[];
   const { L, isAr } = useSiteLang()
   const [kind, setKind]     = useState<Kind>('phones')
   const [search, setSearch] = useState('')
+  const [categoryId, setCategoryId] = useState('')
   const [editing, setEditing] = useState<Product | null>(null)
 
   const visible = products.filter(p => p.availability !== 'DISCONTINUED' || !p.published)
-  const shown = visible.filter(p =>
-    (kind === 'phones' ? p.isPhone : kind === 'accessories' ? !p.isPhone : !p.published) &&
+  const inKind  = visible.filter(p => kind === 'phones' ? p.isPhone : kind === 'accessories' ? !p.isPhone : !p.published)
+
+  // Category filter: a parent (e.g. Accessoires) includes its sub-categories.
+  const inCategory = (p: Product, id: string) =>
+    p.categoryId === id || categories.some(c => c.id === p.categoryId && c.parentId === id)
+  // Only categories that have products in the current tab, with their count.
+  const categoryOptions = categories
+    .map(c => ({ ...c, count: inKind.filter(p => inCategory(p, c.id)).length }))
+    .filter(c => c.count > 0)
+  const shown = inKind.filter(p =>
+    (!categoryId || inCategory(p, categoryId)) &&
     (search.trim().length < 2 || `${p.name} ${p.brand ?? ''} ${p.category.name}`.toLowerCase().includes(search.trim().toLowerCase())))
 
   async function togglePublished(p: Product) {
@@ -100,15 +110,29 @@ function ProductsTab({ products, categories, isManager }: { products: Product[];
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <Tabs<Kind> value={kind} onChange={setKind} tabs={[
+        <Tabs<Kind> value={kind} onChange={k => { setKind(k); setCategoryId('') }} tabs={[
           { key: 'phones',      label: L('Téléphones', 'الهواتف'), count: visible.filter(p => p.isPhone).length },
           { key: 'accessories', label: L('Accessoires', 'الإكسسوارات'), count: visible.filter(p => !p.isPhone).length },
           { key: 'hidden',      label: L('Masqués', 'مخفية'), count: visible.filter(p => !p.published).length },
         ]} />
+        {categoryOptions.length > 1 && (
+          <div className="w-full sm:w-60">
+            <select value={categoryId} onChange={e => setCategoryId(e.target.value)}
+              aria-label={L('Catégorie', 'الفئة')} className={selectClass}>
+              <option value="">{L('Toutes les catégories', 'كل الفئات')} ({inKind.length})</option>
+              {categoryOptions.map(c => (
+                <option key={c.id} value={c.id}>{c.parentId ? '— ' : ''}{c.name} ({c.count})</option>
+              ))}
+            </select>
+          </div>
+        )}
         <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="w-4 h-4 absolute top-1/2 -translate-y-1/2 start-3 text-ez-placeholder" />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder={L('Rechercher…', 'بحث…')} className={`${inputClass} ps-9`} />
         </div>
+        {(categoryId || search) && (
+          <span className="text-xs text-ez-subtle">{shown.length} {L('résultat(s)', 'نتيجة')}</span>
+        )}
       </div>
       {kind === 'accessories' && (
         <p className="text-xs text-ez-subtle">{L('Les accessoires arrivent masqués : donnez-leur un nom clair pour les clients (et une photo), puis rendez-les visibles.',
