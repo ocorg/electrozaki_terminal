@@ -33,6 +33,8 @@ export interface SyncResult {
 }
 
 const PHONE_CATEGORY_CODE = 'telephone'
+/** ERP accessory categories never published on the website. */
+const NOT_ON_WEBSITE = ['service']
 const LOCK_KEY = 7_345_001 // pg advisory lock: one sync at a time
 
 /** The ERP rows that may appear on the site: sellable, priced, active store, not damaged. */
@@ -51,7 +53,9 @@ export async function readErpStock(): Promise<{ phones: ErpPhone[]; accessories:
       select: PHONE_SAFE_SELECT,
     }),
     prisma.accessories.findMany({
-      where:  { is_deleted: false, category: { type: 'accessoire' }, ...activeStores },
+      // Services (flash, unlocking…) aren't goods to ship: the website's
+      // Réparation pages cover them. (Owner's decision, 2026-09-24.)
+      where:  { is_deleted: false, category: { type: 'accessoire' }, categorie: { notIn: NOT_ON_WEBSITE }, ...activeStores },
       select: ACCESSORY_SAFE_SELECT,
     }),
   ])

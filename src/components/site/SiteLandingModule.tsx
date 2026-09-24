@@ -5,10 +5,10 @@ import {
   Megaphone, Plus, Pencil, Trash2, Link2, QrCode, ExternalLink, ImagePlus, Search, Eye, ShoppingBag, RefreshCw,
 } from 'lucide-react'
 import { useApi, apiWrite, refreshPrefixes } from '@/lib/data/api'
-import { Modal, Btn, PageHeader, EmptyState, SkeletonRow, Field, inputClass, selectClass } from '@/components/shared'
+import { Modal, Btn, PageHeader, EmptyState, SkeletonRow, Field, inputClass, selectClass, Select } from '@/components/shared'
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import { uploadResized } from '@/lib/utils/image'
-import { useSiteLang, Chip, mad } from './common'
+import { useSiteLang, Chip, mad, categoryOptions } from './common'
 
 const SITE = process.env.NEXT_PUBLIC_STOREFRONT_URL ?? 'https://electrozaki-storefront.vercel.app'
 
@@ -294,10 +294,10 @@ function LandingEditor({ initial, onClose }: { initial: { id?: string; bannerUrl
         <div className="rounded-xl border border-ez-border p-4 space-y-3">
           <p className="text-xs font-bold uppercase tracking-widest text-ez-subtle">{L('Articles de l’offre', 'منتجات العرض')}</p>
           <Field label={L('Toute une catégorie', 'فئة كاملة')} hint={L('Tous ses articles en stock, y compris les futurs arrivages.', 'كل منتجاتها المتوفرة.')}>
-            <select className={selectClass} value={form.categoryId} onChange={e => set('categoryId', e.target.value)}>
+            <Select className={selectClass} value={form.categoryId} onChange={e => set('categoryId', e.target.value)}>
               <option value="">{L('— Aucune —', '— لا شيء —')}</option>
-              {categories.map(c => <option key={c.id} value={c.id}>{c.parentId ? '— ' : ''}{c.name}</option>)}
-            </select>
+              {categoryOptions(categories, { allLabel: name => `Tout — ${name}` })}
+            </Select>
           </Field>
           <p className="text-xs text-ez-subtle">{L('Et / ou des articles choisis :', 'و / أو منتجات محددة :')}</p>
           <div className="relative">
@@ -326,21 +326,21 @@ function LandingEditor({ initial, onClose }: { initial: { id?: string; bannerUrl
 
         <div className="grid sm:grid-cols-3 gap-4">
           <Field label={L('Prix promo', 'سعر العرض')}>
-            <select className={selectClass} value={form.discountType} onChange={e => set('discountType', e.target.value as typeof form.discountType)}>
+            <Select className={selectClass} value={form.discountType} onChange={e => set('discountType', e.target.value as typeof form.discountType)}>
               <option value="">{L('Prix normaux', 'أسعار عادية')}</option>
               <option value="PERCENTAGE">{L('Réduction en %', 'تخفيض %')}</option>
               <option value="FIXED_AMOUNT">{L('Réduction en DH', 'تخفيض بالدرهم')}</option>
-            </select>
+            </Select>
           </Field>
           <Field label={L('Valeur', 'القيمة')} hint={form.discountType ? L(`Ex. : 120 DH → ${exPrice} DH`, `مثال : 120 → ${exPrice}`) : undefined}>
             <input type="number" min={1} className={inputClass} disabled={!form.discountType} value={form.discountValue}
               onChange={e => set('discountValue', e.target.value)} />
           </Field>
           <Field label={L('Code promo affiché', 'رمز التخفيض')} hint={L('À créer dans « Promos & packs »', 'يُنشأ في العروض')}>
-            <select className={selectClass} value={form.promoCodeId} onChange={e => set('promoCodeId', e.target.value)}>
+            <Select className={selectClass} value={form.promoCodeId} onChange={e => set('promoCodeId', e.target.value)}>
               <option value="">{L('— Aucun —', '— لا شيء —')}</option>
               {(promosQ.data ?? []).map(c => <option key={c.id} value={c.id}>{c.code}{c.active ? '' : ` (${L('inactif', 'غير نشط')})`}</option>)}
-            </select>
+            </Select>
           </Field>
         </div>
 

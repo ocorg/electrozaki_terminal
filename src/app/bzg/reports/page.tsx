@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useLanguageStore } from '@/lib/stores/language'
 import { formatMAD } from '@/lib/utils'
-import { PageHeader } from '@/components/shared'
+import { PageHeader, Select } from '@/components/shared'
 import { BarChart3, RefreshCw, TrendingUp, ShoppingCart, Wrench, Package, Calendar } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, CartesianGrid } from 'recharts'
 
@@ -107,13 +107,13 @@ export default function BZGReportsPage() {
           subtitle={isAr ? 'تحليل أداء Electro Zaki' : 'Analyse des performances — Electro Zaki'}
           actions={
             <div className="flex items-center gap-2">
-              <select
+              <Select
                 className="text-sm border border-[#E8E5DE] rounded-xl px-3 py-2 bg-white text-[#6B6860] focus:outline-none"
                 value={period}
                 onChange={e => setPeriod(e.target.value as '7' | '30')}>
                 <option value="7">{isAr ? '7 أيام' : '7 jours'}</option>
                 <option value="30">{isAr ? '30 يوم' : '30 jours'}</option>
-              </select>
+              </Select>
               <button onClick={fetchReports} disabled={loading}
                 className="p-2 rounded-xl border border-[#E8E5DE] bg-white text-[#6B6860] hover:bg-[#F5F3FF] transition-all">
                 <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />

@@ -99,5 +99,34 @@ export const mad = (n: number | null | undefined) =>
 export const shortDay = (isoDate: string) =>
   new Date(`${isoDate.slice(0, 10)}T12:00:00Z`).toLocaleDateString('fr-FR', { timeZone: 'UTC', weekday: 'short', day: '2-digit', month: '2-digit' })
 
+/**
+ * Website categories as dropdown options: top-level ones first, then each
+ * parent as a group header with its sub-categories (A→Z). `count` adds a
+ * figure after each name; `allLabel` adds a "whole group" line to pick a
+ * parent itself (e.g. every accessory).
+ */
+export function categoryOptions(
+  categories: { id: string; name: string; parentId: string | null }[],
+  opts: { count?: (id: string) => number; allLabel?: (parentName: string) => string } = {},
+) {
+  const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name, 'fr')
+  const label = (c: { id: string; name: string }) => (opts.count ? `${c.name} (${opts.count(c.id)})` : c.name)
+  const parents = categories.filter(c => !c.parentId)
+  const childrenOf = (id: string) => categories.filter(c => c.parentId === id).sort(byName)
+  return (
+    <>
+      {parents.filter(p => childrenOf(p.id).length === 0).sort(byName).map(c => (
+        <option key={c.id} value={c.id}>{label(c)}</option>
+      ))}
+      {parents.filter(p => childrenOf(p.id).length > 0).sort(byName).map(p => (
+        <optgroup key={p.id} label={p.name}>
+          {opts.allLabel && <option value={p.id}>{`${opts.allLabel(p.name)}${opts.count ? ` (${opts.count(p.id)})` : ''}`}</option>}
+          {childrenOf(p.id).map(c => <option key={c.id} value={c.id}>{label(c)}</option>)}
+        </optgroup>
+      ))}
+    </>
+  )
+}
+
 export const dateTime = (iso: string) =>
   new Date(iso).toLocaleString('fr-FR', { timeZone: STORE_TIME_ZONE, day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })

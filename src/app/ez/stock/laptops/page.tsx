@@ -6,7 +6,7 @@ import { useLanguageStore } from '@/lib/stores/language'
 import { t } from '@/lib/i18n/t'
 import { usePortal } from '@/lib/context/portal'
 import { formatMAD, formatDate, getWarrantyFlag } from '@/lib/utils'
-import { StatusBadge, BatteryBar, EmptyState, SkeletonRow, PageHeader, Btn, Modal, Field, inputClass, selectClass } from '@/components/shared'
+import { StatusBadge, BatteryBar, EmptyState, SkeletonRow, PageHeader, Btn, Modal, Field, inputClass, selectClass, Select } from '@/components/shared'
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import type { Laptop, DeviceCondition, DeviceSource, LocationType } from '@/types/database'
 import { Plus, Search, RefreshCw, Laptop as LaptopIcon, Edit2, MapPin, X, Filter } from 'lucide-react'
@@ -118,11 +118,11 @@ export default function EZLaptopsPage() {
               placeholder={isAr ? 'بحث...' : 'Rechercher série, marque, modèle...'}
               value={search} onChange={e => setSearch(e.target.value)} />
           </div>
-          <select className="text-sm border border-[#E8E5DE] rounded-xl px-3 py-2.5 bg-white text-[#6B6860] focus:outline-none"
+          <Select className="text-sm border border-[#E8E5DE] rounded-xl px-3 py-2.5 bg-white text-[#6B6860] focus:outline-none"
             value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
             <option value="">{t(isAr, 'common.allStatuses')}</option>
             {STATUSES.map(s => <option key={s} value={s}>{codeLabel('device_status', s, isAr ? 'ar' : 'fr')}</option>)}
-          </select>
+          </Select>
         </div>
       </div>
 
@@ -192,26 +192,26 @@ export default function EZLaptopsPage() {
         <form onSubmit={handleSubmit} className="space-y-4" dir={isAr ? 'rtl' : 'ltr'}>
           <div className="grid grid-cols-2 gap-4">
             <Field label={t(isAr, 'common.source')} required>
-              <select className={selectClass} value={form.source || ''} onChange={e => set('source', e.target.value as DeviceSource)}>
+              <Select className={selectClass} value={form.source || ''} onChange={e => set('source', e.target.value as DeviceSource)}>
                 <option value="fournisseur">Fournisseur</option>
                 <option value="reprise">Reprise</option>
                 <option value="echange">Échange</option>
-              </select>
+              </Select>
             </Field>
             <Field label={t(isAr, 'common.deviceCondition')} required>
-              <select className={selectClass} value={form.condition || ''} onChange={e => set('condition', e.target.value as DeviceCondition)}>
+              <Select className={selectClass} value={form.condition || ''} onChange={e => set('condition', e.target.value as DeviceCondition)}>
                 <option value="neuf">{t(isAr, 'common.new')}</option>
                 <option value="occasion">{t(isAr, 'common.used')}</option>
                 <option value="defectueux">{t(isAr, 'common.damaged')}</option>
-              </select>
+              </Select>
             </Field>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <Field label={t(isAr, 'common.brand')} required>
-              <select className={selectClass} value={form.marque || ''} onChange={e => set('marque', e.target.value)}>
+              <Select className={selectClass} value={form.marque || ''} onChange={e => set('marque', e.target.value)}>
                 <option value="">{t(isAr, 'common.chooseEllipsis')}</option>
                 {MARQUES.map(m => <option key={m} value={m}>{m}</option>)}
-              </select>
+              </Select>
             </Field>
             <Field label={t(isAr, 'common.model')} required>
               <input type="text" className={inputClass} placeholder="MacBook Pro 14, ThinkPad X1..."
@@ -220,16 +220,16 @@ export default function EZLaptopsPage() {
           </div>
           <div className="grid grid-cols-3 gap-4">
             <Field label={t(isAr, 'common.storage')}>
-              <select className={selectClass} value={form.stockage || ''} onChange={e => set('stockage', e.target.value)}>
+              <Select className={selectClass} value={form.stockage || ''} onChange={e => set('stockage', e.target.value)}>
                 <option value="">—</option>
                 {STOCKAGES.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
+              </Select>
             </Field>
             <Field label="RAM">
-              <select className={selectClass} value={form.ram || ''} onChange={e => set('ram', e.target.value)}>
+              <Select className={selectClass} value={form.ram || ''} onChange={e => set('ram', e.target.value)}>
                 <option value="">—</option>
                 {RAMS.map(r => <option key={r} value={r}>{r}</option>)}
-              </select>
+              </Select>
             </Field>
             <Field label={isAr ? 'بطارية %' : 'Batterie %'}>
               <input type="number" min={0} max={100} className={inputClass} placeholder="85"
@@ -248,16 +248,16 @@ export default function EZLaptopsPage() {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <Field label={t(isAr, 'common.stockStatus')}>
-              <select className={selectClass} value={form.status || 'disponible'} onChange={e => set('status', e.target.value)}>
+              <Select className={selectClass} value={form.status || 'disponible'} onChange={e => set('status', e.target.value)}>
                 {STATUSES.map(s => <option key={s} value={s}>{codeLabel('device_status', s, isAr ? 'ar' : 'fr')}</option>)}
-              </select>
+              </Select>
             </Field>
             <Field label={t(isAr, 'common.location')}>
-              <select className={selectClass} value={form.location || 'magasin_principal'} onChange={e => set('location', e.target.value as LocationType)}>
+              <Select className={selectClass} value={form.location || 'magasin_principal'} onChange={e => set('location', e.target.value as LocationType)}>
                 <option value="magasin_principal">{t(isAr, 'common.mainStore')}</option>
                 <option value="magasin_secondaire">{t(isAr, 'common.secondaryStore')}</option>
                 <option value="externe">{t(isAr, 'common.external')}</option>
-              </select>
+              </Select>
             </Field>
           </div>
           {canFinancials && (

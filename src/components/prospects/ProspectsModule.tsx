@@ -9,8 +9,7 @@ import { formatDate }       from '@/lib/utils'
 import { usePhoneCatalog }  from '@/lib/hooks/usePhoneCatalog'
 import ComboBox             from '@/components/phones/ComboBox'
 import {
-  Modal, Field, inputClass, selectClass, Btn, PageHeader,
-} from '@/components/shared'
+  Modal, Field, inputClass, selectClass, Btn, PageHeader, Select } from '@/components/shared'
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import type { Prospect, Phone } from '@/types/database'
 import {
@@ -275,27 +274,27 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
 
         {/* Filters */}
         <div className="flex flex-wrap gap-3">
-          <select
+          <Select
             className="text-sm border border-[#E8E5DE] rounded-xl px-3 py-1.5 bg-white text-[#6B6860] focus:outline-none"
             value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
             <option value="">{t(isAr, 'common.allStatuses')}</option>
             {STATUTS.map(s => <option key={s} value={s}>{codeLabel('prospect_status', s, lang)}</option>)}
-          </select>
+          </Select>
 
-          <select
+          <Select
             className="text-sm border border-[#E8E5DE] rounded-xl px-3 py-1.5 bg-white text-[#6B6860] focus:outline-none"
             value={filterSource} onChange={e => setFilterSource(e.target.value)}>
             <option value="">{isAr ? 'كل المصادر' : 'Toutes sources'}</option>
             {SOURCES.map(s => <option key={s} value={s}>{codeLabel('prospect_source', s, lang)}</option>)}
-          </select>
+          </Select>
 
-          <select
+          <Select
             className="text-sm border border-[#E8E5DE] rounded-xl px-3 py-1.5 bg-white text-[#6B6860] focus:outline-none"
             value={filterType} onChange={e => setFilterType(e.target.value)}>
             <option value="">{t(isAr, 'common.allTypes')}</option>
             <option value="modele">{isAr ? 'موديل محدد' : 'Modèle précis'}</option>
             <option value="budget">{isAr ? 'ميزانية' : 'Budget'}</option>
-          </select>
+          </Select>
 
           {hasFilters && (
             <button onClick={clearFilters}
@@ -495,11 +494,11 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
 
           {/* Source */}
           <Field label={isAr ? 'المصدر *' : 'Source *'}>
-            <select className={selectClass}
+            <Select className={selectClass}
               value={form.source}
               onChange={e => setF('source', e.target.value)}>
               {SOURCES.map(s => <option key={s} value={s}>{codeLabel('prospect_source', s, lang)}</option>)}
-            </select>
+            </Select>
           </Field>
 
           {/* Demand type */}

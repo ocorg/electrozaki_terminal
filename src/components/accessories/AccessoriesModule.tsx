@@ -7,7 +7,7 @@ import { useLanguageStore } from '@/lib/stores/language'
 import { t } from '@/lib/i18n/t'
 import { usePortal } from '@/lib/context/portal'
 import { formatMAD } from '@/lib/utils'
-import { Modal, Field, inputClass, selectClass, Btn, PageHeader, EmptyState, SkeletonRow, StatusBadge, RowAction, RowActionDivider } from '@/components/shared'
+import { Modal, Field, inputClass, selectClass, Btn, PageHeader, EmptyState, SkeletonRow, StatusBadge, RowAction, RowActionDivider, Select } from '@/components/shared'
 import ScanButton from '@/components/scanner/ScanButton'
 import LabelGenerator, { type LabelProduct } from '@/components/print/LabelGenerator'
 import { showSuccess, showError } from '@/lib/utils/toasts'
@@ -304,7 +304,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
             hint="Scannez un code-barres accessoire"
             color={primary}
           />
-          <select
+          <Select
             className="text-sm border border-[#E8E5DE] rounded-xl px-3 py-2.5 bg-white text-[#6B6860] focus:outline-none"
             value={filterCat}
             onChange={e => setFilterCat(e.target.value)}
@@ -313,7 +313,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
             {sortedCategories.map(c => (
               <option key={c.code} value={c.code}>{isAr ? c.ar : c.fr}</option>
             ))}
-          </select>
+          </Select>
           <button
             onClick={() => setOnlyLowStock(!onlyLowStock)}
             className="flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm transition-all"
@@ -542,13 +542,13 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
                 value={form.nom} onChange={e => setF('nom', e.target.value)} autoFocus />
             </Field>
             <Field label={t(isAr, 'common.category')} required>
-              <select className={selectClass} value={form.categorie}
+              <Select className={selectClass} value={form.categorie}
                 onChange={e => setF('categorie', e.target.value)}>
                 <option value="">{isAr ? 'اختر الفئة...' : 'Choisir...'}</option>
                 {sortedCategories.map(c => (
                   <option key={c.code} value={c.code}>{isAr ? c.ar : c.fr}</option>
                 ))}
-              </select>
+              </Select>
             </Field>
           </div>
 

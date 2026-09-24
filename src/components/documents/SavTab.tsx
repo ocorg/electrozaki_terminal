@@ -5,6 +5,7 @@ import { Search, Printer, Loader2, CheckSquare, Square, AlertCircle } from 'luci
 import { toast } from 'sonner'
 import { WarrantyBadge } from './WarrantyBadge'
 import { STORE_TIME_ZONE } from '@/lib/time'
+import { Select } from '@/components/shared'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -396,7 +397,7 @@ export function SavTab() {
                     <label className="block text-[10px] text-white/30 uppercase tracking-widest mb-1">
                       État à la restitution
                     </label>
-                    <select
+                    <Select
                       value={form.etat_retour}
                       onChange={e => set('etat_retour', e.target.value)}
                       className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg
@@ -407,7 +408,7 @@ export function SavTab() {
                       <option value="Partiellement réparé">Partiellement réparé</option>
                       <option value="Non réparable">Non réparable</option>
                       <option value="Remplacé par appareil équivalent">Remplacé par appareil équivalent</option>
-                    </select>
+                    </Select>
                   </div>
                   <div>
                     <label className="block text-[10px] text-white/30 uppercase tracking-widest mb-1">

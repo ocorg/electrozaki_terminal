@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useUser } from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
-import { PageHeader, EmptyState, SkeletonRow } from '@/components/shared'
+import { PageHeader, EmptyState, SkeletonRow, Select } from '@/components/shared'
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import {
   ScrollText, RefreshCw, Search, X,
@@ -167,34 +167,34 @@ export default function BZGLogsPage() {
           </div>
 
           {/* Store */}
-          <select
+          <Select
             value={filterStore}
             onChange={e => setFilterStore(e.target.value)}
             className="px-3 py-2 bg-white border border-[#E8E5DE] rounded-xl text-sm text-[#6B6860] focus:outline-none focus:border-[#6366F1] transition-all"
           >
             <option value="">{isAr ? 'كل المتاجر' : 'Tous les magasins'}</option>
             {STORES.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
+          </Select>
 
           {/* Module */}
-          <select
+          <Select
             value={filterModule}
             onChange={e => setFilterModule(e.target.value)}
             className="px-3 py-2 bg-white border border-[#E8E5DE] rounded-xl text-sm text-[#6B6860] focus:outline-none focus:border-[#6366F1] transition-all"
           >
             <option value="">{isAr ? 'كل الوحدات' : 'Tous les modules'}</option>
             {MODULES.map(m => <option key={m} value={m}>{codeLabel('log_module', m, isAr ? 'ar' : 'fr')}</option>)}
-          </select>
+          </Select>
 
           {/* Action */}
-          <select
+          <Select
             value={filterAction}
             onChange={e => setFilterAction(e.target.value)}
             className="px-3 py-2 bg-white border border-[#E8E5DE] rounded-xl text-sm text-[#6B6860] focus:outline-none focus:border-[#6366F1] transition-all"
           >
             <option value="">{isAr ? 'كل الأنواع' : 'Toutes les actions'}</option>
             {ACTIONS.map(a => <option key={a} value={a}>{codeLabel('log_action', a, isAr ? 'ar' : 'fr')}</option>)}
-          </select>
+          </Select>
 
           {/* Date from */}
           <div className="flex items-center gap-1.5 bg-white border border-[#E8E5DE] rounded-xl px-3 py-2">

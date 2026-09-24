@@ -6,7 +6,7 @@ import { useLanguageStore } from '@/lib/stores/language'
 import { t } from '@/lib/i18n/t'
 import { usePortal } from '@/lib/context/portal'
 import { formatDate } from '@/lib/utils'
-import { Modal, Field, inputClass, selectClass, Btn, PageHeader, EmptyState, SkeletonRow } from '@/components/shared'
+import { Modal, Field, inputClass, selectClass, Btn, PageHeader, EmptyState, SkeletonRow, Select } from '@/components/shared'
 import ScanButton from '@/components/scanner/ScanButton'
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import type { DeviceType, LocationType, MovementReason } from '@/types/database'
@@ -309,12 +309,12 @@ export default function MovementsModule({ storeId }: MovementsModuleProps) {
         <div className="space-y-4" dir={isAr ? 'rtl' : 'ltr'}>
 
           <Field label={isAr ? 'نوع الجهاز' : 'Type d\'appareil'} required>
-            <select className={selectClass} value={form.device_type}
+            <Select className={selectClass} value={form.device_type}
               onChange={e => setF('device_type', e.target.value)}>
               <option value="telephone">{t(isAr, 'common.phoneNoun')}</option>
               <option value="laptop">{t(isAr, 'common.laptop')}</option>
               <option value="accessoire">{isAr ? 'إكسسوار' : 'Accessoire'}</option>
-            </select>
+            </Select>
           </Field>
 
           <Field label={isAr ? 'معرف الجهاز' : 'ID de l\'appareil'} required>
@@ -364,34 +364,34 @@ export default function MovementsModule({ storeId }: MovementsModuleProps) {
             {form.is_inter_store && (
               <div className="grid grid-cols-2 gap-4">
                 <Field label={isAr ? 'من المحل' : 'Magasin source'}>
-                  <select className={selectClass} value={form.from_store_id} onChange={e => setForm(p => ({ ...p, from_store_id: e.target.value }))}>
+                  <Select className={selectClass} value={form.from_store_id} onChange={e => setForm(p => ({ ...p, from_store_id: e.target.value }))}>
                     <option value="EZ-001">Electro Zaki (EZ)</option>
-                  </select>
+                  </Select>
                 </Field>
                 <Field label={isAr ? 'إلى المحل' : 'Magasin destination'}>
-                  <select className={selectClass} value={form.to_store_id} onChange={e => setForm(p => ({ ...p, to_store_id: e.target.value }))}>
+                  <Select className={selectClass} value={form.to_store_id} onChange={e => setForm(p => ({ ...p, to_store_id: e.target.value }))}>
                     <option value="EZ-001">Electro Zaki (EZ)</option>
-                  </select>
+                  </Select>
                 </Field>
               </div>
             )}
 
           <div className="grid grid-cols-2 gap-4">
             <Field label={isAr ? 'من' : 'De'} required>
-              <select className={selectClass} value={form.from_location}
+              <Select className={selectClass} value={form.from_location}
                 onChange={e => setF('from_location', e.target.value)}>
                 {LOCATIONS.map(l => (
                   <option key={l} value={l}>{locLabel(l)}</option>
                 ))}
-              </select>
+              </Select>
             </Field>
             <Field label={isAr ? 'إلى' : 'Vers'} required>
-              <select className={selectClass} value={form.to_location}
+              <Select className={selectClass} value={form.to_location}
                 onChange={e => setF('to_location', e.target.value)}>
                 {LOCATIONS.map(l => (
                   <option key={l} value={l}>{locLabel(l)}</option>
                 ))}
-              </select>
+              </Select>
             </Field>
           </div>
 
@@ -406,12 +406,12 @@ export default function MovementsModule({ storeId }: MovementsModuleProps) {
           )}
 
           <Field label={isAr ? 'السبب' : 'Motif'} required>
-            <select className={selectClass} value={form.reason}
+            <Select className={selectClass} value={form.reason}
               onChange={e => setF('reason', e.target.value)}>
               {REASONS.map(r => (
                 <option key={r} value={r}>{reasonLabel(r)}</option>
               ))}
-            </select>
+            </Select>
           </Field>
 
           <Field label={t(isAr, 'common.notes')}>

@@ -4,7 +4,7 @@ import { useUser } from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
 import { t } from '@/lib/i18n/t'
 import { formatDate } from '@/lib/utils'
-import { PageHeader, SkeletonRow, Modal, Field, inputClass, selectClass, Btn } from '@/components/shared'
+import { PageHeader, SkeletonRow, Modal, Field, inputClass, selectClass, Btn, Select } from '@/components/shared'
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import { codeLabel } from '@/lib/codes'
 import type { UserRole } from '@/types/database'
@@ -366,7 +366,7 @@ export default function BZGUsersPage() {
             </Field>
 
             <Field label={t(isAr, 'common.role')} required>
-              <select className={selectClass} value={createForm.role}
+              <Select className={selectClass} value={createForm.role}
                 onChange={e => handleCreateRoleChange(e.target.value)}>
                 <option value="employe">{codeLabel('user_role', 'employe', isAr ? 'ar' : 'fr')}</option>
                 <option value="gerant">{codeLabel('user_role', 'gerant', isAr ? 'ar' : 'fr')}</option>
@@ -376,15 +376,15 @@ export default function BZGUsersPage() {
                     {codeLabel('user_role', 'proprietaire', isAr ? 'ar' : 'fr')} (accès refusé)
                   </option>
                 )}
-              </select>
+              </Select>
             </Field>
 
             <Field label={t(isAr, 'common.assignedStore')}>
-              <select className={selectClass} value={createForm.store_id}
+              <Select className={selectClass} value={createForm.store_id}
                 onChange={e => setCreateForm(p => ({ ...p, store_id: e.target.value }))}>
                 <option value="">{isAr ? 'بدون تخصيص' : 'Aucun / Tous les magasins'}</option>
                 {STORES.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
+              </Select>
             </Field>
 
             <div className="flex items-center justify-between p-3 bg-[#F8F7F4] rounded-xl">
@@ -447,21 +447,21 @@ export default function BZGUsersPage() {
             </Field>
 
             <Field label={t(isAr, 'common.role')} required>
-              <select className={selectClass} value={form.role}
+              <Select className={selectClass} value={form.role}
                 onChange={e => setForm(p => ({ ...p, role: e.target.value }))}
                 disabled={self?.role !== 'proprietaire'}>
                 <option value="employe">{codeLabel('user_role', 'employe', isAr ? 'ar' : 'fr')}</option>
                 <option value="gerant">{codeLabel('user_role', 'gerant', isAr ? 'ar' : 'fr')}</option>
                 {self?.role === 'proprietaire' && <option value="proprietaire">{codeLabel('user_role', 'proprietaire', isAr ? 'ar' : 'fr')}</option>}
-              </select>
+              </Select>
             </Field>
 
             <Field label={t(isAr, 'common.assignedStore')}>
-              <select className={selectClass} value={form.store_id}
+              <Select className={selectClass} value={form.store_id}
                 onChange={e => setForm(p => ({ ...p, store_id: e.target.value }))}>
                 <option value="">{isAr ? 'بدون تخصيص' : 'Aucun (flottant)'}</option>
                 {STORES.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
+              </Select>
             </Field>
 
             <div className="flex items-center justify-between p-3 bg-[#F8F7F4] rounded-xl">

@@ -5,7 +5,7 @@ import { useUser } from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
 import { t } from '@/lib/i18n/t'
 import { formatMAD, formatDate } from '@/lib/utils'
-import { Modal, Field, inputClass, selectClass, PageHeader, EmptyState, SkeletonRow } from '@/components/shared'
+import { Modal, Field, inputClass, selectClass, PageHeader, EmptyState, SkeletonRow, Select } from '@/components/shared'
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import {
   CreditCard, Plus, RefreshCw, Trash2, Link2,
@@ -616,11 +616,11 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
             </Field>
 
             <Field label={t(isAr, 'common.paymentMethod')}>
-              <select className={selectClass} value={payForm.payment_method}
+              <Select className={selectClass} value={payForm.payment_method}
                 onChange={e => setPayForm(f => ({ ...f, payment_method: e.target.value as 'especes' | 'virement' }))}>
                 <option value="especes">{t(isAr, 'common.cashAdverbial')}</option>
                 <option value="virement">{t(isAr, 'common.bankTransfer')}</option>
-              </select>
+              </Select>
             </Field>
 
             {payForm.payment_method === 'virement' && (
@@ -686,11 +686,11 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
                 autoFocus />
             </Field>
             <Field label={t(isAr, 'common.paymentMethod')}>
-              <select className={selectClass} value={importPayForm.payment_method}
+              <Select className={selectClass} value={importPayForm.payment_method}
                 onChange={e => setImportPayForm(f => ({ ...f, payment_method: e.target.value as 'especes' | 'virement' }))}>
                 <option value="especes">{t(isAr, 'common.cashAdverbial')}</option>
                 <option value="virement">{t(isAr, 'common.bankTransfer')}</option>
-              </select>
+              </Select>
             </Field>
             {importPayForm.payment_method === 'virement' && (
               <Field label={t(isAr, 'common.transferReference')}>

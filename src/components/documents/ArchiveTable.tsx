@@ -9,6 +9,7 @@ import {
 import { toast } from 'sonner'
 import { WarrantyBadge } from './WarrantyBadge'
 import { STORE_TIME_ZONE } from '@/lib/time'
+import { Select } from '@/components/shared'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -106,7 +107,7 @@ export function ArchiveTable() {
         </div>
 
         {/* Type */}
-        <select
+        <Select
           value={typeFilter}
           onChange={e => setTypeFilter(e.target.value)}
           className="px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-sm text-white
@@ -116,7 +117,7 @@ export function ArchiveTable() {
           {Object.entries(DOC_TYPES).map(([k, v]) => (
             <option key={k} value={k}>{v.label}</option>
           ))}
-        </select>
+        </Select>
 
         {/* Date from */}
         <div className="relative">

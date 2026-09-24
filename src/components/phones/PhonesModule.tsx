@@ -7,7 +7,7 @@ import { useLanguageStore } from '@/lib/stores/language'
 import { t } from '@/lib/i18n/t'
 import { usePortal } from '@/lib/context/portal'
 import { formatMAD, formatDate, getWarrantyFlag, computePromoPrice } from '@/lib/utils'
-import { StatusBadge, BatteryBar, EmptyState, SkeletonRow, PageHeader, Btn, Modal, Field, inputClass, selectClass, RowAction, RowActionDivider } from '@/components/shared'
+import { StatusBadge, BatteryBar, EmptyState, SkeletonRow, PageHeader, Btn, Modal, Field, inputClass, selectClass, RowAction, RowActionDivider, Select } from '@/components/shared'
 import PhoneForm from '@/components/phones/PhoneForm'
 import PhoneCreditPanel from '@/components/phones/PhoneCreditPanel'
 import type { Phone, Prospect } from '@/types/database'
@@ -330,25 +330,25 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
 
             <div className="w-px bg-[#E8E5DE]" />
 
-            <select
+            <Select
               className="text-sm border border-[#E8E5DE] rounded-xl px-3 py-1.5 bg-white text-[#6B6860] focus:outline-none"
               value={filterMarque}
               onChange={e => setFilterMarque(e.target.value)}
             >
               <option value="">{isAr ? 'كل الماركات' : 'Toutes marques'}</option>
               {MARQUES.map(m => <option key={m} value={m}>{m}</option>)}
-            </select>
+            </Select>
 
-            <select
+            <Select
               className="text-sm border border-[#E8E5DE] rounded-xl px-3 py-1.5 bg-white text-[#6B6860] focus:outline-none"
               value={filterLocation}
               onChange={e => setFilterLocation(e.target.value)}
             >
               <option value="">{isAr ? 'كل الأماكن' : 'Tous emplacements'}</option>
               {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
-            </select>
+            </Select>
 
-            <select
+            <Select
               className="text-sm border border-[#E8E5DE] rounded-xl px-3 py-1.5 bg-white text-[#6B6860] focus:outline-none"
               value={filterStorage}
               onChange={e => setFilterStorage(e.target.value)}
@@ -357,7 +357,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
               {Array.from(new Set(phones.map(p => p.stockage).filter((s): s is string => !!s)))
                 .sort((a, b) => parseInt(a) - parseInt(b))
                 .map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
+            </Select>
 
             <button
               onClick={() => setFilterPromo(filterPromo === '1' ? '' : '1')}

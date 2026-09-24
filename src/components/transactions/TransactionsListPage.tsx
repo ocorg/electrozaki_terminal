@@ -5,7 +5,7 @@ import { showSuccess, showError } from '@/lib/utils/toasts'
 import { useLanguageStore } from '@/lib/stores/language'
 import { formatMAD, formatDate } from '@/lib/utils'
 import { t } from '@/lib/i18n/t'
-import { PageHeader, SkeletonRow, EmptyState, StatusBadge, Modal, Field, Btn } from '@/components/shared'
+import { PageHeader, SkeletonRow, EmptyState, StatusBadge, Modal, Field, Btn, Select } from '@/components/shared'
 import { useUser } from '@/lib/hooks/useUser'
 import { codeLabel } from '@/lib/codes'
 import type { OperationType, PaymentMethod } from '@/types/database'
@@ -188,17 +188,17 @@ export default function TransactionsListPage({ scope, storeId, title }: Transact
           </div>
 
           {scope === 'all' && (
-            <select
+            <Select
               value={filterStore}
               onChange={e => setFilterStore(e.target.value)}
               className="text-sm border border-[#E8E5DE] rounded-xl px-3 py-2 bg-white text-[#6B6860] focus:outline-none"
             >
               <option value="">{t(isAr, 'common.allStores')}</option>
               {stores.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
+            </Select>
           )}
 
-          <select
+          <Select
             value={filterOp}
             onChange={e => setFilterOp(e.target.value)}
             className="text-sm border border-[#E8E5DE] rounded-xl px-3 py-2 bg-white text-[#6B6860] focus:outline-none focus:border-[#C9A440] transition-all"
@@ -207,7 +207,7 @@ export default function TransactionsListPage({ scope, storeId, title }: Transact
             <option value="vente">{t(isAr, 'common.sale')}</option>
             <option value="echange">{isAr ? 'استبدال' : 'Échange'}</option>
             <option value="retour">{t(isAr, 'common.returnNoun')}</option>
-          </select>
+          </Select>
 
           {(filterOp || filterStore) && (
             <button

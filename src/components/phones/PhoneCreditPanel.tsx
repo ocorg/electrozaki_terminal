@@ -13,6 +13,7 @@ import { usePhoneCatalog } from '@/lib/hooks/usePhoneCatalog'
 import { useEscapeKey } from '@/lib/hooks/useEscapeKey'
 import { codeLabel, type Code } from '@/lib/codes'
 import { STORE_TIME_ZONE } from '@/lib/time'
+import { Select } from '@/components/shared'
 
 // ── Types ───────────────────────────────────────────────────────────
 interface CreditSale {
@@ -618,14 +619,14 @@ function NewCreditModal({
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-white/30">DH</span>
                 </div>
-                <select
+                <Select
                   value={form.payment_method}
                   onChange={(e) => setForm((f) => ({ ...f, payment_method: e.target.value }))}
                   className="bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-[#C9A440]/50"
                 >
                   <option value="especes">نقد — Espèces</option>
                   <option value="virement">تحويل — Virement</option>
-                </select>
+                </Select>
               </div>
             </div>
           </div>

@@ -6,7 +6,7 @@ import { useLanguageStore } from '@/lib/stores/language'
 import { t } from '@/lib/i18n/t'
 import { usePortal } from '@/lib/context/portal'
 import { formatMAD, formatDate } from '@/lib/utils'
-import { Modal, Field, inputClass, selectClass, Btn, PageHeader, EmptyState, SkeletonRow } from '@/components/shared'
+import { Modal, Field, inputClass, selectClass, Btn, PageHeader, EmptyState, SkeletonRow, Select } from '@/components/shared'
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import {
   Receipt, Plus, Trash2, RefreshCw,
@@ -201,7 +201,7 @@ export default function ExpensesModule({ storeId }: ExpensesModuleProps) {
             onChange={e => setDateTo(e.target.value)}
           />
         </div>
-        <select
+        <Select
           className={`${selectClass} w-auto text-sm py-2`}
           value={filterCat}
           onChange={e => setFilterCat(e.target.value)}
@@ -212,7 +212,7 @@ export default function ExpensesModule({ storeId }: ExpensesModuleProps) {
               {isAr ? cat.ar : cat.fr}
             </option>
           ))}
-        </select>
+        </Select>
         <button
           onClick={fetchExpenses}
           className="p-2 rounded-xl border border-[#E8E5DE] bg-white text-[#6B6860] hover:bg-[#F8F7F4] transition-all"

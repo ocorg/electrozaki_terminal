@@ -5,7 +5,7 @@ import { useUser }          from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
 import { usePortal }        from '@/lib/context/portal'
 import { formatMAD }        from '@/lib/utils'
-import { Modal, Btn, inputClass, selectClass } from '@/components/shared'
+import { Modal, Btn, inputClass, selectClass, Select } from '@/components/shared'
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import {
   Loader2, Plus, Package, Truck,
@@ -673,7 +673,7 @@ export default function DeliveriesModule({ storeId }: DeliveriesModuleProps) {
               <label className="text-xs font-bold text-[#6B6860] uppercase tracking-widest block mb-1">
                 Scénario paiement *
               </label>
-              <select
+              <Select
                 className={selectClass}
                 value={form.payment_scenario}
                 onChange={e => setForm(p => ({ ...p, payment_scenario: e.target.value }))}
@@ -681,7 +681,7 @@ export default function DeliveriesModule({ storeId }: DeliveriesModuleProps) {
                 <option value="avance_totale">100% à la création</option>
                 <option value="avance_partielle">Avance + reste à la livraison</option>
                 <option value="paiement_livraison">Paiement à la livraison</option>
-              </select>
+              </Select>
             </div>
 
             <div className="col-span-2">
@@ -728,7 +728,7 @@ export default function DeliveriesModule({ storeId }: DeliveriesModuleProps) {
                 Appareil *
               </label>
               <div className="flex gap-2">
-                <select
+                <Select
                   className={selectClass}
                   style={{ width: '150px', flexShrink: 0 }}
                   value={form.device_type}
@@ -736,7 +736,7 @@ export default function DeliveriesModule({ storeId }: DeliveriesModuleProps) {
                 >
                   <option value="telephone">Téléphone</option>
                   <option value="laptop">Laptop</option>
-                </select>
+                </Select>
                 <input
                   className={inputClass}
                   value={form.device_id}

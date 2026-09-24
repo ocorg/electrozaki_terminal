@@ -3,7 +3,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { Wrench, Mail, Phone, MessageCircle, ClipboardPlus, ExternalLink, Ban, Clock, Monitor, Headphones } from 'lucide-react'
 import { useApi, apiWrite } from '@/lib/data/api'
-import { PageHeader, EmptyState, SkeletonRow, selectClass, Btn, Modal, Field, inputClass } from '@/components/shared'
+import { PageHeader, EmptyState, SkeletonRow, selectClass, Btn, Modal, Field, inputClass, Select } from '@/components/shared'
 import { showError, showSuccess } from '@/lib/utils/toasts'
 import { codeLabel, type Code } from '@/lib/codes'
 import { useSiteLang, Tabs, Chip, REPAIR_STATUS, whatsappLink, dateTime } from './common'
@@ -109,11 +109,11 @@ export default function SiteRequestsModule() {
         </div>
         {r.status !== 'CANCELLED' && (
           <>
-            <select value={r.status} onChange={e => setStatus(r, e.target.value)} className={selectClass}>
+            <Select value={r.status} onChange={e => setStatus(r, e.target.value)} className={selectClass}>
               {Object.entries(REPAIR_STATUS).filter(([k]) => k !== 'CANCELLED').map(([k, v]) => (
                 <option key={k} value={k}>{isAr ? v.ar : v.fr}</option>
               ))}
-            </select>
+            </Select>
             {r.ticket ? (
               <Link href="/ez/repairs" className="flex items-center justify-between gap-2 rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2 text-sm text-emerald-800">
                 <span>{L('Fiche', 'بطاقة')} <b className="font-mono">{r.ticket.rep_id}</b></span>

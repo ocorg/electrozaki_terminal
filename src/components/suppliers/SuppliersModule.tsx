@@ -7,7 +7,7 @@ import { useLanguageStore } from '@/lib/stores/language'
 import { t } from '@/lib/i18n/t'
 import { usePortal } from '@/lib/context/portal'
 import { formatMAD, formatDate, fetchWithRetry } from '@/lib/utils'
-import { Modal, Field, inputClass, selectClass, Btn, PageHeader, EmptyState, SkeletonRow } from '@/components/shared'
+import { Modal, Field, inputClass, selectClass, Btn, PageHeader, EmptyState, SkeletonRow, Select } from '@/components/shared'
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import {
   Truck, Plus, Search, X, RefreshCw,
@@ -882,14 +882,14 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
         <div className="space-y-4" dir={isAr ? 'rtl' : 'ltr'}>
 
           <Field label={isAr ? 'نوع المورد' : 'Type de fournisseur'} required>
-            <select className={selectClass}
+            <Select className={selectClass}
               value={form.type_fournisseur}
               onChange={e => setForm(f => ({ ...f, type_fournisseur: e.target.value }))}>
               <option value="A">A — Consignation (règlement sur ventes)</option>
               <option value="B">B — Paiement direct (groupe B)</option>
               <option value="C">C — Paiement direct (groupe C)</option>
               <option value="D">D — Paiement direct (groupe D)</option>
-            </select>
+            </Select>
           </Field>
 
           <Field label={t(isAr, 'common.name')} required>
@@ -919,14 +919,14 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
           </Field>
 
           <Field label={t(isAr, 'common.category')}>
-            <select className={selectClass}
+            <Select className={selectClass}
               value={form.categorie}
               onChange={e => setForm(f => ({ ...f, categorie: e.target.value }))}>
               <option value="">{t(isAr, 'common.chooseEllipsis')}</option>
               {supplierCats.map((c: any) => (
                 <option key={c.code} value={c.code}>{isAr ? c.ar : c.fr}</option>
               ))}
-            </select>
+            </Select>
           </Field>
 
           <Field label={t(isAr, 'common.notes')}>

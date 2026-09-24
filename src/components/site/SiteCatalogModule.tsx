@@ -2,10 +2,10 @@
 import { useMemo, useRef, useState } from 'react'
 import { Globe, RefreshCw, Search, ImagePlus, Trash2, Eye, EyeOff, Pencil, Plus, ImageOff, Gift } from 'lucide-react'
 import { useApi, apiWrite, refreshPrefixes } from '@/lib/data/api'
-import { Modal, Btn, PageHeader, EmptyState, SkeletonRow, Field, inputClass, selectClass } from '@/components/shared'
+import { Modal, Btn, PageHeader, EmptyState, SkeletonRow, Field, inputClass, selectClass, Select } from '@/components/shared'
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import { uploadResized } from '@/lib/utils/image'
-import { useSiteLang, Tabs, Chip, AVAILABILITY, GRADE, mad } from './common'
+import { useSiteLang, Tabs, Chip, AVAILABILITY, GRADE, mad, categoryOptions } from './common'
 
 interface Product {
   id: string; slug: string; name: string; brand: string | null; isPhone: boolean; source: 'ERP' | 'MANUAL'
@@ -93,9 +93,9 @@ function ProductsTab({ products, categories, isManager }: { products: Product[];
   const inCategory = (p: Product, id: string) =>
     p.categoryId === id || categories.some(c => c.id === p.categoryId && c.parentId === id)
   // Only categories that have products in the current tab, with their count.
-  const categoryOptions = categories
-    .map(c => ({ ...c, count: inKind.filter(p => inCategory(p, c.id)).length }))
-    .filter(c => c.count > 0)
+  const countIn = (id: string) => inKind.filter(p => inCategory(p, id)).length
+  // Only categories that have products in this tab (a parent stays when any child does).
+  const filterCategories = categories.filter(c => countIn(c.id) > 0)
   const shown = inKind.filter(p =>
     (!categoryId || inCategory(p, categoryId)) &&
     (search.trim().length < 2 || `${p.name} ${p.brand ?? ''} ${p.category.name}`.toLowerCase().includes(search.trim().toLowerCase())))
@@ -115,15 +115,13 @@ function ProductsTab({ products, categories, isManager }: { products: Product[];
           { key: 'accessories', label: L('Accessoires', 'الإكسسوارات'), count: visible.filter(p => !p.isPhone).length },
           { key: 'hidden',      label: L('Masqués', 'مخفية'), count: visible.filter(p => !p.published).length },
         ]} />
-        {categoryOptions.length > 1 && (
+        {filterCategories.length > 1 && (
           <div className="w-full sm:w-60">
-            <select value={categoryId} onChange={e => setCategoryId(e.target.value)}
+            <Select value={categoryId} onChange={e => setCategoryId(e.target.value)}
               aria-label={L('Catégorie', 'الفئة')} className={selectClass}>
               <option value="">{L('Toutes les catégories', 'كل الفئات')} ({inKind.length})</option>
-              {categoryOptions.map(c => (
-                <option key={c.id} value={c.id}>{c.parentId ? '— ' : ''}{c.name} ({c.count})</option>
-              ))}
-            </select>
+              {categoryOptions(filterCategories, { count: countIn, allLabel: name => `Tout — ${name}` })}
+            </Select>
           </div>
         )}
         <div className="relative flex-1 min-w-[200px] max-w-sm">
@@ -249,9 +247,9 @@ function ProductModal({ product, categories, accessories, onClose }: {
           </div>
         )}
         <Field label={L('Catégorie du site', 'فئة الموقع')}>
-          <select value={form.categoryId} onChange={e => set('categoryId', e.target.value)} className={selectClass}>
-            {categories.map(c => <option key={c.id} value={c.id}>{c.parentId ? '— ' : ''}{c.name}</option>)}
-          </select>
+          <Select value={form.categoryId} onChange={e => set('categoryId', e.target.value)} className={selectClass}>
+            {categoryOptions(categories, { allLabel: name => name })}
+          </Select>
         </Field>
         <Field label={L('Description', 'الوصف')} hint={product.isPhone ? L('Commune à ce modèle/stockage/état.', '') : undefined}>
           <textarea value={form.description} onChange={e => set('description', e.target.value)} rows={4} className={inputClass} maxLength={3000} />
@@ -490,10 +488,10 @@ function CategoriesTab({ categories, isManager }: { categories: Category[]; isMa
               <input value={editing.name ?? ''} onChange={e => setEditing({ ...editing, name: e.target.value })} className={inputClass} maxLength={60} />
             </Field>
             <Field label={L('Dans', 'ضمن')}>
-              <select value={editing.parentId ?? ''} onChange={e => setEditing({ ...editing, parentId: e.target.value || null })} className={selectClass}>
+              <Select value={editing.parentId ?? ''} onChange={e => setEditing({ ...editing, parentId: e.target.value || null })} className={selectClass}>
                 <option value="">{L('— Menu principal —', '— القائمة الرئيسية —')}</option>
                 {parents.filter(p => p.id !== editing.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
+              </Select>
             </Field>
             <Field label={L('Ordre d’affichage', 'الترتيب')}>
               <input type="number" value={editing.sortOrder ?? 0} onChange={e => setEditing({ ...editing, sortOrder: Number(e.target.value) })} className={inputClass} />

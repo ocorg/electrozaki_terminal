@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Printer, Loader2, User, Phone, CreditCard, CheckCircle2, Circle } from 'lucide-react'
 import { toast } from 'sonner'
 import { STORE_TIME_ZONE } from '@/lib/time'
+import { Select } from '@/components/shared'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -225,7 +226,7 @@ export function AcquisitionTab() {
                 <label className="block text-[10px] text-white/30 uppercase tracking-widest mb-1">
                   État
                 </label>
-                <select
+                <Select
                   value={form.condition}
                   onChange={e => set('condition', e.target.value)}
                   className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg
@@ -234,7 +235,7 @@ export function AcquisitionTab() {
                   {['Neuf', 'Très bon état', 'Bon état', 'État moyen', 'Pour pièces'].map(c => (
                     <option key={c} value={c}>{c}</option>
                   ))}
-                </select>
+                </Select>
               </div>
               <div>
                 <label className="block text-[10px] text-white/30 uppercase tracking-widest mb-1">

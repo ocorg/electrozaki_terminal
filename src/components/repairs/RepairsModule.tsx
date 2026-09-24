@@ -6,7 +6,7 @@ import { useLanguageStore } from '@/lib/stores/language'
 import { t } from '@/lib/i18n/t'
 import { usePortal } from '@/lib/context/portal'
 import { formatMAD, formatDate } from '@/lib/utils'
-import { Modal, Field, inputClass, selectClass, Btn, EmptyState } from '@/components/shared'
+import { Modal, Field, inputClass, selectClass, Btn, EmptyState, Select } from '@/components/shared'
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import type { Reparation, RepairStatus } from '@/types/database'
 import {
@@ -733,14 +733,14 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
                 )}
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-[#6B6860]">{isAr ? 'طريقة الأداء' : 'Payé par'}</span>
-                  <select
+                  <Select
                     className="bg-white border border-[#E8E5DE] rounded-lg px-2 py-1 text-sm"
                     value={detailRep.mode_paiement ?? 'especes'}
                     onChange={e => patchRepair(detailRep, { mode_paiement: e.target.value })}
                   >
                     <option value="especes">{isAr ? 'نقداً' : 'Espèces'}</option>
                     <option value="virement">{isAr ? 'تحويل بنكي' : 'Virement'}</option>
-                  </select>
+                  </Select>
                 </div>
                 {(detailRep.fariq_rep ?? 0) !== 0 && (
                   <div className="flex justify-between text-sm pt-2 border-t border-[#E8E5DE]">
@@ -1015,11 +1015,11 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
 
           <div className="grid grid-cols-2 gap-4">
             <Field label={isAr ? 'طريقة الأداء' : 'Payé par'}>
-              <select className={selectClass} value={form.mode_paiement}
+              <Select className={selectClass} value={form.mode_paiement}
                 onChange={e => setForm(prev => ({ ...prev, mode_paiement: e.target.value as 'especes' | 'virement' }))}>
                 <option value="especes">{isAr ? 'نقداً' : 'Espèces'}</option>
                 <option value="virement">{isAr ? 'تحويل بنكي' : 'Virement'}</option>
-              </select>
+              </Select>
             </Field>
             {form.type_reparation !== 'consultation' && (
               <Field label={isAr ? 'صور الإيداع (3 كحد أقصى)' : 'Photos au dépôt (3 max.)'}>
@@ -1046,7 +1046,7 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
 
           <div className="grid grid-cols-2 gap-4">
             <Field label={isAr ? 'التقني المكلف' : 'Technicien assigné'}>
-              <select className={selectClass}
+              <Select className={selectClass}
                 value={form.technicien_id}
                 onChange={e => {
                   const staff = staffList.find(s => s.id === e.target.value)
@@ -1058,7 +1058,7 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
                 {staffList.map(s => (
                   <option key={s.id} value={s.id}>{s.display_name}</option>
                 ))}
-              </select>
+              </Select>
             </Field>
             <Field label={isAr ? 'تاريخ التسليم المتوقع' : 'Date prévue de livraison'}>
               <input type="date" className={inputClass}

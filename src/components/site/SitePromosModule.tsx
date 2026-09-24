@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { Tag, Package, Plus, Pencil, Trash2 } from 'lucide-react'
 import { useApi, apiWrite } from '@/lib/data/api'
-import { Modal, Btn, PageHeader, EmptyState, SkeletonRow, Field, inputClass, selectClass } from '@/components/shared'
+import { Modal, Btn, PageHeader, EmptyState, SkeletonRow, Field, inputClass, selectClass, Select } from '@/components/shared'
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import { useSiteLang, Tabs, Chip, mad } from './common'
 
@@ -92,10 +92,10 @@ function PromosTab({ isManager }: { isManager: boolean }) {
             </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label={L('Type', 'النوع')}>
-                <select value={editing.type} onChange={e => setEditing({ ...editing, type: e.target.value as Promo['type'] })} className={selectClass}>
+                <Select value={editing.type} onChange={e => setEditing({ ...editing, type: e.target.value as Promo['type'] })} className={selectClass}>
                   <option value="PERCENTAGE">%</option>
                   <option value="FIXED_AMOUNT">DH</option>
-                </select>
+                </Select>
               </Field>
               <Field label={L('Valeur', 'القيمة')} required>
                 <input type="number" min={1} value={editing.value ?? ''} onChange={e => setEditing({ ...editing, value: Number(e.target.value) })} className={inputClass} />
@@ -190,10 +190,10 @@ function BundlesTab({ isManager }: { isManager: boolean }) {
               <p className="text-xs uppercase tracking-widest text-ez-subtle font-medium">{L('Produits (2 minimum)', 'المنتجات')}</p>
               {editing.items.map((it, idx) => (
                 <div key={idx} className="flex gap-2">
-                  <select value={it.productId} onChange={e => setEditing({ ...editing, items: editing.items.map((x, j) => j === idx ? { ...x, productId: e.target.value } : x) })} className={selectClass}>
+                  <Select value={it.productId} onChange={e => setEditing({ ...editing, items: editing.items.map((x, j) => j === idx ? { ...x, productId: e.target.value } : x) })} className={selectClass}>
                     <option value="">—</option>
                     {choices.map(c => <option key={c.id} value={c.id}>{c.name} ({mad(c.recommendedSalePrice)})</option>)}
-                  </select>
+                  </Select>
                   <input type="number" min={1} max={10} value={it.quantity} onChange={e => setEditing({ ...editing, items: editing.items.map((x, j) => j === idx ? { ...x, quantity: Number(e.target.value) } : x) })} className={`${inputClass} w-20`} />
                   <button onClick={() => setEditing({ ...editing, items: editing.items.filter((_, j) => j !== idx) })} className="p-2 text-red-500"><Trash2 className="w-4 h-4" /></button>
                 </div>

@@ -5,7 +5,7 @@ import { useUser } from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
 import { t } from '@/lib/i18n/t'
 import { formatMAD, formatDate } from '@/lib/utils'
-import { PageHeader, SkeletonRow, EmptyState } from '@/components/shared'
+import { PageHeader, SkeletonRow, EmptyState, Select } from '@/components/shared'
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import {
   Vault, RefreshCw, CheckCircle, XCircle,
@@ -156,21 +156,21 @@ export default function BZGCaissePage() {
 
         {/* Filters */}
         <div className="flex flex-wrap gap-3">
-          <select
+          <Select
             className="text-sm border border-[#E8E5DE] rounded-xl px-3 py-2.5 bg-white text-[#6B6860] focus:outline-none"
             value={filterStore} onChange={e => setFilterStore(e.target.value)}>
             <option value="">{t(isAr, 'common.allStores')}</option>
             {stores.map((s: { id: string; name: string; color: string }) => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
+          </Select>
 
-          <select
+          <Select
             className="text-sm border border-[#E8E5DE] rounded-xl px-3 py-2.5 bg-white text-[#6B6860] focus:outline-none"
             value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
             <option value="">{t(isAr, 'common.allStatuses')}</option>
             <option value="ouverte">{t(isAr, 'common.openStatus')}</option>
             <option value="en_attente_cloture">{isAr ? 'في انتظار' : 'En attente'}</option>
             <option value="cloturee">{t(isAr, 'common.closedStatus')}</option>
-          </select>
+          </Select>
 
           <div className="flex items-center gap-2 bg-white border border-[#E8E5DE] rounded-xl px-3 py-2">
             <Calendar className="w-4 h-4 text-[#B0ADA6]" />

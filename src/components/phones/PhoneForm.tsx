@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useApi } from '@/lib/data/api'
-import { Modal, Field, inputClass, selectClass, Btn } from '@/components/shared'
+import { Modal, Field, inputClass, selectClass, Btn, Select } from '@/components/shared'
 import { BatteryBar } from '@/components/shared'
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import { formatMAD, computePromoPrice } from '@/lib/utils'
@@ -169,28 +169,28 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
         {/* Row 1 — Source + Condition */}
         <div className="grid grid-cols-2 gap-4">
           <Field label={t(isAr, 'common.source')} required>
-            <select className={selectClass} value={form.source || ''} onChange={e => {
+            <Select className={selectClass} value={form.source || ''} onChange={e => {
               set('source', e.target.value as DeviceSource)
               if (e.target.value !== 'fournisseur') set('fournisseur_id', null)
             }}>
               <option value="fournisseur">Fournisseur</option>
               <option value="reprise">Reprise</option>
               <option value="echange">Échange</option>
-            </select>
+            </Select>
           </Field>
           <Field label={t(isAr, 'common.deviceCondition')} required>
-            <select className={selectClass} value={form.condition || ''} onChange={e => set('condition', e.target.value as DeviceCondition)}>
+            <Select className={selectClass} value={form.condition || ''} onChange={e => set('condition', e.target.value as DeviceCondition)}>
               <option value="neuf">{t(isAr, 'common.new')}</option>
               <option value="occasion">{t(isAr, 'common.used')}</option>
               <option value="defectueux">{t(isAr, 'common.damaged')}</option>
-            </select>
+            </Select>
           </Field>
         </div>
 
         {/* Fournisseur — visible uniquement si source = Fournisseur */}
         {form.source === 'fournisseur' && (
           <Field label={t(isAr, 'common.supplier')}>
-            <select
+            <Select
               className={selectClass}
               value={form.fournisseur_id || ''}
               onChange={e => set('fournisseur_id', e.target.value || null)}
@@ -199,7 +199,7 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
               {suppliers.map(s => (
                 <option key={s.supplier_id} value={s.supplier_id}>{s.nom}</option>
               ))}
-            </select>
+            </Select>
             {form.fournisseur_id && (() => {
               const sel = suppliers.find(s => s.supplier_id === form.fournisseur_id)
               return sel ? (
@@ -337,21 +337,21 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
         {/* Row 6 — Statut + Emplacement */}
         <div className="grid grid-cols-2 gap-4">
           <Field label={t(isAr, 'common.stockStatus')} required>
-            <select className={selectClass} value={form.status || 'disponible'} onChange={e => set('status', e.target.value)}>
+            <Select className={selectClass} value={form.status || 'disponible'} onChange={e => set('status', e.target.value)}>
               <option value="disponible">{t(isAr, 'common.available')}</option>
               <option value="reserve">{isAr ? 'محجوز' : 'Réservé'}</option>
               <option value="vendu">{isAr ? 'مباع' : 'Vendu'}</option>
               <option value="echange">{isAr ? 'مستبدل' : 'Échangé'}</option>
               <option value="en_reparation">{isAr ? 'في الإصلاح' : 'En réparation'}</option>
               <option value="en_transfert">{isAr ? 'في النقل' : 'En transfert'}</option>
-            </select>
+            </Select>
           </Field>
           <Field label={t(isAr, 'common.location')}>
-            <select className={selectClass} value={form.location || 'magasin_principal'} onChange={e => set('location', e.target.value as LocationType)}>
+            <Select className={selectClass} value={form.location || 'magasin_principal'} onChange={e => set('location', e.target.value as LocationType)}>
               <option value="magasin_principal">{t(isAr, 'common.mainStore')}</option>
               <option value="magasin_secondaire">{t(isAr, 'common.secondaryStore')}</option>
               <option value="externe">{t(isAr, 'common.external')}</option>
-            </select>
+            </Select>
           </Field>
         </div>
 
@@ -403,7 +403,7 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
 
           {/* Add component row */}
           <div className="flex items-center gap-2">
-            <select
+            <Select
               className={`${selectClass} w-44`}
               value={newCompName}
               onChange={e => setNewCompName(e.target.value)}
@@ -417,15 +417,15 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
               <option value="Châssis">Châssis</option>
               <option value="Haut-parleur">Haut-parleur</option>
               <option value="Connecteur de charge">Connecteur</option>
-            </select>
-            <select
+            </Select>
+            <Select
               className={`${selectClass} w-28`}
               value={newCompCondition}
               onChange={e => setNewCompCondition(e.target.value as 'original' | 'standard')}
             >
               <option value="original">Original</option>
               <option value="standard">Standard</option>
-            </select>
+            </Select>
             <button
               type="button"
               onClick={() => {
@@ -522,7 +522,7 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
             {/* Promo */}
             <div className="grid grid-cols-2 gap-4 pt-3 border-t border-[#E8E5DE]">
               <Field label={isAr ? 'نوع التخفيض' : 'Type de promo'}>
-                <select
+                <Select
                   className={selectClass}
                   value={form.promo_type || ''}
                   onChange={e => {
@@ -533,7 +533,7 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
                   <option value="">{isAr ? 'بدون عرض' : 'Aucune promo'}</option>
                   <option value="valeur">{isAr ? 'قيمة (درهم)' : 'Valeur (MAD)'}</option>
                   <option value="pourcentage">{isAr ? 'نسبة مئوية (%)' : 'Pourcentage (%)'}</option>
-                </select>
+                </Select>
               </Field>
 
               {form.promo_type && (

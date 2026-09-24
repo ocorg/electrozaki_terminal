@@ -4,7 +4,7 @@ import { useUser } from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
 import { t } from '@/lib/i18n/t'
 import { formatDate } from '@/lib/utils'
-import { PageHeader, Modal, Field, inputClass, selectClass, Btn, EmptyState, SkeletonRow } from '@/components/shared'
+import { PageHeader, Modal, Field, inputClass, selectClass, Btn, EmptyState, SkeletonRow, Select } from '@/components/shared'
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import { FileText, Plus, RefreshCw, Tag, Layers, User, Calendar } from 'lucide-react'
 
@@ -279,11 +279,11 @@ export default function BZGChangelogPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <Field label={isAr ? 'الوحدة المتأثرة' : 'Module concerné'}>
-              <select className={selectClass} value={form.affected_module}
+              <Select className={selectClass} value={form.affected_module}
                 onChange={e => setF('affected_module', e.target.value)}>
                 <option value="">{t(isAr, 'common.chooseEllipsis')}</option>
                 {MODULES.map(m => <option key={m} value={m}>{m}</option>)}
-              </select>
+              </Select>
             </Field>
             <Field label={isAr ? 'رقم الإصدار' : 'Tag de version'}>
               <input type="text" className={inputClass}
