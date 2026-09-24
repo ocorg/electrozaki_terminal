@@ -11,7 +11,7 @@ import { useSiteLang, Tabs, Chip, REPAIR_STATUS, whatsappLink, dateTime } from '
 type WebKind = 'HARDWARE' | 'SOFTWARE' | 'CONSULTATION'
 
 interface Repair {
-  id: string; kind: WebKind; customerName: string; customerPhone: string; deviceBrand: string; deviceModel: string
+  id: string; ref: string; repairRef: string | null; kind: WebKind; customerName: string; customerPhone: string; deviceBrand: string; deviceModel: string
   problemAreas: string[]; notes: string | null; preferredSlot: string | null; cancelReason: string | null
   status: string; createdAt: string
   ticket: { rep_id: string; statut: string } | null
@@ -88,7 +88,10 @@ export default function SiteRequestsModule() {
     return (
       <div className="bg-white border border-ez-border rounded-2xl p-4 space-y-2">
         <div className="flex items-center justify-between gap-2">
-          <span className="text-xs text-ez-subtle">{dateTime(r.createdAt)}</span>
+          <span className="text-xs text-ez-subtle">
+            <b className="font-mono text-sm text-ez-text select-all" title={L('Numéro donné au client (suivi en ligne)', 'رقم الطلب للعميل')}>{r.ref}</b>
+            {' · '}{dateTime(r.createdAt)}
+          </span>
           <Chip tone={REPAIR_STATUS[r.status].tone}>{isAr ? REPAIR_STATUS[r.status].ar : REPAIR_STATUS[r.status].fr}</Chip>
         </div>
         <p className="inline-flex items-center gap-1 text-[11px] font-bold text-ez-subtle uppercase tracking-wide">

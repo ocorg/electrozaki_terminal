@@ -62,7 +62,7 @@ const BOTS: Record<string, T & { note: T; tone: 'green' | 'amber' | 'gray' | 're
 const BUCKETS: Record<string, T> = {
   order: { fr: 'Commandes', ar: 'طلبات' }, upload: { fr: 'Envois de reçus', ar: 'إرسال الوصل' }, contact: { fr: 'Formulaire contact', ar: 'نموذج الاتصال' },
   repair: { fr: 'Demandes de réparation', ar: 'طلبات الإصلاح' }, promo: { fr: 'Codes promo essayés', ar: 'رموز التخفيض' },
-  track: { fr: 'Suivi de réparation', ar: 'تتبع الإصلاح' }, view: { fr: 'Visites pages promo', ar: 'زيارات صفحات العروض' },
+  track: { fr: 'Suivi de réparation', ar: 'تتبع الإصلاح' }, track_phone: { fr: 'Suivi : téléphone verrouillé (numéros devinés)', ar: 'تتبع: هاتف مقفل' }, view: { fr: 'Visites pages promo', ar: 'زيارات صفحات العروض' },
 }
 
 const num = (v: number) => new Intl.NumberFormat('fr-MA').format(Math.round(v))

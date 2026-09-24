@@ -33,7 +33,13 @@ async function POST_(_request: NextRequest, { params }: Ctx) {
       where:  { notes: { contains: tag }, is_deleted: false },
       select: { rep_id: true },
     })
-    if (already) return json({ ok: true, rep_id: already.rep_id, existing: true })
+    if (already) {
+      // Links older conversions too, so the customer's DEM number follows the ticket.
+      if (req.repairRef !== already.rep_id) {
+        await site().repairRequest.update({ where: { id: req.id }, data: { repairRef: already.rep_id } })
+      }
+      return json({ ok: true, rep_id: already.rep_id, existing: true })
+    }
 
     const storeId = user.store_id ?? 'EZ-001'
     const key     = phoneKey(req.customerPhone)
@@ -64,7 +70,7 @@ async function POST_(_request: NextRequest, { params }: Ctx) {
           probleme:        [problems, req.preferredSlot ? `Créneau souhaité : ${req.preferredSlot}` : null].filter(Boolean).join(' — ') || 'À diagnostiquer',
           statut:     'en_attente',
           date_depot: new Date(`${storeDate()}T00:00:00Z`),
-          notes:      [tag, req.notes].filter(Boolean).join(' — '),
+          notes:      [tag, `N° client : ${req.ref}`, req.notes].filter(Boolean).join(' — '),
           store_id:   storeId,
           created_by: user.id,
           updated_by: user.id,
@@ -72,7 +78,8 @@ async function POST_(_request: NextRequest, { params }: Ctx) {
       })
     })
 
-    await site().repairRequest.update({ where: { id: req.id }, data: { status: 'CONFIRMED' } })
+    // The customer's DEM number now tracks this ticket on the website.
+    await site().repairRequest.update({ where: { id: req.id }, data: { status: 'CONFIRMED', repairRef: repair.rep_id } })
 
     await logActivity({
       store_id: repair.store_id, user_id: user.id, user_name: user.display_name,

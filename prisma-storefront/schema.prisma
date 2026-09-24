@@ -449,6 +449,11 @@ model RepairRequest {
   status        RepairRequestStatus @default(NEW)
   // Set when staff cancel the request from the ERP (reason required).
   cancelReason  String?
+  // Number given to the customer right away (e.g. DEM-7K4Q9P): random, so
+  // it can't be guessed. With their phone it opens /reparation/suivi.
+  ref           String              @unique
+  // The ERP ticket (REP-0142) once staff create the repair from this request.
+  repairRef     String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
