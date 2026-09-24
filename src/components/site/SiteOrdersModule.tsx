@@ -11,6 +11,7 @@ interface OrderRow {
   totalEstimate: number; discountAmount: number; requiresAdvance: boolean; advancePaymentStatus: string
   whatsappOpenedAt: string | null; createdAt: string
   deliveryCity: string | null; deliveryFee: number; deliveryEstimate: string | null; deliveryUnavailable: boolean
+  landingPage?: { title: string } | null
   items: { productNameSnapshot: string; quantity: number; isGift: boolean }[]
 }
 
@@ -78,6 +79,7 @@ export default function SiteOrdersModule() {
                     <Chip tone={st.tone}>{isAr ? st.ar : st.fr}</Chip>
                   </div>
                   <p className="font-bold text-ez-text">{o.customerName}</p>
+                  {o.landingPage && <Chip tone="gold">{L('Page promo', 'صفحة عرض')} : {o.landingPage.title}</Chip>}
                   {o.deliveryCity && (
                     <p className="text-xs text-ez-subtle flex flex-wrap items-center gap-1.5">
                       <Truck className="w-3.5 h-3.5" />{o.deliveryCity}

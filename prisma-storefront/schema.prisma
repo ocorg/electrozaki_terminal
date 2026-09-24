@@ -89,6 +89,7 @@ model Category {
   children  Category[] @relation("CategoryToCategory")
   sortOrder Int        @default(0)
   products  Product[]
+  landingPages LandingPage[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -180,6 +181,8 @@ model Product {
   internal ProductInternal?
 
   orderRequestItems OrderRequestItem[]
+
+  landingPages LandingPageProduct[]
 
   // Curated bundles this product is a member of (e.g. "iPhone 13 + case +
   // glass"). See Bundle below — bundlePrice lives on the bundle, not here.
@@ -349,6 +352,10 @@ model OrderRequest {
 
   items OrderRequestItem[]
 
+  // Promo page the order came from (lines added there got its price).
+  landingPageId String?
+  landingPage   LandingPage? @relation(fields: [landingPageId], references: [id], onDelete: SetNull)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -472,6 +479,7 @@ model PromoCode {
   minOrderAmount  Decimal? @db.Decimal(10, 2)
 
   orderRequests OrderRequest[]
+  landingPages  LandingPage[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -562,4 +570,57 @@ model RepairTracking {
   decisionApplied Boolean    @default(false) // the ERP has taken the answer into account
   cancelled       Boolean    @default(false)
   updatedAt       DateTime   @updatedAt
+}
+
+// ── Promo pages (/offres/[slug]) ────────────────────────────────────────
+//
+// A one-offer page for ads, flyers and QR codes (e.g. a phone-cover promo).
+// Managed from the ERP ("Site web → Pages promo"). Shows only what is in
+// stock right now: a whole category and/or hand-picked products. The
+// discount is applied by the server (lib/db/cart-pricing.ts) to lines added
+// from the page while it is live; a promo code can be highlighted too.
+enum LandingTheme {
+  GOLD
+  INK
+  OCEAN
+  CORAL
+}
+
+model LandingPage {
+  id            String               @id @default(cuid())
+  slug          String               @unique
+  title         String
+  subtitle      String?
+  body          String?              @db.Text
+  bannerUrl     String?
+  theme         LandingTheme         @default(GOLD)
+  // Products: every in-stock product of this category (and its children)…
+  categoryId    String?
+  category      Category?            @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  // …and/or these hand-picked ones.
+  products      LandingPageProduct[]
+  // Promo price shown on the page (null = normal prices).
+  discountType  PromoCodeType?
+  discountValue Decimal?             @db.Decimal(10, 2)
+  // Code highlighted on the page, entered by the customer in the cart.
+  promoCodeId   String?
+  promoCode     PromoCode?           @relation(fields: [promoCodeId], references: [id], onDelete: SetNull)
+  startsAt      DateTime?
+  endsAt        DateTime?
+  active        Boolean              @default(true)
+  views         Int                  @default(0)
+  orders        OrderRequest[]
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+}
+
+model LandingPageProduct {
+  landingPageId String
+  landingPage   LandingPage @relation(fields: [landingPageId], references: [id], onDelete: Cascade)
+  productId     String
+  product       Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  sortOrder     Int         @default(0)
+
+  @@id([landingPageId, productId])
+  @@index([productId])
 }
