@@ -41,6 +41,7 @@ export async function GET(_request: NextRequest, { params }: Ctx) {
         ref:        orderRef(order.id),
         receiptKey: undefined,
         receiptUrl: order.receiptKey ? await receiptViewUrl(order.receiptKey) : null,
+        receiptIsPdf: order.receiptKey?.endsWith('.pdf') ?? false,
         items,
       },
     })

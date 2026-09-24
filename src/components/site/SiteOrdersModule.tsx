@@ -1,6 +1,6 @@
 'use client'
 import { useMemo, useState } from 'react'
-import { ShoppingBag, Phone, MessageCircle, RefreshCw, Receipt, CheckCircle2, XCircle, Store, Truck } from 'lucide-react'
+import { ShoppingBag, Phone, MessageCircle, RefreshCw, Receipt, CheckCircle2, XCircle, Store, Truck, FileText } from 'lucide-react'
 import { useApi, apiWrite } from '@/lib/data/api'
 import { Modal, Btn, PageHeader, EmptyState, SkeletonRow } from '@/components/shared'
 import { showSuccess, showError } from '@/lib/utils/toasts'
@@ -16,7 +16,7 @@ interface OrderRow {
 }
 
 interface OrderDetail extends Omit<OrderRow, 'items'> {
-  deliveryAddress: string | null; notes: string | null; receiptUrl: string | null
+  deliveryAddress: string | null; notes: string | null; receiptUrl: string | null; receiptIsPdf?: boolean
   promoCode: { code: string } | null
   items: {
     id: string; productNameSnapshot: string; quantity: number; priceAtRequest: number; isGift: boolean; bundleId: string | null
@@ -197,7 +197,12 @@ function OrderModal({ id, isManager, onClose }: { id: string; isManager: boolean
           {o.requiresAdvance && (
             <div className="rounded-xl border border-ez-border p-4 space-y-3">
               <p className="text-sm font-semibold flex items-center gap-2"><Receipt className="w-4 h-4" />{L('Avance de 300 DH', 'عربون 300 درهم')}</p>
-              {o.receiptUrl ? (
+              {o.receiptUrl && o.receiptIsPdf ? (
+                <a href={o.receiptUrl} target="_blank" rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-ez-border text-sm font-semibold text-ez-text hover:bg-ez-muted">
+                  <FileText className="w-4 h-4 text-red-600" />{L('Ouvrir le reçu (PDF)', 'فتح الوصل (PDF)')}
+                </a>
+              ) : o.receiptUrl ? (
                 <a href={o.receiptUrl} target="_blank" rel="noopener noreferrer">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={o.receiptUrl} alt={L('Reçu de virement', 'وصل التحويل')} className="max-h-72 rounded-lg border border-ez-border" />

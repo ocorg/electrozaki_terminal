@@ -70,6 +70,6 @@ export async function deleteSitePhoto(url: string): Promise<void> {
 /** A 5-minute link to view a customer's receipt (the bucket itself is private). */
 export async function receiptViewUrl(key: string): Promise<string | null> {
   const bucket = process.env.STOREFRONT_R2_RECEIPTS_BUCKET
-  if (!bucket || !/^receipts\/[\w-]+\.webp$/.test(key)) return null
+  if (!bucket || !/^receipts\/[\w-]+\.(webp|pdf)$/.test(key)) return null
   return getSignedUrl(client(), new GetObjectCommand({ Bucket: bucket, Key: key }), { expiresIn: 300 })
 }
