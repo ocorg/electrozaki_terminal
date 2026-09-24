@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { signOut } from 'next-auth/react'
@@ -98,6 +98,14 @@ export default function PortalSidebar({ onClose, collapsed = false, onCollapsedC
   const visibleItems = navItems.filter(item =>
     !user?.role || item.roles.includes(user.role as UserRole)
   )
+
+  // Tab title: "Screen | Electro Zaki", from the sidebar entry of the open screen.
+  const current = navItems.find(item =>
+    item.href && (item.href === `${portalBase}/dashboard` ? pathname === item.href || pathname === portalBase : pathname.startsWith(item.href)))
+  const currentLabel = current?.label
+  useEffect(() => {
+    document.title = currentLabel ? `${currentLabel} | ${portal.storeName}` : portal.storeName
+  }, [currentLabel, portal.storeName])
 
   async function handleLogout() {
     clearDataCache()

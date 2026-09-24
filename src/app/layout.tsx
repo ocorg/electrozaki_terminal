@@ -9,7 +9,8 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 
 export const metadata: Metadata = {
-  title: 'Electro Zaki',
+  // Tabs read "Page | Electro Zaki" (a page gives only its own name).
+  title: { default: 'Electro Zaki', template: '%s | Electro Zaki' },
   description: 'Système de gestion — Electro Zaki',
   manifest: '/manifest.json',
   icons: {

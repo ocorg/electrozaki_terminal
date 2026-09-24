@@ -2,7 +2,7 @@ import { Metadata } from 'next'
 import { DocumentGenerator } from '@/components/documents/DocumentGenerator'
 
 export const metadata: Metadata = {
-  title: 'Documents — Electro Zaki',
+  title: 'Documents',
 }
 
 export default function DocumentsPage() {

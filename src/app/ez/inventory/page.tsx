@@ -3,7 +3,7 @@ import type { Metadata }  from 'next'
 import { auth }           from '@/auth'
 import InventoryModule    from '@/components/inventory/InventoryModule'
 
-export const metadata: Metadata = { title: 'Inventaire — BZG Terminal' }
+export const metadata: Metadata = { title: 'Inventaire' }
 
 export default async function InventoryPage() {
   const session = await auth()
