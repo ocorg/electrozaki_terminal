@@ -17,7 +17,7 @@ function supplierInput(body: Record<string, unknown>) {
 
 export async function GET(request: NextRequest) {
   try {
-    await requireUser()
+    await requireUser(MANAGERS)
     const { searchParams } = new URL(request.url)
     const store_id = searchParams.get('store_id')
     const search   = searchParams.get('search')?.trim()

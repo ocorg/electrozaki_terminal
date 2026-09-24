@@ -40,6 +40,8 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
   const isAr         = language === 'ar'
   const primary      = portal.primaryColor
   const canSeeFinancials = user?.role === 'gerant' || user?.role === 'proprietaire'
+  // Staff consult the stock (read-only); adding / editing / credit sales are managers' (APIs enforce it)
+  const canEdit = canSeeFinancials
 
   const [formOpen, setFormOpen]       = useState(false)
   const [editPhone, setEditPhone]     = useState<Phone | null>(null)
@@ -129,8 +131,8 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
   const [filterStorage, setFilterStorage] = useState('')
   const [filterPromo,   setFilterPromo]   = useState('')
 
-  const openProspects = useApi<Prospect[]>(`/api/prospects?store_id=${storeId}&open=1`).data ?? EMPTY
-  const suppliers     = useApi<{ supplier_id: string; nom: string; type_fournisseur: string }[]>('/api/suppliers?mode=dropdown').data ?? EMPTY
+  const openProspects = useApi<Prospect[]>(canEdit ? `/api/prospects?store_id=${storeId}&open=1` : null).data ?? EMPTY
+  const suppliers     = useApi<{ supplier_id: string; nom: string; type_fournisseur: string }[]>(canEdit ? '/api/suppliers?mode=dropdown' : null).data ?? EMPTY
 
   const getSupplierBadge = (fournisseur_id: string | null | undefined) =>
     fournisseur_id ? (suppliers.find(s => s.supplier_id === fournisseur_id) ?? null) : null
@@ -260,6 +262,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                   {isAr ? 'إدارة الكتالوج' : 'Catalogue'}
                 </Btn>
               )}
+              {canEdit && (
               <Btn
                 variant="primary"
                 onClick={openAdd}
@@ -268,6 +271,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                 <Plus className="w-4 h-4" />
                 {isAr ? 'إضافة هاتف' : 'Ajouter'}
               </Btn>
+              )}
             </div>
           }
         />
@@ -413,11 +417,11 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
               description={hasFilters
                 ? (t(isAr, 'common.noResultsFiltered'))
                 : (isAr ? 'أضف أول هاتف للمخزون' : 'Ajoutez le premier téléphone')}
-              action={!hasFilters
+              action={!hasFilters && canEdit
                 ? <Btn variant="primary" onClick={openAdd} style={{ backgroundColor: primary } as React.CSSProperties}>
                     <Plus className="w-4 h-4" />{isAr ? 'إضافة هاتف' : 'Ajouter un téléphone'}
                   </Btn>
-                : <Btn variant="ghost" onClick={clearFilters}>
+                : !hasFilters ? undefined : <Btn variant="ghost" onClick={clearFilters}>
                     <X className="w-4 h-4" />{isAr ? 'مسح التصفية' : 'Effacer les filtres'}
                   </Btn>
               }
@@ -437,8 +441,8 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                 return (
                   <div
                     key={phone.phone_id}
-                    onClick={() => openEdit(phone)}
-                    className="hidden lg:grid items-center px-5 py-3.5 hover:bg-[#F8F7F4] transition-all cursor-pointer"
+                    onClick={canEdit ? () => openEdit(phone) : undefined}
+                    className={`hidden lg:grid items-center px-5 py-3.5 hover:bg-[#F8F7F4] transition-all ${canEdit ? 'cursor-pointer' : ''}`}
                     style={{ gridTemplateColumns: '2fr 1fr 0.7fr 0.7fr 0.7fr 0.6fr 1fr 180px' }}
                   >
                     {/* Device name */}
@@ -605,10 +609,12 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                       >
                         <Tag className="w-4 h-4" />
                       </RowAction>
-                      <RowAction title={isAr ? 'تعديل' : 'Modifier'} onClick={() => openEdit(phone)}>
-                        <Edit2 className="w-4 h-4" />
-                      </RowAction>
-                      {(['disponible', 'reserve', 'vendu'] as string[]).includes(phone.status) && (
+                      {canEdit && (
+                        <RowAction title={isAr ? 'تعديل' : 'Modifier'} onClick={() => openEdit(phone)}>
+                          <Edit2 className="w-4 h-4" />
+                        </RowAction>
+                      )}
+                      {canEdit && (['disponible', 'reserve', 'vendu'] as string[]).includes(phone.status) && (
                         <RowAction title={isAr ? 'قرض / عربون' : 'Crédit / Avance'} tone="gold" onClick={() => setCreditPhone(phone)}>
                           <CreditCard className="w-4 h-4" />
                         </RowAction>
@@ -640,8 +646,8 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                 // Phone layout: full name + price, then readable chips, then IMEI + actions
                 return (
                   <div key={`mob-${phone.phone_id}`}
-                       onClick={() => openEdit(phone)}
-                       className="lg:hidden px-4 py-3.5 space-y-2 hover:bg-[#F8F7F4] active:bg-[#F2F0EB] transition-all cursor-pointer">
+                       onClick={canEdit ? () => openEdit(phone) : undefined}
+                       className={`lg:hidden px-4 py-3.5 space-y-2 transition-all ${canEdit ? 'hover:bg-[#F8F7F4] active:bg-[#F2F0EB] cursor-pointer' : ''}`}>
                     <div className="flex items-start justify-between gap-3">
                       <p className="text-[15px] font-semibold text-[#1A1A1A] leading-snug line-clamp-2">{deviceName}</p>
                       {phone.prix_vente_recommande != null && (
@@ -692,18 +698,20 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                     </div>
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-xs font-mono text-[#8A877F] truncate">
-                        {phone.imei ? `IMEI …${phone.imei.slice(-6)}` : phone.phone_id}
+                        {phone.imei ? `IMEI ${phone.imei}` : phone.phone_id}
                       </span>
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        {(['disponible', 'reserve', 'vendu'] as string[]).includes(phone.status) && (
+                        {canEdit && (['disponible', 'reserve', 'vendu'] as string[]).includes(phone.status) && (
                           <RowAction title={isAr ? 'قرض / عربون' : 'Crédit / Avance'} tone="gold"
                             onClick={(e) => { e.stopPropagation(); setCreditPhone(phone) }}>
                             <CreditCard className="w-4 h-4" />
                           </RowAction>
                         )}
-                        <RowAction title={isAr ? 'تعديل' : 'Modifier'} onClick={(e) => { e.stopPropagation(); openEdit(phone) }}>
-                          <Edit2 className="w-4 h-4" />
-                        </RowAction>
+                        {canEdit && (
+                          <RowAction title={isAr ? 'تعديل' : 'Modifier'} onClick={(e) => { e.stopPropagation(); openEdit(phone) }}>
+                            <Edit2 className="w-4 h-4" />
+                          </RowAction>
+                        )}
                       </div>
                     </div>
                   </div>

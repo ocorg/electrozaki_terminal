@@ -7,7 +7,7 @@ import { parseLanding, landingStatus } from '@/lib/storefront/landing'
 // GET — promo pages with their results: visits, orders and sales from them.
 export async function GET() {
   try {
-    await requireUser()
+    await requireUser(MANAGERS)
     const db = site()
     const pages = await db.landingPage.findMany({
       orderBy: { createdAt: 'desc' },

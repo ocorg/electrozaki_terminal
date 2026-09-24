@@ -12,7 +12,7 @@ type Ctx = { params: { id: string } }
 // and a 5-minute link to the customer's receipt.
 export async function GET(_request: NextRequest, { params }: Ctx) {
   try {
-    await requireUser()
+    await requireUser(MANAGERS)
     const order = await site().orderRequest.findUnique({
       where:   { id: params.id },
       include: { items: { include: { product: { select: { slug: true, isPhone: true } } } }, promoCode: { select: { code: true } } },

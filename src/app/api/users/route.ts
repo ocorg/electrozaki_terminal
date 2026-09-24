@@ -14,9 +14,18 @@ const PUBLIC_FIELDS = {
 
 const ROLES: user_role[] = ['employe', 'gerant', 'proprietaire']
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const user = await requireUser()
+    // Staff get names only (e.g. the technician list in Réparations)
+    if (new URL(request.url).searchParams.get('mode') === 'names') {
+      const data = await prisma.user_profiles.findMany({
+        where:   { is_active: true },
+        select:  { id: true, display_name: true, is_active: true },
+        orderBy: { display_name: 'asc' },
+      })
+      return json({ data })
+    }
     if (!MANAGERS.includes(user.role)) throw new HttpError(403, 'Accès refusé')
     const data = await prisma.user_profiles.findMany({ select: PUBLIC_FIELDS, orderBy: { created_at: 'asc' } })
     return json({ data })

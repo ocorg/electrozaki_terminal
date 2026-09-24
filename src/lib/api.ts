@@ -41,11 +41,15 @@ export function json(data: unknown, init?: ResponseInit) {
 }
 
 // Session check from the signed JWT — no database round-trip. Good for reads.
-export async function requireUser(): Promise<AuthClaims> {
+// With `roles`: only those roles may read (e.g. MANAGERS for costs, suppliers…).
+export async function requireUser(roles?: UserRole[]): Promise<AuthClaims> {
   const session = await auth()
   if (!session?.user?.id) throw new HttpError(401, 'Non autorisé')
+  if (roles && !roles.includes(session.user.role)) throw new HttpError(403, 'Réservé aux gérants')
   return session.user
 }
+
+export const isManager = (role: UserRole | undefined | null) => !!role && MANAGERS.includes(role)
 
 // Re-checks the account in the database (deactivation / role change take
 // effect immediately). Use for writes.

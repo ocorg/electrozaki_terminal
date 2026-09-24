@@ -6,7 +6,7 @@ import { withNotify } from '@/lib/realtime'
 
 export async function GET(request: NextRequest) {
   try {
-    await requireUser()
+    await requireUser(MANAGERS)
     const { searchParams } = new URL(request.url)
     const store_id  = searchParams.get('store_id')
     const client_id = searchParams.get('client_id')
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
 
 async function POST_(request: NextRequest) {
   try {
-    const user = await requireActiveUser()
+    const user = await requireActiveUser(MANAGERS)
     const { client_id, montant, payment_method, store_id, txn_id, payment_ref, notes } = await request.json()
     if (!client_id) throw new HttpError(400, 'client_id requis')
     if (!(Number(montant) > 0)) throw new HttpError(400, 'Montant invalide')

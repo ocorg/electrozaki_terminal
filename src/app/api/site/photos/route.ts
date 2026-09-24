@@ -10,7 +10,7 @@ import { uploadSitePhoto, deleteSitePhoto } from '@/lib/storefront/storage'
 // none yet), so staff see at a glance what still needs a picture.
 export async function GET() {
   try {
-    await requireUser()
+    await requireUser(MANAGERS)
     const [{ phones }, photos] = await Promise.all([
       readErpStock(),
       site().modelPhoto.findMany({ select: { id: true, modelKey: true, color: true, url: true } }),

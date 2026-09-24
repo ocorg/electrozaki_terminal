@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import type { device_condition } from '@prisma/client'
 import { prisma } from '@/lib/db'
-import { json, handleError, requireActiveUser, HttpError } from '@/lib/api'
+import { json, handleError, requireActiveUser, HttpError, MANAGERS } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { withNotify } from '@/lib/realtime'
 
@@ -11,7 +11,7 @@ const CONDITION_FOR_ETAT: Record<string, device_condition> = { bon: 'occasion', 
 // POST /api/phone-credits/[id]/discharge
 async function POST_(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const user     = await requireActiveUser()
+    const user     = await requireActiveUser(MANAGERS)
     const creditId = params.id
     const body     = await req.json().catch(() => ({})) as Record<string, unknown>
     const storeId  = user.store_id ?? (body.store_id as string) ?? 'EZ-001'

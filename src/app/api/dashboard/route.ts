@@ -7,7 +7,7 @@ import { json, handleError, requireUser, dateOnly, HttpError, MANAGERS } from '@
 // (for profit figures) are only included for managers/owners.
 export async function GET(request: NextRequest) {
   try {
-    const user = await requireUser()
+    const user = await requireUser(MANAGERS)
     const { searchParams } = new URL(request.url)
     const store_id = searchParams.get('store_id')
     const start    = dateOnly(searchParams.get('start'))

@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
-import { json, handleError, requireUser, requireActiveUser, pickInput, columnsOf, HttpError, MANAGERS } from '@/lib/api'
+import { json, handleError, requireUser, requireActiveUser, pickInput, columnsOf, HttpError, MANAGERS, isManager } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { withNotify } from '@/lib/realtime'
 
@@ -9,7 +9,7 @@ const EDITABLE = columnsOf('laptops', ['laptop_id'])
 
 export async function GET(request: NextRequest) {
   try {
-    await requireUser()
+    const user = await requireUser()
     const { searchParams } = new URL(request.url)
     const status   = searchParams.get('status') as Prisma.laptopsWhereInput['status']
     const search   = searchParams.get('search')?.trim()
@@ -25,6 +25,8 @@ export async function GET(request: NextRequest) {
         ...(search   && { OR: ['serial', 'model', 'marque'].map(f => ({ [f]: { contains: search, mode: 'insensitive' } })) }),
       },
       orderBy: { created_at: 'desc' },
+      // Staff sell laptops at the POS but never see what they cost
+      ...(!isManager(user.role) && { omit: { prix_achat: true } }),
     })
     return json({ data })
   } catch (err) {
@@ -34,7 +36,7 @@ export async function GET(request: NextRequest) {
 
 async function POST_(request: NextRequest) {
   try {
-    const user = await requireActiveUser()
+    const user = await requireActiveUser(MANAGERS)
     const body = await request.json()
 
     const data = await prisma.laptops.create({
@@ -65,7 +67,7 @@ async function POST_(request: NextRequest) {
 
 async function PATCH_(request: NextRequest) {
   try {
-    const user = await requireActiveUser()
+    const user = await requireActiveUser(MANAGERS)
     const body = await request.json()
     const laptop_id = body.laptop_id as string | undefined
     if (!laptop_id) throw new HttpError(400, 'laptop_id requis')

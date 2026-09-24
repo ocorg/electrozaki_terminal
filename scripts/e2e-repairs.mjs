@@ -134,7 +134,7 @@ try {
   check('tracking: no customer name on the website', leak.length === 0)
 
   await web.query(`update "RepairTracking" set "quoteDecision" = 'ACCEPTED', "quoteDecidedAt" = now(), "decisionApplied" = false where ref = $1`, [hwId])
-  await employee.api('/api/site/counts')
+  await employee.api("/api/site/counts")
   const { rows: [afterOnline] } = await erp.query(`select statut, devis_accepte_le from reparations where rep_id = $1`, [hwId])
   const { rows: [applied] } = await web.query(`select "decisionApplied" from "RepairTracking" where ref = $1`, [hwId])
   check('online answer: accepted quote moves the ticket to en cours', afterOnline.statut === 'en_cours' && afterOnline.devis_accepte_le && applied.decisionApplied === true, { afterOnline, applied })
@@ -184,13 +184,13 @@ try {
   await web.query(`insert into "RepairRequest" (id, ref, kind, "customerName", "customerPhone", "deviceBrand", "deviceModel", "problemAreas", "preferredSlot", "updatedAt")
                    values ($1, 'DEM-' || upper(substr(md5($1), 1, 6)), 'SOFTWARE', 'E2E Client Réparation', $2, 'Apple', 'iPhone 11', '{donnees,compte_config}', 'après 18h', now())`, [reqId, PHONE.replace(/^0/, '+212 ')])
   cleanups.push(() => web.query(`delete from "RepairRequest" where id = $1`, [reqId]))
-  const conv = await employee.api(`/api/site/requests/${reqId}/convert`, { method: 'POST' })
+  const conv = await manager.api(`/api/site/requests/${reqId}/convert`, { method: 'POST' })
   if (conv.data?.rep_id) createdReps.push(conv.data.rep_id)
   const { rows: [convRow] } = conv.data?.rep_id
     ? await erp.query(`select type_reparation, problemes, client_id from reparations where rep_id = $1`, [conv.data.rep_id]) : { rows: [] }
   check('website request → software ticket with its problems', conv.status === 201 && convRow?.type_reparation === 'logiciel' && convRow?.problemes?.join() === 'donnees,compte_config', { conv, convRow })
   check('website request → reuses the client despite +212 formatting', convRow?.client_id === client.client_id, convRow)
-  const again = await employee.api(`/api/site/requests/${reqId}/convert`, { method: 'POST' })
+  const again = await manager.api(`/api/site/requests/${reqId}/convert`, { method: 'POST' })
   check('website request → second click gives the same ticket', again.data?.existing === true && again.data?.rep_id === conv.data?.rep_id, again.data)
 
   const req2 = `e2e${crypto.randomBytes(8).toString('hex')}`
@@ -204,7 +204,7 @@ try {
   const okR = await manager.api('/api/site/requests', { method: 'PATCH', body: { id: req2, status: 'CANCELLED', reason: 'Spam évident (test)' } })
   const { rows: [r2] } = await web.query(`select status, "cancelReason" from "RepairRequest" where id = $1`, [req2])
   check('website request cancel: manager with reason', okR.status === 200 && r2.status === 'CANCELLED' && r2.cancelReason === 'Spam évident (test)', r2)
-  const convCancelled = await employee.api(`/api/site/requests/${req2}/convert`, { method: 'POST' })
+  const convCancelled = await manager.api(`/api/site/requests/${req2}/convert`, { method: 'POST' })
   check('website request: a cancelled request can’t become a ticket (409)', convCancelled.status === 409, convCancelled)
 } catch (err) {
   check('script ran to the end', false, String(err?.stack ?? err))

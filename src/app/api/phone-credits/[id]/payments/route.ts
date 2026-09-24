@@ -1,14 +1,14 @@
 import { NextRequest } from 'next/server'
 import type { payment_method } from '@prisma/client'
 import { prisma } from '@/lib/db'
-import { json, handleError, requireActiveUser, dateOnly, todayDate, HttpError } from '@/lib/api'
+import { json, handleError, requireActiveUser, dateOnly, todayDate, HttpError, MANAGERS } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { withNotify } from '@/lib/realtime'
 
 // POST /api/phone-credits/[id]/payments
 async function POST_(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const user     = await requireActiveUser()
+    const user     = await requireActiveUser(MANAGERS)
     const creditId = params.id
     const body     = await req.json() as Record<string, unknown>
     const montant  = Number(body.montant)

@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/db'
-import { json, handleError, requireActiveUser, dateOnly, todayDate, HttpError } from '@/lib/api'
+import { json, handleError, requireActiveUser, dateOnly, todayDate, HttpError, MANAGERS } from '@/lib/api'
 import { withNotify } from '@/lib/realtime'
 
 // POST /api/documents/confirm-sale — confirmation from the mini-POS popup.
@@ -9,7 +9,7 @@ import { withNotify } from '@/lib/realtime'
 //   3. links ez_documents.txn_id to the new transaction
 async function POST_(request: Request) {
   try {
-    const user = await requireActiveUser()
+    const user = await requireActiveUser(MANAGERS)
     const store_id = user.store_id ?? 'EZ-001'
     const { doc_id, phone_id, facture_ref, prix_vente, payment_method, date_vente, warranty_start, warranty_expiry, client_id, notes } = await request.json()
 

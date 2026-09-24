@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
-import { json, handleError, requireUser, requireActiveUser, pickInput, todayDate, HttpError, MANAGERS } from '@/lib/api'
+import { json, handleError, requireUser, requireActiveUser, pickInput, todayDate, HttpError, MANAGERS, isManager } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { validateRequired, sanitizeText } from '@/lib/utils/validation'
 import { withNotify } from '@/lib/realtime'
@@ -70,6 +70,12 @@ async function POST_(request: NextRequest) {
   try {
     const user = await requireActiveUser()
     const body = await request.json() as Record<string, unknown>
+    // Staff may only add the phone a customer traded in at the POS (its
+    // value was part of the sale they just made); any other stock entry is
+    // a manager's job.
+    if (!isManager(user.role) && body.source !== 'echange') {
+      throw new HttpError(403, "Réservé aux gérants : l'ajout de téléphones au stock")
+    }
     validateRequired(body, ['marque', 'model', 'status'])
 
     const input = pickInput('phones', body, EDITABLE)
@@ -105,7 +111,7 @@ async function POST_(request: NextRequest) {
 
 async function PATCH_(request: NextRequest) {
   try {
-    const user = await requireActiveUser()
+    const user = await requireActiveUser(MANAGERS)
     const body = await request.json() as Record<string, unknown>
     const phone_id = body.phone_id as string | undefined
     if (!phone_id) throw new HttpError(400, 'phone_id requis')

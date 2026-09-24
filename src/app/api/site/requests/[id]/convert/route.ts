@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
-import { json, handleError, requireActiveUser, HttpError } from '@/lib/api'
+import { json, handleError, requireActiveUser, HttpError, MANAGERS } from '@/lib/api'
 import { withNotify } from '@/lib/realtime'
 import { logActivity } from '@/lib/utils/logger'
 import { site, orderRef, logSite } from '@/lib/storefront/access'
@@ -23,7 +23,7 @@ const phoneKey = (phone: string) => phone.replace(/\D/g, '').slice(-9)
 // client record when the phone number is already known.
 async function POST_(_request: NextRequest, { params }: Ctx) {
   try {
-    const user = await requireActiveUser()
+    const user = await requireActiveUser(MANAGERS)
     const req  = await site().repairRequest.findUnique({ where: { id: params.id } })
     if (!req) throw new HttpError(404, 'Demande introuvable')
     if (req.status === 'CANCELLED') throw new HttpError(409, 'Demande annulée')

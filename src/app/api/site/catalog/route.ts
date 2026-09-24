@@ -1,11 +1,11 @@
-import { json, handleError, requireUser } from '@/lib/api'
+import { json, handleError, requireUser, MANAGERS } from '@/lib/api'
 import { site } from '@/lib/storefront/access'
 
 // GET — every website product (synced and hand-made) with what staff need to
 // present it, plus the website's categories.
 export async function GET() {
   try {
-    await requireUser()
+    await requireUser(MANAGERS)
     const db = site()
     const [products, categories] = await Promise.all([
       db.product.findMany({

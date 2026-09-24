@@ -7,7 +7,7 @@ import { site, logSite } from '@/lib/storefront/access'
 
 export async function GET() {
   try {
-    await requireUser()
+    await requireUser(MANAGERS)
     const data = await site().promoCode.findMany({ orderBy: { createdAt: 'desc' } })
     return json({ data })
   } catch (err) {

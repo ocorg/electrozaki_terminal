@@ -9,7 +9,7 @@ const PAYMENT_TYPES: supplier_payment_type[] = ['reglement_a', 'avance_a', 'paie
 
 export async function GET(request: NextRequest) {
   try {
-    await requireUser()
+    await requireUser(MANAGERS)
     const { searchParams } = new URL(request.url)
     const supplier_id = searchParams.get('supplier_id')
     const store_id    = searchParams.get('store_id')

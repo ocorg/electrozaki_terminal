@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
-import { json, handleError, requireUser, requireActiveUser, requireFields, pickInput, columnsOf, HttpError, MANAGERS } from '@/lib/api'
+import { json, handleError, requireUser, requireActiveUser, requireFields, pickInput, columnsOf, HttpError, MANAGERS, isManager } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { withNotify } from '@/lib/realtime'
 
@@ -13,7 +13,7 @@ const stockLevel = (a: { quantite: number; seuil_alerte: number }) =>
 
 export async function GET(request: NextRequest) {
   try {
-    await requireUser()
+    const user = await requireUser()
     const { searchParams } = new URL(request.url)
     const store_id  = searchParams.get('store_id')
     const search    = searchParams.get('search')?.trim()
@@ -28,7 +28,12 @@ export async function GET(request: NextRequest) {
       ...(low_stock === 'true' && { quantite: { lte: prisma.accessories.fields.seuil_alerte } }),
       ...(search && { OR: ['nom', 'marque', 'barcode'].map(f => ({ [f]: { contains: search, mode: 'insensitive' } })) }),
     }
-    const rows = await prisma.accessories.findMany({ where, orderBy: { created_at: 'desc' } })
+    const rows = await prisma.accessories.findMany({
+      where,
+      orderBy: { created_at: 'desc' },
+      // Staff sell and look up stock, never see what it cost
+      ...(!isManager(user.role) && { omit: { prix_achat: true } }),
+    })
 
     const data = rows.map(a => ({ ...a, status_computed: stockLevel(a), is_low_stock: a.quantite <= a.seuil_alerte }))
     return json({ data })
@@ -39,7 +44,7 @@ export async function GET(request: NextRequest) {
 
 async function POST_(request: NextRequest) {
   try {
-    const user = await requireActiveUser()
+    const user = await requireActiveUser(MANAGERS)
     const body = await request.json()
     requireFields(body, ['nom', 'categorie'])
 
@@ -71,7 +76,7 @@ async function POST_(request: NextRequest) {
 
 async function PATCH_(request: NextRequest) {
   try {
-    const user = await requireActiveUser()
+    const user = await requireActiveUser(MANAGERS)
     const body = await request.json()
     const acc_id = body.acc_id as string | undefined
     if (!acc_id) throw new HttpError(400, 'acc_id requis')

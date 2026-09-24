@@ -17,7 +17,7 @@ async function setDeviceStatus(tx: Prisma.TransactionClient, type: device_type, 
 // ── GET — list deliveries ─────────────────────────────────────
 export async function GET(request: NextRequest) {
   try {
-    await requireUser()
+    await requireUser(MANAGERS)
     const { searchParams } = new URL(request.url)
     const store_id = searchParams.get('store_id')
     const statut   = searchParams.get('statut') as delivery_status | null

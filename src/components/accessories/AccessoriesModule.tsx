@@ -75,6 +75,8 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
   const isAr         = language === 'ar'
   const primary      = portal.primaryColor
   const canFinancials = user?.role === 'gerant' || user?.role === 'proprietaire'
+  // Staff consult the stock (read-only): adding, editing and stock changes are managers' (APIs enforce it)
+  const canEdit = canFinancials
 
   const [search, setSearch]           = useState('')
   const [filterCat, setFilterCat]     = useState('')
@@ -254,11 +256,13 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
                 className="p-2 rounded-xl border border-[#E8E5DE] bg-white text-[#6B6860] hover:bg-[#F8F7F4] transition-all">
                 <RefreshCw className={`w-4 h-4 ${manualRefresh ? 'animate-spin' : ''}`} />
               </button>
-              <Btn variant="primary" onClick={openAdd}
-                style={{ backgroundColor: primary } as React.CSSProperties}>
-                <Plus className="w-4 h-4" />
-                {t(isAr, 'common.add')}
-              </Btn>
+              {canEdit && (
+                <Btn variant="primary" onClick={openAdd}
+                  style={{ backgroundColor: primary } as React.CSSProperties}>
+                  <Plus className="w-4 h-4" />
+                  {t(isAr, 'common.add')}
+                </Btn>
+              )}
             </div>
           }
         />
@@ -352,7 +356,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
             <EmptyState
               icon={<Package className="w-7 h-7" />}
               title={isAr ? 'لا توجد إكسسوارات' : 'Aucun accessoire'}
-              action={
+              action={canEdit &&
                 <Btn variant="primary" onClick={openAdd}
                   style={{ backgroundColor: primary } as React.CSSProperties}>
                   <Plus className="w-4 h-4" />
@@ -387,23 +391,23 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
 
                   {/* Quantity adjuster */}
                   <div className="flex items-center gap-2">
-                    <button
+                    {canEdit && <button
                       onClick={() => adjustQty(acc, -1)}
                       disabled={acc.quantite === 0 || adjusting === acc.acc_id}
                       className="w-6 h-6 rounded-lg border border-[#E8E5DE] flex items-center justify-center text-[#6B6860] hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-all disabled:opacity-30"
                     >
                       <Minus className="w-3 h-3" />
-                    </button>
+                    </button>}
                     <span className={`text-sm font-bold w-6 text-center ${acc.is_low_stock ? 'text-red-500' : 'text-[#1A1A1A]'}`}>
                       {acc.quantite}
                     </span>
-                    <button
+                    {canEdit && <button
                       onClick={() => adjustQty(acc, 1)}
                       disabled={adjusting === acc.acc_id}
                       className="w-6 h-6 rounded-lg border border-[#E8E5DE] flex items-center justify-center text-[#6B6860] hover:bg-emerald-50 hover:text-emerald-500 hover:border-emerald-200 transition-all"
                     >
                       <Plus className="w-3 h-3" />
-                    </button>
+                    </button>}
                     {acc.is_low_stock && (
                       <AlertTriangle className="w-3.5 h-3.5 text-red-400" />
                     )}
@@ -435,9 +439,11 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
                     >
                       <Tag className="w-4 h-4" />
                     </RowAction>
-                    <RowAction title={isAr ? 'تعديل' : 'Modifier'} onClick={() => openEdit(acc)}>
-                      <Edit2 className="w-4 h-4" />
-                    </RowAction>
+                    {canEdit && (
+                      <RowAction title={isAr ? 'تعديل' : 'Modifier'} onClick={() => openEdit(acc)}>
+                        <Edit2 className="w-4 h-4" />
+                      </RowAction>
+                    )}
                     {canFinancials && (
                       <>
                         <RowActionDivider />
@@ -469,22 +475,28 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
                   </div>
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
-                      <button onClick={() => adjustQty(acc, -1)} disabled={acc.quantite === 0} aria-label={isAr ? 'إنقاص' : 'Retirer 1'}
-                        className="w-9 h-9 rounded-xl border border-[#E8E5DE] bg-white flex items-center justify-center disabled:opacity-40">
-                        <Minus className="w-4 h-4 text-[#6B6860]" />
-                      </button>
+                      {canEdit && (
+                        <button onClick={() => adjustQty(acc, -1)} disabled={acc.quantite === 0} aria-label={isAr ? 'إنقاص' : 'Retirer 1'}
+                          className="w-9 h-9 rounded-xl border border-[#E8E5DE] bg-white flex items-center justify-center disabled:opacity-40">
+                          <Minus className="w-4 h-4 text-[#6B6860]" />
+                        </button>
+                      )}
                       <span className={`text-base font-bold min-w-[2rem] text-center tabular-nums ${acc.is_low_stock ? 'text-red-500' : 'text-[#1A1A1A]'}`}>
                         {acc.quantite}
                       </span>
-                      <button onClick={() => adjustQty(acc, 1)} aria-label={isAr ? 'إضافة' : 'Ajouter 1'}
-                        className="w-9 h-9 rounded-xl border border-[#E8E5DE] bg-white flex items-center justify-center">
-                        <Plus className="w-4 h-4 text-[#6B6860]" />
-                      </button>
+                      {canEdit && (
+                        <button onClick={() => adjustQty(acc, 1)} aria-label={isAr ? 'إضافة' : 'Ajouter 1'}
+                          className="w-9 h-9 rounded-xl border border-[#E8E5DE] bg-white flex items-center justify-center">
+                          <Plus className="w-4 h-4 text-[#6B6860]" />
+                        </button>
+                      )}
                       <span className="text-xs text-[#8A877F]">{isAr ? 'في المخزون' : 'en stock'}</span>
                     </div>
-                    <RowAction title={isAr ? 'تعديل' : 'Modifier'} onClick={() => openEdit(acc)}>
-                      <Edit2 className="w-4 h-4" />
-                    </RowAction>
+                    {canEdit && (
+                      <RowAction title={isAr ? 'تعديل' : 'Modifier'} onClick={() => openEdit(acc)}>
+                        <Edit2 className="w-4 h-4" />
+                      </RowAction>
+                    )}
                   </div>
                 </div>
               ))}

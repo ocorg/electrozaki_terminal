@@ -1,6 +1,6 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
-import { json, handleError, requireUser, requireActiveUser, dateOnly, todayDate, HttpError } from '@/lib/api'
+import { json, handleError, requireUser, requireActiveUser, dateOnly, todayDate, HttpError, MANAGERS } from '@/lib/api'
 import { withNotify } from '@/lib/realtime'
 
 const TYPE_MAP: Record<string, { prefix: string; seq: string }> = {
@@ -16,7 +16,7 @@ const TYPE_MAP: Record<string, { prefix: string; seq: string }> = {
 // Mode 2 : filtered archive (type, search, from, to, limit)
 export async function GET(request: Request) {
   try {
-    await requireUser()
+    await requireUser(MANAGERS)
     const { searchParams } = new URL(request.url)
     const lookup_imei = searchParams.get('lookup_imei')
 
@@ -64,7 +64,7 @@ export async function GET(request: Request) {
 // txn_id stays null here — set later by /confirm-sale.
 async function POST_(request: Request) {
   try {
-    const user = await requireActiveUser()
+    const user = await requireActiveUser(MANAGERS)
     const body = await request.json()
     const { doc_type } = body
     if (!doc_type || !TYPE_MAP[doc_type]) throw new HttpError(400, 'doc_type invalide')

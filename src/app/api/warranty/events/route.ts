@@ -1,6 +1,6 @@
 import type { warranty_event_type } from '@prisma/client'
 import { prisma } from '@/lib/db'
-import { json, handleError, requireActiveUser, todayDate, HttpError } from '@/lib/api'
+import { json, handleError, requireActiveUser, todayDate, HttpError, MANAGERS } from '@/lib/api'
 import { withNotify } from '@/lib/realtime'
 
 // POST /api/warranty/events — records a SAV opening or closing on a sale.
@@ -8,7 +8,7 @@ import { withNotify } from '@/lib/realtime'
 // cloture_sav   → phone status vendu (back with the customer)
 async function POST_(request: Request) {
   try {
-    const user = await requireActiveUser()
+    const user = await requireActiveUser(MANAGERS)
     const store_id = user.store_id ?? 'EZ-001'
     const { txn_id, facture_ref, event_type, sav_doc_id, sav_ref, notes } = await request.json() as {
       txn_id?: string; facture_ref?: string; event_type?: warranty_event_type; sav_doc_id?: string; sav_ref?: string; notes?: string

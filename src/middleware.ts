@@ -16,6 +16,10 @@ const PORTAL_STORE_MAP: Record<string, string> = { '/ez': 'EZ-001' }
 
 const SESSION_COOKIES = ['authjs.session-token', '__Secure-authjs.session-token']
 
+// Screens an employee may open inside a store portal (owner's decision,
+// 2026-09-25). Everything else is for managers — the APIs refuse it too.
+const STAFF_PAGES = ['/dashboard', '/pos', '/caisse', '/stock/phones', '/stock/accessories', '/repairs', '/clients']
+
 // Auth.js's own endpoints must work while signed out. verify-override lives
 // under the same prefix but has no session check of its own, so it stays gated.
 function isAuthJsRoute(pathname: string) {
@@ -73,6 +77,15 @@ export default auth(async (request) => {
 
     if (pathname.startsWith('/bzg') && !['gerant', 'proprietaire'].includes(user.role)) {
       return NextResponse.redirect(new URL('/select-store', request.url))
+    }
+
+    // Employees: only their screens; any other page (typed or bookmarked) → POS
+    if (!['gerant', 'proprietaire'].includes(user.role)) {
+      const portal = Object.keys(PORTAL_STORE_MAP).find(p => pathname === p || pathname.startsWith(`${p}/`))
+      const rest   = portal ? pathname.slice(portal.length) : ''
+      if (portal && rest && rest !== '/' && !STAFF_PAGES.some(page => rest === page || rest.startsWith(`${page}/`))) {
+        return NextResponse.redirect(new URL(`${portal}/pos`, request.url))
+      }
     }
 
     // Store is_active guard — /bzg is always exempt

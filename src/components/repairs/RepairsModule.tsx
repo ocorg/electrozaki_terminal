@@ -199,7 +199,7 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
   const primary      = portal.primaryColor
   const canEdit      = user?.role !== undefined
 
-  const usersQ    = useApi<{ id: string; display_name: string; is_active: boolean }[]>('/api/users')
+  const usersQ    = useApi<{ id: string; display_name: string; is_active: boolean }[]>('/api/users?mode=names')
   const staffList = useMemo(() => (usersQ.data ?? []).filter(u => u.is_active), [usersQ.data])
 
   const [search, setSearch]         = useState('')

@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { Prisma, type credit_status, type payment_method, type reprise_etat } from '@prisma/client'
 import { prisma } from '@/lib/db'
-import { json, handleError, requireUser, requireActiveUser, todayDate, HttpError } from '@/lib/api'
+import { json, handleError, requireUser, requireActiveUser, todayDate, HttpError, MANAGERS } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { withNotify } from '@/lib/realtime'
 
@@ -14,7 +14,7 @@ import { withNotify } from '@/lib/realtime'
 // ─────────────────────────────────────────────
 export async function GET(req: NextRequest) {
   try {
-    await requireUser()
+    await requireUser(MANAGERS)
     const { searchParams } = new URL(req.url)
     const phoneId = searchParams.get('phone_id')
     const storeId = searchParams.get('store_id')
@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
 // ─────────────────────────────────────────────
 async function POST_(req: NextRequest) {
   try {
-    const user = await requireActiveUser()
+    const user = await requireActiveUser(MANAGERS)
     const body = await req.json() as Record<string, unknown>
 
     const phone_id        = body.phone_id    as string

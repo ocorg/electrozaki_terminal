@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
-import { json, handleError, requireActiveUser, HttpError } from '@/lib/api'
+import { json, handleError, requireActiveUser, HttpError, MANAGERS } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { withNotify } from '@/lib/realtime'
 
@@ -8,7 +8,7 @@ import { withNotify } from '@/lib/realtime'
 // Marks the trade-in phone as physically received. No stock entry — that happens at discharge.
 async function POST_(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const user     = await requireActiveUser()
+    const user     = await requireActiveUser(MANAGERS)
     const body     = await req.json().catch(() => ({})) as Record<string, unknown>
     const creditId = params.id
     const storeId  = user.store_id ?? (body.store_id as string) ?? 'EZ-001'

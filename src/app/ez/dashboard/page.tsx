@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import AttendanceWidget from '@/components/attendance/AttendanceWidget'
+import StaffHome from '@/components/dashboard/StaffHome'
 import { STORE_TIME_ZONE } from '@/lib/time'
 
 // ─── Types ────────────────────────────────────────────────────
@@ -172,7 +173,7 @@ export default function EZDashboard() {
   // credits or expenses change. One round trip: the server runs every query in parallel.
   const { start: pStart, end: pEnd } = periodDates(period)
   const dashQ = useApi<Record<string, unknown>, Record<string, unknown>>(
-    user ? `/api/dashboard?store_id=${STORE_ID}&start=${pStart}&end=${pEnd}` : null,
+    user && canFin ? `/api/dashboard?store_id=${STORE_ID}&start=${pStart}&end=${pEnd}` : null,
     { select: json => json },
   )
   const loading = !dashQ.data && !dashQ.error
@@ -338,6 +339,9 @@ export default function EZDashboard() {
     { key: 'net',   label: isAr ? 'الربح الصافي'    : 'Bén. net',   color: '#3B82F6', show: showNet,   set: setShowNet   },
     { key: 'count', label: isAr ? 'عدد المبيعات'    : 'Nb. ventes', color: '#8B5CF6', show: showCount, set: setShowCount },
   ]
+
+  // Employees: clock in/out and shortcuts to their screens — no figures
+  if (user && !canFin) return <StaffHome storeId={STORE_ID} portalBase="/ez" name={user.display_name} isAr={isAr} />
 
   // ─── Render ────────────────────────────────────────────────
   return (

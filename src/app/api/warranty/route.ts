@@ -1,11 +1,11 @@
 import { prisma } from '@/lib/db'
-import { json, handleError, requireUser, HttpError } from '@/lib/api'
+import { json, handleError, requireUser, HttpError, MANAGERS } from '@/lib/api'
 
 // GET /api/warranty — full warranty status of a sale.
 // Params (at least one): ?txn_id= | ?facture_ref= | ?imei=
 export async function GET(request: Request) {
   try {
-    await requireUser()
+    await requireUser(MANAGERS)
     const { searchParams } = new URL(request.url)
     const txn_id      = searchParams.get('txn_id')
     const facture_ref = searchParams.get('facture_ref')

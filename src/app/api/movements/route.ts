@@ -8,7 +8,7 @@ import { withNotify } from '@/lib/realtime'
 
 export async function GET(request: NextRequest) {
   try {
-    await requireUser()
+    await requireUser(MANAGERS)
     const { searchParams } = new URL(request.url)
     const store_id    = searchParams.get('store_id')
     const device_type = searchParams.get('device_type') as device_type | null

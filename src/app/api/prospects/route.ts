@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import type { Prisma, prospect_demand, prospect_source, prospect_status } from '@prisma/client'
 import { prisma } from '@/lib/db'
-import { json, handleError, requireUser, requireActiveUser, pickInput, columnsOf, HttpError } from '@/lib/api'
+import { json, handleError, requireUser, requireActiveUser, pickInput, columnsOf, HttpError, MANAGERS } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { withNotify } from '@/lib/realtime'
 
@@ -9,7 +9,7 @@ const EDITABLE = columnsOf('prospects', ['prospect_id'])
 
 export async function GET(request: NextRequest) {
   try {
-    await requireUser()
+    await requireUser(MANAGERS)
     const { searchParams } = new URL(request.url)
     const store_id    = searchParams.get('store_id')
     const statut      = searchParams.get('statut') as prospect_status | null
@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
 
 async function POST_(request: NextRequest) {
   try {
-    const user = await requireActiveUser()
+    const user = await requireActiveUser(MANAGERS)
     const body = await request.json()
 
     const data = await prisma.prospects.create({
@@ -67,7 +67,7 @@ async function POST_(request: NextRequest) {
 
 async function PATCH_(request: NextRequest) {
   try {
-    const user = await requireActiveUser()
+    const user = await requireActiveUser(MANAGERS)
     const body = await request.json()
     const prospect_id = body.prospect_id as string | undefined
     if (!prospect_id) throw new HttpError(400, 'prospect_id requis')
@@ -98,7 +98,7 @@ async function PATCH_(request: NextRequest) {
 
 async function DELETE_(request: NextRequest) {
   try {
-    const user = await requireActiveUser()
+    const user = await requireActiveUser(MANAGERS)
     const prospect_id = new URL(request.url).searchParams.get('prospect_id')
     if (!prospect_id) throw new HttpError(400, 'prospect_id requis')
 

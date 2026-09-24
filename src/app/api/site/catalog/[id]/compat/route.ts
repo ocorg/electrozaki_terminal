@@ -15,7 +15,7 @@ async function phoneFor(id: string) {
 // GET — the accessories that fit this phone, and which are free-gift choices.
 export async function GET(_request: NextRequest, { params }: Ctx) {
   try {
-    await requireUser()
+    await requireUser(MANAGERS)
     const phone = await phoneFor(params.id)
     const links = await site().productCompatibility.findMany({
       where:  { compatibleWithId: phone.id },

@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
-import { json, handleError, requireActiveUser, HttpError } from '@/lib/api'
+import { json, handleError, requireActiveUser, HttpError, MANAGERS } from '@/lib/api'
 import { withNotify } from '@/lib/realtime'
 import { logActivity } from '@/lib/utils/logger'
 import { site, orderRef, phonesForRef } from '@/lib/storefront/access'
@@ -13,7 +13,7 @@ type Ctx = { params: { id: string } }
 // the website and the POS won't sell it) — all of them or none.
 async function POST_(_request: NextRequest, { params }: Ctx) {
   try {
-    const user  = await requireActiveUser()
+    const user  = await requireActiveUser(MANAGERS)
     const order = await site().orderRequest.findUnique({
       where:   { id: params.id },
       include: { items: { include: { product: { select: { isPhone: true } } } } },

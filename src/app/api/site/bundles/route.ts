@@ -8,7 +8,7 @@ import { slugify } from '@/lib/storefront/listing'
 
 export async function GET() {
   try {
-    await requireUser()
+    await requireUser(MANAGERS)
     const data = await site().bundle.findMany({
       orderBy: { createdAt: 'desc' },
       include: { items: { include: { product: { select: { id: true, name: true, recommendedSalePrice: true, published: true, availability: true } } } } },

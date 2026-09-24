@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
-import { json, handleError, requireUser, requireActiveUser, HttpError } from '@/lib/api'
+import { json, handleError, requireUser, requireActiveUser, HttpError, MANAGERS } from '@/lib/api'
 import { withNotify } from '@/lib/realtime'
 
 export async function GET() {
@@ -15,7 +15,7 @@ export async function GET() {
 
 async function POST_(request: NextRequest) {
   try {
-    await requireActiveUser()
+    await requireActiveUser(MANAGERS)
     const body = await request.json()
     if (!body.marque || !body.model || !body.couleur) throw new HttpError(400, 'marque, model et couleur obligatoires')
 
@@ -30,7 +30,7 @@ async function POST_(request: NextRequest) {
 
 async function DELETE_(request: NextRequest) {
   try {
-    await requireActiveUser()
+    await requireActiveUser(MANAGERS)
     const { catalog_id } = await request.json()
     if (!catalog_id) throw new HttpError(400, 'catalog_id requis')
     await prisma.phone_catalog.delete({ where: { catalog_id } })
@@ -42,7 +42,7 @@ async function DELETE_(request: NextRequest) {
 
 async function PATCH_(request: NextRequest) {
   try {
-    await requireActiveUser()
+    await requireActiveUser(MANAGERS)
     const { catalog_id, marque, serie, type, model, couleur } = await request.json()
     if (!catalog_id) throw new HttpError(400, 'catalog_id requis')
     if (!marque || !model || !couleur) throw new HttpError(400, 'marque, model, couleur obligatoires')

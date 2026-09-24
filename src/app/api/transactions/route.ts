@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
-import { json, handleError, requireUser, requireActiveUser, requireFields, dateOnly, todayDate, HttpError } from '@/lib/api'
+import { json, handleError, requireUser, requireActiveUser, requireFields, dateOnly, todayDate, HttpError, isManager } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { codeLabel } from '@/lib/codes'
 import { computeStatutPaiement } from '@/lib/utils'
@@ -10,9 +10,11 @@ import { deviceLabels } from '@/lib/device-labels'
 
 export async function GET(request: NextRequest) {
   try {
-    await requireUser()
+    const user = await requireUser()
     const { searchParams } = new URL(request.url)
     const client_id      = searchParams.get('client_id')
+    // Staff see a client's own purchases (Clients screen), not the shop's sales list
+    if (!isManager(user.role) && !client_id) throw new HttpError(403, 'Réservé aux gérants')
     const store_id       = searchParams.get('store_id')
     const limit          = Math.min(Number(searchParams.get('limit') || 50), 1000)
     const date_from      = searchParams.get('date_from')

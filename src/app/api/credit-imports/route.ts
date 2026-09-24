@@ -1,12 +1,12 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
-import { json, handleError, requireUser, requireActiveUser, dateOnly, HttpError } from '@/lib/api'
+import { json, handleError, requireUser, requireActiveUser, dateOnly, HttpError, MANAGERS } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { withNotify } from '@/lib/realtime'
 
 export async function GET(request: NextRequest) {
   try {
-    await requireUser()
+    await requireUser(MANAGERS)
     const store_id = new URL(request.url).searchParams.get('store_id')
     const data = await prisma.credit_imports.findMany({
       where:   { ...(store_id && { store_id }) },

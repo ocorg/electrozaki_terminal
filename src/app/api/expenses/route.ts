@@ -6,7 +6,7 @@ import { withNotify } from '@/lib/realtime'
 
 export async function GET(request: NextRequest) {
   try {
-    await requireUser()
+    await requireUser(MANAGERS)
     const { searchParams } = new URL(request.url)
     const store_id  = searchParams.get('store_id')
     const date_from = searchParams.get('date_from')
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
 
 async function POST_(request: NextRequest) {
   try {
-    const user = await requireActiveUser()
+    const user = await requireActiveUser(MANAGERS)
     const body = await request.json()
     requireFields(body, ['montant', 'categorie'])
     const montant = Number(body.montant)

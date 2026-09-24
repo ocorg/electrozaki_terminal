@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { json, handleError, requireUser } from '@/lib/api'
+import { json, handleError, requireUser, MANAGERS } from '@/lib/api'
 import { site, orderRef } from '@/lib/storefront/access'
 
 const STATUSES = ['NEW', 'CONTACTED', 'CONFIRMED', 'CANCELLED'] as const
@@ -7,7 +7,7 @@ const STATUSES = ['NEW', 'CONTACTED', 'CONFIRMED', 'CANCELLED'] as const
 // GET ?status= — online orders, newest first (all staff).
 export async function GET(request: NextRequest) {
   try {
-    await requireUser()
+    await requireUser(MANAGERS)
     const status = request.nextUrl.searchParams.get('status')
     const orders = await site().orderRequest.findMany({
       where:   status && (STATUSES as readonly string[]).includes(status) ? { status: status as (typeof STATUSES)[number] } : undefined,

@@ -8,7 +8,7 @@ import { site, logSite, orderRef } from '@/lib/storefront/access'
 
 export async function GET() {
   try {
-    await requireUser()
+    await requireUser(MANAGERS)
     const [repairs, messages] = await Promise.all([
       site().repairRequest.findMany({ orderBy: { createdAt: 'desc' }, take: 300 }),
       site().contactMessage.findMany({ orderBy: { createdAt: 'desc' }, take: 300 }),
