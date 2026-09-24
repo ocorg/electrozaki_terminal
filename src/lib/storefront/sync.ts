@@ -84,7 +84,7 @@ async function reconcile(tx: Tx, phones: PhoneListing[], accessories: AccessoryL
   const products = await tx.product.findMany({
     select: {
       id: true, slug: true, source: true, erpKey: true, modelKey: true, isPhone: true, name: true, condition: true,
-      brand: true, recommendedSalePrice: true, availability: true, tags: true, specs: true,
+      brand: true, recommendedSalePrice: true, compareAtPrice: true, availability: true, tags: true, specs: true,
     },
   })
   const categories = await tx.category.findMany({ select: { id: true, slug: true, erpCode: true } })
@@ -93,7 +93,7 @@ async function reconcile(tx: Tx, phones: PhoneListing[], accessories: AccessoryL
     where:  { product: { source: 'ERP', isPhone: true } },
     select: {
       id: true, productId: true, erpRef: true, name: true, color: true, storageLabel: true, priceOverride: true,
-      stockQuantity: true, imageUrl: true, batteryHealthPercent: true, screenGenuine: true, batteryGenuine: true,
+      compareAtPrice: true, stockQuantity: true, imageUrl: true, batteryHealthPercent: true, screenGenuine: true, batteryGenuine: true,
       cameraGenuine: true, chargingPortGenuine: true, speakerGenuine: true, hasDefects: true, transparencyNotes: true,
     },
   })
@@ -169,14 +169,14 @@ async function reconcile(tx: Tx, phones: PhoneListing[], accessories: AccessoryL
     wanted.add(l.erpKey)
     const core = {
       name: l.name, modelKey: l.modelKey, brand: l.brand, condition: l.grade, recommendedSalePrice: l.price,
-      availability: 'IN_STOCK' as const, tags: l.tags, specs: l.specs,
+      compareAtPrice: l.compareAtPrice, availability: 'IN_STOCK' as const, tags: l.tags, specs: l.specs,
     }
     let product = byKey.get(l.erpKey)
     let productId: string
     if (!product) {
       productId = newId()
       productCreates.push({
-        id: productId, ...core, isPhone: true, compareAtPrice: null, slug: claimSlug(l.slugBase),
+        id: productId, ...core, isPhone: true, slug: claimSlug(l.slugBase),
         categoryId: phoneCategory, source: 'ERP', erpKey: l.erpKey, published: true,
       })
       stats.created++
@@ -190,7 +190,7 @@ async function reconcile(tx: Tx, phones: PhoneListing[], accessories: AccessoryL
       product = undefined
     } else {
       productId = product.id
-      if (differs({ ...product, recommendedSalePrice: num(product.recommendedSalePrice) }, core)) {
+      if (differs({ ...product, recommendedSalePrice: num(product.recommendedSalePrice), compareAtPrice: num(product.compareAtPrice) }, core)) {
         productUpdates.push({ id: productId, data: core }) // category only set on creation: staff may move it
         stats.updated++
       }
@@ -198,7 +198,8 @@ async function reconcile(tx: Tx, phones: PhoneListing[], accessories: AccessoryL
 
     for (const v of l.variants) {
       const data = {
-        name: v.name, color: v.color, storageLabel: v.storageLabel, priceOverride: v.price, stockQuantity: v.stockQuantity,
+        name: v.name, color: v.color, storageLabel: v.storageLabel, priceOverride: v.price, compareAtPrice: v.compareAtPrice,
+        stockQuantity: v.stockQuantity,
         imageUrl: photoFor(l.modelKey, v.photoColor), batteryHealthPercent: v.batteryHealthPercent,
         screenGenuine: v.screenGenuine, batteryGenuine: v.batteryGenuine, cameraGenuine: v.cameraGenuine,
         chargingPortGenuine: v.chargingPortGenuine, speakerGenuine: v.speakerGenuine,
@@ -210,7 +211,7 @@ async function reconcile(tx: Tx, phones: PhoneListing[], accessories: AccessoryL
       } else {
         keptVariants.add(had.id)
         // A unit can move between groups (e.g. a part got replaced): move it.
-        if (had.productId !== productId || differs({ ...had, priceOverride: num(had.priceOverride) }, data)) {
+        if (had.productId !== productId || differs({ ...had, priceOverride: num(had.priceOverride), compareAtPrice: num(had.compareAtPrice) }, data)) {
           variantUpdates.push({ id: had.id, data: { ...data, productId } })
         }
       }

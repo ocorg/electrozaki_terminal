@@ -1,10 +1,13 @@
 'use client'
 import { useState } from 'react'
-import { Tag, Package, Plus, Pencil, Trash2 } from 'lucide-react'
+import { Tag, Package, Plus, Pencil, Trash2, Smartphone } from 'lucide-react'
 import { useApi, apiWrite } from '@/lib/data/api'
 import { Modal, Btn, PageHeader, EmptyState, SkeletonRow, Field, inputClass, selectClass, Select } from '@/components/shared'
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import { useSiteLang, Tabs, Chip, mad } from './common'
+import { computePromoPrice } from '@/lib/utils'
+import { codeLabel } from '@/lib/codes'
+import type { Phone } from '@/types/database'
 
 interface Promo {
   id: string; code: string; type: 'PERCENTAGE' | 'FIXED_AMOUNT'; value: number; active: boolean
@@ -16,28 +19,90 @@ interface Bundle {
 }
 interface CatalogProduct { id: string; name: string; isPhone: boolean; published: boolean; availability: string; recommendedSalePrice: number }
 
-type Tab = 'promos' | 'bundles'
+type Tab = 'phones' | 'promos' | 'bundles'
+
+// Phones with a promo set on their own sheet (Téléphones → Modifier). Same
+// list the website shows struck-through prices for.
+const PROMO_PHONES = '/api/phones?status=disponible&promo=1&limit=500'
 
 export default function SitePromosModule() {
   const { L, isAr, isManager } = useSiteLang()
-  const [tab, setTab] = useState<Tab>('promos')
+  const [tab, setTab] = useState<Tab>('phones')
+  const promoPhones = useApi<Phone[]>(PROMO_PHONES).data
   return (
     <div className="flex flex-col h-full overflow-hidden animate-fade-in" dir={isAr ? 'rtl' : 'ltr'}>
       <div className="flex-shrink-0 px-6 pt-6 pb-4 space-y-4">
-        <PageHeader title={L('Promos & packs', 'العروض والباقات')} subtitle={L('Codes promo et packs proposés sur le site', 'رموز التخفيض والباقات في الموقع')} />
+        <PageHeader title={L('Promos & packs', 'العروض والباقات')} subtitle={L('Téléphones en promo, codes promo et packs proposés sur le site', 'الهواتف المخفضة، رموز التخفيض والباقات في الموقع')} />
         <Tabs<Tab> value={tab} onChange={setTab} tabs={[
+          { key: 'phones',  label: L('Téléphones en promo', 'هواتف مخفضة'), count: promoPhones?.length },
           { key: 'promos',  label: L('Codes promo', 'رموز التخفيض') },
           { key: 'bundles', label: L('Packs', 'الباقات') },
         ]} />
       </div>
       <div className="flex-1 overflow-y-auto px-6 pb-6">
-        {tab === 'promos' ? <PromosTab isManager={isManager} /> : <BundlesTab isManager={isManager} />}
+        {tab === 'phones' ? <PromoPhonesTab /> : tab === 'promos' ? <PromosTab isManager={isManager} /> : <BundlesTab isManager={isManager} />}
       </div>
     </div>
   )
 }
 
 const day = (iso: string | null) => (iso ? iso.slice(0, 10) : '')
+
+function PromoPhonesTab() {
+  const { L, isAr } = useSiteLang()
+  const q = useApi<Phone[]>(PROMO_PHONES)
+  if (q.isLoading) return <SkeletonRow />
+  const phones = [...(q.data ?? [])].sort((a, b) => `${a.marque} ${a.model}`.localeCompare(`${b.marque} ${b.model}`))
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-ez-subtle">
+        {L(
+          'La promo se règle sur la fiche du téléphone (Téléphones → Modifier → Promo). Le site affiche l’ancien prix barré et la réduction.',
+          'يتم ضبط التخفيض من بطاقة الهاتف (الهواتف ← تعديل ← تخفيض). يعرض الموقع السعر القديم مشطوبًا.',
+        )}
+      </p>
+      {phones.length === 0 ? <EmptyState icon={<Smartphone className="w-6 h-6" />} title={L('Aucun téléphone en promo', 'لا توجد هواتف مخفضة')} /> : (
+        <div className="bg-white border border-ez-border rounded-2xl overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-[11px] uppercase tracking-wide text-ez-subtle border-b border-ez-border">
+                <th className="px-3 py-2">{L('Téléphone', 'الهاتف')}</th>
+                <th className="px-3 py-2">{L('État', 'الحالة')}</th>
+                <th className="px-3 py-2 text-right">{L('Prix normal', 'السعر العادي')}</th>
+                <th className="px-3 py-2 text-right">{L('Réduction', 'التخفيض')}</th>
+                <th className="px-3 py-2 text-right">{L('Prix promo', 'سعر التخفيض')}</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-ez-border">
+              {phones.map(ph => {
+                const base  = Number(ph.prix_vente_recommande ?? 0)
+                const final = computePromoPrice(base, ph.promo_type, Number(ph.promo_montant ?? 0))
+                return (
+                  <tr key={ph.phone_id}>
+                    <td className="px-3 py-2">
+                      <p className="font-semibold text-ez-text">{[ph.marque, ph.model, ph.stockage].filter(Boolean).join(' ')}</p>
+                      <p className="text-[11px] text-ez-subtle">
+                        <span className="font-mono">{ph.phone_id}</span>
+                        {ph.couleur ? ` · ${ph.couleur}` : ''}
+                        {ph.battery_level != null ? ` · ${ph.battery_level} %` : ''}
+                      </p>
+                    </td>
+                    <td className="px-3 py-2 text-xs">{codeLabel('device_condition', ph.condition, isAr ? 'ar' : 'fr')}</td>
+                    <td className="px-3 py-2 text-right text-ez-subtle line-through tabular-nums">{mad(base)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">
+                      <Chip tone="red">{ph.promo_type === 'pourcentage' ? `−${ph.promo_montant}%` : `−${mad(Number(ph.promo_montant))}`}</Chip>
+                    </td>
+                    <td className="px-3 py-2 text-right font-bold tabular-nums">{mad(final === null ? base : Math.round(final))}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
 
 function PromosTab({ isManager }: { isManager: boolean }) {
   const { L } = useSiteLang()

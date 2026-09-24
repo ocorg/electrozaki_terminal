@@ -200,6 +200,14 @@ export function unitPrice(p: Pick<ErpPhone, 'prix_vente_recommande' | 'promo_typ
   return price > 0 ? price : base
 }
 
+/** The price before the phone's promo, when the promo actually lowers it (else null). */
+export function wasPrice(p: Pick<ErpPhone, 'prix_vente_recommande' | 'promo_type' | 'promo_montant'>): number | null {
+  const price = unitPrice(p)
+  if (price === null) return null
+  const base = Number(p.prix_vente_recommande)
+  return base > price ? base : null
+}
+
 // ── Listings ─────────────────────────────────────────────────────────────
 
 export interface VariantListing {
@@ -208,6 +216,8 @@ export interface VariantListing {
   color: string | null
   storageLabel: string | null
   price: number
+  /** price before the ERP promo, null = no promo */
+  compareAtPrice: number | null
   stockQuantity: number
   photoColor: string | null
   batteryHealthPercent: number | null
@@ -234,13 +244,15 @@ export interface PhoneListing {
   tags: string[]
   specs: Record<string, string>
   price: number
+  /** the cheapest unit's price before its promo, null = no promo */
+  compareAtPrice: number | null
   colors: string[]
   variants: VariantListing[]
 }
 
 /** Groups sellable phones into one listing per model + storage + grade. */
 export function buildPhoneListings(phones: ErpPhone[]): PhoneListing[] {
-  const groups = new Map<string, { phones: (ErpPhone & { price: number })[]; grade: Grade; storage: string | null }>()
+  const groups = new Map<string, { phones: (ErpPhone & { price: number; was: number | null })[]; grade: Grade; storage: string | null }>()
   for (const phone of phones) {
     const price = unitPrice(phone)
     if (price === null) continue
@@ -248,7 +260,7 @@ export function buildPhoneListings(phones: ErpPhone[]): PhoneListing[] {
     const storage = storageLabel(phone.stockage)
     const key     = `${modelKey(phone)}|${storage ?? ''}|${grade}`
     const group   = groups.get(key) ?? { phones: [], grade, storage }
-    group.phones.push({ ...phone, price })
+    group.phones.push({ ...phone, price, was: wasPrice(phone) })
     groups.set(key, group)
   }
 
@@ -262,7 +274,7 @@ export function buildPhoneListings(phones: ErpPhone[]): PhoneListing[] {
       // New phones of one colour and price are interchangeable: one swatch.
       const byColor = new Map<string, typeof units>()
       for (const u of units) {
-        const k = `${clean(u.couleur)}|${u.price}`
+        const k = `${clean(u.couleur)}|${u.price}${u.was ? `|${u.was}` : ''}`
         byColor.set(k, [...(byColor.get(k) ?? []), u])
       }
       const colorsWithSeveralPrices = new Set(
@@ -277,6 +289,7 @@ export function buildPhoneListings(phones: ErpPhone[]): PhoneListing[] {
           color:                color && colorsWithSeveralPrices.has(color) ? `${color} (${same[0].price} DH)` : color,
           storageLabel:         null,
           price:                same[0].price,
+          compareAtPrice:       same[0].was,
           stockQuantity:        same.length,
           photoColor:           color,
           batteryHealthPercent: null,
@@ -302,6 +315,7 @@ export function buildPhoneListings(phones: ErpPhone[]): PhoneListing[] {
           color,         // the website filters units by colour, then battery (unit picker)
           storageLabel:  null,
           price:         u.price,
+          compareAtPrice: u.was,
           stockQuantity: 1,
           photoColor:    color,
           ...cond,
@@ -318,6 +332,11 @@ export function buildPhoneListings(phones: ErpPhone[]): PhoneListing[] {
     if (ram)     specs['RAM'] = ram
     specs['État'] = GRADE_LABEL[grade]
 
+    // Card price = cheapest unit; its promo (if any) is the card's promo.
+    const price    = Math.min(...variants.map(v => v.price))
+    const cheapest = variants.filter(v => v.price === price)
+    const was      = Math.max(0, ...cheapest.map(v => v.compareAtPrice ?? 0))
+
     listings.push({
       erpKey:   refOf('tel-group', key),
       modelKey:  modelKey(first),
@@ -329,7 +348,8 @@ export function buildPhoneListings(phones: ErpPhone[]): PhoneListing[] {
       storage,
       tags:     Array.from(new Set([norm(brand), norm(first.serie), norm(name), (storage ?? '').toLowerCase()].filter(Boolean))),
       specs,
-      price:    Math.min(...variants.map(v => v.price)),
+      price,
+      compareAtPrice: was > price ? was : null,
       colors:   Array.from(new Set(units.map(u => clean(u.couleur)).filter(Boolean))),
       variants,
     })

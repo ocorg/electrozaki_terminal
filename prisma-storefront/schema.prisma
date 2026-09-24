@@ -224,6 +224,9 @@ model ProductVariant {
   product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   name          String // e.g. "256GB — Bleu"
   priceOverride Decimal? @db.Decimal(10, 2) // null = use Product.recommendedSalePrice
+  // "Was" price of this unit when the ERP has a promo on it (struck through
+  // next to priceOverride). Null = no promo.
+  compareAtPrice Decimal? @db.Decimal(10, 2)
   skuOrRef      String?
   // Opaque reference of the ERP unit(s) this variant mirrors (HMAC of the
   // ERP id — never the id or IMEI itself). Lets staff find the exact phone
