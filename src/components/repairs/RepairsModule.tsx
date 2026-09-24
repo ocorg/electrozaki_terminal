@@ -425,14 +425,17 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
 
   const activeCount = repairs.filter(r => r.statut !== 'recupere').length
 
+  // Phone: one column at a time, chosen from tabs (the board scrolls sideways otherwise)
+  const [mobileCol, setMobileCol] = useState<RepairStatus>(COLUMNS[0].status)
+
   return (
     <div className="flex flex-col h-full overflow-hidden animate-fade-in" dir={isAr ? 'rtl' : 'ltr'}>
 
       {/* ── Header ──────────────────────────────────────── */}
-      <div className="flex-shrink-0 px-6 pt-6 pb-4 space-y-4">
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="font-display text-3xl font-bold text-[#1A1A1A] tracking-wide">
+      <div className="flex-shrink-0 px-4 sm:px-6 pt-4 sm:pt-6 pb-4 space-y-4">
+        <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
+          <div className="min-w-0">
+            <h1 className="font-display text-2xl sm:text-3xl font-bold text-[#1A1A1A] tracking-wide">
               {t(isAr, 'common.repairs')}
             </h1>
             <p className="text-[#6B6860] text-sm mt-0.5">
@@ -480,8 +483,27 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
         </div>
       </div>
 
+      {/* ── Phone: status tabs ──────────────────────────── */}
+      {!loading && (
+        <div className="lg:hidden flex-shrink-0 px-4 pb-3">
+          <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+            {COLUMNS.map(col => {
+              const on = mobileCol === col.status
+              const n  = (byStatus[col.status] || []).length
+              return (
+                <button key={col.status} type="button" onClick={() => setMobileCol(col.status)}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-sm font-semibold whitespace-nowrap transition-all ${on ? `${col.bg} ${col.border} ${col.color}` : 'bg-white border-[#E8E5DE] text-[#6B6860]'}`}>
+                  {statusLabel(col.status)}
+                  <span className={`text-xs font-bold px-1.5 rounded-full ${on ? 'bg-white/70' : 'bg-[#F2F0EB]'}`}>{n}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* ── Kanban board ────────────────────────────────── */}
-      <div className="flex-1 overflow-x-auto overflow-y-hidden px-6 pb-6">
+      <div className="flex-1 overflow-x-auto overflow-y-hidden px-4 sm:px-6 pb-6">
         {loading ? (
           <div className="flex gap-4 h-full">
             {COLUMNS.map(col => (
@@ -494,14 +516,14 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
             ))}
           </div>
         ) : (
-          <div className="flex gap-4 h-full min-w-max">
+          <div className="flex gap-4 h-full lg:min-w-max">
             {COLUMNS.map(col => {
               const items   = byStatus[col.status] || []
               const ColIcon = col.icon
               return (
                 <div
                   key={col.status}
-                  className={`w-72 flex-shrink-0 flex flex-col rounded-2xl border ${col.bg} ${col.border} overflow-hidden`}
+                  className={`w-full lg:w-72 flex-shrink-0 flex-col rounded-2xl border ${col.bg} ${col.border} overflow-hidden ${mobileCol === col.status ? 'flex' : 'hidden lg:flex'}`}
                 >
                   {/* Column header */}
                   <div className={`flex items-center justify-between px-4 py-3 border-b ${col.border}`}>
@@ -964,7 +986,7 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
           </div>
 
           {/* Device */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Field label={isAr ? 'نوع الجهاز' : 'Type appareil'}>
               <input type="text" className={inputClass}
                 placeholder={isAr ? 'هاتف، لابتوب...' : 'Téléphone, laptop...'}

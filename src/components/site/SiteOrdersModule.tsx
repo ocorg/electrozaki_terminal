@@ -40,7 +40,7 @@ export default function SiteOrdersModule() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden animate-fade-in" dir={isAr ? 'rtl' : 'ltr'}>
-      <div className="flex-shrink-0 px-6 pt-6 pb-4 space-y-4">
+      <div className="flex-shrink-0 px-4 sm:px-6 pt-4 sm:pt-6 pb-4 space-y-4">
         <PageHeader
           title={L('Commandes web', 'طلبات الموقع')}
           subtitle={L('Commandes passées sur le site Electro Zaki', 'الطلبات القادمة من الموقع الإلكتروني')}
@@ -60,7 +60,7 @@ export default function SiteOrdersModule() {
         ]} />
       </div>
 
-      <div className="flex-1 overflow-y-auto px-6 pb-6">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-6 pb-6">
         {ordersQ.isLoading ? (
           <div className="bg-white rounded-2xl border border-ez-border">{[0, 1, 2].map(i => <SkeletonRow key={i} />)}</div>
         ) : ordersQ.error ? (

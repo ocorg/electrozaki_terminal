@@ -221,14 +221,14 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
     <div className="flex flex-col h-full overflow-hidden animate-fade-in" dir={isAr ? 'rtl' : 'ltr'}>
 
       {/* ── Top bar ───────────────────────────────────────── */}
-      <div className="flex-shrink-0 px-6 pt-6 pb-4 space-y-4">
+      <div className="flex-shrink-0 px-4 sm:px-6 pt-4 sm:pt-6 pb-4 space-y-4">
         <PageHeader
           title={isAr ? 'الهواتف' : 'Téléphones'}
           subtitle={isAr
             ? `${phones.length} جهاز في المخزون`
             : `${phones.length} appareil${phones.length !== 1 ? 's' : ''} en stock`}
           actions={
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={() => setShowFilters(!showFilters)}
                 className="flex items-center gap-2 px-3 py-2 rounded-xl border text-sm transition-all"
@@ -375,9 +375,9 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
         )}
 
         {/* Status summary strip */}
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-x-3 gap-y-1">
           {STATUSES.map(s => (
-            <div key={s} className="flex items-center gap-1.5 text-xs text-[#6B6860]">
+            <div key={s} className="flex items-center gap-1.5 text-xs text-[#6B6860] whitespace-nowrap">
               <span className="w-2 h-2 rounded-full" style={{ backgroundColor: STATUS_COLORS[s] }} />
               {counts[s]} {statusLabel(s)}
             </div>
@@ -386,7 +386,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
       </div>
 
       {/* ── List ──────────────────────────────────────────── */}
-      <div className="flex-1 overflow-auto px-6 pb-6">
+      <div className="flex-1 overflow-auto px-4 sm:px-6 pb-6">
         <div className="bg-white border border-[#E8E5DE] rounded-2xl overflow-hidden">
 
           {/* Table header */}
@@ -633,99 +633,78 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                   ? cleanModel
                   : `${phone.marque} ${cleanModel}`
                 const deviceName = baseName
+                const sup  = getSupplierBadge(phone.fournisseur_id)
+                const nComp = (phone.replaced_components || []).length
+                const nPros = getProspectMatchCount(phone)
+                const chip  = 'text-xs font-medium px-2 py-0.5 rounded-full'
+                // Phone layout: full name + price, then readable chips, then IMEI + actions
                 return (
                   <div key={`mob-${phone.phone_id}`}
                        onClick={() => openEdit(phone)}
-                       className="lg:hidden flex items-center gap-4 px-4 py-3.5 hover:bg-[#F8F7F4] transition-all cursor-pointer">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                         style={{ backgroundColor: `${primary}12` }}>
-                      <Smartphone className="w-5 h-5" style={{ color: primary }} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-[#1A1A1A] truncate">{deviceName}</p>
-                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                        <StatusBadge domain="device_status" code={phone.status} lang={isAr ? 'ar' : 'fr'} size="sm" />
-                        {phone.stockage && (
-                          <span className="text-[10px] font-mono text-[#6B6860]">{phone.stockage}</span>
-                        )}
-                        {phone.marque.toLowerCase() !== 'apple' && phone.ram && (
-                          <span className="text-[10px] text-[#B0ADA6]">{phone.ram}</span>
-                        )}
-                        {phone.promo_type && (
-                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-                            style={{ backgroundColor: '#FAF5E8', color: '#C9A440', border: '1px solid #E8D494' }}>
-                            PROMO
-                          </span>
-                        )}
-                        {phone.battery_level != null && (
-                          <span className={`text-xs ${
-                            phone.marque.toLowerCase() === 'apple'
-                              ? phone.battery_level > 79  ? 'text-emerald-600'
-                              : phone.battery_level >= 60 ? 'text-amber-600'
-                              : 'text-red-600'
-                              : 'text-[#B0ADA6]'
-                          }`}>{phone.battery_level}%</span>
-                        )}
-                      </div>
-                      {getProspectMatchCount(phone) > 0 && (
-                        <div className="flex items-center gap-1 mt-1">
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700">
-                            {getProspectMatchCount(phone)} prospect{getProspectMatchCount(phone) > 1 ? 's' : ''}
-                          </span>
-                        </div>
-                      )}
-                      {(() => {
-                        const sup = getSupplierBadge(phone.fournisseur_id)
-                        return sup ? (
-                          <div className="flex items-center gap-1 mt-1">
-                            <span
-                              className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-                              style={sup.type_fournisseur === 'A'
-                                ? { backgroundColor: '#FAF5E8', color: '#C9A440', border: '1px solid #E8D494' }
-                                : { backgroundColor: '#EFF6FF', color: '#3B82F6', border: '1px solid #BFDBFE' }
-                              }
-                            >
-                              {sup.nom} · {sup.type_fournisseur}
-                            </span>
-                          </div>
-                        ) : null
-                      })()}
-                      {((phone.replaced_components || []).length > 0 || phone.is_damaged) && (
-                        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                          {(phone.replaced_components || []).length > 0 && (
-                            <span
-                              className="text-[10px] font-bold tracking-wide uppercase px-1.5 py-0.5 border-l-2"
-                              style={{ backgroundColor: '#FFFBEB', color: '#92400E', borderColor: '#F59E0B' }}
-                            >
-                              {(phone.replaced_components || []).length} COMP. REMPLACÉ{(phone.replaced_components || []).length > 1 ? 'S' : ''}
-                            </span>
-                          )}
-                          {phone.is_damaged && (
-                            <span
-                              className="text-[10px] font-bold tracking-wide uppercase px-1.5 py-0.5 border-l-2"
-                              style={{ backgroundColor: '#FFF1F2', color: '#991B1B', borderColor: '#F87171' }}
-                            >
-                              ENDOMMAGÉ
-                            </span>
-                          )}
-                        </div>
+                       className="lg:hidden px-4 py-3.5 space-y-2 hover:bg-[#F8F7F4] active:bg-[#F2F0EB] transition-all cursor-pointer">
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="text-[15px] font-semibold text-[#1A1A1A] leading-snug line-clamp-2">{deviceName}</p>
+                      {phone.prix_vente_recommande != null && (
+                        <p className="text-base font-bold flex-shrink-0 tabular-nums" style={{ color: primary }}>
+                          {formatMAD(phone.prix_vente_recommande)}
+                        </p>
                       )}
                     </div>
-                    {phone.prix_vente_recommande != null && (
-                      <p className="text-sm font-bold flex-shrink-0" style={{ color: primary }}>
-                        {formatMAD(phone.prix_vente_recommande)}
-                      </p>
-                    )}
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      {(['disponible', 'reserve', 'vendu'] as string[]).includes(phone.status) && (
-                        <RowAction title={isAr ? 'قرض / عربون' : 'Crédit / Avance'} tone="gold"
-                          onClick={(e) => { e.stopPropagation(); setCreditPhone(phone) }}>
-                          <CreditCard className="w-4 h-4" />
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <StatusBadge domain="device_status" code={phone.status} lang={isAr ? 'ar' : 'fr'} size="sm" />
+                      {phone.stockage && <span className={`${chip} bg-[#F2F0EB] text-[#1A1A1A] font-mono`}>{phone.stockage}</span>}
+                      {phone.marque.toLowerCase() !== 'apple' && phone.ram && (
+                        <span className={`${chip} bg-[#F2F0EB] text-[#6B6860]`}>{phone.ram}</span>
+                      )}
+                      {phone.battery_level != null && (
+                        <span className={`${chip} ${
+                          phone.marque.toLowerCase() !== 'apple' ? 'bg-[#F2F0EB] text-[#6B6860]'
+                          : phone.battery_level > 79  ? 'bg-emerald-50 text-emerald-700'
+                          : phone.battery_level >= 60 ? 'bg-amber-50 text-amber-700'
+                          : 'bg-red-50 text-red-700'
+                        }`}>🔋 {phone.battery_level}%</span>
+                      )}
+                      {phone.couleur && <span className={`${chip} bg-[#F2F0EB] text-[#6B6860]`}>{phone.couleur}</span>}
+                      {phone.promo_type && (
+                        <span className={`${chip} font-bold`} style={{ backgroundColor: '#FAF5E8', color: '#A8862E', border: '1px solid #E8D494' }}>PROMO</span>
+                      )}
+                      {nPros > 0 && (
+                        <span className={`${chip} font-bold bg-purple-100 text-purple-700`}>{nPros} prospect{nPros > 1 ? 's' : ''}</span>
+                      )}
+                      {sup && (
+                        <span className={chip}
+                          style={sup.type_fournisseur === 'A'
+                            ? { backgroundColor: '#FAF5E8', color: '#A8862E', border: '1px solid #E8D494' }
+                            : { backgroundColor: '#EFF6FF', color: '#2563EB', border: '1px solid #BFDBFE' }}>
+                          {sup.nom} · {sup.type_fournisseur}
+                        </span>
+                      )}
+                      {nComp > 0 && (
+                        <span className={`${chip} font-bold`} style={{ backgroundColor: '#FFFBEB', color: '#92400E', border: '1px solid #FCD34D' }}>
+                          {nComp} {isAr ? 'قطعة مستبدلة' : `pièce${nComp > 1 ? 's' : ''} remplacée${nComp > 1 ? 's' : ''}`}
+                        </span>
+                      )}
+                      {phone.is_damaged && (
+                        <span className={`${chip} font-bold`} style={{ backgroundColor: '#FFF1F2', color: '#991B1B', border: '1px solid #FCA5A5' }}>
+                          {isAr ? 'معطوب' : 'Endommagé'}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-xs font-mono text-[#8A877F] truncate">
+                        {phone.imei ? `IMEI …${phone.imei.slice(-6)}` : phone.phone_id}
+                      </span>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {(['disponible', 'reserve', 'vendu'] as string[]).includes(phone.status) && (
+                          <RowAction title={isAr ? 'قرض / عربون' : 'Crédit / Avance'} tone="gold"
+                            onClick={(e) => { e.stopPropagation(); setCreditPhone(phone) }}>
+                            <CreditCard className="w-4 h-4" />
+                          </RowAction>
+                        )}
+                        <RowAction title={isAr ? 'تعديل' : 'Modifier'} onClick={(e) => { e.stopPropagation(); openEdit(phone) }}>
+                          <Edit2 className="w-4 h-4" />
                         </RowAction>
-                      )}
-                      <RowAction title={isAr ? 'تعديل' : 'Modifier'} onClick={(e) => { e.stopPropagation(); openEdit(phone) }}>
-                        <Edit2 className="w-4 h-4" />
-                      </RowAction>
+                      </div>
                     </div>
                   </div>
                 )

@@ -89,14 +89,14 @@ export default function SiteLandingModule() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden animate-fade-in" dir={isAr ? 'rtl' : 'ltr'}>
-      <div className="flex-shrink-0 px-6 pt-6 pb-4">
+      <div className="flex-shrink-0 px-4 sm:px-6 pt-4 sm:pt-6 pb-4">
         <PageHeader
           title={L('Pages promo', 'صفحات العروض')}
           subtitle={L('Une page par offre, pour les pubs, flyers et QR codes. Seuls les articles en stock y apparaissent.', 'صفحة لكل عرض للإعلانات والملصقات.')}
           actions={isManager && <Btn onClick={() => edit()}><Plus className="w-4 h-4" />{L('Nouvelle page', 'صفحة جديدة')}</Btn>}
         />
       </div>
-      <div className="flex-1 overflow-y-auto px-6 pb-6">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-6 pb-6">
         {q.isLoading ? <SkeletonRow /> : q.error ? (
           <EmptyState icon={<Megaphone className="w-6 h-6" />} title={L('Site web indisponible', 'الموقع غير متاح')} description={q.error.message} />
         ) : pages.length === 0 ? (

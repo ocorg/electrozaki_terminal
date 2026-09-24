@@ -244,7 +244,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
     <div className="flex flex-col h-full overflow-hidden animate-fade-in" dir={isAr ? 'rtl' : 'ltr'}>
 
       {/* Header */}
-      <div className="flex-shrink-0 px-6 pt-6 pb-4 space-y-4">
+      <div className="flex-shrink-0 px-4 sm:px-6 pt-4 sm:pt-6 pb-4 space-y-4">
         <PageHeader
           title={isAr ? 'الإكسسوارات' : 'Accessoires'}
           subtitle={`${accessories.length} ${isAr ? 'منتج' : 'produit(s)'}`}
@@ -263,8 +263,8 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
           }
         />
 
-        {/* Summary */}
-        <div className="grid grid-cols-3 gap-3">
+        {/* Summary — on a phone: 2 tiles side by side, the amount full width */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           <div className="bg-white border border-[#E8E5DE] rounded-xl px-4 py-3"
                style={{ borderLeftColor: primary, borderLeftWidth: '3px' }}>
             <p className="text-xs text-[#6B6860]">{isAr ? 'إجمالي المنتجات' : 'Total produits'}</p>
@@ -278,7 +278,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
             </p>
           </div>
           {canFinancials && (
-            <div className="bg-white border border-[#E8E5DE] rounded-xl px-4 py-3"
+            <div className="bg-white border border-[#E8E5DE] rounded-xl px-4 py-3 col-span-2 sm:col-span-1 order-last sm:order-none"
                  style={{ borderLeftColor: '#10B981', borderLeftWidth: '3px' }}>
               <p className="text-xs text-[#6B6860]">{isAr ? 'قيمة المخزون' : 'Valeur stock'}</p>
               <p className="font-display font-bold text-lg text-[#1A1A1A]">{formatMAD(totalValue)}</p>
@@ -330,7 +330,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
       </div>
 
       {/* List */}
-      <div className="flex-1 overflow-auto px-6 pb-6">
+      <div className="flex-1 overflow-auto px-4 sm:px-6 pb-6">
         <div className="bg-white border border-[#E8E5DE] rounded-2xl overflow-hidden">
 
           {/* Table header */}
@@ -450,34 +450,38 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
                 </div>
               ))}
 
-              {/* Mobile cards */}
+              {/* Mobile cards — name in full, then category / stock, then big +/− for thumbs */}
               {visibleAccessories.map(acc => (
                 <div key={`mob-${acc.acc_id}`}
-                  className={`lg:hidden flex items-center gap-4 px-4 py-3.5 transition-all ${acc.is_low_stock ? 'bg-red-50/40' : 'hover:bg-[#F8F7F4]'}`}>
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                       style={{ backgroundColor: `${primary}12` }}>
-                    <Package className="w-5 h-5" style={{ color: primary }} />
+                  className={`lg:hidden px-4 py-3.5 space-y-2 transition-all ${acc.is_low_stock ? 'bg-red-50/40' : 'hover:bg-[#F8F7F4]'}`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-[15px] font-semibold text-[#1A1A1A] leading-snug line-clamp-2 min-w-0">{acc.nom}</p>
+                    {acc.prix_vente_recommande != null && (
+                      <p className="text-base font-bold flex-shrink-0 tabular-nums" style={{ color: primary }}>
+                        {formatMAD(acc.prix_vente_recommande)}
+                      </p>
+                    )}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-[#1A1A1A] truncate">{acc.nom}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-xs text-[#B0ADA6]">{getCatLabel(acc.categorie)}</span>
-                      <StatusBadge domain="stock_level" code={acc.status_computed ?? 'disponible'} size="sm" />
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-[#F2F0EB] text-[#6B6860]">{getCatLabel(acc.categorie)}</span>
+                    {acc.marque && <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-[#F2F0EB] text-[#6B6860]">{acc.marque}</span>}
+                    <StatusBadge domain="stock_level" code={acc.status_computed ?? 'disponible'} size="sm" />
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => adjustQty(acc, -1)} disabled={acc.quantite === 0} aria-label={isAr ? 'إنقاص' : 'Retirer 1'}
+                        className="w-9 h-9 rounded-xl border border-[#E8E5DE] bg-white flex items-center justify-center disabled:opacity-40">
+                        <Minus className="w-4 h-4 text-[#6B6860]" />
+                      </button>
+                      <span className={`text-base font-bold min-w-[2rem] text-center tabular-nums ${acc.is_low_stock ? 'text-red-500' : 'text-[#1A1A1A]'}`}>
+                        {acc.quantite}
+                      </span>
+                      <button onClick={() => adjustQty(acc, 1)} aria-label={isAr ? 'إضافة' : 'Ajouter 1'}
+                        className="w-9 h-9 rounded-xl border border-[#E8E5DE] bg-white flex items-center justify-center">
+                        <Plus className="w-4 h-4 text-[#6B6860]" />
+                      </button>
+                      <span className="text-xs text-[#8A877F]">{isAr ? 'في المخزون' : 'en stock'}</span>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <button onClick={() => adjustQty(acc, -1)} disabled={acc.quantite === 0}
-                      className="w-7 h-7 rounded-lg border border-[#E8E5DE] flex items-center justify-center">
-                      <Minus className="w-3 h-3 text-[#6B6860]" />
-                    </button>
-                    <span className={`text-sm font-bold w-5 text-center ${acc.is_low_stock ? 'text-red-500' : ''}`}>
-                      {acc.quantite}
-                    </span>
-                    <button onClick={() => adjustQty(acc, 1)}
-                      className="w-7 h-7 rounded-lg border border-[#E8E5DE] flex items-center justify-center">
-                      <Plus className="w-3 h-3 text-[#6B6860]" />
-                    </button>
-                    <RowActionDivider />
                     <RowAction title={isAr ? 'تعديل' : 'Modifier'} onClick={() => openEdit(acc)}>
                       <Edit2 className="w-4 h-4" />
                     </RowAction>
@@ -616,7 +620,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
               <p className="text-xs font-bold text-[#6B6860] uppercase tracking-widest mb-4">
                 {isAr ? 'الأسعار' : 'Prix & marges (gestion uniquement)'}
               </p>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                 {[
                   { label: t(isAr, 'common.purchasePrice'),       key: 'prix_achat' },
                   { label: isAr ? 'سعر البيع'   : 'Prix recommandé',  key: 'prix_vente_recommande' },

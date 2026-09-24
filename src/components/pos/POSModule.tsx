@@ -107,6 +107,9 @@ function LiveClock() {
 }
 
 // ─── Component ───────────────────────────────────────────────
+const withBrand = (marque: string, model: string) =>
+  model.toLowerCase().startsWith(marque.toLowerCase()) ? model : `${marque} ${model}`
+
 export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps) {
   const { user }                       = useUser()
   const { accessories: accCategories } = useCategories()
@@ -167,7 +170,8 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
     const phones: DeviceResult[] = (phonesQ.data ?? []).map(p => ({
       ...p,
       _type:        'phone' as const,
-      _displayName: `${p.marque} ${p.model}${p.stockage ? ' ' + p.stockage : ''}${p.couleur ? ' · ' + p.couleur : ''}`,
+      // "Samsung Galaxy A16", not "Samsung Samsung Galaxy A16" (the model often starts with the brand)
+      _displayName: `${withBrand(p.marque, p.model)}${p.stockage ? ' ' + p.stockage : ''}${p.couleur ? ' · ' + p.couleur : ''}`,
       _id:          p.phone_id,
     }))
     const accessories: DeviceResult[] = (accQ.data ?? []).map(a => ({
@@ -179,7 +183,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
     const laptops: DeviceResult[] = (lapQ.data ?? []).map(l => ({
       ...l,
       _type:        'laptop' as const,
-      _displayName: `${l.marque} ${l.model}${l.stockage ? ' ' + l.stockage : ''}`,
+      _displayName: `${withBrand(l.marque, l.model)}${l.stockage ? ' ' + l.stockage : ''}`,
       _id:          l.laptop_id,
     }))
     return { phones, accessories, laptops }
@@ -495,11 +499,14 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
 
   // ── Category list ──────────────────────────────────────────
 
-  function getCategoryColor(idx: number, total: number): string {
-    const hue        = Math.round((idx / total) * 360)
-    const saturation = 65
-    const lightness  = idx % 2 === 0 ? 38 : 44   // slight alternation keeps adjacent hues visually distinct
-    return `hsl(${hue}, ${saturation}%, ${lightness}%)`
+  // Colour from the category's own key: the same on the server and in the
+  // browser (a colour from its position in a list that loads later made the
+  // page re-render — hydration error), and stable when categories change.
+  function getCategoryColor(key: string): string {
+    let h = 0
+    for (const ch of key) h = (h * 31 + ch.charCodeAt(0)) | 0
+    const hue = Math.abs(h) % 360
+    return `hsl(${hue}, 65%, ${Math.abs(h) % 2 === 0 ? 38 : 44}%)`
   }
 
   const categoryList = [
@@ -521,7 +528,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
 
   // ── Main layout ───────────────────────────────────────────
   return (
-    <div className="h-full flex flex-col lg:flex-row overflow-hidden animate-fade-in relative" dir={isAr ? 'rtl' : 'ltr'}>
+    <div className="h-full flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden animate-fade-in relative" dir={isAr ? 'rtl' : 'ltr'}>
 
       {/* ── SUCCESS OVERLAY — grid stays mounted, no re-fetch on dismiss ── */}
       {successTxn && (
@@ -558,8 +565,8 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
             </p>
           </div>
           <div className="flex-1 overflow-y-auto py-1 px-1.5">
-            {categoryList.map((cat, idx) => {
-              const cc       = getCategoryColor(idx, categoryList.length)
+            {categoryList.map(cat => {
+              const cc       = getCategoryColor(cat.key)
               const isActive = activeCategory === cat.key
               return (
                 <button key={cat.key} onClick={() => setActiveCategory(cat.key)}
@@ -580,10 +587,10 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
       )}
 
       {/* ── LEFT panel ───────────────────────────────────── */}
-      <div className="flex-1 flex flex-col overflow-hidden border-r border-[#E8E5DE]">
+      <div className="flex-shrink-0 lg:flex-shrink lg:flex-1 flex flex-col lg:overflow-hidden lg:border-r border-[#E8E5DE]">
 
-        {/* Zone A */}
-        <div className="flex items-center justify-between px-5 py-3 border-b border-[#E8E5DE] flex-shrink-0 bg-white">
+        {/* Zone A — the phone's top bar already shows the store name */}
+        <div className="hidden lg:flex items-center justify-between px-5 py-3 border-b border-[#E8E5DE] flex-shrink-0 bg-white">
           <p className="font-bold text-sm tracking-widest" style={{ color: primary, fontFamily: "'Barlow Condensed', sans-serif" }}>
             {portal.storeName.toUpperCase()}
           </p>
@@ -591,7 +598,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
         </div>
 
         {/* Zone B — Search */}
-        <div className="px-5 pt-4 pb-2 flex-shrink-0">
+        <div className="px-4 lg:px-5 pt-4 pb-2 flex-shrink-0">
           <div className="flex gap-2">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#B0ADA6]" />
@@ -616,14 +623,14 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
 
         {/* Zone C — Mobile-only category pills */}
         {!isSearching && (
-          <div className="lg:hidden px-5 py-2 flex-shrink-0">
+          <div className="lg:hidden px-4 py-2 flex-shrink-0">
             <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
-              {categoryList.map((cat, idx) => {
-                const cc       = getCategoryColor(idx, categoryList.length)
+              {categoryList.map(cat => {
+                const cc       = getCategoryColor(cat.key)
                 const isActive = activeCategory === cat.key
                 return (
                   <button key={cat.key} onClick={() => setActiveCategory(cat.key)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap border transition-all flex-shrink-0"
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-bold whitespace-nowrap border transition-all flex-shrink-0"
                     style={{
                       backgroundColor: isActive ? cc : 'white',
                       borderColor:     cc,
@@ -638,7 +645,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
         )}
 
         {/* Zone D — Unified product grid (search results OR category browse) */}
-        <div className="flex-1 overflow-y-auto px-5 pb-2">
+        <div className="max-h-[55vh] lg:max-h-none lg:flex-1 overflow-y-auto px-4 lg:px-5 pb-2">
           {displayLoading ? (
             <div className="flex items-center justify-center h-32">
               <Loader2 className="w-6 h-6 text-[#B0ADA6]" style={{ animation: 'spin 1s linear infinite' }} />
@@ -668,13 +675,13 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                         </div>
                     }
                   </div>
-                  <p className="text-xs font-bold text-[#1A1A1A] leading-tight truncate">{item._displayName}</p>
-                  <p className="text-[10px] text-[#B0ADA6] mt-0.5 truncate">
+                  <p className="text-[13px] lg:text-xs font-bold text-[#1A1A1A] leading-tight line-clamp-2 lg:truncate">{item._displayName}</p>
+                  <p className="text-xs lg:text-[10px] text-[#8A877F] mt-0.5 truncate">
                     {item._type === 'accessory'
                       ? (t(isAr, 'common.accessory'))
                       : ((item as Phone).imei ? (item as Phone).imei?.slice(-6) : (t(isAr, 'common.available')))}
                   </p>
-                  <p className="text-sm font-bold mt-2" style={{ color: primary }}>
+                  <p className="text-base lg:text-sm font-bold mt-2 tabular-nums" style={{ color: primary }}>
                     {formatMAD(item._type === 'accessory' ? getAccPrice(item) : (item as Phone).prix_vente_recommande ?? 0)}
                   </p>
                 </button>
@@ -691,16 +698,16 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
 
         {/* Zone E — Cart strip */}
         <div className="flex-shrink-0 border-t border-[#E8E5DE] bg-white">
-          <div className="px-5 py-3 max-h-48 overflow-y-auto">
+          <div className="px-4 lg:px-5 py-3 lg:max-h-48 lg:overflow-y-auto">
             {cart.length === 0 ? (
               <div className="flex items-center gap-3 text-[#B0ADA6] py-1">
                 <ShoppingCart className="w-4 h-4" />
-                <p className="text-xs">{isAr ? 'السلة فارغة — اضغط على بطاقة لإضافتها' : 'Panier vide — tapez une carte pour ajouter'}</p>
+                <p className="text-sm lg:text-xs">{isAr ? 'السلة فارغة — اضغط على بطاقة لإضافتها' : 'Panier vide — tapez une carte pour ajouter'}</p>
               </div>
             ) : (
               <div className="space-y-2">
                 {cart.map((item, idx) => (
-                  <div key={item._id} className="flex items-center gap-3 bg-[#F8F7F4] border border-[#E8E5DE] rounded-xl px-3 py-2">
+                  <div key={item._id} className="flex flex-wrap lg:flex-nowrap items-center gap-x-3 gap-y-2 bg-[#F8F7F4] border border-[#E8E5DE] rounded-xl px-3 py-2">
                     <span className="text-xs font-bold text-[#B0ADA6] w-5 text-center flex-shrink-0">{idx + 1}</span>
                     {(item as unknown as { marque?: string }).marque
                       ? <BrandLogo marque={(item as unknown as { marque?: string }).marque!} size="sm" />
@@ -710,7 +717,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                     }
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <p className="text-xs font-bold text-[#1A1A1A] truncate">{item._displayName}</p>
+                        <p className="text-sm lg:text-xs font-bold text-[#1A1A1A] lg:truncate">{item._displayName}</p>
                         {(item as Phone).promo_type && (item as Phone).promo_montant && (
                           <span className="flex-shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded-full"
                             style={{ backgroundColor: '#FAF5E8', color: '#C9A440', border: '1px solid #E8D494' }}>
@@ -721,7 +728,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                         )}
                       </div>
                       {(item as Phone).imei && (
-                        <p className="text-[10px] text-[#B0ADA6] font-mono truncate">{(item as Phone).imei}</p>
+                        <p className="text-xs lg:text-[10px] text-[#8A877F] font-mono truncate">{(item as Phone).imei}</p>
                       )}
                       {(item as Phone).promo_type && (item as Phone).promo_montant && (item as Phone).prix_vente_recommande && (
                         <p className="text-[9px] font-bold mt-0.5" style={{ color: '#C9A440' }}>
@@ -730,7 +737,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                         </p>
                       )}
                     </div>
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <div className="flex items-center gap-1.5 flex-shrink-0 w-full lg:w-auto justify-end">
                       {item._type === 'accessory' && (
                         <div className="flex items-center gap-0.5">
                           <button type="button"
@@ -772,7 +779,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
       </div>
 
       {/* ── RIGHT panel ──────────────────────────────────────── */}
-      <div className="w-full lg:w-96 flex flex-col bg-[#F8F7F4] border-t lg:border-t-0 border-[#E8E5DE] overflow-y-auto">
+      <div className="w-full lg:w-96 flex-shrink-0 flex flex-col bg-[#F8F7F4] border-t lg:border-t-0 border-[#E8E5DE] lg:overflow-y-auto">
         <div className="p-5 space-y-5">
 
           {/* Operation type */}

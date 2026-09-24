@@ -305,7 +305,7 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
     <div className="flex flex-col h-full overflow-hidden animate-fade-in" dir={isAr ? 'rtl' : 'ltr'}>
 
       {/* Header */}
-      <div className="flex-shrink-0 px-6 pt-6 pb-4 space-y-4">
+      <div className="flex-shrink-0 px-4 sm:px-6 pt-4 sm:pt-6 pb-4 space-y-4">
         <PageHeader
           title={isAr ? 'إدارة الذمم' : 'Gestion des crédits'}
           subtitle={isAr
@@ -338,7 +338,7 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-auto px-6 pb-6">
+      <div className="flex-1 overflow-auto px-4 sm:px-6 pb-6">
 
         {/* ── TAB 1 — Crédits en cours ─────────────────────── */}
         {tab === 'credits' && (

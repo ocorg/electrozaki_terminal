@@ -142,7 +142,7 @@ export default function SiteRequestsModule() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden animate-fade-in" dir={isAr ? 'rtl' : 'ltr'}>
-      <div className="flex-shrink-0 px-6 pt-6 pb-4 space-y-4">
+      <div className="flex-shrink-0 px-4 sm:px-6 pt-4 sm:pt-6 pb-4 space-y-4">
         <PageHeader title={L('Demandes du site', 'طلبات الموقع')} subtitle={L('Réparations, logiciel, consultations et messages envoyés depuis le site', 'طلبات الإصلاح والبرمجيات والاستشارات والرسائل من الموقع')} />
         <Tabs<Tab> value={tab} onChange={setTab} tabs={[
           { key: 'repairs',   label: L('Demandes', 'الطلبات'), count: repairs.filter(r => r.status === 'NEW').length },
@@ -150,7 +150,7 @@ export default function SiteRequestsModule() {
           { key: 'messages',  label: L('Messages', 'الرسائل'), count: messages.length },
         ]} />
       </div>
-      <div className="flex-1 overflow-y-auto px-6 pb-6">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-6 pb-6">
         {q.isLoading ? <SkeletonRow /> : q.error ? (
           <EmptyState icon={<Wrench className="w-6 h-6" />} title={L('Site web indisponible', 'الموقع غير متاح')} description={q.error.message} />
         ) : tab !== 'messages' ? (

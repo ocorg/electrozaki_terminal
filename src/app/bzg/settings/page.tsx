@@ -105,14 +105,14 @@ export default function BZGSettingsPage() {
 
   return (
     <div className="flex flex-col h-full overflow-auto animate-fade-in" dir={isAr ? 'rtl' : 'ltr'}>
-      <div className="px-6 pt-6 pb-4">
+      <div className="px-4 sm:px-6 pt-4 sm:pt-6 pb-4">
         <PageHeader
           title={isAr ? 'الإعدادات' : 'Paramètres'}
           subtitle={isAr ? 'إعدادات المتاجر والمنصة' : 'Configuration des magasins et de la plateforme'}
         />
       </div>
 
-      <div className="flex-1 px-6 pb-6 space-y-6">
+      <div className="flex-1 px-4 sm:px-6 pb-6 space-y-6">
 
         {/* ── Store Control (owner only) ── */}
         <StoreControlSection />
@@ -267,7 +267,7 @@ export default function BZGSettingsPage() {
       </div>
 
       {/* ── Category Manager ──────────────────────────────── */}
-      <div className="px-6 pb-6 mt-4 space-y-4">
+      <div className="px-4 sm:px-6 pb-6 mt-4 space-y-4">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-xl bg-[#F2F0EB]">
             <Tag className="w-4 h-4 text-[#C9A440]" />

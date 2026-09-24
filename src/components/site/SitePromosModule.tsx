@@ -32,7 +32,7 @@ export default function SitePromosModule() {
   const promoPhones = useApi<Phone[]>(PROMO_PHONES).data
   return (
     <div className="flex flex-col h-full overflow-hidden animate-fade-in" dir={isAr ? 'rtl' : 'ltr'}>
-      <div className="flex-shrink-0 px-6 pt-6 pb-4 space-y-4">
+      <div className="flex-shrink-0 px-4 sm:px-6 pt-4 sm:pt-6 pb-4 space-y-4">
         <PageHeader title={L('Promos & packs', 'العروض والباقات')} subtitle={L('Téléphones en promo, codes promo et packs proposés sur le site', 'الهواتف المخفضة، رموز التخفيض والباقات في الموقع')} />
         <Tabs<Tab> value={tab} onChange={setTab} tabs={[
           { key: 'phones',  label: L('Téléphones en promo', 'هواتف مخفضة'), count: promoPhones?.length },
@@ -40,7 +40,7 @@ export default function SitePromosModule() {
           { key: 'bundles', label: L('Packs', 'الباقات') },
         ]} />
       </div>
-      <div className="flex-1 overflow-y-auto px-6 pb-6">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-6 pb-6">
         {tab === 'phones' ? <PromoPhonesTab /> : tab === 'promos' ? <PromosTab isManager={isManager} /> : <BundlesTab isManager={isManager} />}
       </div>
     </div>

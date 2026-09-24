@@ -202,7 +202,7 @@ export default function BZGUsersPage() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden animate-fade-in" dir={isAr ? 'rtl' : 'ltr'}>
-      <div className="flex-shrink-0 px-6 pt-6 pb-4">
+      <div className="flex-shrink-0 px-4 sm:px-6 pt-4 sm:pt-6 pb-4">
         <PageHeader
           title={isAr ? 'إدارة المستخدمين' : 'Gestion des utilisateurs'}
           subtitle={`${users.length} ${isAr ? 'مستخدم' : 'utilisateur(s)'}`}
@@ -226,7 +226,7 @@ export default function BZGUsersPage() {
         />
       </div>
 
-      <div className="flex-1 overflow-auto px-6 pb-6">
+      <div className="flex-1 overflow-auto px-4 sm:px-6 pb-6">
         <div className="bg-white border border-[#E8E5DE] rounded-2xl overflow-hidden">
           {loading ? (
             <div className="divide-y divide-[#F2F0EB]">

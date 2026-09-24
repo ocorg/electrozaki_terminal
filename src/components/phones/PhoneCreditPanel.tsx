@@ -362,7 +362,7 @@ export default function PhoneCreditPanel({
         </div>
 
         {/* KPIs */}
-        <div className="grid grid-cols-3 gap-2 px-4 py-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 px-4 py-3">
           {[
             { label: 'Total convenu',   value: credit.montant_total,   color: 'text-white' },
             { label: 'Versé',           value: credit.montant_paye,    color: 'text-green-400' },

@@ -165,7 +165,7 @@ export default function ClientsModule({ storeId }: ClientsModuleProps) {
     <div className="flex flex-col h-full overflow-hidden animate-fade-in" dir={isAr ? 'rtl' : 'ltr'}>
 
       {/* ── Header ──────────────────────────────────────── */}
-      <div className="flex-shrink-0 px-6 pt-6 pb-4 space-y-4">
+      <div className="flex-shrink-0 px-4 sm:px-6 pt-4 sm:pt-6 pb-4 space-y-4">
         <PageHeader
           title={isAr ? 'العملاء' : 'Clients'}
           subtitle={isAr
@@ -186,14 +186,14 @@ export default function ClientsModule({ storeId }: ClientsModuleProps) {
           }
         />
 
-        {/* Summary strip */}
-        <div className="grid grid-cols-3 gap-3">
+        {/* Summary strip — on a phone: 2 tiles side by side, the amount full width */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {[
             { label: isAr ? 'إجمالي العملاء' : 'Total clients',    value: String(totalClients), color: primary },
-            { label: isAr ? 'رقم الأعمال'     : 'CA total',         value: formatMAD(totalCA),   color: '#10B981' },
+            { label: isAr ? 'رقم الأعمال'     : 'CA total',         value: formatMAD(totalCA),   color: '#10B981', money: true },
             { label: isAr ? 'تسبيقات مفتوحة'  : 'Avances ouvertes', value: String(openCredits),  color: openCredits > 0 ? '#F59E0B' : '#10B981' },
           ].map(s => (
-            <div key={s.label} className="bg-white border border-[#E8E5DE] rounded-xl px-4 py-3"
+            <div key={s.label} className={`bg-white border border-[#E8E5DE] rounded-xl px-4 py-3 ${s.money ? 'col-span-2 sm:col-span-1 order-last sm:order-none' : ''}`}
                  style={{ borderLeftColor: s.color, borderLeftWidth: '3px' }}>
               <p className="text-xs text-[#6B6860]">{s.label}</p>
               <p className="font-display font-bold text-lg text-[#1A1A1A]">{s.value}</p>
@@ -222,7 +222,7 @@ export default function ClientsModule({ storeId }: ClientsModuleProps) {
       </div>
 
       {/* ── List ──────────────────────────────────────────── */}
-      <div className="flex-1 overflow-auto px-6 pb-6">
+      <div className="flex-1 overflow-auto px-4 sm:px-6 pb-6">
         <div className="bg-white border border-[#E8E5DE] rounded-2xl overflow-hidden">
           {loading ? (
             <div className="divide-y divide-[#F2F0EB]">
@@ -308,7 +308,7 @@ export default function ClientsModule({ storeId }: ClientsModuleProps) {
           <div className="space-y-5" dir={isAr ? 'rtl' : 'ltr'}>
 
             {/* KPIs */}
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {[
                 { label: isAr ? 'رقم الأعمال' : 'CA total',          value: formatMAD(selected.total_ca ?? 0), icon: TrendingUp, color: primary },
                 { label: isAr ? 'عدد المشتريات' : 'Achats',           value: '—',                              icon: ShoppingCart, color: '#10B981' },

@@ -242,7 +242,7 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
     <div className="flex flex-col h-full overflow-hidden animate-fade-in" dir={isAr ? 'rtl' : 'ltr'}>
 
       {/* ── Top bar ───────────────────────────────────── */}
-      <div className="flex-shrink-0 px-6 pt-6 pb-4 space-y-4">
+      <div className="flex-shrink-0 px-4 sm:px-6 pt-4 sm:pt-6 pb-4 space-y-4">
         <PageHeader
           title={isAr ? 'الطلبات المحتملة' : 'Prospects'}
           subtitle={`${prospects.length} demande${prospects.length !== 1 ? 's' : ''}`}
@@ -313,7 +313,7 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
       </div>
 
       {/* ── Cards ─────────────────────────────────────── */}
-      <div className="flex-1 overflow-auto px-6 pb-6">
+      <div className="flex-1 overflow-auto px-4 sm:px-6 pb-6">
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {[...Array(6)].map((_, i) => (

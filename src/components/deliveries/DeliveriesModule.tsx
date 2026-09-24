@@ -371,7 +371,7 @@ export default function DeliveriesModule({ storeId }: DeliveriesModuleProps) {
     <div className="flex flex-col h-full overflow-hidden animate-fade-in">
 
       {/* ── Header ── */}
-      <div className="flex-shrink-0 px-6 pt-6 pb-4 flex items-center justify-between border-b border-[#E8E5DE]">
+      <div className="flex-shrink-0 px-4 sm:px-6 pt-4 sm:pt-6 pb-4 flex items-center justify-between border-b border-[#E8E5DE]">
         <div>
           <h1
             className="font-bold text-xl text-[#1A1A1A]"
@@ -572,7 +572,7 @@ export default function DeliveriesModule({ storeId }: DeliveriesModuleProps) {
 
       ) : (
         /* ── List view ── */
-        <div className="flex-1 overflow-auto px-6 pb-6 pt-4">
+        <div className="flex-1 overflow-auto px-4 sm:px-6 pb-6 pt-4">
           <div className="bg-white border border-[#E8E5DE] rounded-2xl overflow-hidden">
             {/* Table header */}
             <div

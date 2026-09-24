@@ -33,6 +33,13 @@ export default function DataProvider({ children }: { children: React.ReactNode }
     return null
   })
 
+  // The restored cache exists only in the browser: rendering screens with it
+  // straight away made the first render differ from the server's HTML
+  // (hydration error → React threw the page away and re-rendered it all).
+  // Screens render once mounted instead — still instantly from the cache.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
+
   // Once the session is known: a different user (or none) must never see that data
   useEffect(() => {
     if (status === 'loading') return
@@ -133,7 +140,7 @@ export default function DataProvider({ children }: { children: React.ReactNode }
       errorRetryCount:       2,
     }}>
       <MutateBridge />
-      {children}
+      {mounted ? children : <div className="min-h-screen bg-[#F8F7F4]" />}
     </SWRConfig>
   )
 }

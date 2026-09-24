@@ -78,7 +78,7 @@ export default function SiteStatsModule() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden animate-fade-in" dir={isAr ? 'rtl' : 'ltr'}>
-      <div className="flex-shrink-0 px-6 pt-6 pb-4 space-y-4">
+      <div className="flex-shrink-0 px-4 sm:px-6 pt-4 sm:pt-6 pb-4 space-y-4">
         <PageHeader
           title={L('Statistiques du site', 'إحصائيات الموقع')}
           subtitle={L('Visiteurs anonymes, sans cookies — robots comptés à part', 'زوار مجهولون بدون كوكيز — الروبوتات منفصلة')}
@@ -91,7 +91,7 @@ export default function SiteStatsModule() {
         ]} />
       </div>
 
-      <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-5">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-6 pb-6 space-y-5">
         {q.isLoading || !s ? (
           <div className="bg-white border border-ez-border rounded-2xl">{[0, 1, 2, 3].map(i => <SkeletonRow key={i} />)}</div>
         ) : (

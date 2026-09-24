@@ -45,7 +45,7 @@ export default function SiteCatalogModule() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden animate-fade-in" dir={isAr ? 'rtl' : 'ltr'}>
-      <div className="flex-shrink-0 px-6 pt-6 pb-4 space-y-4">
+      <div className="flex-shrink-0 px-4 sm:px-6 pt-4 sm:pt-6 pb-4 space-y-4">
         <PageHeader
           title={L('Catalogue du site', 'كتالوج الموقع')}
           subtitle={L('Prix, stock et état viennent de l’ERP automatiquement. Ici : photos, textes et visibilité.',
@@ -60,7 +60,7 @@ export default function SiteCatalogModule() {
           { key: 'categories', label: L('Catégories', 'الفئات'), count: categories.length },
         ]} />
       </div>
-      <div className="flex-1 overflow-y-auto px-6 pb-6">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-6 pb-6">
         {catalogQ.error ? (
           <EmptyState icon={<Globe className="w-6 h-6" />} title={L('Site web indisponible', 'الموقع غير متاح')} description={catalogQ.error.message} />
         ) : catalogQ.isLoading ? (

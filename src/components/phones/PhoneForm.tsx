@@ -234,8 +234,8 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
           />
         </Field>
 
-        {/* Row 3 — Série + Modèle */}
-        <div className="grid grid-cols-2 gap-4">
+        {/* Row 3 — Série + Modèle (stacked on a phone: model names are long) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label={isAr ? 'السلسلة' : 'Série'}>
             <ComboBox
               options={serieOptions}
@@ -257,7 +257,7 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
         </div>
 
         {/* Row 4 — Stockage + RAM (non-Apple) + Couleur */}
-        <div className={`grid gap-4 ${isApple ? 'grid-cols-2' : 'grid-cols-3'}`}>
+        <div className={`grid gap-4 ${isApple ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-3'}`}>
           <Field label={t(isAr, 'common.storage')}>
             <ComboBox
               options={STOCKAGES}
@@ -289,8 +289,8 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
           </Field>
         </div>
 
-        {/* Row 5 — IMEI + Batterie (Apple only) */}
-        <div className="grid grid-cols-2 gap-4">
+        {/* Row 5 — IMEI + Batterie (Apple only); IMEI gets the full width on a phone */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label="IMEI">
             <div className="flex gap-2">
               <input
@@ -503,7 +503,7 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
               <p className="text-xs font-bold text-[#6B6860] uppercase tracking-widest mb-4">
                 {isAr ? 'الأسعار (للإدارة فقط)' : 'Prix & marges (gestion uniquement)'}
               </p>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                 <Field label={t(isAr, 'common.purchasePrice')}>
                   <input type="number" min={0} step={0.01} className={inputClass} placeholder="0.00"
                     value={form.prix_achat ?? ''} onChange={e => set('prix_achat', e.target.value ? Number(e.target.value) : undefined)} />

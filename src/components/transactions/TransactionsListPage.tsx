@@ -135,7 +135,7 @@ export default function TransactionsListPage({ scope, storeId, title }: Transact
     <div className="flex flex-col h-full overflow-hidden animate-fade-in" dir={isAr ? 'rtl' : 'ltr'}>
 
       {/* Header + filters */}
-      <div className="flex-shrink-0 px-6 pt-6 pb-4 space-y-4">
+      <div className="flex-shrink-0 px-4 sm:px-6 pt-4 sm:pt-6 pb-4 space-y-4">
         <PageHeader
           title={isAr ? title.ar : title.fr}
           subtitle={isAr
@@ -152,16 +152,16 @@ export default function TransactionsListPage({ scope, storeId, title }: Transact
           }
         />
 
-        {/* Summary strip */}
-        <div className="grid grid-cols-3 gap-3">
+        {/* Summary strip — on a phone: 2 tiles side by side, the amount full width */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {[
-            { label: isAr ? 'إجمالي المبيعات' : 'Total CA', value: formatMAD(totalCA),  color: '#C9A440' },
+            { label: isAr ? 'إجمالي المبيعات' : 'Total CA', value: formatMAD(totalCA),  color: '#C9A440', money: true },
             { label: isAr ? 'عدد المبيعات'    : 'Nb ventes', value: String(totalVentes), color: '#10B981' },
             { label: tertiaryLabel,                          value: String(totalTertiary), color: '#F59E0B' },
           ].map(s => (
             <div
               key={s.label}
-              className="bg-white border border-[#E8E5DE] rounded-xl px-4 py-3"
+              className={`bg-white border border-[#E8E5DE] rounded-xl px-4 py-3 ${'money' in s && s.money ? 'col-span-2 sm:col-span-1 order-last sm:order-none' : ''}`}
               style={{ borderLeftColor: s.color, borderLeftWidth: '3px' }}
             >
               <p className="text-xs text-[#6B6860]">{s.label}</p>
@@ -171,19 +171,20 @@ export default function TransactionsListPage({ scope, storeId, title }: Transact
         </div>
 
         {/* Filters */}
-        <div className="flex flex-wrap items-center gap-3 p-4 bg-white border border-[#E8E5DE] rounded-2xl">
-          <div className="flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-[#B0ADA6]" />
+        <div className="flex flex-wrap items-center gap-3 p-3 sm:p-4 bg-white border border-[#E8E5DE] rounded-2xl">
+          {/* Full width on a phone: both dates share the row instead of overflowing it */}
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Calendar className="w-4 h-4 text-[#B0ADA6] flex-shrink-0" />
             <input
               type="date" value={dateFrom}
               onChange={e => setDateFrom(e.target.value)}
-              className="text-sm border border-[#E8E5DE] rounded-xl px-3 py-2 bg-white focus:outline-none focus:border-[#C9A440] transition-all"
+              className="flex-1 min-w-0 sm:flex-none text-sm border border-[#E8E5DE] rounded-xl px-2 sm:px-3 py-2 bg-white focus:outline-none focus:border-[#C9A440] transition-all"
             />
             <span className="text-[#B0ADA6] text-sm">→</span>
             <input
               type="date" value={dateTo}
               onChange={e => setDateTo(e.target.value)}
-              className="text-sm border border-[#E8E5DE] rounded-xl px-3 py-2 bg-white focus:outline-none focus:border-[#C9A440] transition-all"
+              className="flex-1 min-w-0 sm:flex-none text-sm border border-[#E8E5DE] rounded-xl px-2 sm:px-3 py-2 bg-white focus:outline-none focus:border-[#C9A440] transition-all"
             />
           </div>
 
@@ -222,7 +223,7 @@ export default function TransactionsListPage({ scope, storeId, title }: Transact
       </div>
 
       {/* Transaction list */}
-      <div className="flex-1 overflow-auto px-6 pb-6">
+      <div className="flex-1 overflow-auto px-4 sm:px-6 pb-6">
         <div className="bg-white border border-[#E8E5DE] rounded-2xl overflow-hidden">
           {loading ? (
             <div className="divide-y divide-[#F2F0EB]">

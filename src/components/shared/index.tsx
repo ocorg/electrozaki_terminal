@@ -242,12 +242,13 @@ export function PageHeader({ title, subtitle, actions }: {
   actions?: React.ReactNode
 }) {
   return (
-    <div className="flex items-start justify-between mb-6">
-      <div>
-        <h1 className="font-display text-3xl font-bold text-ez-text tracking-wide">{title}</h1>
+    // On a phone the buttons wrap under the title instead of pushing off-screen.
+    <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3 mb-4 sm:mb-6">
+      <div className="min-w-0">
+        <h1 className="font-display text-2xl sm:text-3xl font-bold text-ez-text tracking-wide leading-tight">{title}</h1>
         {subtitle && <p className="text-ez-subtle text-sm mt-0.5">{subtitle}</p>}
       </div>
-      {actions && <div className="flex items-center gap-2 flex-shrink-0">{actions}</div>}
+      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </div>
   )
 }

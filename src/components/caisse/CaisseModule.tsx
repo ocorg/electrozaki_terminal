@@ -389,8 +389,8 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
         </div>
       </div>
 
-      {/* Live aggregation cards */}
-      <div className="grid grid-cols-3 gap-3">
+      {/* Live aggregation cards — on a phone: sales full width, then 2 side by side */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {[
           {
             label:  isAr ? 'إجمالي المبيعات (كل الطرق)' : 'Total ventes (toutes méthodes)',
@@ -414,10 +414,10 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
             color:  '#EF4444',
             bg:     '#FEF2F2',
           },
-        ].map(card => {
+        ].map((card, i) => {
           const Icon = card.icon
           return (
-            <div key={card.label} className="bg-white border border-[#E8E5DE] rounded-2xl p-4">
+            <div key={card.label} className={`bg-white border border-[#E8E5DE] rounded-2xl p-4 ${i === 0 ? 'col-span-2 sm:col-span-1' : ''}`}>
               <div className="flex items-center justify-between mb-2">
                 <p className="text-xs text-[#6B6860] leading-snug">{card.label}</p>
                 <div className="w-7 h-7 rounded-lg flex items-center justify-center"
@@ -438,14 +438,14 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
           <p className="text-xs font-bold text-[#6B6860] uppercase tracking-widest mb-4">
             {isAr ? 'تفصيل طرق الدفع' : 'Répartition paiements'}
           </p>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
             {[
               { label: t(isAr, 'common.cash'),   value: caisse.payment_breakdown.cash },
               { label: t(isAr, 'common.transfer'), value: caisse.payment_breakdown.transfer },
               { label: t(isAr, 'common.advances'),  value: caisse.payment_breakdown.credit },
             ].map(row => (
-              <div key={row.label} className="text-center p-3 bg-[#F8F7F4] rounded-xl">
-                <p className="text-xs text-[#6B6860] mb-1">{row.label}</p>
+              <div key={row.label} className="flex items-center justify-between sm:block sm:text-center p-3 bg-[#F8F7F4] rounded-xl">
+                <p className="text-sm sm:text-xs text-[#6B6860] sm:mb-1">{row.label}</p>
                 <p className="font-bold text-sm text-[#1A1A1A]">{formatMAD(row.value)}</p>
               </div>
             ))}

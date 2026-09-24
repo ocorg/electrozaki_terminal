@@ -57,7 +57,7 @@ export default function BZGStaffPage() {
   return (
     <div className="flex flex-col h-full overflow-hidden animate-fade-in" dir={isAr ? 'rtl' : 'ltr'}>
 
-      <div className="flex-shrink-0 px-6 pt-6 pb-4 space-y-4">
+      <div className="flex-shrink-0 px-4 sm:px-6 pt-4 sm:pt-6 pb-4 space-y-4">
         <PageHeader
           title={isAr ? 'حضور الفريق' : 'Présence équipe'}
           subtitle={isAr
@@ -109,7 +109,7 @@ export default function BZGStaffPage() {
       </div>
 
       {/* Full punch log */}
-      <div className="flex-1 overflow-auto px-6 pb-6 space-y-6">
+      <div className="flex-1 overflow-auto px-4 sm:px-6 pb-6 space-y-6">
         {STORES.map(store => {
           const storePunches = punches.filter(p => p.store_id === store.id)
           const storeLatest  = latestPerUser.filter(p => p.store_id === store.id)

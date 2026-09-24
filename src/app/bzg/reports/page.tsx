@@ -101,7 +101,7 @@ export default function BZGReportsPage() {
 
   return (
     <div className="flex flex-col h-full overflow-auto animate-fade-in" dir={isAr ? 'rtl' : 'ltr'}>
-      <div className="px-6 pt-6 pb-4 flex-shrink-0 space-y-4">
+      <div className="px-4 sm:px-6 pt-4 sm:pt-6 pb-4 flex-shrink-0 space-y-4">
         <PageHeader
           title={isAr ? 'التقارير' : 'Rapports'}
           subtitle={isAr ? 'تحليل أداء Electro Zaki' : 'Analyse des performances — Electro Zaki'}
@@ -135,7 +135,7 @@ export default function BZGReportsPage() {
         </div>
       </div>
 
-      <div className="flex-1 px-6 pb-6 space-y-6">
+      <div className="flex-1 px-4 sm:px-6 pb-6 space-y-6">
 
         {/* Per-store KPI comparison */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
