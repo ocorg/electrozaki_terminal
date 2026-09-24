@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
-import { X, Camera, SwitchCamera, Loader2 } from 'lucide-react'
+import { X, Camera, SwitchCamera, Loader2, Flashlight, ZoomIn } from 'lucide-react'
+import { makeDetector, openCamera, tuneCamera } from '@/lib/barcode'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 interface ScannerProps {
@@ -10,28 +11,29 @@ interface ScannerProps {
   mode?:    'barcode' | 'qr'  // kept for guide shape only — detection is always all-format
 }
 
-const NATIVE_FORMATS = [
-  'aztec','code_128','code_39','code_93','codabar',
-  'data_matrix','ean_13','ean_8','itf','pdf417',
-  'qr_code','upc_a','upc_e',
-]
-
 export default function Scanner({ onResult, onClose, hint, mode = 'qr' }: ScannerProps) {
   const videoRef  = useRef<HTMLVideoElement>(null)
   const stopRef   = useRef<(() => void) | null>(null)
+  const trackRef  = useRef<MediaStreamTrack | null>(null)
   const doneRef   = useRef(false)
 
-  const [cameras,  setCameras]  = useState<MediaDeviceInfo[]>([])
-  const [camIdx,   setCamIdx]   = useState(0)
+  // Back or front camera, chosen by the phone itself ("environment" = its
+  // main back lens). Not by device list: an iPhone lists up to 14 "cameras"
+  // (ultra-wide, telephoto, virtual…) and the first one often can't focus up close.
+  const [facing,   setFacing]   = useState<'environment' | 'user'>('environment')
+  const [hasFront, setHasFront] = useState(false)
   const [loading,  setLoading]  = useState(true)
   const [error,    setError]    = useState<string | null>(null)
   const [scanned,  setScanned]  = useState(false)
-  const [engine,   setEngine]   = useState<'native' | 'zxing' | null>(null)
+  const [engine,   setEngine]   = useState<'native' | 'wasm' | null>(null)
+  const [torch,    setTorch]    = useState<boolean | null>(null)          // null = not supported
+  const [zoom,     setZoom]     = useState<{ min: number; max: number; step: number; value: number } | null>(null)
 
   function finish(value: string) {
     if (doneRef.current) return
     doneRef.current = true
     setScanned(true)
+    navigator.vibrate?.(60)
     setTimeout(() => { stopRef.current?.(); onResult(value) }, 350)
   }
 
@@ -49,99 +51,66 @@ export default function Scanner({ onResult, onClose, hint, mode = 'qr' }: Scanne
     async function start() {
       setLoading(true)
       setError(null)
+      setTorch(null)
+      setZoom(null)
       stopRef.current?.()
       stopRef.current = null
 
       try {
-        // ── Enumerate cameras ─────────────────────────────────────────
-        const allDevices = await navigator.mediaDevices.enumerateDevices()
-        const cams = allDevices.filter(d => d.kind === 'videoinput')
-        if (!alive) return
-        if (cams.length) setCameras(cams)
-
-        const targetId = cams[camIdx]?.deviceId
-
-        // ── Open media stream ─────────────────────────────────────────
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            deviceId:   targetId ? { exact: targetId } : undefined,
-            facingMode: targetId ? undefined : 'environment',
-            width:      { ideal: 1920 },
-            height:     { ideal: 1080 },
-          },
-        })
+        const [stream, { detector, engine }] = await Promise.all([
+          openCamera(facing),
+          makeDetector(),
+        ])
         if (!alive) { stream.getTracks().forEach(t => t.stop()); return }
+        setEngine(engine)
+
+        const track = stream.getVideoTracks()[0]
+        trackRef.current = track
+        const tuned = await tuneCamera(track)
+        setZoom(tuned.zoom)
+        if (tuned.torch) setTorch(false)
+
+        const devices = await navigator.mediaDevices.enumerateDevices().catch(() => [])
+        if (alive) setHasFront(devices.filter(d => d.kind === 'videoinput').length > 1)
 
         const video = videoRef.current!
         video.srcObject = stream
         await video.play()
         if (alive) setLoading(false)
 
-        const stopStream = () => {
-          stream.getTracks().forEach(t => t.stop())
-          if (video) video.srcObject = null
-        }
-
-        // ── PATH 1: Native BarcodeDetector (Chrome Android + Desktop) ─
-        if ('BarcodeDetector' in window) {
-          setEngine('native')
-          const detector = new (window as any).BarcodeDetector({ formats: NATIVE_FORMATS })
-          let rafId: number
-
-          const tick = async () => {
-            if (!alive || doneRef.current) return
-            if (video.readyState >= video.HAVE_ENOUGH_DATA) {
-              try {
-                const codes: Array<{ rawValue: string }> = await detector.detect(video)
-                if (codes[0]?.rawValue) { finish(codes[0].rawValue); return }
-              } catch { /* frame not ready */ }
-            }
-            rafId = requestAnimationFrame(tick)
+        // ~8 reads per second: plenty to feel instant, light on older phones.
+        let timer: ReturnType<typeof setTimeout>
+        const tick = async () => {
+          if (!alive || doneRef.current) return
+          if (video.readyState >= video.HAVE_ENOUGH_DATA) {
+            try {
+              const codes = await detector.detect(video)
+              const value = codes.find(c => c.rawValue)?.rawValue
+              if (value) { finish(value); return }
+            } catch { /* frame not ready */ }
           }
-          rafId = requestAnimationFrame(tick)
-          stopRef.current = () => { cancelAnimationFrame(rafId); stopStream() }
-          return
+          timer = setTimeout(tick, 120)
         }
-
-        // ── PATH 2: ZXing fallback ────────────────────────────────────
-        setEngine('zxing')
-        const {
-          BrowserMultiFormatReader,
-          DecodeHintType,
-          BarcodeFormat,
-        } = await import('@zxing/library')
-
-        const hints = new Map<number, unknown>([
-          [DecodeHintType.TRY_HARDER, true],
-          [DecodeHintType.POSSIBLE_FORMATS, [
-            BarcodeFormat.CODE_128, BarcodeFormat.CODE_39,
-            BarcodeFormat.EAN_13,   BarcodeFormat.EAN_8,
-            BarcodeFormat.QR_CODE,  BarcodeFormat.DATA_MATRIX,
-            BarcodeFormat.PDF_417,
-          ]],
-        ])
-        const reader = new BrowserMultiFormatReader(hints)
-
-        // Feed the existing stream to ZXing via the video element
-        reader.decodeFromStream(stream as any, video, (result, _err) => {
-          if (!alive || !result) return
-          finish(result.getText())
-        })
+        tick()
 
         stopRef.current = () => {
-          reader.reset()
-          stopStream()
+          clearTimeout(timer)
+          stream.getTracks().forEach(t => t.stop())
+          video.srcObject = null
+          trackRef.current = null
         }
-
       } catch (err: unknown) {
         if (!alive) return
-        const msg = (err as Error).message ?? ''
+        const e = err as Error
+        const text = `${e.name ?? ''} ${e.message ?? ''}`
         setError(
-          msg.includes('NotAllowed') || msg.includes('Permission')
-            ? "Accès caméra refusé. Autorisez l'accès dans les réglages Chrome."
-            : msg.includes('OverconstrainedError') || msg.includes('Overconstrained')
-            ? "Caméra non disponible. Essayez de changer de caméra."
-            : `Erreur caméra: ${msg}`
+          /NotAllowed|Permission|Security/i.test(text)
+            ? "Accès à la caméra refusé. Autorisez la caméra pour ce site dans les réglages du navigateur (sur iPhone : Réglages → Safari → Caméra), puis réessayez."
+            : /NotFound|Overconstrained/i.test(text)
+            ? 'Caméra introuvable. Essayez de changer de caméra.'
+            : /NotReadable|TrackStart/i.test(text)
+            ? "La caméra est déjà utilisée par une autre application. Fermez-la et réessayez."
+            : `Erreur caméra : ${e.message || e.name}`,
         )
         setLoading(false)
       }
@@ -149,16 +118,32 @@ export default function Scanner({ onResult, onClose, hint, mode = 'qr' }: Scanne
 
     start()
     return () => { alive = false; stopRef.current?.() }
-  }, [camIdx])
+  }, [facing])
 
   function switchCamera(e: React.MouseEvent) {
     e.preventDefault()
     e.stopPropagation()
-    if (cameras.length < 2) return
     doneRef.current = false
     setScanned(false)
-    setLoading(true)
-    setCamIdx(p => (p + 1) % cameras.length)
+    setFacing(f => (f === 'environment' ? 'user' : 'environment'))
+  }
+
+  async function toggleTorch(e: React.MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    const track = trackRef.current
+    if (!track || torch === null) return
+    try {
+      await track.applyConstraints({ advanced: [{ torch: !torch } as any] })
+      setTorch(!torch)
+    } catch { /* not allowed on this phone */ }
+  }
+
+  async function changeZoom(value: number) {
+    const track = trackRef.current
+    if (!track || !zoom) return
+    setZoom({ ...zoom, value })
+    await track.applyConstraints({ advanced: [{ zoom: value } as any] }).catch(() => {})
   }
 
   // Guide: wide rectangle for 1D barcodes, square for QR
@@ -188,7 +173,7 @@ export default function Scanner({ onResult, onClose, hint, mode = 'qr' }: Scanne
 
         {/* Viewfinder */}
         <div className="relative rounded-2xl overflow-hidden bg-black" style={{ aspectRatio: '4/3' }}>
-          <video ref={videoRef} className="w-full h-full object-cover" muted playsInline />
+          <video ref={videoRef} className="w-full h-full object-cover" muted playsInline autoPlay />
 
           {loading && !error && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 gap-3">
@@ -232,17 +217,39 @@ export default function Scanner({ onResult, onClose, hint, mode = 'qr' }: Scanne
           )}
         </div>
 
-        {/* Switch camera */}
-        {cameras.length > 1 && !loading && !error && (
-          <button type="button" onClick={switchCamera}
-            className="mt-3 w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-white/10 text-white text-sm font-medium hover:bg-white/20 transition-all">
-            <SwitchCamera className="w-4 h-4" />
-            Changer de caméra ({camIdx + 1}/{cameras.length})
-          </button>
+        {/* Controls */}
+        {!loading && !error && (
+          <div className="mt-3 space-y-2">
+            {zoom && (
+              <label className="flex items-center gap-3 px-3 py-2 rounded-xl bg-white/10 text-white text-xs">
+                <ZoomIn className="w-4 h-4 flex-shrink-0" />
+                <input type="range" min={zoom.min} max={zoom.max} step={zoom.step} value={zoom.value}
+                  onChange={e => changeZoom(Number(e.target.value))} className="flex-1 accent-emerald-400" />
+                <span className="w-10 text-right tabular-nums">×{zoom.value.toFixed(1)}</span>
+              </label>
+            )}
+            <div className="flex gap-2">
+              {hasFront && (
+                <button type="button" onClick={switchCamera}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-white/10 text-white text-sm font-medium hover:bg-white/20 transition-all">
+                  <SwitchCamera className="w-4 h-4" />
+                  {facing === 'environment' ? 'Caméra avant' : 'Caméra arrière'}
+                </button>
+              )}
+              {torch !== null && (
+                <button type="button" onClick={toggleTorch}
+                  className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium transition-all ${torch ? 'bg-amber-400 text-black' : 'bg-white/10 text-white hover:bg-white/20'}`}>
+                  <Flashlight className="w-4 h-4" />
+                  {torch ? 'Lampe allumée' : 'Lampe'}
+                </button>
+              )}
+            </div>
+          </div>
         )}
 
-        <p className="text-white/30 text-xs text-center mt-2">
-          {engine === 'native' ? '⚡ Détection native — QR & codes-barres' : engine === 'zxing' ? 'ZXing — pointez vers le code' : ''}
+        <p className="text-white/40 text-xs text-center mt-2">
+          Tenez le code à ~15 cm, bien éclairé et à plat
+          {engine && <span className="text-white/25"> · {engine === 'native' ? 'lecteur natif' : 'lecteur intégré'}</span>}
         </p>
       </div>
     </div>

@@ -7,7 +7,7 @@
     "build": "prisma generate && prisma generate --schema prisma-storefront/schema.prisma && next build",
     "start": "next start",
     "lint": "next lint",
-    "postinstall": "prisma generate --schema prisma-storefront/schema.prisma"
+    "postinstall": "prisma generate --schema prisma-storefront/schema.prisma && node scripts/copy-zxing-wasm.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1137.0",
@@ -29,6 +29,7 @@
     "@zxing/browser": "^0.1.5",
     "@zxing/library": "^0.21.3",
     "autoprefixer": "^10.4.27",
+    "barcode-detector": "^3.2.2",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

@@ -4,6 +4,7 @@ import { Camera, X } from 'lucide-react'
 import { ArchiveTable } from './ArchiveTable'
 import { ConfirmSaleModal } from './ConfirmSaleModal'
 import { toast } from 'sonner'
+import { makeDetector, openCamera, tuneCamera } from '@/lib/barcode'
 
 type ActiveTab = 'fac' | 'acq' | 'sav' | 'archive'
 
@@ -146,24 +147,14 @@ export function DocumentGenerator({ userProfile }: DocumentGeneratorProps) {
 
     async function start() {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
-        })
+        const [stream, { detector }] = await Promise.all([openCamera(), makeDetector()])
         if (!active) { stream.getTracks().forEach(t => t.stop()); return }
         streamRef.current = stream
         if (videoRef.current) {
           videoRef.current.srcObject = stream
           await videoRef.current.play()
         }
-
-        if (!('BarcodeDetector' in window)) {
-          toast.error('BarcodeDetector non supporté — utilisez Chrome sur Android')
-          stopScan(); return
-        }
-
-        const detector = new (window as any).BarcodeDetector({
-          formats: ['code_128', 'code_39', 'ean_13', 'qr_code', 'code_93'],
-        })
+        await tuneCamera(stream.getVideoTracks()[0])
 
         const scan = async (): Promise<void> => {
           if (!active || !videoRef.current) return

@@ -11,6 +11,7 @@ import { useEscapeKey } from '@/lib/hooks/useEscapeKey'
 import type { InventorySession, InventorySessionItem, InventoryResultat, DeviceStatus } from '@/types/database'
 import { codeLabel } from '@/lib/codes'
 import { STORE_TIME_ZONE } from '@/lib/time'
+import { makeDetector, openCamera, tuneCamera } from '@/lib/barcode'
 
 // ── Types internes ─────────────────────────────────────────
 interface SessionWithCounts extends InventorySession {
@@ -189,18 +190,14 @@ export default function InventoryModule({ role }: { role: string }) {
 
   const startCamera = useCallback(async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' },
-      })
+      const [stream, { detector }] = await Promise.all([openCamera(), makeDetector()])
       if (videoRef.current) {
         videoRef.current.srcObject = stream
         await videoRef.current.play()
         streamRef.current = stream
       }
-      if ('BarcodeDetector' in window) {
-        const detector = new (window as any).BarcodeDetector({
-          formats: ['code_128', 'ean_13', 'code_39', 'qr_code'],
-        })
+      await tuneCamera(stream.getVideoTracks()[0])
+      {
         const detect = async () => {
           if (!videoRef.current || videoRef.current.readyState < 2) {
             animFrameRef.current = requestAnimationFrame(detect)
@@ -213,8 +210,6 @@ export default function InventoryModule({ role }: { role: string }) {
           animFrameRef.current = requestAnimationFrame(detect)
         }
         animFrameRef.current = requestAnimationFrame(detect)
-      } else {
-        setManualMode(true)
       }
     } catch {
       setCameraOk(false)

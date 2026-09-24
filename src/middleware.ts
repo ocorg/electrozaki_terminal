@@ -100,6 +100,6 @@ export default auth(async (request) => {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|icons|manifest.json|sw.js|workbox.*).*)',
+    '/((?!_next/static|_next/image|favicon.ico|icons|vendor|manifest.json|sw.js|workbox.*).*)',
   ],
 }
