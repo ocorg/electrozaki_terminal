@@ -299,7 +299,7 @@ export function buildPhoneListings(phones: ErpPhone[]): PhoneListing[] {
         variants.push({
           erpRef:        refOf('tel-unit', u.phone_id),
           name:          bits.filter(Boolean).join(' · '),
-          color:         null, // unit picker, not colour swatches
+          color,         // the website filters units by colour, then battery (unit picker)
           storageLabel:  null,
           price:         u.price,
           stockQuantity: 1,
