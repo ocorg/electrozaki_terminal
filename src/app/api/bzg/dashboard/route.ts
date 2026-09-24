@@ -20,7 +20,7 @@ export async function GET() {
         where:  { voided: false, date_vente: { gte: monthStart } },
         select: { store_id: true, prix_vente: true, date_vente: true },
       }),
-      prisma.reparations.findMany({ where: { statut: { not: 'recupere' } }, select: { store_id: true } }),
+      prisma.reparations.findMany({ where: { statut: { not: 'recupere' }, is_deleted: false }, select: { store_id: true } }),
       prisma.caisse.findMany({
         where:   { date: { gte: monthStart } },
         select:  { caisse_id: true, store_id: true, date: true, status: true, solde_reel: true, solde_theorique: true, ecart: true, created_by: true },

@@ -419,15 +419,26 @@ enum RepairRequestStatus {
 // reference. problemAreas is a plain string array of area keys (ecran,
 // batterie, camera, connecteur, son, reseau) chosen from the interactive
 // diagnostic step, not user-typed.
+enum RepairKind {
+  HARDWARE
+  SOFTWARE
+  CONSULTATION
+}
+
 model RepairRequest {
   id            String              @id @default(cuid())
+  kind          RepairKind          @default(HARDWARE)
   customerName  String
   customerPhone String
   deviceBrand   String
   deviceModel   String
   problemAreas  String[]
   notes         String?             @db.Text
+  // Online consultation: when the customer would like to be called.
+  preferredSlot String?
   status        RepairRequestStatus @default(NEW)
+  // Set when staff cancel the request from the ERP (reason required).
+  cancelReason  String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -528,4 +539,27 @@ model RateLimitHit {
 
   @@index([bucket, keyHash, createdAt])
   @@index([createdAt])
+}
+
+// ── Repair tracking (written by the ERP) ────────────────────────────────
+//
+// What a customer may see about their repair on /reparation/suivi, pushed
+// by the ERP (src/lib/storefront/tracking.ts) whenever a ticket changes.
+// No name, no phone number: the customer proves it's theirs with the ticket
+// number + their phone, compared as phoneHash (HMAC with the secret both
+// apps share). The only thing this site writes here is the customer's
+// answer to a quote; the ERP picks it up and applies it to the ticket.
+model RepairTracking {
+  ref             String     @id // ERP ticket number, e.g. REP-0142
+  phoneHash       String
+  kind            RepairKind
+  status          String // ERP status code (en_attente, devis_envoye, en_cours, pret, recupere)
+  device          String
+  quoteAmount     Decimal?   @db.Decimal(10, 2)
+  quoteSentAt     DateTime?
+  quoteDecision   String? // ACCEPTED | REFUSED — set by the customer online
+  quoteDecidedAt  DateTime?
+  decisionApplied Boolean    @default(false) // the ERP has taken the answer into account
+  cancelled       Boolean    @default(false)
+  updatedAt       DateTime   @updatedAt
 }

@@ -12,7 +12,7 @@ const r2 = new S3Client({
   },
 })
 
-export const UPLOAD_FOLDERS = ['avatars', 'receipts'] as const
+export const UPLOAD_FOLDERS = ['avatars', 'receipts', 'repairs'] as const
 export type UploadFolder = (typeof UPLOAD_FOLDERS)[number]
 
 export const UPLOAD_TYPES: Record<string, string> = {

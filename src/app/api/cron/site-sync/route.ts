@@ -2,6 +2,7 @@ import { createHash, timingSafeEqual } from 'node:crypto'
 import { json } from '@/lib/api'
 import { syncStorefront } from '@/lib/storefront/sync'
 import { storefrontConfigured } from '@/lib/storefront/db'
+import { repairTrackingQuietly } from '@/lib/storefront/tracking'
 
 export const maxDuration = 60
 
@@ -22,7 +23,9 @@ export async function GET(request: Request) {
   if (!authorized(request)) return json({ error: 'Non autorisé' }, { status: 401 })
   if (!storefrontConfigured()) return json({ skipped: 'site web non configuré' })
   try {
-    return json({ ok: true, ...(await syncStorefront()) })
+    const stock = await syncStorefront()
+    await repairTrackingQuietly('cron')
+    return json({ ok: true, ...stock })
   } catch (err) {
     console.error('[cron site-sync]', err)
     return json({ error: 'Synchronisation échouée' }, { status: 500 })

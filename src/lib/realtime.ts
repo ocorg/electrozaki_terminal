@@ -2,6 +2,7 @@ import Pusher from 'pusher'
 import { waitUntil } from '@vercel/functions'
 import { REALTIME_CHANNEL, REALTIME_EVENT, entitiesForWrite, prefixesFor, type ChangeEvent, type Entity } from '@/lib/data/entities'
 import { syncStorefrontQuietly } from '@/lib/storefront/sync'
+import { repairTrackingQuietly } from '@/lib/storefront/tracking'
 
 const pusher = new Pusher({
   appId:   process.env.PUSHER_APP_ID!,
@@ -40,6 +41,8 @@ export function withNotify<R extends Request, A extends unknown[]>(
       if (prefixes.includes('/api/phones') || prefixes.includes('/api/accessories') || prefixes.includes('/api/categories')) {
         waitUntil(syncStorefrontQuietly(entities.join(',')))
       }
+      // Repair tickets → the customer's tracking page on the website.
+      if (entities.includes('repairs')) waitUntil(repairTrackingQuietly(entities.join(',')))
     }
     return res
   }

@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { json, handleError, requireUser, requireActiveUser, HttpError } from '@/lib/api'
+import { json, handleError, requireUser, requireActiveUser, HttpError, MANAGERS } from '@/lib/api'
 import { withNotify } from '@/lib/realtime'
 import { prisma } from '@/lib/db'
 import { site, logSite, orderRef } from '@/lib/storefront/access'
@@ -35,16 +35,22 @@ export async function GET() {
 
 const REPAIR_STATUSES = ['NEW', 'CONTACTED', 'QUOTED', 'CONFIRMED', 'CANCELLED'] as const
 
-// PATCH { id, status } — follow-up of a website repair request.
+// PATCH { id, status, reason? } — follow-up of a website repair request.
+// Cancelling needs a manager and a reason (kept on the request).
 async function PATCH_(request: NextRequest) {
   try {
-    const user = await requireActiveUser()
-    const { id, status } = await request.json()
+    const { id, status, reason } = await request.json()
+    const cancelling = status === 'CANCELLED'
+    const user = await requireActiveUser(cancelling ? MANAGERS : undefined)
     if (!(REPAIR_STATUSES as readonly string[]).includes(status)) throw new HttpError(400, 'Statut invalide')
+    const motif = typeof reason === 'string' ? reason.trim() : ''
+    if (cancelling && (motif.length < 5 || motif.length > 500)) throw new HttpError(400, "Indiquez le motif de l'annulation (5 caractères minimum)")
     const before = await site().repairRequest.findUnique({ where: { id: String(id) }, select: { id: true, status: true, customerName: true } })
     if (!before) throw new HttpError(404, 'Demande introuvable')
-    await site().repairRequest.update({ where: { id: before.id }, data: { status } })
-    await logSite(user, 'modification', `Demande de réparation web de ${before.customerName} : ${before.status} → ${status}`, { record_id: before.id })
+    await site().repairRequest.update({ where: { id: before.id }, data: { status, ...(cancelling && { cancelReason: motif }) } })
+    await logSite(user, cancelling ? 'annulation' : 'modification',
+      `Demande de réparation web de ${before.customerName} : ${before.status} → ${status}${cancelling ? ` — ${motif}` : ''}`,
+      { record_id: before.id })
     return json({ ok: true })
   } catch (err) {
     return handleError(err, 'PATCH /api/site/requests')

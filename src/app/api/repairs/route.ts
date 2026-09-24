@@ -5,8 +5,36 @@ import { json, handleError, requireUser, requireActiveUser, pickInput, columnsOf
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { codeLabel } from '@/lib/codes'
 import { withNotify } from '@/lib/realtime'
+import { PROBLEMS_BY_KIND, REPAIR_KINDS, type RepairKind } from '@/lib/repairs'
 
-const EDITABLE = columnsOf('reparations', ['rep_id'])
+// Quote dates and cancellation are set by the server (see checkRepair / ./cancel).
+const EDITABLE = columnsOf('reparations', [
+  'rep_id', 'devis_envoye_le', 'devis_accepte_le', 'devis_refuse_le', 'annule_le', 'annule_par', 'motif_annulation',
+])
+
+const PHOTO_PREFIX = () => `${process.env.R2_PUBLIC_URL}/repairs/`
+
+/** Validates the v2 fields when present (kind, problems, payment, photos). */
+function checkRepair(body: Record<string, unknown>, kind: RepairKind) {
+  if ('type_reparation' in body && !REPAIR_KINDS.includes(body.type_reparation as RepairKind)) {
+    throw new HttpError(400, 'Type de réparation invalide')
+  }
+  if ('problemes' in body) {
+    const list = body.problemes
+    if (!Array.isArray(list) || list.some(p => !PROBLEMS_BY_KIND[kind].includes(p as never))) {
+      throw new HttpError(400, 'Problème invalide pour ce type de réparation')
+    }
+  }
+  if ('mode_paiement' in body && body.mode_paiement !== null && !['especes', 'virement'].includes(body.mode_paiement as string)) {
+    throw new HttpError(400, 'Mode de paiement invalide (espèces ou virement)')
+  }
+  if ('photos_depot' in body) {
+    const photos = body.photos_depot
+    if (!Array.isArray(photos) || photos.length > 3 || photos.some(u => typeof u !== 'string' || !u.startsWith(PHOTO_PREFIX()))) {
+      throw new HttpError(400, 'Photos invalides (3 maximum)')
+    }
+  }
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -45,6 +73,7 @@ async function POST_(request: NextRequest) {
   try {
     const user = await requireActiveUser()
     const body = await request.json()
+    checkRepair(body, (body.type_reparation as RepairKind) ?? 'materiel')
 
     const data = await prisma.reparations.create({
       data: {
@@ -81,9 +110,23 @@ async function PATCH_(request: NextRequest) {
     if (!rep_id) throw new HttpError(400, 'rep_id requis')
 
     const before = await prisma.reparations.findUniqueOrThrow({ where: { rep_id } })
+    if (before.is_deleted) throw new HttpError(409, 'Ticket annulé')
+    checkRepair(body, (body.type_reparation as RepairKind) ?? before.type_reparation)
+
+    // Quote step: sending needs a price; answering is done through ./quote.
+    const stamps: Record<string, Date> = {}
+    if (body.statut === 'devis_envoye' && before.statut !== 'devis_envoye') {
+      const price = Number(body.cout_reparation ?? before.cout_reparation ?? 0)
+      if (!(price > 0)) throw new HttpError(400, 'Indiquez le prix du devis avant de l’envoyer')
+      stamps.devis_envoye_le = new Date()
+    }
+    if (before.statut === 'devis_envoye' && body.statut && body.statut !== 'devis_envoye') {
+      throw new HttpError(409, 'Enregistrez la réponse du client au devis (accepté / refusé)')
+    }
+
     const data = await prisma.reparations.update({
       where: { rep_id },
-      data:  { ...pickInput('reparations', body, EDITABLE), updated_by: user.id },
+      data:  { ...pickInput('reparations', body, EDITABLE), ...stamps, updated_by: user.id },
     })
 
     await logActivity({
