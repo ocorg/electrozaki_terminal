@@ -28,6 +28,7 @@ const SALES = (store: string, from: Date, to: Date) => Prisma.sql`
          t.payment_method, COALESCE(t.avance, 0) AS avance, COALESCE(t.valeur_echange, 0) AS ve,
          COALESCE(t.avoir_montant, 0) AS ao, t.type_operation, t.created_by, t.client_id,
          COALESCE(p.prix_achat, a.prix_achat, l.prix_achat) AS unit_cost,
+         COALESCE(p.is_deleted, a.is_deleted, l.is_deleted, false) AS device_deleted,
          COALESCE(p.prix_achat, a.prix_achat, l.prix_achat, 0) * (CASE WHEN t.device_type = 'accessoire' THEN t.qty ELSE 1 END) AS cost,
          CASE t.device_type
            WHEN 'telephone' THEN 'telephone_' || COALESCE(p.condition::text, 'occasion')
@@ -77,7 +78,9 @@ const EXPENSES = (store: string, from: Date, to: Date) => Prisma.sql`
 type Sale = ReturnType<typeof toSale>
 const toSale = (r: Row) => ({
   txn_id: String(r.txn_id), d: iso(r.d), at: r.created_at as Date, device_type: String(r.device_type), qty: num(r.qty),
-  pv: num(r.pv), cost: num(r.cost), hasCost: r.unit_cost !== null, payment: String(r.payment_method),
+  // A service sold as an "accessory" with no purchase price is pure labour: cost 0, nothing missing
+  pv: num(r.pv), cost: num(r.cost), hasCost: r.unit_cost !== null || r.cat === 'acc_service', payment: String(r.payment_method),
+  device_id: String(r.device_id), deleted: r.device_deleted === true,
   avance: num(r.avance), ve: num(r.ve), ao: num(r.ao), op: String(r.type_operation), seller: r.created_by as string | null,
   client: r.client_id as string | null, cat: String(r.cat),
   item: r.device_type === 'telephone' ? phoneName(r) : r.device_type === 'laptop' ? `${r.l_marque ?? ''} ${r.l_model ?? ''}`.trim() : String(r.a_nom ?? 'Accessoire'),
@@ -251,6 +254,16 @@ export async function financials(store: string, from: Date, to: Date) {
     expenses:     t.opex,
   }
 
+  // ── Items sold without a purchase price (to complete from the screen) ──
+  const missing = new Map<string, { device_type: string; device_id: string; item: string; lines: number; revenue: number; deleted: boolean }>()
+  for (const s of sales.filter(x => !x.hasCost)) {
+    const k = `${s.device_type}:${s.device_id}`
+    const v = missing.get(k) ?? { device_type: s.device_type, device_id: s.device_id, item: s.item, lines: 0, revenue: 0, deleted: s.deleted }
+    v.lines += 1; v.revenue = round(v.revenue + s.pv)
+    missing.set(k, v)
+  }
+  const missingCosts = [...missing.values()].sort((a, b) => b.revenue - a.revenue)
+
   // ── One day: the full journal ──
   const journal = days === 1 ? {
     sales: sales.sort((a, b) => a.at.getTime() - b.at.getTime()).map(s => ({
@@ -269,6 +282,6 @@ export async function financials(store: string, from: Date, to: Date) {
     categories, phones: phones.sort((a, b) => b.qty - a.qty || b.revenue - a.revenue).slice(0, 12),
     phonesByProfit: [...phones].sort((a, b) => b.profit - a.profit).slice(0, 5),
     accessories: accessories.sort((a, b) => b.qty - a.qty || b.revenue - a.revenue).slice(0, 12),
-    expenseCats, sellers, payments, hours, cash, journal,
+    expenseCats, sellers, payments, hours, cash, journal, missingCosts,
   }
 }

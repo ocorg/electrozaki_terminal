@@ -11,13 +11,13 @@ export type Entity =
 const LOG = '/api/log'
 
 export const AFFECTS: Record<Entity, string[]> = {
-  transactions: ['/api/transactions', '/api/retours', '/api/caisse', '/api/dashboard', '/api/bzg', '/api/phones', '/api/laptops', '/api/accessories', '/api/clients', '/api/warranty', '/api/credits', LOG],
-  phones:       ['/api/phones', '/api/dashboard', '/api/suppliers', '/api/supplier-payments', '/api/documents', '/api/inventory', LOG],
-  laptops:      ['/api/laptops', LOG],
-  accessories:  ['/api/accessories', '/api/dashboard', LOG],
+  transactions: ['/api/analytics', '/api/transactions', '/api/retours', '/api/caisse', '/api/dashboard', '/api/bzg', '/api/phones', '/api/laptops', '/api/accessories', '/api/clients', '/api/warranty', '/api/credits', LOG],
+  phones:       ['/api/analytics', '/api/phones', '/api/dashboard', '/api/suppliers', '/api/supplier-payments', '/api/documents', '/api/inventory', LOG],
+  laptops:      ['/api/analytics', '/api/laptops', LOG],
+  accessories:  ['/api/analytics', '/api/accessories', '/api/dashboard', LOG],
   caisse:       ['/api/caisse', '/api/cash-drops', '/api/bzg', LOG],
-  expenses:     ['/api/expenses', '/api/caisse', '/api/dashboard', '/api/bzg', LOG],
-  repairs:      ['/api/repairs', '/api/caisse', '/api/dashboard', '/api/bzg', '/api/clients', LOG],
+  expenses:     ['/api/analytics', '/api/expenses', '/api/caisse', '/api/dashboard', '/api/bzg', LOG],
+  repairs:      ['/api/analytics', '/api/repairs', '/api/caisse', '/api/dashboard', '/api/bzg', '/api/clients', LOG],
   clients:      ['/api/clients', LOG],
   suppliers:    ['/api/suppliers', '/api/supplier-payments', '/api/phones', LOG],
   credits:      ['/api/credits', '/api/credit-imports', '/api/phone-credits', '/api/caisse', '/api/clients', '/api/phones', '/api/dashboard', LOG],

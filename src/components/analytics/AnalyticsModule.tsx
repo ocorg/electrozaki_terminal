@@ -3,9 +3,9 @@ import { useMemo, useState } from 'react'
 import {
   TrendingUp, Wallet, Receipt, PiggyBank, ShoppingCart, ShoppingBag, CalendarDays, Coins,
   ArrowUpRight, ArrowDownRight, Minus, ChevronLeft, ChevronRight, AlertTriangle, Smartphone, Package,
-  Layers, Users, Clock, BookOpen, BarChart3,
+  Layers, Users, Clock, BookOpen, BarChart3, ChevronDown, ChevronUp,
 } from 'lucide-react'
-import { useApi } from '@/lib/data/api'
+import { useApi, apiWrite } from '@/lib/data/api'
 import { PageHeader, SkeletonRow } from '@/components/shared'
 import { useLanguageStore } from '@/lib/stores/language'
 import { codeLabel, type Code } from '@/lib/codes'
@@ -30,6 +30,7 @@ interface Analytics {
   sellers: { key: string; name: string; n: number; revenue: number; profit: number }[]
   payments: { key: string; n: number; revenue: number; profit: number }[]
   hours: { hour: number; n: number; revenue: number }[]
+  missingCosts: { device_type: string; device_id: string; item: string; lines: number; revenue: number; deleted: boolean }[]
   cash: { received: number; tradeIns: number; avoirs: number; toCollect: number; repairs: number; stockBuys: number; refundsPaid: number; expenses: number }
   journal: null | {
     sales: { time: string; txn_id: string; item: string; qty: number; price: number; cost: number | null; profit: number | null; payment: string; op: string; seller: string }[]
@@ -126,12 +127,7 @@ export default function AnalyticsModule() {
           <div className="bg-white border border-[#E8E5DE] rounded-2xl">{[0, 1, 2, 3].map(i => <SkeletonRow key={i} />)}</div>
         ) : (
           <>
-            {a.totals.missingCost > 0 && (
-              <p className="flex items-start gap-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
-                <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                {a.totals.missingCost} vente(s) sans prix d’achat enregistré : leur bénéfice est compté en entier (surestimé). Complétez le prix d’achat de ces articles pour des chiffres exacts.
-              </p>
-            )}
+            {a.missingCosts.length > 0 && <MissingCosts items={a.missingCosts} lines={a.totals.missingCost} onSaved={() => q.refresh()} />}
 
             {/* ── Key figures ── */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -269,6 +265,62 @@ export default function AnalyticsModule() {
 }
 
 // ── Pieces ──────────────────────────────────────────────────────────────
+
+/** Sold items with no purchase price: listed, fixable right here (even deleted ones). */
+function MissingCosts({ items, lines, onSaved }: { items: Analytics['missingCosts']; lines: number; onSaved: () => void }) {
+  const [open, setOpen] = useState(false)
+  const [values, setValues] = useState<Record<string, string>>({})
+  const [saving, setSaving] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  async function save(it: Analytics['missingCosts'][number]) {
+    const key = `${it.device_type}:${it.device_id}`
+    const value = Number(values[key])
+    if (!Number.isFinite(value) || value < 0 || values[key] === undefined || values[key] === '') { setError('Entrez un prix d’achat (0 ou plus).'); return }
+    setSaving(key); setError(null)
+    try {
+      const url = it.device_type === 'telephone' ? '/api/phones' : it.device_type === 'laptop' ? '/api/laptops' : '/api/accessories'
+      const id  = it.device_type === 'telephone' ? { phone_id: it.device_id } : it.device_type === 'laptop' ? { laptop_id: it.device_id } : { acc_id: it.device_id }
+      await apiWrite(url, { method: 'PATCH', body: { ...id, prix_achat: value } })
+      onSaved()
+    } catch (e) { setError((e as Error).message) } finally { setSaving(null) }
+  }
+  return (
+    <div className="text-sm text-amber-900 bg-amber-50 border border-amber-200 rounded-xl">
+      <button type="button" onClick={() => setOpen(o => !o)} className="w-full flex items-start gap-2 px-3 py-2 text-left">
+        <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+        <span className="flex-1">
+          {lines} vente(s) sans prix d’achat ({items.length} article{items.length > 1 ? 's' : ''}) : leur bénéfice est compté en entier (surestimé).{' '}
+          <b className="underline underline-offset-2">{open ? 'Masquer' : 'Voir et compléter'}</b>
+        </span>
+        {open ? <ChevronUp className="w-4 h-4 flex-shrink-0" /> : <ChevronDown className="w-4 h-4 flex-shrink-0" />}
+      </button>
+      {open && (
+        <div className="border-t border-amber-200 bg-white rounded-b-xl divide-y divide-[#F2F0EB]">
+          <p className="px-3 py-2 text-xs text-[#6B6860]">Entrez ce que l’article vous a coûté (à l’unité). Mettez 0 pour un service sans pièce.</p>
+          {items.map(it => {
+            const key = `${it.device_type}:${it.device_id}`
+            return (
+              <div key={key} className="flex flex-wrap items-center gap-2 px-3 py-2">
+                <div className="flex-1 min-w-[10rem]">
+                  <p className="font-medium text-[#1A1A1A]">{it.item}{it.deleted && <span className="ml-1 text-xs text-[#8A877F]">(supprimé)</span>}</p>
+                  <p className="text-xs text-[#8A877F]"><span className="font-mono">{it.device_id}</span> · {it.lines} vente(s) · {mad(it.revenue)}</p>
+                </div>
+                <input type="number" min={0} step={1} inputMode="decimal" placeholder="Prix d’achat"
+                  value={values[key] ?? ''} onChange={e => setValues(v => ({ ...v, [key]: e.target.value }))}
+                  className="w-28 border border-[#E8E5DE] rounded-lg px-2 py-1.5 text-right" />
+                <button type="button" onClick={() => save(it)} disabled={saving === key}
+                  className="px-3 py-1.5 rounded-lg bg-[#1A1A1A] text-white text-xs font-bold disabled:opacity-50">
+                  {saving === key ? '…' : 'Enregistrer'}
+                </button>
+              </div>
+            )
+          })}
+          {error && <p className="px-3 py-2 text-xs text-red-600">{error}</p>}
+        </div>
+      )}
+    </div>
+  )
+}
 
 function Card({ title, icon: Icon, note, right, children }: { title: string; icon: typeof TrendingUp; note?: string; right?: React.ReactNode; children: React.ReactNode }) {
   return (
