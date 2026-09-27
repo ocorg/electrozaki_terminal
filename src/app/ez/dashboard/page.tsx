@@ -28,6 +28,7 @@ interface TxnRow {
   device_type:    string
   type_operation: string
   prix_vente:     number
+  qty?:           number
   avance:         number
   valeur_echange: number
   payment_method: string
@@ -91,6 +92,11 @@ function periodDates(p: Period): { start: string; end: string } {
 // A return lowers the day's sales by what was refunded; an item put back in
 // stock also gives back its purchase cost (it will be sold again).
 type ReturnRow = { date: string; montant: number; qty: number; destination: string | null; device_id: string; device_type: string }
+// Sales are counted at their price (credit sales and trade-ins included — a
+// trade-in phone is a payment that enters stock); cash received is shown
+// apart (payment breakdown). An accessory line's cost is per unit × quantity.
+const lineCost = (t: TxnRow, costs: Record<string, number>) =>
+  (costs[t.device_id] || 0) * (t.device_type === 'accessoire' ? (t.qty || 1) : 1)
 const returnedCost = (r: ReturnRow, costs: Record<string, number>) =>
   r.destination === 'stock' ? (costs[r.device_id] || 0) * (r.device_type === 'accessoire' ? r.qty : 1) : 0
 
@@ -119,8 +125,8 @@ function buildChart(
       : String(dt.getUTCDate())
     const dayT    = txns.filter(t => t.date_vente === date)
     const dayR    = returns.filter(r => r.date.slice(0, 10) === date)
-    const revenue = dayT.reduce((s, t) => s + collected(t), 0) - dayR.reduce((s, r) => s + r.montant, 0)
-    const cost    = dayT.reduce((s, t) => s + (costs[t.device_id] || 0), 0) - dayR.reduce((s, r) => s + returnedCost(r, costs), 0)
+    const revenue = dayT.reduce((s, t) => s + (t.prix_vente || 0), 0) - dayR.reduce((s, r) => s + r.montant, 0)
+    const cost    = dayT.reduce((s, t) => s + lineCost(t, costs), 0) - dayR.reduce((s, r) => s + returnedCost(r, costs), 0)
     const expDay  = exps.filter(ex => ex.date === date).reduce((s, ex) => s + ex.montant, 0)
     const profit  = revenue - cost
     return { label, revenue, profit, net: profit - expDay, count: dayT.length }
@@ -193,14 +199,15 @@ export default function EZDashboard() {
     const repairs    = (json.repairs     || []) as Record<string, unknown>[]
     const accs       = (json.accessories || []) as Record<string, unknown>[]
     const credits    = (json.credits     || []) as Record<string, unknown>[]
-    const exps       = (json.expenses    || []) as { montant: number; date: string }[]
+    // Stock purchases ("marchandises") aren't an expense here: their cost is counted when the item sells
+    const exps       = ((json.expenses   || []) as { montant: number; date: string; categorie?: string }[]).filter(e => e.categorie !== 'marchandises')
     const costMap: Record<string, number> = canFin ? (json.costMap || {}) : {}
     const returns    = (json.returns     || []) as ReturnRow[]
 
     // ── KPI calculations ────────────────────────────────────
     // Net of returns refunded in the period
-    const ca        = periodTxns.reduce((s, t) => s + collected(t), 0) - returns.reduce((s, r) => s + r.montant, 0)
-    const totalCost = periodTxns.reduce((s, t) => s + (costMap[t.device_id] || 0), 0) - returns.reduce((s, r) => s + returnedCost(r, costMap), 0)
+    const ca        = periodTxns.reduce((s, t) => s + (t.prix_vente || 0), 0) - returns.reduce((s, r) => s + r.montant, 0)
+    const totalCost = periodTxns.reduce((s, t) => s + lineCost(t, costMap), 0) - returns.reduce((s, r) => s + returnedCost(r, costMap), 0)
     const bBrut     = ca - totalCost
     const totalExp  = exps.reduce((s, e) => s + e.montant, 0)
     const bNet      = bBrut - totalExp

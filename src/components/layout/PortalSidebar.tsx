@@ -11,7 +11,7 @@ import {
   Settings, LogOut, Globe, ChevronRight,
   PanelLeftClose, PanelLeftOpen, Store, FileText, Clock,
   BarChart3, UserCheck, ScrollText, Shield, PackageCheck, CreditCard, List, PackageSearch,
-  ShoppingBag, Tag, Inbox, Megaphone, Activity
+  ShoppingBag, Tag, Inbox, Megaphone, Activity, PieChart
 } from 'lucide-react'
 import type { UserRole } from '@/types/database'
 import { useLanguageStore } from '@/lib/stores/language'
@@ -52,6 +52,7 @@ function getNavItems(portalBase: string, portalType: string): NavItem[] {
   // Default: EZ portal
   return [
     { href: `${portalBase}/dashboard`,        icon: LayoutDashboard, label: 'Tableau de bord',   roles: ['employe','gerant','proprietaire'] },
+    { href: `${portalBase}/analyses`,         icon: PieChart,        label: 'Analyse financière', roles: ['gerant','proprietaire'] },
     { href: `${portalBase}/pos`,              icon: ShoppingCart,    label: 'Point de vente',     roles: ['employe','gerant','proprietaire'] },
     { href: `${portalBase}/documents`,        icon: FileText,        label: 'Documents',          roles: ['gerant','proprietaire'] },
     { divider: true, label: 'STOCK',                                                              roles: ['employe','gerant','proprietaire'] },

@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     if (!store_id || !start || !end) throw new HttpError(400, 'store_id, start et end requis')
 
     const txnSelect = {
-      txn_id: true, device_id: true, device_type: true, type_operation: true, prix_vente: true,
+      txn_id: true, device_id: true, device_type: true, type_operation: true, prix_vente: true, qty: true,
       avance: true, valeur_echange: true, payment_method: true, date_vente: true,
     } as const
 
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
         where:  { store_id, voided: false, OR: [{ avance: { gt: 0 } }, { payment_method: 'credit' }] },
         select: { txn_id: true, prix_vente: true, avance: true, valeur_echange: true, payment_method: true },
       }),
-      prisma.expenses.findMany({ where: { store_id, is_deleted: false, date: { gte: start, lte: end } }, select: { montant: true, date: true } }),
+      prisma.expenses.findMany({ where: { store_id, is_deleted: false, date: { gte: start, lte: end } }, select: { montant: true, date: true, categorie: true } }),
       // Returns refunded in the period (dated the day of the refund)
       prisma.retours.findMany({
         where:  { store_id, type: 'retour', date: { gte: start, lte: end } },

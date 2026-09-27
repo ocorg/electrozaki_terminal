@@ -9,10 +9,7 @@ import { formatMAD, formatDate } from '@/lib/utils'
 import { Modal, Field, inputClass, selectClass, Btn, PageHeader, EmptyState, SkeletonRow, Select } from '@/components/shared'
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import {
-  Receipt, Plus, Trash2, RefreshCw,
-  ShoppingBag, Zap, Truck, Wrench,
-  Users, Megaphone, Monitor, MoreHorizontal,
-  Calendar, AlertTriangle, Loader2
+  Receipt, Plus, Trash2, RefreshCw, ShoppingBag, Zap, Truck, Wrench, Users, Megaphone, Monitor, MoreHorizontal, Calendar, AlertTriangle, Loader2, Package, UtensilsCrossed, HandHeart,
 } from 'lucide-react'
 
 import { useCategories, categoryLabel } from '@/lib/hooks/useCategories'
@@ -27,6 +24,9 @@ const CAT_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   salaires:    Users,
   marketing:   Megaphone,
   equipements: Monitor,
+  marchandises: Package,
+  nourriture:  UtensilsCrossed,
+  dons:        HandHeart,
 }
 
 interface Expense {
