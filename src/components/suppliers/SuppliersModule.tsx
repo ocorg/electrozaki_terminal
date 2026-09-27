@@ -35,6 +35,10 @@ interface Supplier {
   nb_en_stock?:        number
   nb_vendus?:          number
   a_montant_en_stock?: number
+  montant_vendu_non_regle?: number
+  nb_a_regler?:        number
+  credit_total?:       number
+  credit_disponible?:  number
 }
 
 interface PhoneRow {
@@ -44,7 +48,7 @@ interface PhoneRow {
   imei?:     string | null
   couleur?:  string | null
   stockage?: string | null
-  cash_recu: number   // type A = cash réel ; type B/C = prix_achat
+  cash_recu: number   // what the supplier is owed for it: invoice − trade-in, else purchase price
   fac_ref?:  string | null
 }
 
@@ -65,17 +69,22 @@ const EMPTY_FORM = {
   notes: '', type_fournisseur: 'B',
 }
 
+// One logic for every supplier (owner's decision, 2026-09-28): a supplier is
+// owed a phone once it is SOLD; paying = settling chosen sold phones (the
+// supplier's credit is used first); an advance adds credit. The category is
+// only a label — "D" is our own stock, shown for information.
 const TYPE_CFG: Record<string, { bg: string; color: string; border: string; desc: string }> = {
-  A: { bg: '#FAF5E8', color: '#C9A440', border: '1px solid #E8D494', desc: 'Consignation' },
-  B: { bg: '#EFF6FF', color: '#3B82F6', border: '1px solid #BFDBFE', desc: 'Paiement direct' },
-  C: { bg: '#F5F3FF', color: '#7C3AED', border: '1px solid #DDD6FE', desc: 'Paiement direct' },
-  D: { bg: '#F0FDF4', color: '#16A34A', border: '1px solid #BBF7D0', desc: 'Paiement direct' },
+  A: { bg: '#FAF5E8', color: '#C9A440', border: '1px solid #E8D494', desc: 'Catégorie A' },
+  B: { bg: '#EFF6FF', color: '#3B82F6', border: '1px solid #BFDBFE', desc: 'Catégorie B' },
+  C: { bg: '#F5F3FF', color: '#7C3AED', border: '1px solid #DDD6FE', desc: 'Catégorie C' },
+  D: { bg: '#F0FDF4', color: '#16A34A', border: '1px solid #BBF7D0', desc: 'Notre stock · pour information' },
 }
+const OWN_STOCK = 'D'
 
 const PAY_LABEL: Record<string, string> = {
-  reglement_a: 'Règlement ventes',
-  avance_a:    'Avance stock',
-  paiement_b:  'Paiement',
+  reglement_a: 'Règlement de ventes',
+  avance_a:    'Avance (crédit)',
+  paiement_b:  'Paiement (ancien système)',
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -119,7 +128,7 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
   const [selectedPhoneIds, setSelectedPhoneIds] = useState<Set<string>>(new Set())
   const [phonesLoading,    setPhonesLoading]    = useState(false)
 
-  // ── B/C inline payment form ───────────────────────────────────────────────────
+  // ── Advance form ───────────────────────────────────────────────────────────────
   const [showPayForm, setShowPayForm] = useState(false)
   const [payMontant,  setPayMontant]  = useState('')
   const [payDate,     setPayDate]     = useState(new Date().toISOString().split('T')[0])
@@ -133,7 +142,13 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
     [phoneRows, selectedPhoneIds]
   )
 
-  const totalDue = suppliers.reduce((s, sup) => s + (sup.solde_du ?? 0), 0)
+  // Real debts only: our own stock ("D") is followed for information
+  const totalDue = suppliers.filter(s => s.type_fournisseur !== OWN_STOCK).reduce((s, sup) => s + (sup.solde_du ?? 0), 0)
+  const ownStockDue = suppliers.filter(s => s.type_fournisseur === OWN_STOCK).reduce((s, sup) => s + (sup.solde_du ?? 0), 0)
+  // Credit used first when settling; only the rest is paid now
+  const creditAvailable = selected?.credit_total ?? 0
+  const creditUsed = Math.min(creditAvailable, selectedTotal)
+  const toPayNow = Math.max(0, Math.round((selectedTotal - creditUsed) * 100) / 100)
 
   // ── Fetch ────────────────────────────────────────────────────────────────────
 
@@ -153,48 +168,24 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
     }
   }
 
-  // Unified phone list: type A → unsettled sold phones (cash_recu computed)
-  //                    type B/C → all sold phones (cash_recu = prix_achat, for reference)
+  // Sold phones not settled yet — the same list for every supplier
   async function fetchPhoneRows(supplier: Supplier) {
     setPhonesLoading(true)
     try {
-      if (supplier.type_fournisseur === 'A') {
-        const res  = await fetch(
-          `/api/supplier-payments?mode=unsettled_phones&supplier_id=${supplier.supplier_id}`
-        )
-        const json = await res.json()
-        const rows: PhoneRow[] = (json.data || []).map((p: any) => ({
-          phone_id:  p.phone_id,
-          marque:    p.marque,
-          model:     p.model,
-          imei:      p.imei    ?? null,
-          couleur:   p.couleur  ?? null,
-          stockage:  p.stockage ?? null,
-          cash_recu: p.cash_recu ?? 0,
-          fac_ref:   p.fac_ref  ?? null,
-        }))
-        setPhoneRows(rows)
-        // Pre-select all for type A
-        setSelectedPhoneIds(new Set(rows.map(r => r.phone_id)))
-      } else {
-        // B/C : sold phones from this supplier (for payment traceability)
-        const res  = await fetch(
-          `/api/phones?fournisseur_id=${supplier.supplier_id}&status=vendu&store_id=${storeId}`
-        )
-        const json = await res.json()
-        const rows: PhoneRow[] = (json.data || []).map((p: any) => ({
-          phone_id:  p.phone_id,
-          marque:    p.marque,
-          model:     p.model,
-          imei:      p.imei    ?? null,
-          couleur:   p.couleur  ?? null,
-          stockage:  p.stockage ?? null,
-          cash_recu: p.prix_achat ?? 0,
-          fac_ref:   null,
-        }))
-        setPhoneRows(rows)
-        setSelectedPhoneIds(new Set()) // B/C: no pre-selection
-      }
+      const res  = await fetch(`/api/supplier-payments?mode=unsettled_phones&supplier_id=${supplier.supplier_id}`)
+      const json = await res.json()
+      const rows: PhoneRow[] = (json.data || []).map((p: any) => ({
+        phone_id:  p.phone_id,
+        marque:    p.marque,
+        model:     p.model,
+        imei:      p.imei    ?? null,
+        couleur:   p.couleur  ?? null,
+        stockage:  p.stockage ?? null,
+        cash_recu: Number(p.cash_recu ?? 0),
+        fac_ref:   p.fac_ref  ?? null,
+      }))
+      setPhoneRows(rows)
+      setSelectedPhoneIds(new Set(rows.map(r => r.phone_id)))
     } finally {
       setPhonesLoading(false)
     }
@@ -313,22 +304,16 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
           supplier_id:   selected.supplier_id,
           store_id:      storeId,
           payment_type:  'reglement_a',
-          montant:       selectedTotal,
+          montant:       toPayNow,
           phone_ids:     Array.from(selectedPhoneIds),
           date_paiement: new Date().toISOString().split('T')[0],
+          notes:         creditUsed > 0 ? `Crédit utilisé : ${formatMAD(creditUsed)}` : null,
         }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
-      showSuccess(`${isAr ? 'تمت التسوية ✓' : 'Règlement enregistré ✓'} — ${formatMAD(selectedTotal)}`)
-      await fetchSuppliers()
-      if (selected) {
-        fetchPhoneRows(selected)
-        fetchPayments(selected.supplier_id)
-        setSelected(prev => prev
-          ? { ...prev, solde_du: Math.max(0, (prev.solde_du ?? 0) - selectedTotal) }
-          : null)
-      }
+      showSuccess(`${isAr ? 'تمت التسوية ✓' : 'Règlement enregistré ✓'} — ${selectedPhoneIds.size} tél., payé ${formatMAD(toPayNow)}${creditUsed > 0 ? ` (+ crédit ${formatMAD(creditUsed)})` : ''}`)
+      await refreshSelected()
     } catch (err: unknown) {
       showError((err as Error).message)
     } finally {
@@ -336,8 +321,20 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
     }
   }
 
-  // Type B/C — paiement avec traçabilité téléphones
-  async function handlePaymentBC() {
+  // Re-read the supplier's figures and lists after a payment
+  async function refreshSelected() {
+    if (!selected) return
+    const id = selected.supplier_id
+    await fetchSuppliers()
+    const fresh = await fetch(`/api/suppliers?store_id=${storeId}`).then(r => r.json()).catch(() => null)
+    const row = (fresh?.data as Supplier[] | undefined)?.find(x => x.supplier_id === id)
+    if (row) setSelected(row)
+    fetchPhoneRows(row ?? selected)
+    fetchPayments(id)
+  }
+
+  // Advance: money given ahead of sales — becomes the supplier's credit
+  async function handleAvance() {
     if (!selected || !payMontant || parseFloat(payMontant) <= 0) {
       showError(t(isAr, 'common.invalidAmount'))
       return
@@ -350,25 +347,20 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
         body:    JSON.stringify({
           supplier_id:   selected.supplier_id,
           store_id:      storeId,
-          payment_type:  'paiement_b',
+          payment_type:  'avance_a',
           montant:       parseFloat(payMontant),
-          phone_ids:     Array.from(selectedPhoneIds),
+          phone_ids:     [],
           date_paiement: payDate,
           notes:         payNotes || null,
         }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
-      showSuccess(isAr ? 'تم تسجيل الدفعة ✓' : 'Paiement enregistré ✓')
+      showSuccess(isAr ? 'تم تسجيل التسبيق ✓' : 'Avance enregistrée ✓ — ajoutée au crédit du fournisseur')
       setShowPayForm(false)
       setPayMontant('')
       setPayNotes('')
-      setSelectedPhoneIds(new Set())
-      await fetchSuppliers()
-      fetchPayments(selected.supplier_id)
-      setSelected(prev => prev
-        ? { ...prev, solde_du: Math.max(0, (prev.solde_du ?? 0) - parseFloat(payMontant)) }
-        : null)
+      await refreshSelected()
     } catch (err: unknown) {
       showError((err as Error).message)
     } finally {
@@ -426,10 +418,13 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
           </div>
           <div className="bg-white border border-[#E8E5DE] rounded-xl px-4 py-3"
                style={{ borderLeftColor: totalDue > 0 ? '#EF4444' : '#10B981', borderLeftWidth: '3px' }}>
-            <p className="text-xs text-[#6B6860]">{isAr ? 'المستحق الإجمالي' : 'Total dû'}</p>
+            <p className="text-xs text-[#6B6860]">{isAr ? 'المستحق الإجمالي' : 'Total dû aux fournisseurs'}</p>
             <p className={`font-display font-bold text-xl ${totalDue > 0 ? 'text-red-500' : 'text-[#1A1A1A]'}`}>
               {formatMAD(totalDue)}
             </p>
+            {ownStockDue > 0 && (
+              <p className="text-[11px] text-[#8A877F] mt-0.5">+ {formatMAD(ownStockDue)} notre stock (pour information)</p>
+            )}
           </div>
         </div>
 
@@ -507,7 +502,9 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
                     </div>
                     <div className="text-right flex-shrink-0">
                       {(sup.solde_du ?? 0) > 0 ? (
-                        <p className="text-sm font-bold text-red-500">{formatMAD(sup.solde_du ?? 0)}</p>
+                        <p className={`text-sm font-bold ${sup.type_fournisseur === OWN_STOCK ? 'text-[#6B6860]' : 'text-red-500'}`}>{formatMAD(sup.solde_du ?? 0)}</p>
+                      ) : (sup.credit_disponible ?? 0) > 0 ? (
+                        <p className="text-sm font-bold text-emerald-600">Crédit {formatMAD(sup.credit_disponible ?? 0)}</p>
                       ) : (
                         <p className="text-sm font-bold text-emerald-600">À jour ✓</p>
                       )}
@@ -538,52 +535,26 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
               )}
             </div>
 
-            {/* ── UNIFIED KPIs (same for all types) ── */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              {/* Total achats */}
-              <div className="rounded-xl p-3 text-center bg-[#F8F7F4] border border-[#E8E5DE]">
-                <p className="text-[10px] text-[#6B6860] uppercase tracking-wider font-bold mb-1">
-                  {isAr ? 'إجمالي الشراء' : 'Total achats'}
-                </p>
-                <p className="font-bold text-sm text-[#1A1A1A]">
-                  {formatMAD(selected.total_achats ?? 0)}
-                </p>
-              </div>
-              {/* Solde dû */}
-              <div className="rounded-xl p-3 text-center border"
-                   style={{
-                     backgroundColor: (selected.solde_du ?? 0) > 0 ? '#FFF1F2' : '#F0FDF4',
-                     borderColor:     (selected.solde_du ?? 0) > 0 ? '#FECDD3' : '#BBF7D0',
-                   }}>
-                <p className="text-[10px] uppercase tracking-wider font-bold mb-1"
-                   style={{ color: (selected.solde_du ?? 0) > 0 ? '#9B1C1C' : '#065F46' }}>
-                  {isAr ? 'المستحق' : 'Solde dû'}
-                </p>
-                <p className="font-bold text-sm"
-                   style={{ color: (selected.solde_du ?? 0) > 0 ? '#EF4444' : '#059669' }}>
-                  {(selected.solde_du ?? 0) > 0 ? formatMAD(selected.solde_du ?? 0) : 'À jour ✓'}
-                </p>
-              </div>
-              {/* En stock */}
-              <div className="rounded-xl p-3 text-center bg-[#F8F7F4] border border-[#E8E5DE]">
-                <p className="text-[10px] text-[#6B6860] uppercase tracking-wider font-bold mb-1">
-                  {isAr ? 'في المخزون' : 'En stock'}
-                </p>
-                <p className="font-bold text-sm text-[#1A1A1A]">
-                  {selected.nb_en_stock ?? 0}
-                  <span className="text-[10px] font-normal text-[#B0ADA6] ml-1">tél.</span>
-                </p>
-              </div>
+            {/* ── Figures (same for every supplier) ── */}
+            {selected.type_fournisseur === OWN_STOCK && (
+              <p className="text-xs text-[#6B6860] bg-[#F0FDF4] border border-[#BBF7D0] rounded-xl px-3 py-2">
+                Notre propre stock : ces montants sont suivis pour information (ce que le stock « se doit »), ils ne sont pas comptés dans le total dû aux fournisseurs.
+              </p>
+            )}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <Kpi label={`Vendus à régler (${selected.nb_a_regler ?? 0})`} value={formatMAD(selected.montant_vendu_non_regle ?? 0)} />
+              <Kpi label="Crédit du fournisseur" value={formatMAD(selected.credit_total ?? 0)}
+                tone={(selected.credit_total ?? 0) > 0 ? 'good' : undefined} />
+              <Kpi label="À payer" value={(selected.solde_du ?? 0) > 0 ? formatMAD(selected.solde_du ?? 0) : 'À jour ✓'}
+                tone={(selected.solde_du ?? 0) > 0 ? 'bad' : 'good'} />
+              <Kpi label={`En stock (${selected.nb_en_stock ?? 0} tél.)`} value={formatMAD(selected.a_montant_en_stock ?? 0)} />
             </div>
 
             {/* ── UNIFIED Phone list section ── */}
             <div>
               <div className="flex items-center justify-between mb-2">
                 <p className="text-xs font-bold text-[#6B6860] uppercase tracking-widest">
-                  {selected.type_fournisseur === 'A'
-                    ? (isAr ? `مبيعات غير مُسوَّاة (${phoneRows.length})` : `Ventes non réglées (${phoneRows.length})`)
-                    : (isAr ? `هواتف مباعة (${phoneRows.length})` : `Téléphones vendus (${phoneRows.length})`)
-                  }
+                  {isAr ? `مبيعات غير مُسوَّاة (${phoneRows.length})` : `Téléphones vendus à régler (${phoneRows.length})`}
                 </p>
                 {phoneRows.length > 0 && (
                   <button onClick={toggleAllPhones}
@@ -605,7 +576,7 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
                 <div className="flex items-center justify-center py-5 gap-2">
                   <Package className="w-4 h-4 text-emerald-500" />
                   <p className="text-sm text-emerald-600 font-medium">
-                    {isAr ? 'لا توجد هواتف مباعة بعد' : 'Aucun téléphone vendu pour l\'instant'}
+                    {isAr ? 'لا توجد مبيعات للتسوية' : 'Aucun téléphone vendu à régler'}
                   </p>
                 </div>
               ) : (
@@ -631,7 +602,7 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-bold text-[#1A1A1A] truncate">
-                            {phone.marque} {phone.model}
+                            {phone.model.toLowerCase().startsWith((phone.marque ?? "").toLowerCase()) ? phone.model : `${phone.marque} ${phone.model}`}
                             {phone.stockage ? ` · ${phone.stockage}` : ''}
                             {phone.couleur  ? ` · ${phone.couleur}`  : ''}
                           </p>
@@ -644,7 +615,7 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
                         </div>
                         {phone.cash_recu > 0 && (
                           <p className="text-sm font-bold flex-shrink-0"
-                             style={{ color: selected.type_fournisseur === 'A' ? '#C9A440' : '#6B6860' }}>
+                             style={{ color: '#C9A440' }}>
                             {formatMAD(phone.cash_recu)}
                           </p>
                         )}
@@ -654,118 +625,60 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
                 </div>
               )}
 
-              {/* ── Action zone (differs by type) ── */}
+              {/* ── Settle the selected sales (same for every supplier) ── */}
               {phoneRows.length > 0 && (
                 <div className="mt-3 space-y-2">
-
-                  {selected.type_fournisseur === 'A' ? (
-                    /* TYPE A — auto-calculated settlement */
-                    <>
-                      <div className="flex items-center justify-between px-4 py-2.5 rounded-xl"
-                           style={{ backgroundColor: '#FAF5E8', border: '1px solid #E8D494' }}>
-                        <span className="text-xs font-bold" style={{ color: '#C9A440' }}>
-                          {isAr ? `محدد (${selectedPhoneIds.size})` : `Sélectionné (${selectedPhoneIds.size})`}
-                        </span>
-                        <span className="text-sm font-bold" style={{ color: '#C9A440' }}>
-                          {formatMAD(selectedTotal)}
-                        </span>
-                      </div>
-                      <button
-                        onClick={handleReglement}
-                        disabled={submitting || selectedPhoneIds.size === 0}
-                        className="w-full py-2.5 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-40 flex items-center justify-center gap-2"
-                        style={{ backgroundColor: '#C9A440' }}
-                      >
-                        {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
-                        {isAr
-                          ? `تسوية المحدد — ${formatMAD(selectedTotal)}`
-                          : `Régler la sélection — ${formatMAD(selectedTotal)}`}
-                      </button>
-                    </>
-                  ) : (
-                    /* TYPE B/C — manual payment with phone traceability */
-                    <>
-                      {selectedPhoneIds.size > 0 && !showPayForm && (
-                        <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-[#F8F7F4] border border-[#E8E5DE]">
-                          <span className="text-xs text-[#6B6860]">
-                            {selectedPhoneIds.size} tél. sélectionné{selectedPhoneIds.size > 1 ? 's' : ''}
-                          </span>
-                          <span className="text-xs font-bold text-[#6B6860]">
-                            {formatMAD(selectedTotal)} (réf.)
-                          </span>
-                        </div>
-                      )}
-
-                      {!showPayForm ? (
-                        <button
-                          onClick={() => setShowPayForm(true)}
-                          className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-bold transition-all border"
-                          style={{ borderColor: primary, color: primary, backgroundColor: `${primary}10` }}
-                        >
-                          <Plus className="w-4 h-4" />
-                          {isAr ? 'تسجيل دفعة' : 'Enregistrer un paiement'}
-                        </button>
-                      ) : (
-                        <div className="p-3 bg-[#F8F7F4] border border-[#E8E5DE] rounded-xl space-y-3">
-                          <p className="text-xs font-bold text-[#6B6860] uppercase tracking-wider">
-                            {isAr ? 'تسجيل دفعة' : 'Nouveau paiement'}
-                            {selectedPhoneIds.size > 0 && ` · ${selectedPhoneIds.size} tél. liés`}
-                          </p>
-                          <div className="grid grid-cols-2 gap-2">
-                            <div>
-                              <p className="text-[10px] text-[#B0ADA6] uppercase tracking-wider font-bold mb-1">
-                                {t(isAr, 'common.amountMad')}
-                              </p>
-                              <input
-                                type="number" min={0} step={0.01}
-                                className={inputClass}
-                                placeholder="0.00"
-                                autoFocus
-                                value={payMontant}
-                                onChange={e => setPayMontant(e.target.value)}
-                              />
-                            </div>
-                            <div>
-                              <p className="text-[10px] text-[#B0ADA6] uppercase tracking-wider font-bold mb-1">
-                                {t(isAr, 'common.date')}
-                              </p>
-                              <input
-                                type="date"
-                                className={inputClass}
-                                value={payDate}
-                                onChange={e => setPayDate(e.target.value)}
-                              />
-                            </div>
-                          </div>
-                          <div>
-                            <p className="text-[10px] text-[#B0ADA6] uppercase tracking-wider font-bold mb-1">
-                              {t(isAr, 'common.notes')}
-                            </p>
-                            <input
-                              type="text"
-                              className={inputClass}
-                              placeholder={isAr ? 'اختياري...' : 'Optionnel...'}
-                              value={payNotes}
-                              onChange={e => setPayNotes(e.target.value)}
-                            />
-                          </div>
-                          <div className="flex gap-2">
-                            <Btn variant="primary" onClick={handlePaymentBC} loading={submitting}
-                              disabled={!payMontant}
-                              style={{ backgroundColor: primary } as React.CSSProperties}>
-                              {t(isAr, 'common.confirm')}
-                            </Btn>
-                            <Btn variant="secondary"
-                              onClick={() => { setShowPayForm(false); setPayMontant(''); setPayNotes('') }}>
-                              {t(isAr, 'common.cancel')}
-                            </Btn>
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  )}
+                  <div className="px-4 py-2.5 rounded-xl space-y-1 text-sm" style={{ backgroundColor: '#FAF5E8', border: '1px solid #E8D494' }}>
+                    <div className="flex justify-between"><span className="text-[#6B6860]">Sélection ({selectedPhoneIds.size} tél.)</span><b>{formatMAD(selectedTotal)}</b></div>
+                    {creditUsed > 0 && <div className="flex justify-between text-emerald-700"><span>Crédit du fournisseur utilisé</span><b>− {formatMAD(creditUsed)}</b></div>}
+                    <div className="flex justify-between font-bold" style={{ color: '#A8862E' }}><span>À payer maintenant</span><span>{formatMAD(toPayNow)}</span></div>
+                  </div>
+                  <button
+                    onClick={handleReglement}
+                    disabled={submitting || selectedPhoneIds.size === 0}
+                    className="w-full py-2.5 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-40 flex items-center justify-center gap-2"
+                    style={{ backgroundColor: '#C9A440' }}
+                  >
+                    {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                    {toPayNow > 0 ? `Régler — payer ${formatMAD(toPayNow)}` : 'Régler avec le crédit (rien à payer)'}
+                  </button>
                 </div>
               )}
+
+              {/* ── Advance (credit) ── */}
+              <div className="mt-3">
+                {!showPayForm ? (
+                  <button onClick={() => setShowPayForm(true)}
+                    className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-bold transition-all border"
+                    style={{ borderColor: primary, color: primary, backgroundColor: `${primary}10` }}>
+                    <Plus className="w-4 h-4" />Donner une avance
+                  </button>
+                ) : (
+                  <div className="p-3 bg-[#F8F7F4] border border-[#E8E5DE] rounded-xl space-y-3">
+                    <p className="text-xs font-bold text-[#6B6860] uppercase tracking-wider">Avance — ajoutée au crédit du fournisseur</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <p className="text-[10px] text-[#B0ADA6] uppercase tracking-wider font-bold mb-1">{t(isAr, 'common.amountMad')}</p>
+                        <input type="number" min={0} step={0.01} className={inputClass} placeholder="0.00" autoFocus
+                          value={payMontant} onChange={e => setPayMontant(e.target.value)} />
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-[#B0ADA6] uppercase tracking-wider font-bold mb-1">{t(isAr, 'common.date')}</p>
+                        <input type="date" className={inputClass} value={payDate} onChange={e => setPayDate(e.target.value)} />
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-[#B0ADA6] uppercase tracking-wider font-bold mb-1">{t(isAr, 'common.notes')}</p>
+                      <input type="text" className={inputClass} placeholder="Optionnel..." value={payNotes} onChange={e => setPayNotes(e.target.value)} />
+                    </div>
+                    <div className="flex gap-2">
+                      <Btn variant="primary" onClick={handleAvance} loading={submitting} disabled={!payMontant}
+                        style={{ backgroundColor: primary } as React.CSSProperties}>{t(isAr, 'common.confirm')}</Btn>
+                      <Btn variant="secondary" onClick={() => { setShowPayForm(false); setPayMontant(''); setPayNotes('') }}>{t(isAr, 'common.cancel')}</Btn>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* ── SHARED — Contact ── */}
@@ -950,6 +863,20 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
         </div>
       </Modal>
 
+    </div>
+  )
+}
+
+function Kpi({ label, value, tone }: { label: string; value: string; tone?: 'good' | 'bad' }) {
+  const style = tone === 'bad'
+    ? { backgroundColor: '#FFF1F2', borderColor: '#FECDD3', color: '#DC2626' }
+    : tone === 'good'
+      ? { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0', color: '#059669' }
+      : { backgroundColor: '#F8F7F4', borderColor: '#E8E5DE', color: '#1A1A1A' }
+  return (
+    <div className="rounded-xl p-3 text-center border" style={{ backgroundColor: style.backgroundColor, borderColor: style.borderColor }}>
+      <p className="text-[10px] text-[#6B6860] uppercase tracking-wider font-bold mb-1">{label}</p>
+      <p className="font-bold text-sm" style={{ color: style.color }}>{value}</p>
     </div>
   )
 }

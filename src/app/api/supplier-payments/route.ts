@@ -5,7 +5,11 @@ import { json, handleError, requireUser, requireActiveUser, dateOnly, todayDate,
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { withNotify } from '@/lib/realtime'
 
-const PAYMENT_TYPES: supplier_payment_type[] = ['reglement_a', 'avance_a', 'paiement_b']
+// One logic for every supplier (2026-09-28): a "règlement" settles chosen
+// SOLD phones (it may use the supplier's credit, so the cash paid can be less
+// than the phones' total, even 0); an "avance" adds credit. The old
+// 'paiement_b' stays readable in the history but can't be created any more.
+const PAYMENT_TYPES: supplier_payment_type[] = ['reglement_a', 'avance_a']
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,7 +18,7 @@ export async function GET(request: NextRequest) {
     const supplier_id = searchParams.get('supplier_id')
     const store_id    = searchParams.get('store_id')
 
-    // Sold phones not yet settled, for the "Fournisseur A" flow (phones_unsettled_a is a view)
+    // Sold phones not yet settled, for every supplier (phones_unsettled_a is a view)
     if (searchParams.get('mode') === 'unsettled_phones' && supplier_id) {
       const data = await prisma.$queryRaw`
         SELECT phone_id, fournisseur_id, marque, model, imei, couleur, stockage, prix_achat, cash_recu, fac_ref, sold_at
@@ -39,17 +43,36 @@ async function POST_(request: NextRequest) {
     const store_id = body.store_id ?? user.store_id ?? null
 
     if (!body.supplier_id) throw new HttpError(400, 'supplier_id requis')
-    if (!(Number(body.montant) > 0)) throw new HttpError(400, 'Montant invalide')
-    if (!PAYMENT_TYPES.includes(body.payment_type)) throw new HttpError(400, 'payment_type invalide')
-    const phoneIds: string[] = Array.isArray(body.phone_ids) ? body.phone_ids : []
+    if (!PAYMENT_TYPES.includes(body.payment_type)) throw new HttpError(400, 'Type de paiement invalide')
+    const montant  = Math.round(Number(body.montant) * 100) / 100
+    const phoneIds: string[] = Array.isArray(body.phone_ids) ? [...new Set((body.phone_ids as unknown[]).map(String))] : []
+    if (!Number.isFinite(montant) || montant < 0) throw new HttpError(400, 'Montant invalide')
+    if (body.payment_type === 'avance_a' && (montant <= 0 || phoneIds.length)) throw new HttpError(400, 'Une avance est un montant positif, sans téléphones')
+    if (body.payment_type === 'reglement_a' && !phoneIds.length) throw new HttpError(400, 'Choisissez les téléphones vendus à régler')
 
-    // Payment and (for reglement_a) settling the phones commit together
+    // Payment and (for a règlement) settling the phones commit together
     const data = await prisma.$transaction(async (tx) => {
+      if (body.payment_type === 'reglement_a') {
+        // Only this supplier's sold phones still waiting, and enough paid:
+        // cash now + the supplier's credit must cover them.
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`supplier:${body.supplier_id}`}))`
+        const rows = await tx.$queryRaw<{ phone_id: string; cash_recu: unknown }[]>`
+          SELECT phone_id, cash_recu FROM phones_unsettled_a
+          WHERE fournisseur_id = ${body.supplier_id} AND phone_id = ANY(${phoneIds})`
+        if (rows.length !== phoneIds.length) throw new HttpError(409, 'Certains téléphones ne sont pas (ou plus) à régler pour ce fournisseur')
+        const due = rows.reduce((sum, r) => sum + Number(r.cash_recu ?? 0), 0)
+        const [summary] = await tx.$queryRaw<{ credit_total: unknown }[]>`
+          SELECT credit_total FROM suppliers_summary WHERE supplier_id = ${body.supplier_id}`
+        const credit = Number(summary?.credit_total ?? 0)
+        if (montant + credit + 0.01 < due) {
+          throw new HttpError(400, `Montant insuffisant : ${Math.round(due - credit)} DH à payer (crédit du fournisseur déduit)`)
+        }
+      }
       const payment = await tx.supplier_payments.create({
         data: {
           supplier_id:   body.supplier_id,
           payment_type:  body.payment_type,
-          montant:       Number(body.montant),
+          montant,
           phone_ids:     phoneIds,
           date_paiement: dateOnly(body.date_paiement) ?? todayDate(),
           notes:         body.notes ?? null,
