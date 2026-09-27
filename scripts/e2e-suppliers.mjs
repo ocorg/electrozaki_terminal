@@ -107,6 +107,28 @@ try {
   check('credit used up by the règlement', n(afterReg.credit_total) === Math.max(0, n(afterAdv.credit_total) - due), afterReg.credit_total)
   const again = await pay({ payment_type: 'reglement_a', montant: due, phone_ids: [two[0].phone_id] })
   check('settling the same phone twice refused', again.status === 409, again)
+
+  // ── Owner-only correction of a payment typed wrong ────────────────────
+  const regId = reg.data?.data?.payment_id, advId = adv.data?.data?.payment_id
+  const byManager = await api('/api/supplier-payments', { method: 'PATCH', body: { payment_id: advId, action: 'montant', montant: 150, motif: 'test' } })
+  check('manager cannot correct a payment', byManager.status === 403, byManager)
+  const oEmail = 'zz-e2e-suppliers-owner@migration.local', oPass = crypto.randomBytes(12).toString('base64url')
+  await db.query(`delete from user_profiles where email = $1`, [oEmail])
+  const { rows: [o] } = await db.query(
+    `insert into user_profiles (email, password_hash, display_name, role, store_id, store_locked, is_active)
+     values ($1, $2, 'E2E owner', 'proprietaire', $3, true, true) returning id`, [oEmail, await bcrypt.hash(oPass, 10), STORE])
+  cleanups.push(async () => { await db.query(`delete from activity_log where user_id = $1`, [o.id]); await db.query(`update supplier_payments set updated_by = null where updated_by = $1`, [o.id]); await db.query(`delete from user_profiles where id = $1`, [o.id]) })
+  const owner = await login(oEmail, oPass)
+  const noMotif = await owner('/api/supplier-payments', { method: 'PATCH', body: { payment_id: advId, action: 'montant', montant: 150, motif: '' } })
+  check('correction without a reason refused', noMotif.status === 400, noMotif)
+  const fixed = await owner('/api/supplier-payments', { method: 'PATCH', body: { payment_id: advId, action: 'montant', montant: 150, motif: 'erreur de saisie' } })
+  const afterFix = await summary()
+  check('owner corrects the advance 100 → 150 (credit +50)', fixed.status === 200 && Math.abs(n(afterFix.credit_total) - n(afterReg.credit_total) - 50) < 0.01 && /Corrigé/.test(fixed.data?.data?.notes ?? ''), { status: fixed.status, credit: afterFix.credit_total })
+  const cancel = await owner('/api/supplier-payments', { method: 'PATCH', body: { payment_id: regId, action: 'annuler', motif: 'test annulation' } })
+  const list3 = (await api(`/api/supplier-payments?mode=unsettled_phones&supplier_id=${sup.supplier_id}`)).data?.data ?? []
+  check('cancelling a règlement puts its phones back to settle', cancel.status === 200 && list3.length === rows.length, { status: cancel.status, left: list3.length })
+  const hist = (await api(`/api/supplier-payments?supplier_id=${sup.supplier_id}`)).data?.data ?? []
+  check('cancelled payment leaves the history', !hist.some(h => h.payment_id === regId), hist.length)
 } catch (err) {
   check('script ran to the end', false, String(err?.stack ?? err))
 } finally {

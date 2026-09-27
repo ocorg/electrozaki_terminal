@@ -130,6 +130,9 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
 
   // ── Advance form ───────────────────────────────────────────────────────────────
   const [showPayForm, setShowPayForm] = useState(false)
+  // Owner-only correction of a payment typed wrong
+  const [fixPay, setFixPay] = useState<{ id: string; montant: string; motif: string } | null>(null)
+  const isOwner = user?.role === 'proprietaire'
   const [payMontant,  setPayMontant]  = useState('')
   const [payDate,     setPayDate]     = useState(new Date().toISOString().split('T')[0])
   const [payNotes,    setPayNotes]    = useState('')
@@ -331,6 +334,28 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
     if (row) setSelected(row)
     fetchPhoneRows(row ?? selected)
     fetchPayments(id)
+  }
+
+  async function handleFixPayment(action: 'montant' | 'annuler') {
+    if (!fixPay) return
+    if (action === 'annuler' && !window.confirm('Annuler ce paiement ? Ses téléphones redeviendront « à régler ».')) return
+    setSubmitting(true)
+    try {
+      const res = await fetch('/api/supplier-payments', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ payment_id: fixPay.id, action, montant: parseFloat(fixPay.montant), motif: fixPay.motif }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error)
+      showSuccess(action === 'annuler' ? 'Paiement annulé ✓' : 'Montant corrigé ✓')
+      setFixPay(null)
+      await refreshSelected()
+    } catch (err: any) {
+      showError(err.message)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   // Advance: money given ahead of sales — becomes the supplier's credit
@@ -740,12 +765,12 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
                   {isAr ? 'لا توجد دفعات' : 'Aucun paiement enregistré'}
                 </p>
               ) : (
-                <div className="space-y-2 max-h-44 overflow-y-auto">
+                <div className="space-y-2 max-h-72 overflow-y-auto">
                   {payments.map(p => {
                     const count = Array.isArray(p.phone_ids) ? p.phone_ids.length : 0
                     return (
-                      <div key={p.payment_id}
-                           className="flex items-center justify-between p-3 bg-[#F8F7F4] rounded-xl">
+                      <div key={p.payment_id} className="p-3 bg-[#F8F7F4] rounded-xl">
+                      <div className="flex items-center justify-between">
                         <div className="min-w-0">
                           <p className="text-xs font-bold text-[#1A1A1A]">
                             {PAY_LABEL[p.payment_type] ?? p.payment_type}
@@ -756,9 +781,37 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
                             {p.notes ? ` · ${p.notes}` : ''}
                           </p>
                         </div>
-                        <p className="text-sm font-bold text-emerald-600 flex-shrink-0 ml-3">
-                          {formatMAD(p.montant)}
-                        </p>
+                        <div className="flex-shrink-0 ml-3 text-right">
+                          <p className="text-sm font-bold text-emerald-600">{formatMAD(p.montant)}</p>
+                          {isOwner && fixPay?.id !== p.payment_id && (
+                            <button onClick={() => setFixPay({ id: p.payment_id, montant: String(Number(p.montant)), motif: '' })}
+                              className="text-[10px] font-bold text-[#A8862E] underline">Corriger</button>
+                          )}
+                        </div>
+                      </div>
+                      {fixPay?.id === p.payment_id && (
+                        <div className="mt-2 pt-2 border-t border-[#E8E5DE] space-y-2">
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <p className="text-[10px] text-[#B0ADA6] uppercase tracking-wider font-bold mb-1">Bon montant (DH)</p>
+                              <input type="number" min={0} step={0.01} className={inputClass}
+                                value={fixPay.montant} onChange={e => setFixPay({ ...fixPay, montant: e.target.value })} />
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-[#B0ADA6] uppercase tracking-wider font-bold mb-1">Motif (obligatoire)</p>
+                              <input type="text" className={inputClass} placeholder="Erreur de saisie…"
+                                value={fixPay.motif} onChange={e => setFixPay({ ...fixPay, motif: e.target.value })} />
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <Btn variant="primary" onClick={() => handleFixPayment('montant')} loading={submitting}
+                              disabled={fixPay.motif.trim().length < 3 || fixPay.montant === ''}>Enregistrer</Btn>
+                            <Btn variant="secondary" onClick={() => handleFixPayment('annuler')}
+                              disabled={submitting || fixPay.motif.trim().length < 3}>Annuler ce paiement</Btn>
+                            <Btn variant="secondary" onClick={() => setFixPay(null)}>Fermer</Btn>
+                          </div>
+                        </div>
+                      )}
                       </div>
                     )
                   })}

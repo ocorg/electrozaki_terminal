@@ -107,3 +107,61 @@ async function POST_(request: NextRequest) {
 }
 
 export const POST = withNotify(POST_)
+
+// Owner only: fix a payment typed wrong — correct its amount, or cancel it
+// (its phones go back to "to settle"). A reason is required; both are logged.
+async function PATCH_(request: NextRequest) {
+  try {
+    const user = await requireActiveUser(['proprietaire'])
+    const body = await request.json()
+    const motif = String(body.motif ?? '').trim()
+    if (!body.payment_id) throw new HttpError(400, 'payment_id requis')
+    if (motif.length < 3) throw new HttpError(400, 'Indiquez le motif de la correction')
+    if (!['montant', 'annuler'].includes(body.action)) throw new HttpError(400, 'Action invalide')
+    const montant = Math.round(Number(body.montant) * 100) / 100
+    if (body.action === 'montant' && (!Number.isFinite(montant) || montant < 0)) throw new HttpError(400, 'Montant invalide')
+
+    const { before, data } = await prisma.$transaction(async (tx) => {
+      const before = await tx.supplier_payments.findUnique({ where: { payment_id: body.payment_id } })
+      if (!before || before.is_deleted) throw new HttpError(404, 'Paiement introuvable')
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`supplier:${before.supplier_id}`}))`
+      if (body.action === 'montant' && before.payment_type === 'avance_a' && montant <= 0) {
+        throw new HttpError(400, 'Une avance doit rester positive — annulez-la plutôt')
+      }
+      const note = `${body.action === 'annuler' ? 'Annulé' : `Corrigé (était ${Number(before.montant)} DH)`} : ${motif}`
+      const data = await tx.supplier_payments.update({
+        where: { payment_id: before.payment_id },
+        data: {
+          ...(body.action === 'annuler' ? { is_deleted: true } : { montant }),
+          notes:      before.notes ? `${before.notes} · ${note}` : note,
+          updated_at: new Date(),
+          updated_by: user.id,
+        },
+      })
+      if (body.action === 'annuler' && before.phone_ids.length) {
+        await tx.phones.updateMany({
+          where: { phone_id: { in: before.phone_ids } },
+          data:  { settled_at: null, settled_by: null },
+        })
+      }
+      return { before, data }
+    })
+
+    await logActivity({
+      store_id:     data.store_id,
+      user_id:      user.id,
+      user_name:    user.display_name,
+      action_type:  body.action === 'annuler' ? 'annulation' : 'modification',
+      module:       'paiements_fournisseurs',
+      record_id:    data.payment_id,
+      before_state: before,
+      after_state:  data,
+      ip_address:   getIpFromRequest(request),
+    })
+    return json({ data })
+  } catch (err) {
+    return handleError(err, 'PATCH /api/supplier-payments')
+  }
+}
+
+export const PATCH = withNotify(PATCH_)
