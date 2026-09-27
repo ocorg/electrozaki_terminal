@@ -11,7 +11,7 @@ import {
   Settings, LogOut, Globe, ChevronRight,
   PanelLeftClose, PanelLeftOpen, Store, FileText, Clock,
   BarChart3, UserCheck, ScrollText, Shield, PackageCheck, CreditCard, List, PackageSearch,
-  ShoppingBag, Tag, Inbox, Megaphone, Activity, PieChart
+  ShoppingBag, Tag, Inbox, Megaphone, Activity, PieChart, ListOrdered
 } from 'lucide-react'
 import type { UserRole } from '@/types/database'
 import { useLanguageStore } from '@/lib/stores/language'
@@ -59,6 +59,7 @@ function getNavItems(portalBase: string, portalType: string): NavItem[] {
     { href: `${portalBase}/stock/phones`,     icon: Smartphone,      label: 'Téléphones',         roles: ['employe','gerant','proprietaire'] },
     { href: `${portalBase}/stock/laptops`,    icon: Laptop,          label: 'Laptops',            roles: ['gerant','proprietaire'] },
     { href: `${portalBase}/stock/accessories`,icon: Package,         label: 'Accessoires',        roles: ['employe','gerant','proprietaire'] },
+    { href: `${portalBase}/prix`,             icon: ListOrdered,     label: 'Liste des prix',     roles: ['employe','gerant','proprietaire'] },
     { divider: true, label: 'OPÉRATIONS',                                                         roles: ['employe','gerant','proprietaire'] },
     { href: `${portalBase}/deliveries`,       icon: PackageCheck,    label: 'Livraisons',         roles: ['gerant','proprietaire'] },
     { href: `${portalBase}/repairs`,          icon: Wrench,          label: 'Réparations',        roles: ['employe','gerant','proprietaire'] },

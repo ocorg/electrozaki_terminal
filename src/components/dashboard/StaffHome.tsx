@@ -1,6 +1,6 @@
 'use client'
 import Link from 'next/link'
-import { ShoppingCart, Vault, Smartphone, Package, Wrench, Users } from 'lucide-react'
+import { ShoppingCart, Vault, Smartphone, Package, Wrench, Users, ListOrdered } from 'lucide-react'
 import AttendanceWidget from '@/components/attendance/AttendanceWidget'
 
 // An employee's home: clock in/out and their screens. No sales figures —
@@ -17,6 +17,7 @@ export default function StaffHome({ storeId, portalBase, name, isAr }: {
     { href: `${portalBase}/caisse`,            icon: Vault,        label: L('Caisse du jour', 'صندوق اليوم'),  hint: L('Ouverture et clôture', 'فتح وإغلاق') },
     { href: `${portalBase}/stock/phones`,      icon: Smartphone,   label: L('Téléphones', 'الهواتف'),         hint: L('Consulter le stock', 'الاطلاع على المخزون') },
     { href: `${portalBase}/stock/accessories`, icon: Package,      label: L('Accessoires', 'الإكسسوارات'),    hint: L('Consulter le stock', 'الاطلاع على المخزون') },
+    { href: `${portalBase}/prix`,              icon: ListOrdered,  label: L('Liste des prix', 'قائمة الأسعار'), hint: L('Prix et dernier prix', 'السعر والحد الأدنى') },
     { href: `${portalBase}/repairs`,           icon: Wrench,       label: L('Réparations', 'الإصلاحات'),      hint: L('Tickets et suivi', 'التذاكر والمتابعة') },
     { href: `${portalBase}/clients`,           icon: Users,        label: L('Clients', 'العملاء'),            hint: L('Fiches et historique', 'البطاقات والسجل') },
   ]

@@ -11,6 +11,7 @@ import { StatusBadge, BatteryBar, EmptyState, SkeletonRow, PageHeader, Btn, Moda
 import PhoneForm from '@/components/phones/PhoneForm'
 import PhoneCreditPanel from '@/components/phones/PhoneCreditPanel'
 import type { Phone, Prospect } from '@/types/database'
+import BulkPriceModal from '@/components/phones/BulkPriceModal'
 import { phoneMatchesProspect } from '@/lib/prospects'
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import ScanButton from '@/components/scanner/ScanButton'
@@ -42,6 +43,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
   const canSeeFinancials = user?.role === 'gerant' || user?.role === 'proprietaire'
   // Staff consult the stock (read-only); adding / editing / credit sales are managers' (APIs enforce it)
   const canEdit = canSeeFinancials
+  const [bulkOpen, setBulkOpen] = useState(false)
 
   const [formOpen, setFormOpen]       = useState(false)
   const [editPhone, setEditPhone]     = useState<Phone | null>(null)
@@ -256,6 +258,12 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
               >
                 <RefreshCw className={`w-4 h-4 ${manualRefresh ? 'animate-spin' : ''}`} />
               </button>
+              {canEdit && (
+                <Btn variant="secondary" onClick={() => setBulkOpen(true)}>
+                  <Tag className="w-4 h-4" />
+                  {isAr ? 'تعديل الأسعار' : 'Prix en masse'}
+                </Btn>
+              )}
               {canSeeFinancials && (
                 <Btn variant="secondary" onClick={() => setCatalogOpen(true)}>
                   <span className="text-xs">📋</span>
@@ -727,6 +735,11 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
           )}
         </div>
       </div>
+
+      {canEdit && (
+        <BulkPriceModal open={bulkOpen} onClose={() => setBulkOpen(false)} storeId={storeId}
+          brands={Array.from(new Set(phonesQ.data?.map(p => p.marque) ?? [])).sort()} />
+      )}
 
       {/* Delete confirmation */}
       <Modal

@@ -110,6 +110,7 @@ try {
     ['/api/expenses', 'POST', { store_id: STORE, montant: 1, categorie: 'autre' }],
     ['/api/prospects', 'POST', { store_id: STORE, nom: 'X' }],
     ['/api/phone-credits', 'POST', { phone_id: p0?.phone_id }],
+    ['/api/phones/bulk-price', 'POST', { store_id: STORE, condition: 'neuf', field: 'vente', mode: 'montant', amount: 200, apply: false }],
   ]
   for (const [path, method, body] of writes) {
     const r = await staff(path, { method, body })
@@ -126,11 +127,11 @@ try {
   check('staff: can add the phone traded in at the POS', tradeIn.status === 201 && !!tradeId, tradeIn)
 
   // ── Pages: staff land on their screens, others redirect to the POS ────
-  for (const page of ['/ez/pos', '/ez/caisse', '/ez/stock/phones', '/ez/stock/accessories', '/ez/repairs', '/ez/clients', '/ez/dashboard']) {
+  for (const page of ['/ez/pos', '/ez/caisse', '/ez/stock/phones', '/ez/stock/accessories', '/ez/prix', '/ez/repairs', '/ez/clients', '/ez/dashboard']) {
     const r = await staff(page)
     check(`staff page: ${page} opens`, r.status === 200, { status: r.status, location: r.location })
   }
-  for (const page of ['/ez/suppliers', '/ez/transactions', '/ez/expenses', '/ez/credits', '/ez/site/orders', '/ez/stock/laptops', '/ez/documents', '/ez/prospects', '/ez/inventory']) {
+  for (const page of ['/ez/suppliers', '/ez/transactions', '/ez/expenses', '/ez/credits', '/ez/site/orders', '/ez/stock/laptops', '/ez/documents', '/ez/prospects', '/ez/inventory', '/ez/analyses']) {
     const r = await staff(page)
     check(`staff page: ${page} → POS`, [302, 303, 307, 308].includes(r.status) && (r.location ?? '').endsWith('/ez/pos'), { status: r.status, location: r.location })
   }

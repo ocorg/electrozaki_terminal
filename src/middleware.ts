@@ -18,7 +18,7 @@ const SESSION_COOKIES = ['authjs.session-token', '__Secure-authjs.session-token'
 
 // Screens an employee may open inside a store portal (owner's decision,
 // 2026-09-25). Everything else is for managers — the APIs refuse it too.
-const STAFF_PAGES = ['/dashboard', '/pos', '/caisse', '/stock/phones', '/stock/accessories', '/repairs', '/clients']
+const STAFF_PAGES = ['/dashboard', '/pos', '/caisse', '/stock/phones', '/stock/accessories', '/prix', '/repairs', '/clients']
 
 // Auth.js's own endpoints must work while signed out. verify-override lives
 // under the same prefix but has no session check of its own, so it stays gated.

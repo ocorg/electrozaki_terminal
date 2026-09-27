@@ -12,10 +12,10 @@ export default function EZLayout({ children }: { children: React.ReactNode }) {
   return (
     <PortalProvider type="ez">
       <PortalPrefetch storeId="EZ-001" />
-      <div className="flex h-screen overflow-hidden" style={{ backgroundColor: '#F8F7F4' }}>
+      <div className="flex h-screen overflow-hidden print:h-auto print:overflow-visible print:!bg-white" style={{ backgroundColor: '#F8F7F4' }}>
 
         {/* Desktop sidebar */}
-        <aside className="hidden lg:flex flex-shrink-0 flex-col transition-all duration-300">
+        <aside className="hidden lg:flex print:!hidden flex-shrink-0 flex-col transition-all duration-300">
           <PortalSidebar collapsed={collapsed} onCollapsedChange={setCollapsed} />
         </aside>
 
@@ -30,9 +30,9 @@ export default function EZLayout({ children }: { children: React.ReactNode }) {
         )}
 
         {/* Main */}
-        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        <div className="flex-1 flex flex-col overflow-hidden min-w-0 print:overflow-visible">
           {/* Mobile topbar */}
-          <header className="lg:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-[#E8E5DE] flex-shrink-0">
+          <header className="lg:hidden print:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-[#E8E5DE] flex-shrink-0">
             <span className="font-bold text-[#C9A440] tracking-widest text-lg"
                   style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>
               ELECTRO ZAKI
@@ -45,7 +45,7 @@ export default function EZLayout({ children }: { children: React.ReactNode }) {
             </button>
           </header>
 
-          <main className="flex-1 overflow-auto">
+          <main className="flex-1 overflow-auto print:overflow-visible">
             {children}
           </main>
         </div>
