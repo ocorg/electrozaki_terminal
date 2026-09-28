@@ -34,6 +34,10 @@ interface PhonesModuleProps {
   storeId: string
 }
 
+// What a text search looks in; Apple phones also answer to "iphone"
+const searchText = (p: Phone) =>
+  `${p.marque} ${p.marque === 'Apple' ? 'iphone' : ''} ${p.model} ${p.stockage ?? ''} ${p.couleur ?? ''}`.toLowerCase()
+
 export default function PhonesModule({ storeId }: PhonesModuleProps) {
   const { user }     = useUser()
   const { language } = useLanguageStore()
@@ -132,6 +136,17 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
   const [filterLocation, setFilterLocation] = useState('')
   const [filterStorage, setFilterStorage] = useState('')
   const [filterPromo,   setFilterPromo]   = useState('')
+  // Searching means looking for a phone to sell: "Disponible" switches on by
+  // itself while there is a search (owner's request), unless a status was
+  // chosen by hand; clearing the search removes it again.
+  const [statusAuto, setStatusAuto] = useState(false)
+  function onSearch(v: string) {
+    setSearch(v)
+    const active = v.trim().length >= 2
+    if (active && !filterStatus) { setFilterStatus('disponible'); setStatusAuto(true) }
+    else if (!active && statusAuto) { setFilterStatus(''); setStatusAuto(false) }
+  }
+  function chooseStatus(s: string) { setFilterStatus(s); setStatusAuto(false) }
 
   const openProspects = useApi<Prospect[]>(canEdit ? `/api/prospects?store_id=${storeId}&open=1` : null).data ?? EMPTY
   const suppliers     = useApi<{ supplier_id: string; nom: string; type_fournisseur: string }[]>(canEdit ? '/api/suppliers?mode=dropdown' : null).data ?? EMPTY
@@ -161,9 +176,22 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
       (filterPromo !== '1' || p.promo_type != null) &&
       (q.length < 2 || (byImei
         ? [p.imei, (p as Phone & { imei_2?: string | null }).imei_2].some(v => v?.includes(q))
-        : q.split(/\s+/).every(tok => `${p.marque} ${p.model} ${p.stockage ?? ''} ${p.couleur ?? ''}`.toLowerCase().includes(tok))))
+        : q.split(/\s+/).every(tok => searchText(p).includes(tok))))
     )
   }, [phonesQ.data, deletedIds, filterStatus, filterMarque, filterLocation, filterStorage, filterPromo, search])
+
+  // Search hits hidden by the automatic "Disponible" (e.g. a sold phone's IMEI)
+  const hiddenByAuto = useMemo(() => {
+    if (!statusAuto) return 0
+    const q = search.trim().toLowerCase()
+    const byImei = /^\d{6,}$/.test(q)
+    return (phonesQ.data ?? []).filter(p =>
+      !deletedIds.has(p.phone_id) && p.status !== 'disponible' &&
+      (byImei
+        ? [p.imei, (p as Phone & { imei_2?: string | null }).imei_2].some(v => v?.includes(q))
+        : q.split(/\s+/).every(tok => searchText(p).includes(tok)))
+    ).length
+  }, [statusAuto, search, phonesQ.data, deletedIds])
 
   // Long lists render in pages so the screen stays fast
   const [shown, setShown] = useState(PAGE)
@@ -201,6 +229,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
     setFilterStorage('')
     setFilterPromo('')
     setSearch('')
+    setStatusAuto(false)
   }
 
   const hasFilters = filterStatus || filterMarque || filterLocation || filterStorage || filterPromo || search
@@ -292,23 +321,39 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
               className="w-full pl-9 pr-10 py-2.5 bg-white border border-[#E8E5DE] rounded-xl text-sm text-[#1A1A1A] placeholder:text-[#B0ADA6] focus:outline-none transition-all"
               placeholder={isAr ? 'بحث بـ IMEI، الماركة، الموديل...' : 'Rechercher IMEI, marque, modèle...'}
               value={search}
-              onChange={e => setSearch(e.target.value)}
+              onChange={e => onSearch(e.target.value)}
               onFocus={e => { e.target.style.borderColor = primary; e.target.style.boxShadow = `0 0 0 3px ${primary}20` }}
               onBlur={e => { e.target.style.borderColor = '#E8E5DE'; e.target.style.boxShadow = 'none' }}
             />
             {search && (
-              <button onClick={() => setSearch('')}
+              <button onClick={() => onSearch('')}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-[#B0ADA6] hover:text-[#1A1A1A]">
                 <X className="w-4 h-4" />
               </button>
             )}
           </div>
           <ScanButton
-            onScan={v => setSearch(v)}
+            onScan={v => onSearch(v)}
             hint="Scannez un IMEI ou code-barres"
             color={primary}
           />
         </div>
+
+        {statusAuto && (
+          <div className="flex flex-wrap items-center gap-2 text-xs -mt-2">
+            <span className="px-2 py-1 rounded-lg font-bold" style={{ backgroundColor: '#10B98115', color: '#059669' }}>
+              {isAr ? 'المتوفرة فقط' : 'Disponibles uniquement'}
+            </span>
+            {hiddenByAuto > 0 && (
+              <span className="text-[#6B6860]">
+                {hiddenByAuto} autre{hiddenByAuto > 1 ? 's' : ''} (vendu, réservé…)
+              </span>
+            )}
+            <button onClick={() => chooseStatus('')} className="font-bold underline" style={{ color: primary }}>
+              {isAr ? 'عرض الكل' : 'Voir tous les statuts'}
+            </button>
+          </div>
+        )}
 
         {/* Filters panel */}
         {showFilters && (
@@ -317,7 +362,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
               {STATUSES.map(s => (
                 <button
                   key={s}
-                  onClick={() => setFilterStatus(filterStatus === s ? '' : s)}
+                  onClick={() => chooseStatus(filterStatus === s ? '' : s)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium transition-all"
                   style={{
                     backgroundColor: filterStatus === s ? `${STATUS_COLORS[s]}15` : 'transparent',

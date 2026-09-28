@@ -14,10 +14,10 @@ import { showSuccess, showError } from '@/lib/utils/toasts'
 import type { Prospect, Phone } from '@/types/database'
 import {
   Plus, Search, X, RefreshCw, Edit2, Trash2,
-  CheckCircle, XCircle, ClipboardList, ChevronDown, BatteryMedium,
+  CheckCircle, XCircle, ClipboardList, ChevronDown, BatteryMedium, AlertTriangle, Wrench,
 } from 'lucide-react'
 import { codeLabel, type Lang } from '@/lib/codes'
-import { prospectMatches } from '@/lib/prospects'
+import { prospectMatches, prospectBrands, phoneIssues } from '@/lib/prospects'
 
 // ── Constants ──────────────────────────────────────────────────
 const SOURCES  = ['tiktok', 'instagram', 'whatsapp', 'en_magasin', 'autre'] as const
@@ -39,12 +39,14 @@ const STATUT_STYLES: Record<string, { bg: string; color: string; border: string 
   perdu:    { bg: '#F9FAFB', color: '#9CA3AF', border: '#E5E7EB' },
 }
 
+// Brands shown first as quick choices (the catalog's others follow)
+const TOP_BRANDS = ['Apple', 'Samsung', 'Xiaomi']
+
 const EMPTY_FORM = {
   nom:         '',
   telephone:   '',
   source:      'en_magasin' as string,
-  demand_type: 'modele'     as 'modele' | 'budget',
-  marque:      '',
+  marques:     [] as string[],
   model:       '',
   stockage:    '',
   budget_min:  '' as string | number,
@@ -79,7 +81,6 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
   const [search,          setSearch]          = useState('')
   const [filterStatus,    setFilterStatus]    = useState('')
   const [filterSource,    setFilterSource]    = useState('')
-  const [filterType,      setFilterType]      = useState('')
   const [form,            setForm]            = useState({ ...EMPTY_FORM })
   // Cards whose matching-phone list is open, and those showing every match
   const [openLists,       setOpenLists]       = useState<Set<string>>(() => new Set())
@@ -103,10 +104,9 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
     return (prospectsQ.data ?? []).filter(p =>
       (!filterStatus || p.statut      === filterStatus) &&
       (!filterSource || p.source      === filterSource) &&
-      (!filterType   || p.demand_type === filterType) &&
       (q.length < 2  || [p.nom, p.telephone, p.model, p.marque].some(v => v?.toLowerCase().includes(q)))
     )
-  }, [prospectsQ.data, filterStatus, filterSource, filterType, search])
+  }, [prospectsQ.data, filterStatus, filterSource, search])
 
   const fetchProspects = useCallback(async () => {
     setManualRefresh(true)
@@ -132,8 +132,7 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
       nom:         p.nom,
       telephone:   p.telephone  ?? '',
       source:      p.source,
-      demand_type: p.demand_type,
-      marque:      p.marque     ?? '',
+      marques:     prospectBrands(p),
       model:       p.model      ?? '',
       stockage:    p.stockage   ?? '',
       budget_min:  p.budget_min ?? '',
@@ -155,28 +154,28 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
       showError(isAr ? 'الاسم مطلوب' : 'Nom obligatoire')
       return
     }
-    if (form.demand_type === 'modele' && !form.marque && !form.model) {
-      showError(isAr ? 'حدد الماركة أو الموديل على الأقل' : 'Précisez au moins la marque ou le modèle')
+    // One request mixing every criterion: at least one of them
+    if (!form.marques.length && !form.model && !form.stockage && !form.budget_max && !form.budget_min) {
+      showError(isAr ? 'حدد معيارا واحدا على الأقل' : 'Indiquez au moins un critère : marque, modèle, stockage ou budget')
       return
     }
-    if (form.demand_type === 'budget' && !form.budget_max) {
-      showError(isAr ? 'الميزانية القصوى مطلوبة' : 'Budget maximum obligatoire')
-      return
-    }
-    if (form.demand_type === 'budget' && form.budget_min && Number(form.budget_min) > Number(form.budget_max)) {
+    if (form.budget_min && form.budget_max && Number(form.budget_min) > Number(form.budget_max)) {
       showError(isAr ? 'الحد الأدنى أكبر من الحد الأقصى' : 'Le budget minimum dépasse le maximum')
       return
     }
     setSaving(true)
     try {
+      const { marques, ...rest } = form
       const payload = {
-        ...form,
-        store_id:   storeId,
-        budget_min: form.demand_type === 'budget' && form.budget_min ? Number(form.budget_min) : null,
-        budget_max: form.budget_max ? Number(form.budget_max) : null,
-        marque:     form.demand_type === 'budget' ? null : (form.marque   || null),
-        model:      form.demand_type === 'budget' ? null : (form.model    || null),
-        stockage:   form.demand_type === 'budget' ? null : (form.stockage || null),
+        ...rest,
+        store_id:    storeId,
+        marque:      marques.length ? marques.join(', ') : null,
+        model:       marques.length === 1 && form.model ? form.model : null,
+        stockage:    form.stockage || null,
+        budget_min:  form.budget_min !== '' ? Number(form.budget_min) : null,
+        budget_max:  form.budget_max !== '' ? Number(form.budget_max) : null,
+        // kept for older screens/exports: a model asked → 'modele', else 'budget'
+        demand_type: marques.length === 1 && form.model ? 'modele' : 'budget',
       }
       const res  = await fetch('/api/prospects', {
         method:  editProspect ? 'PATCH' : 'POST',
@@ -230,11 +229,10 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
     }
   }
 
-  const hasFilters = filterStatus || filterSource || filterType || search
+  const hasFilters = filterStatus || filterSource || search
   const clearFilters = () => {
     setFilterStatus('')
     setFilterSource('')
-    setFilterType('')
     setSearch('')
   }
 
@@ -292,14 +290,6 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
             value={filterSource} onChange={e => setFilterSource(e.target.value)}>
             <option value="">{isAr ? 'كل المصادر' : 'Toutes sources'}</option>
             {SOURCES.map(s => <option key={s} value={s}>{codeLabel('prospect_source', s, lang)}</option>)}
-          </Select>
-
-          <Select
-            className="text-sm border border-[#E8E5DE] rounded-xl px-3 py-1.5 bg-white text-[#6B6860] focus:outline-none"
-            value={filterType} onChange={e => setFilterType(e.target.value)}>
-            <option value="">{t(isAr, 'common.allTypes')}</option>
-            <option value="modele">{isAr ? 'موديل محدد' : 'Modèle précis'}</option>
-            <option value="budget">{isAr ? 'ميزانية' : 'Budget'}</option>
           </Select>
 
           {hasFilters && (
@@ -377,27 +367,22 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
 
                   {/* Demand */}
                   <div className="px-3 py-2.5 bg-[#F8F7F4] rounded-xl">
-                    {p.demand_type === 'modele' ? (
-                      <div className="flex items-baseline gap-2 flex-wrap">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#B0ADA6] flex-shrink-0">
-                          {isAr ? 'موديل' : 'MODÈLE'}
-                        </span>
-                        <span className="text-sm font-bold text-[#1A1A1A]">
-                          {[p.marque, p.model, p.stockage].filter(Boolean).join(' · ') || '—'}
-                        </span>
-                      </div>
-                    ) : (
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#B0ADA6] flex-shrink-0">
-                          {isAr ? 'ميزانية' : 'BUDGET'}
-                        </span>
-                        <span className="text-sm font-bold text-[#1A1A1A]">
-                          {p.budget_min
-                            ? `${mad(p.budget_min)} – ${mad(p.budget_max)} MAD`
-                            : `≤ ${mad(p.budget_max)} MAD`}
-                        </span>
-                      </div>
-                    )}
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        ...prospectBrands(p),
+                        ...(p.model ? [p.model] : []),
+                        ...(p.stockage ? [`${p.stockage}${isAr ? '+' : ' ou plus'}`] : []),
+                        ...(p.budget_max != null || p.budget_min != null
+                          ? [p.budget_min != null && p.budget_max != null ? `${mad(p.budget_min)} – ${mad(p.budget_max)} MAD`
+                            : p.budget_max != null ? `≤ ${mad(p.budget_max)} MAD` : `≥ ${mad(p.budget_min)} MAD`]
+                          : []),
+                      ].map((c, i) => (
+                        <span key={i} className="text-xs font-bold text-[#1A1A1A] bg-white border border-[#E8E5DE] rounded-lg px-2 py-0.5">{c}</span>
+                      ))}
+                      {!prospectBrands(p).length && !p.model && !p.stockage && p.budget_max == null && p.budget_min == null && (
+                        <span className="text-sm text-[#B0ADA6]">—</span>
+                      )}
+                    </div>
                   </div>
 
                   {/* Stock match — click to see the matching phones right here */}
@@ -415,6 +400,10 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
                             {isAr
                               ? `${matches.length} جهاز متوفر الآن`
                               : `${matches.length} appareil${matches.length > 1 ? 's' : ''} disponible${matches.length > 1 ? 's' : ''} en stock`}
+                            {(() => {
+                              const flawed = matches.filter(m => { const i = phoneIssues(m); return i.damaged || i.replaced > 0 }).length
+                              return flawed > 0 ? <span className="font-medium text-amber-700"> · dont {flawed} endommagé{flawed > 1 ? 's' : ''} / pièces changées</span> : null
+                            })()}
                           </span>
                           <span className="text-[10px] font-bold text-emerald-700">
                             {listOpen ? (isAr ? 'إخفاء' : 'Masquer') : (isAr ? 'عرض' : 'Voir')}
@@ -423,12 +412,29 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
                         </button>
                         {listOpen && (
                           <ul className="border-t border-emerald-200 bg-white divide-y divide-[#F2F0EB]">
-                            {shown.map(ph => (
-                              <li key={ph.phone_id} className="flex items-center gap-2 px-2.5 py-2">
+                            {shown.map(ph => {
+                              const issue = phoneIssues(ph)
+                              return (
+                              <li key={ph.phone_id} className="flex items-center gap-2 px-2.5 py-2"
+                                style={issue.damaged ? { backgroundColor: '#FEF2F2' } : issue.replaced ? { backgroundColor: '#FFFBEB' } : undefined}>
                                 <div className="min-w-0 flex-1">
                                   <p className="text-xs font-bold text-[#1A1A1A] truncate">
-                                    {[ph.marque, ph.model, ph.stockage].filter(Boolean).join(' ')}
+                                    {(ph.model ?? '').toLowerCase().startsWith((ph.marque ?? '').toLowerCase()) ? ph.model : [ph.marque, ph.model].join(' ')} {ph.stockage ?? ''}
                                   </p>
+                                  {(issue.damaged || issue.replaced > 0) && (
+                                    <p className="flex flex-wrap gap-1 my-0.5">
+                                      {issue.damaged && (
+                                        <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700">
+                                          <AlertTriangle className="w-3 h-3" />Endommagé{ph.damage_notes ? ` : ${ph.damage_notes}` : ''}
+                                        </span>
+                                      )}
+                                      {issue.replaced > 0 && (
+                                        <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">
+                                          <Wrench className="w-3 h-3" />Pièces changées : {(ph.replaced_components ?? []).map(c => c.name).join(', ')}
+                                        </span>
+                                      )}
+                                    </p>
+                                  )}
                                   <p className="text-[10px] text-[#6B6860] flex items-center gap-1.5 flex-wrap">
                                     <span className="font-mono">{ph.phone_id}</span>
                                     <span>· {codeLabel('device_condition', ph.condition, lang)}</span>
@@ -444,7 +450,8 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
                                   {mad(ph.prix_vente_recommande)} MAD
                                 </span>
                               </li>
-                            ))}
+                              )
+                            })}
                             {matches.length > PREVIEW && (
                               <li>
                                 <button type="button"
@@ -559,55 +566,63 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
             </Select>
           </Field>
 
-          {/* Demand type */}
-          <div>
-            <p className="text-xs font-bold text-[#6B6860] uppercase tracking-widest mb-2">
-              {isAr ? 'نوع الطلب *' : 'Type de demande *'}
+          {/* What the client wants — every criterion optional, combined */}
+          <div className="space-y-3 p-3 bg-[#F8F7F4] rounded-xl">
+            <p className="text-xs font-bold text-[#6B6860] uppercase tracking-widest">
+              {isAr ? 'ما يبحث عنه الزبون' : 'Ce que cherche le client'}
+              <span className="normal-case tracking-normal font-medium text-[#B0ADA6]"> · {isAr ? 'معيار واحد على الأقل' : 'au moins un critère'}</span>
             </p>
-            <div className="grid grid-cols-2 gap-2">
-              {(['modele', 'budget'] as const).map(t => (
-                <button key={t} type="button"
-                  onClick={() => setF('demand_type', t)}
-                  className="py-2 rounded-xl text-xs font-bold border transition-all"
-                  style={{
-                    backgroundColor: form.demand_type === t ? primary : 'white',
-                    borderColor:     form.demand_type === t ? primary : '#E8E5DE',
-                    color:           form.demand_type === t ? 'white' : '#6B6860',
-                  }}>
-                  {t === 'modele'
-                    ? (isAr ? '📱 موديل محدد' : '📱 Modèle précis')
-                    : (isAr ? '💰 ميزانية'    : '💰 Budget')}
-                </button>
-              ))}
-            </div>
-          </div>
 
-          {/* Demand fields */}
-          {form.demand_type === 'modele' ? (
-            <div className="space-y-3">
-              <ComboBox
-                options={brands}
-                value={form.marque as string}
-                onChange={v => { setF('marque', v); setF('model', '') }}
-                placeholder={t(isAr, 'common.brand')}
-              />
-              <ComboBox
-                options={modelsFor(form.marque as string)}
-                value={form.model as string}
-                onChange={v => setF('model', v)}
-                placeholder={!form.marque
-                  ? (isAr ? 'اختر الماركة أولاً' : 'Choisissez d\'abord la marque')
-                  : (t(isAr, 'common.model'))}
-                disabled={!form.marque}
-              />
-              <ComboBox
-                options={STOCKAGES}
-                value={form.stockage as string}
-                onChange={v => setF('stockage', v)}
-                placeholder={isAr ? 'السعة (اختياري)' : 'Stockage (optionnel)'}
-              />
+            <div>
+              <p className="text-[10px] font-bold text-[#B0ADA6] uppercase tracking-wider mb-1.5">
+                {isAr ? 'الماركة (يمكن اختيار عدة)' : 'Marque(s) — plusieurs possibles'}
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {[...TOP_BRANDS, ...brands.filter(b => !TOP_BRANDS.includes(b)), ...form.marques.filter(b => !TOP_BRANDS.includes(b) && !brands.includes(b))].map(b => {
+                  const on = form.marques.includes(b)
+                  return (
+                    <button key={b} type="button"
+                      onClick={() => setForm(prev => {
+                        const marques = on ? prev.marques.filter(x => x !== b) : [...prev.marques, b]
+                        return { ...prev, marques, model: marques.length === 1 ? prev.model : '' }
+                      })}
+                      className="px-2.5 py-1 rounded-lg text-xs font-bold border transition-all"
+                      style={{ backgroundColor: on ? primary : 'white', borderColor: on ? primary : '#E8E5DE', color: on ? 'white' : '#6B6860' }}>
+                      {b === 'Apple' ? 'Apple (iPhone)' : b}
+                    </button>
+                  )
+                })}
+              </div>
             </div>
-          ) : (
+
+            <ComboBox
+              options={form.marques.length === 1 ? modelsFor(form.marques[0]) : []}
+              value={form.model as string}
+              onChange={v => setF('model', v)}
+              placeholder={form.marques.length === 1
+                ? (isAr ? 'موديل محدد (اختياري)' : 'Modèle précis (optionnel)')
+                : (isAr ? 'اختر ماركة واحدة لتحديد الموديل' : 'Modèle (une seule marque)')}
+              disabled={form.marques.length !== 1}
+            />
+
+            <div>
+              <p className="text-[10px] font-bold text-[#B0ADA6] uppercase tracking-wider mb-1.5">
+                {isAr ? 'السعة الدنيا' : 'Stockage minimum'}
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {STOCKAGES.filter(g => g !== '16GB').map(g => {
+                  const on = form.stockage === g
+                  return (
+                    <button key={g} type="button" onClick={() => setF('stockage', on ? '' : g)}
+                      className="px-2.5 py-1 rounded-lg text-xs font-bold border transition-all"
+                      style={{ backgroundColor: on ? primary : 'white', borderColor: on ? primary : '#E8E5DE', color: on ? 'white' : '#6B6860' }}>
+                      {g} +
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
               <Field label={isAr ? 'الميزانية الدنيا (درهم)' : 'Budget minimum (MAD)'}>
                 <input type="number" min={0} step={50} className={inputClass}
@@ -615,14 +630,14 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
                   value={form.budget_min as string}
                   onChange={e => setF('budget_min', e.target.value)} />
               </Field>
-              <Field label={isAr ? 'الميزانية القصوى (درهم) *' : 'Budget maximum (MAD) *'}>
+              <Field label={isAr ? 'الميزانية القصوى (درهم)' : 'Budget maximum (MAD)'}>
                 <input type="number" min={0} step={50} className={inputClass}
                   placeholder="6000"
                   value={form.budget_max as string}
                   onChange={e => setF('budget_max', e.target.value)} />
               </Field>
             </div>
-          )}
+          </div>
 
           {/* Notes */}
           <Field label={t(isAr, 'common.notes')}>

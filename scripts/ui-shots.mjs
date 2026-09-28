@@ -1,7 +1,7 @@
 // Phone-size (390×844) screenshots of ERP screens, for UI checks — TEST branch only.
 // Needs a dev server on :3100 pointed at the test branch (see memory: test branches).
 //   MSYS_NO_PATHCONV=1 DIRECT_URL=<test> SHOTS=<dir> PAGES=/ez/pos,/ez/stock/phones node scripts/ui-shots.mjs
-// Options: WAIT=ms (default 2500), FULL=1, CLICK=<css selector> (extra shot -2), SCROLL=px (extra shot -3).
+// Options: WAIT=ms (default 2500), FULL=1, FILL=<css selector> + TEXT=<typed before the shot>, CLICK=<css selector> (extra shot -2), SCROLL=px (extra shot -3).
 // Creates a temporary owner account and deletes it at the end.
 import 'dotenv/config'
 import pg from 'pg'
@@ -50,6 +50,7 @@ try {
   for (const p of pages) {
     await page.goto(BASE + p, { waitUntil: 'networkidle', timeout: 120000 }).catch(() => {})
     await page.waitForTimeout(Number(process.env.WAIT ?? 2500))
+    if (process.env.FILL) { await page.locator(process.env.FILL).first().fill(process.env.TEXT ?? ''); await page.waitForTimeout(1200) }
     const name = p.replace(/\//g, '_').replace(/^_/, '')
     await page.screenshot({ path: `${OUT}/${name}.png`, fullPage: process.env.FULL === '1' })
     if (process.env.CLICK) {
