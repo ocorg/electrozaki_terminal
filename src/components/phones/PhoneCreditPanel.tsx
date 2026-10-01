@@ -295,8 +295,11 @@ export default function PhoneCreditPanel({
 
   const isAvailable  = phoneStatus === 'disponible'
   const hasCredit    = !!credit
-  const isFullyPaid  = hasCredit && credit.pct_paye >= 99.9
-  const canDischarge = isFullyPaid && !credit.discharged_at && credit.statut === 'en_cours'
+  // Paid in full = nothing left (a trade-in counts towards it). The last
+  // payment already marks the credit "soldé"; it still has to be discharged
+  // for the phone to leave "réservé" — so a soldé credit can be discharged.
+  const isFullyPaid  = hasCredit && Number(credit.montant_restant) <= 0.01
+  const canDischarge = isFullyPaid && !credit.discharged_at && credit.statut !== 'annule'
 
   // ── Phone disponible sans crédit → proposer ──────────────────────
   if (!hasCredit && isAvailable) {
@@ -462,8 +465,9 @@ export default function PhoneCreditPanel({
         )}
 
         {/* Actions */}
-        {credit.statut === 'en_cours' && (
+        {(credit.statut === 'en_cours' || canDischarge) && (
           <div className="flex gap-2 p-3 border-t border-white/10">
+            {!isFullyPaid && (
             <button
               onClick={() => setShowPaymentModal(true)}
               className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg bg-white/10 hover:bg-white/15 text-white text-sm font-medium transition-all"
@@ -471,6 +475,7 @@ export default function PhoneCreditPanel({
               <Plus className="w-4 h-4" />
               Versement
             </button>
+            )}
             <button
               onClick={handleDischarge}
               disabled={!canDischarge || submitting}
