@@ -208,6 +208,45 @@ const ROW_ACTION_TONES = {
   danger:  'hover:text-red-600 hover:bg-red-50 hover:border-red-200',
 }
 
+// "…" button opening a small menu — for rare or destructive row actions
+// (e.g. Supprimer), so they don't sit next to the everyday buttons.
+export function RowMenu({ items, label = 'Plus d\'actions' }: {
+  items: { label: string; icon?: React.ReactNode; onClick: () => void; danger?: boolean }[]
+  label?: string
+}) {
+  const [open, setOpen] = React.useState(false)
+  const ref = React.useRef<HTMLDivElement>(null)
+  React.useEffect(() => {
+    if (!open) return
+    const close = (e: MouseEvent | KeyboardEvent) => {
+      if (e instanceof KeyboardEvent ? e.key === 'Escape' : !ref.current?.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', close)
+    document.addEventListener('keydown', close)
+    return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', close) }
+  }, [open])
+  if (!items.length) return null
+  return (
+    <div ref={ref} className="relative flex-shrink-0" onClick={e => e.stopPropagation()}>
+      <RowAction title={label} onClick={() => setOpen(o => !o)}>
+        <span className="text-base leading-none tracking-widest -mt-1.5">…</span>
+      </RowAction>
+      {open && (
+        <div role="menu" className="absolute right-0 top-9 z-20 min-w-[160px] bg-white border border-ez-border rounded-xl shadow-ez-md py-1">
+          {items.map(it => (
+            <button key={it.label} type="button" role="menuitem"
+              onClick={() => { setOpen(false); it.onClick() }}
+              className={cn('w-full flex items-center gap-2 px-3 py-2 text-sm text-left transition-colors',
+                it.danger ? 'text-red-600 hover:bg-red-50' : 'text-ez-text hover:bg-ez-bg')}>
+              {it.icon}{it.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function RowAction({ title, onClick, tone = 'neutral', children }: {
   title: string
   onClick: (e: React.MouseEvent) => void

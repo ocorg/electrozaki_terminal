@@ -7,7 +7,7 @@ import { useLanguageStore } from '@/lib/stores/language'
 import { t } from '@/lib/i18n/t'
 import { usePortal } from '@/lib/context/portal'
 import { formatMAD, formatDate, getWarrantyFlag, computePromoPrice } from '@/lib/utils'
-import { StatusBadge, BatteryBar, EmptyState, SkeletonRow, PageHeader, Btn, Modal, Field, inputClass, selectClass, RowAction, RowActionDivider, Select } from '@/components/shared'
+import { StatusBadge, BatteryBar, EmptyState, SkeletonRow, PageHeader, Btn, Modal, Field, inputClass, selectClass, RowAction, RowMenu, Select } from '@/components/shared'
 import PhoneForm from '@/components/phones/PhoneForm'
 import PhoneCreditPanel from '@/components/phones/PhoneCreditPanel'
 import type { Phone, Prospect } from '@/types/database'
@@ -19,7 +19,7 @@ import LabelGenerator, { type LabelProduct } from '@/components/print/LabelGener
 import {
   Plus, Search, Filter, RefreshCw,
   Smartphone, Edit2, MapPin, Shield,
-  ChevronDown, X, Eye, EyeOff, Trash2, Loader2, BookOpen, Check, CreditCard, Tag
+  ChevronDown, X, Eye, EyeOff, Trash2, Loader2, BookOpen, Check, CreditCard, Tag, BatteryMedium, AlertTriangle, Wrench
 } from 'lucide-react'
 import { codeLabel } from '@/lib/codes'
 import type { DeviceStatus } from '@/types/database'
@@ -299,7 +299,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
               )}
               {canSeeFinancials && (
                 <Btn variant="secondary" onClick={() => setCatalogOpen(true)}>
-                  <span className="text-xs">📋</span>
+                  <BookOpen className="w-4 h-4" />
                   {isAr ? 'إدارة الكتالوج' : 'Catalogue'}
                 </Btn>
               )}
@@ -422,7 +422,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                 color:           filterPromo === '1' ? '#C9A440' : '#6B6860',
               }}
             >
-              🏷️ {isAr ? 'عروض خاصة' : 'En promotion'}
+              <Tag className="w-3.5 h-3.5 inline -mt-0.5 mr-1" />{isAr ? 'عروض خاصة' : 'En promotion'}
             </button>
 
             {hasFilters && (
@@ -504,10 +504,6 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                   >
                     {/* Device name */}
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-                           style={{ backgroundColor: `${primary}12` }}>
-                        <Smartphone className="w-4 h-4" style={{ color: primary }} />
-                      </div>
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-ez-text truncate">{deviceName}</p>
                         <div className="flex items-center gap-1.5 flex-wrap">
@@ -572,7 +568,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                         )}
                         {phone.is_damaged && phone.damage_notes && (
                           <p className="text-xs text-[#991B1B] mt-1 line-clamp-2" title={phone.damage_notes}>
-                            ⚠ {phone.damage_notes}
+                            <AlertTriangle className="inline w-3.5 h-3.5 -mt-0.5 mr-1" />{phone.damage_notes}
                           </p>
                         )}
                       </div>
@@ -682,12 +678,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                         </RowAction>
                       )}
                       {canSeeFinancials && (
-                        <>
-                          <RowActionDivider />
-                          <RowAction title={isAr ? 'حذف' : 'Supprimer'} tone="danger" onClick={() => setConfirmDelete(phone.phone_id)}>
-                            <Trash2 className="w-4 h-4" />
-                          </RowAction>
-                        </>
+                        <RowMenu items={[{ label: isAr ? 'حذف' : 'Supprimer', icon: <Trash2 className="w-4 h-4" />, danger: true, onClick: () => setConfirmDelete(phone.phone_id) }]} />
                       )}
                     </div>
                   </div>
@@ -730,7 +721,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                           : phone.battery_level > 79  ? 'bg-emerald-50 text-emerald-700'
                           : phone.battery_level >= 60 ? 'bg-amber-50 text-amber-700'
                           : 'bg-red-50 text-red-700'
-                        }`}>🔋 {phone.battery_level}%</span>
+                        }`}><BatteryMedium className="w-3.5 h-3.5 inline -mt-0.5 mr-0.5" />{phone.battery_level}%</span>
                       )}
                       {phone.couleur && <span className={`${chip} bg-ez-muted text-ez-subtle`}>{phone.couleur}</span>}
                       {phone.promo_type && (
@@ -761,11 +752,11 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                     {(nComp > 0 || (phone.is_damaged && phone.damage_notes)) && (
                       <div className="space-y-1">
                         {phone.is_damaged && phone.damage_notes && (
-                          <p className="text-xs text-[#991B1B] bg-[#FFF1F2] rounded-lg px-2 py-1 line-clamp-3">⚠ {phone.damage_notes}</p>
+                          <p className="text-xs text-[#991B1B] bg-[#FFF1F2] rounded-lg px-2 py-1 line-clamp-3"><AlertTriangle className="inline w-3.5 h-3.5 -mt-0.5 mr-1" />{phone.damage_notes}</p>
                         )}
                         {nComp > 0 && (
                           <p className="text-xs text-[#92400E]">
-                            🔧 {(phone.replaced_components || []).map(c => `${c.name} (${c.condition === 'original' ? 'original' : 'standard'})`).join(', ')}
+                            <Wrench className="inline w-3.5 h-3.5 -mt-0.5 mr-1" />{(phone.replaced_components || []).map(c => `${c.name} (${c.condition === 'original' ? 'original' : 'standard'})`).join(', ')}
                           </p>
                         )}
                       </div>

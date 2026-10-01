@@ -6,6 +6,7 @@ import { Modal, Btn, PageHeader, EmptyState, SkeletonRow, Field, inputClass, sel
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import { uploadResized } from '@/lib/utils/image'
 import { useSiteLang, Tabs, Chip, AVAILABILITY, GRADE, mad, categoryOptions } from './common'
+import { confirmDialog } from '@/components/shared/ConfirmHost'
 
 interface Product {
   id: string; slug: string; name: string; brand: string | null; isPhone: boolean; source: 'ERP' | 'MANUAL'
@@ -221,7 +222,7 @@ function ProductModal({ product, categories, accessories, onClose }: {
   }
 
   async function removePhoto(url: string) {
-    if (!window.confirm(L('Retirer cette photo ?', 'حذف هذه الصورة؟'))) return
+    if (!(await confirmDialog(L('Retirer cette photo ?', 'حذف هذه الصورة؟')))) return
     try {
       await apiWrite(`/api/site/catalog/${product.id}/images`, { method: 'DELETE', body: { url } })
     } catch (e) { showError((e as Error).message) }
@@ -386,7 +387,7 @@ function PhotosTab({ isManager }: { isManager: boolean }) {
   }
 
   async function remove(p: Photo) {
-    if (!p.photoId || !window.confirm(L('Retirer cette photo ?', 'حذف هذه الصورة؟'))) return
+    if (!p.photoId || !(await confirmDialog(L('Retirer cette photo ?', 'حذف هذه الصورة؟')))) return
     try { await apiWrite('/api/site/photos', { method: 'DELETE', body: { id: p.photoId } }) } catch (e) { showError((e as Error).message) }
   }
 
@@ -455,7 +456,7 @@ function CategoriesTab({ categories, isManager }: { categories: Category[]; isMa
   }
 
   async function remove(c: Category) {
-    if (!window.confirm(L(`Supprimer « ${c.name} » ?`, `حذف « ${c.name} »؟`))) return
+    if (!(await confirmDialog(L(`Supprimer « ${c.name} » ?`, `حذف « ${c.name} »؟`)))) return
     try { await apiWrite('/api/site/categories', { method: 'DELETE', body: { id: c.id } }) } catch (e) { showError((e as Error).message) }
   }
 

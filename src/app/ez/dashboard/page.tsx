@@ -355,7 +355,7 @@ export default function EZDashboard() {
   return (
     <div className="p-6 space-y-6 animate-fade-in" dir={isAr ? 'rtl' : 'ltr'}>
 
-      <AttendanceWidget storeId={STORE_ID} />
+      <AttendanceWidget storeId={STORE_ID} compact />
 
       {/* ── Header + period selector ── */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-4">
@@ -549,7 +549,7 @@ export default function EZDashboard() {
                 </ComposedChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-64 flex flex-col items-center justify-center gap-2 text-ez-faint">
+              <div className="h-28 flex flex-col items-center justify-center gap-2 text-ez-faint">
                 <BarChart2 className="w-8 h-8 opacity-30" />
                 <p className="text-sm">{isAr ? 'لا توجد بيانات لهذه الفترة' : 'Aucune donnée pour cette période'}</p>
               </div>

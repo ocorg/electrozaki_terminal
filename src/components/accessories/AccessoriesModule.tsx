@@ -7,7 +7,7 @@ import { useLanguageStore } from '@/lib/stores/language'
 import { t } from '@/lib/i18n/t'
 import { usePortal } from '@/lib/context/portal'
 import { formatMAD } from '@/lib/utils'
-import { Modal, Field, inputClass, selectClass, Btn, PageHeader, EmptyState, SkeletonRow, StatusBadge, RowAction, RowActionDivider, Select } from '@/components/shared'
+import { Modal, Field, inputClass, selectClass, Btn, PageHeader, EmptyState, SkeletonRow, StatusBadge, RowAction, RowMenu, Select } from '@/components/shared'
 import ScanButton from '@/components/scanner/ScanButton'
 import LabelGenerator, { type LabelProduct } from '@/components/print/LabelGenerator'
 import { showSuccess, showError } from '@/lib/utils/toasts'
@@ -446,12 +446,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
                       </RowAction>
                     )}
                     {canFinancials && (
-                      <>
-                        <RowActionDivider />
-                        <RowAction title={isAr ? 'حذف' : 'Supprimer'} tone="danger" onClick={() => setConfirmDelete(acc.acc_id)}>
-                          <Trash2 className="w-4 h-4" />
-                        </RowAction>
-                      </>
+                      <RowMenu items={[{ label: isAr ? 'حذف' : 'Supprimer', icon: <Trash2 className="w-4 h-4" />, danger: true, onClick: () => setConfirmDelete(acc.acc_id) }]} />
                     )}
                   </div>
                 </div>

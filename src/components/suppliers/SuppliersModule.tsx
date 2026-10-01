@@ -14,6 +14,7 @@ import {
   Edit2, Phone, MapPin, MessageCircle,
   ChevronRight, Check, Loader2, Package,
 } from 'lucide-react'
+import { confirmDialog } from '@/components/shared/ConfirmHost'
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 
@@ -338,7 +339,7 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
 
   async function handleFixPayment(action: 'montant' | 'annuler') {
     if (!fixPay) return
-    if (action === 'annuler' && !window.confirm('Annuler ce paiement ? Ses téléphones redeviendront « à régler ».')) return
+    if (action === 'annuler' && !(await confirmDialog('Annuler ce paiement ? Ses téléphones redeviendront « à régler ».'))) return
     setSubmitting(true)
     try {
       const res = await fetch('/api/supplier-payments', {

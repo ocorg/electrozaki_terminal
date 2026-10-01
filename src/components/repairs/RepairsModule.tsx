@@ -523,7 +523,7 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
               return (
                 <div
                   key={col.status}
-                  className={`w-full lg:w-72 flex-shrink-0 flex-col rounded-2xl border bg-ez-muted/60 border-ez-border overflow-hidden ${mobileCol === col.status ? 'flex' : 'hidden lg:flex'}`}
+                  className={`w-full lg:w-72 flex-shrink-0 flex-col self-start max-h-full rounded-2xl border bg-ez-muted/60 border-ez-border overflow-hidden ${mobileCol === col.status ? 'flex' : 'hidden lg:flex'}`}
                 >
                   {/* Column header */}
                   <div className={`flex items-center justify-between px-4 py-3 border-b border-ez-border bg-white`}>
@@ -541,9 +541,9 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
                   {/* Cards */}
                   <div className="flex-1 overflow-y-auto p-3 space-y-2">
                     {items.length === 0 ? (
-                      <div className="flex items-center justify-center py-8 text-center">
-                        <p className={`text-xs ${col.color} opacity-50`}>
-                          {isAr ? 'لا يوجد' : 'Aucun'}
+                      <div className="flex items-center justify-center py-5 text-center">
+                        <p className="text-xs text-ez-faint">
+                          {isAr ? 'لا يوجد' : 'Aucun ticket'}
                         </p>
                       </div>
                     ) : (

@@ -1,7 +1,7 @@
 // Phone-size (390×844) screenshots of ERP screens, for UI checks — TEST branch only.
 // Needs a dev server on :3100 pointed at the test branch (see memory: test branches).
 //   MSYS_NO_PATHCONV=1 DIRECT_URL=<test> SHOTS=<dir> PAGES=/ez/pos,/ez/stock/phones node scripts/ui-shots.mjs
-// Options: DESKTOP=1 (1440×900), ROLE=employe|gerant (default proprietaire), WAIT=ms (default 2500), FULL=1, FILL=<css selector> + TEXT=<typed before the shot>, CLICK=<css selector> (extra shot -2), SCROLL=px (extra shot -3).
+// Options: DESKTOP=1 (1440×900), ROLE=employe|gerant (default proprietaire), WAIT=ms (default 2500), FULL=1, FILL=<css selector> + TEXT=<typed before the shot>, CLICK=<css selector>[ || <next> …] (extra shot -2), SCROLL=px (extra shot -3).
 // Creates a temporary owner account and deletes it at the end.
 import 'dotenv/config'
 import pg from 'pg'
@@ -57,7 +57,11 @@ try {
     const name = p.replace(/\//g, '_').replace(/^_/, '')
     await page.screenshot({ path: `${OUT}/${name}.png`, fullPage: process.env.FULL === '1' })
     if (process.env.CLICK) {
-      await page.locator(process.env.CLICK).first().click().catch(e => console.log('  click failed', String(e).slice(0, 120)))
+      // several clicks in a row: CLICK="sel1 || sel2"
+      for (const sel of process.env.CLICK.split(' || ')) {
+        await page.locator(sel).first().click().catch(e => console.log('  click failed', String(e).slice(0, 120)))
+        await page.waitForTimeout(1500)
+      }
       await page.waitForTimeout(1500)
       await page.screenshot({ path: `${OUT}/${name}-2.png` })
     }

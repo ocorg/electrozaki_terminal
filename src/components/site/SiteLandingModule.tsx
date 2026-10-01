@@ -9,6 +9,7 @@ import { Modal, Btn, PageHeader, EmptyState, SkeletonRow, Field, inputClass, sel
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import { uploadResized } from '@/lib/utils/image'
 import { useSiteLang, Chip, mad, categoryOptions } from './common'
+import { confirmDialog } from '@/components/shared/ConfirmHost'
 
 const SITE = process.env.NEXT_PUBLIC_STOREFRONT_URL ?? 'https://electrozaki-storefront.vercel.app'
 
@@ -69,7 +70,7 @@ export default function SiteLandingModule() {
     catch (e) { showError((e as Error).message) }
   }
   async function remove(p: Landing) {
-    if (!window.confirm(L(`Supprimer la page « ${p.title} » ?`, `حذف الصفحة « ${p.title} »؟`))) return
+    if (!(await confirmDialog(L(`Supprimer la page « ${p.title} » ?`, `حذف الصفحة « ${p.title} »؟`)))) return
     try {
       const r = await apiWrite<{ deactivated?: boolean }>(`/api/site/landing/${p.id}`, { method: 'DELETE' })
       showSuccess(r.deactivated ? L('Page désactivée (elle a déjà des commandes)', 'تم تعطيل الصفحة') : L('Page supprimée', 'تم حذف الصفحة'))

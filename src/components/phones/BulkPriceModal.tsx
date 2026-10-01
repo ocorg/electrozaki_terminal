@@ -4,6 +4,7 @@ import { AlertTriangle, ArrowRight } from 'lucide-react'
 import { Modal, Btn, Field, inputClass, selectClass, Select } from '@/components/shared'
 import { apiWrite } from '@/lib/data/api'
 import { showSuccess, showError } from '@/lib/utils/toasts'
+import { confirmDialog } from '@/components/shared/ConfirmHost'
 
 // Téléphones → "Prix en masse" (managers): e.g. +200 DH on every new phone in
 // stock. Preview before / after, then apply (logged per phone; the website
@@ -41,7 +42,7 @@ export default function BulkPriceModal({ open, onClose, storeId, brands }: { ope
 
   async function apply() {
     const n = changed.length
-    if (!window.confirm(`Appliquer ${direction > 0 ? '+' : '−'}${amount}${mode === 'pourcentage' ? ' %' : ' DH'} à ${n} téléphone(s) ?`)) return
+    if (!(await confirmDialog(`Appliquer ${direction > 0 ? '+' : '−'}${amount}${mode === 'pourcentage' ? ' %' : ' DH'} à ${n} téléphone(s) ?`))) return
     setBusy(true)
     try {
       const r = await apiWrite<{ data: { count: number } }>('/api/phones/bulk-price', { method: 'POST', body: body(true) })

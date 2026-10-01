@@ -9,6 +9,7 @@ import { useSiteLang, Tabs, Chip, mad } from './common'
 import { computePromoPrice } from '@/lib/utils'
 import { codeLabel } from '@/lib/codes'
 import type { Phone } from '@/types/database'
+import { confirmDialog } from '@/components/shared/ConfirmHost'
 
 interface Promo {
   id: string; code: string; type: 'PERCENTAGE' | 'FIXED_AMOUNT'; value: number; active: boolean
@@ -121,7 +122,7 @@ function PromosTab({ isManager }: { isManager: boolean }) {
     } catch (e) { showError((e as Error).message) } finally { setSaving(false) }
   }
   async function remove(p: Promo) {
-    if (!window.confirm(L(`Supprimer le code ${p.code} ?`, `حذف الرمز ${p.code}؟`))) return
+    if (!(await confirmDialog(L(`Supprimer le code ${p.code} ?`, `حذف الرمز ${p.code}؟`)))) return
     try { await apiWrite('/api/site/promos', { method: 'DELETE', body: { id: p.id } }) } catch (e) { showError((e as Error).message) }
   }
 
@@ -216,7 +217,7 @@ function BundlesTab({ isManager }: { isManager: boolean }) {
     } catch (e) { showError((e as Error).message) } finally { setSaving(false) }
   }
   async function remove(b: Bundle) {
-    if (!window.confirm(L(`Supprimer le pack « ${b.name} » ?`, `حذف الباقة؟`))) return
+    if (!(await confirmDialog(L(`Supprimer le pack « ${b.name} » ?`, `حذف الباقة؟`)))) return
     try { await apiWrite('/api/site/bundles', { method: 'DELETE', body: { id: b.id } }) } catch (e) { showError((e as Error).message) }
   }
 

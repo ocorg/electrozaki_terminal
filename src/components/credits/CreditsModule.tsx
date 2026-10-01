@@ -11,6 +11,7 @@ import {
   CreditCard, Plus, RefreshCw, Trash2, Link2,
   Calendar, Search, X, DollarSign, User, AlertCircle
 } from 'lucide-react'
+import { confirmDialog } from '@/components/shared/ConfirmHost'
 
 interface ClientWithCredit {
   client_id:    string
@@ -268,7 +269,7 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
 
   // ── Delete import ─────────────────────────────────────────
   async function deleteImport(import_id: string) {
-    if (!window.confirm(isAr ? 'حذف هذا الاستيراد؟' : 'Supprimer cet import ?')) return
+    if (!(await confirmDialog(isAr ? 'حذف هذا الاستيراد؟' : 'Supprimer cet import ?'))) return
     try {
       const res = await fetch(`/api/credit-imports?import_id=${import_id}`, { method: 'DELETE' })
       if (!res.ok) throw new Error((await res.json()).error)

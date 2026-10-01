@@ -14,6 +14,7 @@ import {
 
 import { useCategories, categoryLabel } from '@/lib/hooks/useCategories'
 import { uploadFile } from '@/lib/upload'
+import { confirmDialog } from '@/components/shared/ConfirmHost'
 
 // Icon mapping for built-in categories — custom categories fall back to MoreHorizontal
 const CAT_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -129,7 +130,7 @@ export default function ExpensesModule({ storeId }: ExpensesModuleProps) {
   }
 
   async function handleDelete(expId: string) {
-    if (!confirm(isAr ? 'هل أنت متأكد من الحذف؟' : 'Confirmer la suppression ?')) return
+    if (!(await confirmDialog(isAr ? 'هل أنت متأكد من الحذف؟' : 'Confirmer la suppression ?'))) return
     setDeleting(expId)
     try {
       const res = await fetch(`/api/expenses?exp_id=${expId}`, { method: 'DELETE' })

@@ -7,6 +7,7 @@ import { PageHeader, EmptyState, SkeletonRow, selectClass, Btn, Modal, Field, in
 import { showError, showSuccess } from '@/lib/utils/toasts'
 import { codeLabel, type Code } from '@/lib/codes'
 import { useSiteLang, Tabs, Chip, REPAIR_STATUS, whatsappLink, dateTime } from './common'
+import { confirmDialog } from '@/components/shared/ConfirmHost'
 
 type WebKind = 'HARDWARE' | 'SOFTWARE' | 'CONSULTATION'
 
@@ -49,7 +50,7 @@ export default function SiteRequestsModule() {
       ? L(`Créer la fiche de consultation pour ${r.customerName} ?`, `إنشاء بطاقة استشارة لـ ${r.customerName}؟`)
       : L(`Le client a déposé l'appareil ? Créer la fiche de réparation pour ${r.customerName}${device ? ` (${device})` : ''} ?`,
           `هل سلم العميل الجهاز؟ إنشاء بطاقة إصلاح لـ ${r.customerName}؟`)
-    if (!window.confirm(question)) return
+    if (!(await confirmDialog(question))) return
     setConverting(r.id)
     try {
       const res = await apiWrite<{ rep_id: string; existing?: boolean }>(`/api/site/requests/${r.id}/convert`, { method: 'POST' })

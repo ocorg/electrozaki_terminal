@@ -9,7 +9,7 @@ import { showSuccess, showError } from '@/lib/utils/toasts'
 import { codeLabel } from '@/lib/codes'
 import type { UserRole } from '@/types/database'
 import { uploadFile } from '@/lib/upload'
-import { Users, Shield, Edit2, CheckCircle, XCircle, RefreshCw, Plus, Eye, EyeOff } from 'lucide-react'
+import { Users, Shield, Edit2, CheckCircle, XCircle, RefreshCw, Plus, Eye, EyeOff, Pencil } from 'lucide-react'
 
 interface UserProfile {
   id:           string
@@ -255,7 +255,7 @@ export default function BZGUsersPage() {
                         u.display_name.charAt(0).toUpperCase()
                       )}
                       <div className="absolute inset-0 bg-black/40 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <span className="text-white text-[8px]">✏️</span>
+                        <Pencil className="w-3.5 h-3.5 text-white" />
                       </div>
                       <input
                         type="file"

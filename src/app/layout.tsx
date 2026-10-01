@@ -5,6 +5,7 @@ import HtmlLangSync from '@/components/shared/HtmlLangSync'
 import AuthProvider from '@/components/shared/AuthProvider'
 import DataProvider from '@/components/shared/DataProvider'
 import './globals.css'
+import ConfirmHost from '@/components/shared/ConfirmHost'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 
@@ -38,6 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <HtmlLangSync />
         <AuthProvider>
           <DataProvider>{children}</DataProvider>
+          <ConfirmHost />
         </AuthProvider>
         <Toaster
           position="top-right"

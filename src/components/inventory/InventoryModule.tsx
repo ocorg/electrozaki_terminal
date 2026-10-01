@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import {
   PackageSearch, Plus, ChevronLeft, CheckCircle2,
-  Loader2, Keyboard, ScanLine, Eye,
+  Loader2, Keyboard, ScanLine, Eye, Hourglass, AlertTriangle, CircleDot, XCircle, Undo2
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { usePortal } from '@/lib/context/portal'
@@ -27,13 +27,19 @@ interface ScanFeedback {
 }
 
 // ── Config visuelle par résultat ───────────────────────────
-const RC: Record<string, { label: string; color: string; bg: string; border: string; icon: string }> = {
-  'trouve':          { label: 'Trouvé',          color: 'text-emerald-400', bg: 'bg-emerald-950/60', border: 'border-emerald-700', icon: '✅' },
-  'manquant':        { label: 'Manquant',         color: 'text-red-400',     bg: 'bg-red-950/60',     border: 'border-red-800',     icon: '❌' },
-  'non_enregistre':  { label: 'Non enregistré',   color: 'text-amber-400',   bg: 'bg-amber-950/60',   border: 'border-amber-700',   icon: '⚠️' },
-  'hors_perimetre':  { label: 'Hors périmètre',   color: 'text-blue-400',    bg: 'bg-blue-950/60',    border: 'border-blue-800',    icon: '🔵' },
-  'en_attente':      { label: 'En attente',        color: 'text-zinc-400',    bg: 'bg-zinc-900',       border: 'border-zinc-700',    icon: '⏳' },
-  'deja_scanne':     { label: 'Déjà scanné',      color: 'text-zinc-400',    bg: 'bg-zinc-900',       border: 'border-zinc-700',    icon: '↩' },
+// Icon of a scan result (component, coloured by the result's text colour)
+function ResultIcon({ type, className = 'inline w-3.5 h-3.5 -mt-0.5 mr-1' }: { type: string; className?: string }) {
+  const Icon = RC[type]?.icon
+  return Icon ? <Icon className={className} /> : null
+}
+
+const RC: Record<string, { label: string; color: string; bg: string; border: string; icon: React.ElementType }> = {
+  'trouve':          { label: 'Trouvé',          color: 'text-emerald-400', bg: 'bg-emerald-950/60', border: 'border-emerald-700', icon: CheckCircle2 },
+  'manquant':        { label: 'Manquant',         color: 'text-red-400',     bg: 'bg-red-950/60',     border: 'border-red-800',     icon: XCircle },
+  'non_enregistre':  { label: 'Non enregistré',   color: 'text-amber-400',   bg: 'bg-amber-950/60',   border: 'border-amber-700',   icon: AlertTriangle },
+  'hors_perimetre':  { label: 'Hors périmètre',   color: 'text-blue-400',    bg: 'bg-blue-950/60',    border: 'border-blue-800',    icon: CircleDot },
+  'en_attente':      { label: 'En attente',        color: 'text-zinc-400',    bg: 'bg-zinc-900',       border: 'border-zinc-700',    icon: Hourglass },
+  'deja_scanne':     { label: 'Déjà scanné',      color: 'text-zinc-400',    bg: 'bg-zinc-900',       border: 'border-zinc-700',    icon: Undo2 },
 }
 
 const formatDate = (iso: string) =>
@@ -321,15 +327,15 @@ export default function InventoryModule({ role }: { role: string }) {
       {activeSession && (
         <div className="mb-6 p-4 rounded-2xl border border-gold/40 bg-gold/8 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <p className="text-gold font-bold text-sm tracking-wide">⚡ VÉRIFICATION EN COURS</p>
+            <p className="text-gold font-bold text-sm tracking-wide flex items-center gap-1.5"><ScanLine className="w-4 h-4" />Vérification en cours</p>
             <p className="text-zinc-300 text-sm mt-1">
               Démarrée le {formatDate(activeSession.started_at)} · {activeSession.snapshot_count} téléphones en périmètre
             </p>
             <div className="flex flex-wrap gap-4 mt-2 text-xs">
-              <span className="text-emerald-400">✅ {activeSession.counts?.['trouve'] ?? 0} trouvés</span>
-              <span className="text-zinc-500">⏳ {activeSession.counts?.['en_attente'] ?? 0} en attente</span>
-              <span className="text-amber-400">⚠️ {activeSession.counts?.['non_enregistre'] ?? 0} non enregistrés</span>
-              <span className="text-blue-400">🔵 {activeSession.counts?.['hors_perimetre'] ?? 0} hors périmètre</span>
+              <span className="text-emerald-400"><CheckCircle2 className="inline w-3.5 h-3.5 -mt-0.5 mr-1" />{activeSession.counts?.['trouve'] ?? 0} trouvés</span>
+              <span className="text-zinc-500"><Hourglass className="inline w-3.5 h-3.5 -mt-0.5 mr-1" />{activeSession.counts?.['en_attente'] ?? 0} en attente</span>
+              <span className="text-amber-400"><AlertTriangle className="inline w-3.5 h-3.5 -mt-0.5 mr-1" />{activeSession.counts?.['non_enregistre'] ?? 0} non enregistrés</span>
+              <span className="text-blue-400"><CircleDot className="inline w-3.5 h-3.5 -mt-0.5 mr-1" />{activeSession.counts?.['hors_perimetre'] ?? 0} hors périmètre</span>
             </div>
           </div>
           <button
@@ -365,10 +371,10 @@ export default function InventoryModule({ role }: { role: string }) {
                   {s.snapshot_count} en périmètre · Clôturée {s.completed_at ? formatDate(s.completed_at) : '—'}
                 </p>
                 <div className="flex flex-wrap gap-4 mt-2 text-xs">
-                  <span className="text-emerald-400">✅ {s.counts?.['trouve'] ?? 0}</span>
-                  <span className="text-red-400">❌ {s.counts?.['manquant'] ?? 0}</span>
-                  <span className="text-amber-400">⚠️ {s.counts?.['non_enregistre'] ?? 0}</span>
-                  <span className="text-blue-400">🔵 {s.counts?.['hors_perimetre'] ?? 0}</span>
+                  <span className="text-emerald-400"><CheckCircle2 className="inline w-3.5 h-3.5 -mt-0.5 mr-1" />{s.counts?.['trouve'] ?? 0}</span>
+                  <span className="text-red-400"><XCircle className="inline w-3.5 h-3.5 -mt-0.5 mr-1" />{s.counts?.['manquant'] ?? 0}</span>
+                  <span className="text-amber-400"><AlertTriangle className="inline w-3.5 h-3.5 -mt-0.5 mr-1" />{s.counts?.['non_enregistre'] ?? 0}</span>
+                  <span className="text-blue-400"><CircleDot className="inline w-3.5 h-3.5 -mt-0.5 mr-1" />{s.counts?.['hors_perimetre'] ?? 0}</span>
                 </div>
               </div>
               <button
@@ -413,7 +419,7 @@ export default function InventoryModule({ role }: { role: string }) {
         {scanFeedback ? (
           <>
             <p className={`font-bold text-sm ${RC[scanFeedback.type]?.color}`}>
-              {RC[scanFeedback.type]?.icon} {RC[scanFeedback.type]?.label}
+              <ResultIcon type={scanFeedback.type} className="inline w-4 h-4 -mt-0.5 mr-1" />{RC[scanFeedback.type]?.label}
             </p>
             <p className="text-zinc-300 text-xs mt-0.5 truncate">{scanFeedback.label}</p>
           </>
@@ -425,16 +431,16 @@ export default function InventoryModule({ role }: { role: string }) {
       {/* Compteurs */}
       <div className="grid grid-cols-2 gap-2 mb-4">
         {[
-          { key: 'en_attente',     label: 'En attente',      icon: '⏳', color: 'text-zinc-300' },
-          { key: 'trouve',         label: 'Trouvés',         icon: '✅', color: 'text-emerald-400' },
-          { key: 'non_enregistre', label: 'Non enregistrés', icon: '⚠️', color: 'text-amber-400' },
-          { key: 'hors_perimetre', label: 'Hors périmètre',  icon: '🔵', color: 'text-blue-400' },
-        ].map(({ key, label, icon, color }) => (
+          { key: 'en_attente',     label: 'En attente',      icon: Hourglass, color: 'text-zinc-300' },
+          { key: 'trouve',         label: 'Trouvés',         icon: CheckCircle2, color: 'text-emerald-400' },
+          { key: 'non_enregistre', label: 'Non enregistrés', icon: AlertTriangle, color: 'text-amber-400' },
+          { key: 'hors_perimetre', label: 'Hors périmètre',  icon: CircleDot, color: 'text-blue-400' },
+        ].map(({ key, label, icon: Icon, color }) => (
           <div key={key} className="bg-zinc-900 border border-zinc-800 rounded-xl p-3 text-center">
             <p className={`text-3xl font-bold ${color}`} style={{ fontFamily: 'Barlow Condensed, sans-serif' }}>
               {counts[key] ?? 0}
             </p>
-            <p className="text-zinc-500 text-xs mt-0.5">{icon} {label}</p>
+            <p className="text-zinc-500 text-xs mt-0.5"><Icon className="inline w-3.5 h-3.5 -mt-0.5 mr-1" />{label}</p>
           </div>
         ))}
       </div>
@@ -517,7 +523,7 @@ export default function InventoryModule({ role }: { role: string }) {
                 key={i}
                 className={`flex items-center gap-2.5 px-3 py-2 rounded-xl border ${RC[scan.type]?.bg} ${RC[scan.type]?.border}`}
               >
-                <span className="text-sm">{RC[scan.type]?.icon}</span>
+                <span className={`text-sm ${RC[scan.type]?.color ?? ''}`}><ResultIcon type={scan.type} className="w-4 h-4" /></span>
                 <span className={`text-xs flex-1 truncate ${RC[scan.type]?.color}`}>{scan.label}</span>
               </div>
             ))}
@@ -631,7 +637,7 @@ export default function InventoryModule({ role }: { role: string }) {
               <p className={`text-3xl font-bold ${color}`} style={{ fontFamily: 'Barlow Condensed, sans-serif' }}>
                 {counts[key] ?? 0}
               </p>
-              <p className="text-zinc-500 text-xs mt-1">{RC[key]?.icon} {label}</p>
+              <p className="text-zinc-500 text-xs mt-1"><ResultIcon type={key} />{label}</p>
             </button>
           ))}
         </div>

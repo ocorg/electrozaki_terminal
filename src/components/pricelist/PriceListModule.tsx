@@ -117,7 +117,7 @@ export default function PriceListModule() {
                 key: p.phone_id,
                 cells: [
                   <span key="n"><b className="text-ez-text">{phoneName(p)}{p.stockage ? ` ${p.stockage}` : ''}</b>{p.couleur && <span className="text-ez-subtle"> · {p.couleur}</span>}</span>,
-                  <span key="e" className="text-ez-subtle">{p.condition === 'neuf' ? 'Neuf' : 'Occasion'}{p.battery_level != null ? ` · 🔋${p.battery_level}%` : ''}{p.is_damaged ? ' · endommagé' : ''}</span>,
+                  <span key="e" className="text-ez-subtle">{p.condition === 'neuf' ? 'Neuf' : 'Occasion'}{p.battery_level != null ? ` · batterie ${p.battery_level}%` : ''}{p.is_damaged ? ' · endommagé' : ''}</span>,
                   <span key="i" className="font-mono text-xs text-ez-faint">{p.imei ?? '—'}</span>,
                   promo !== null
                     ? <span key="p"><s className="text-ez-faint text-xs mr-1">{mad(p.prix_vente_recommande)}</s><b className="text-[#A8862E]">{mad(Math.round(promo))}</b></span>

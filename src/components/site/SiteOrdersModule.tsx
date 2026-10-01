@@ -5,6 +5,7 @@ import { useApi, apiWrite } from '@/lib/data/api'
 import { Modal, Btn, PageHeader, EmptyState, SkeletonRow } from '@/components/shared'
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import { useSiteLang, Tabs, Chip, ORDER_STATUS, PAYMENT_STATUS, whatsappLink, mad, dateTime, shortDay } from './common'
+import { confirmDialog } from '@/components/shared/ConfirmHost'
 
 interface OrderRow {
   id: string; ref: string; customerName: string; customerPhone: string; status: string
@@ -114,7 +115,7 @@ function OrderModal({ id, isManager, onClose }: { id: string; isManager: boolean
   const [busy, setBusy] = useState<string | null>(null)
 
   async function act(key: string, url: string, method: string, body: unknown, ok: string, confirmText?: string) {
-    if (confirmText && !window.confirm(confirmText)) return
+    if (confirmText && !(await confirmDialog(confirmText))) return
     setBusy(key)
     try {
       await apiWrite(url, { method, body })
