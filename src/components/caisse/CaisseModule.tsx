@@ -163,10 +163,10 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
                style={{ backgroundColor: `${primary}15` }}>
             <Vault className="w-10 h-10" style={{ color: primary }} />
           </div>
-          <h1 className="font-display text-3xl font-bold text-[#1A1A1A] tracking-wide mb-2">
+          <h1 className="font-display text-3xl font-bold text-ez-text tracking-wide mb-2">
             {isAr ? 'صندوق الدفع مغلق' : 'Caisse non ouverte'}
           </h1>
-          <p className="text-[#6B6860] text-sm mb-8">
+          <p className="text-ez-subtle text-sm mb-8">
             {isAr
               ? 'يجب فتح صندوق الدفع قبل تسجيل أي عملية اليوم'
               : 'Ouvrez la caisse avant de commencer les opérations du jour'}
@@ -191,10 +191,10 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
             <div className="flex items-start gap-3 p-4 rounded-xl" style={{ backgroundColor: `${primary}10`, border: `1px solid ${primary}30` }}>
               <ArrowDown className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: primary }} />
               <div>
-                <p className="text-sm font-medium text-[#1A1A1A]">
+                <p className="text-sm font-medium text-ez-text">
                   {isAr ? 'عد النقود في الصندوق' : 'Comptez le cash dans le tiroir'}
                 </p>
-                <p className="text-xs text-[#6B6860] mt-0.5">
+                <p className="text-xs text-ez-subtle mt-0.5">
                   {isAr ? 'أدخل المبلغ الفعلي الموجود' : 'Entrez le montant physique présent'}
                 </p>
               </div>
@@ -246,16 +246,16 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
           <div className="w-16 h-16 rounded-2xl bg-amber-50 flex items-center justify-center mx-auto mb-4">
             <Clock className="w-8 h-8 text-amber-500" />
           </div>
-          <h2 className="font-display text-2xl font-bold text-[#1A1A1A] tracking-wide mb-2">
+          <h2 className="font-display text-2xl font-bold text-ez-text tracking-wide mb-2">
             {isAr ? 'في انتظار الموافقة' : 'En attente d\'approbation'}
           </h2>
-          <p className="text-[#6B6860] text-sm">
+          <p className="text-ez-subtle text-sm">
             {isAr
               ? 'تم إرسال طلب إغلاق صندوق الدفع. في انتظار موافقة المدير أو المالك.'
               : 'La clôture a été soumise. En attente de validation manager/propriétaire.'}
           </p>
           {caisse.eod_submitted_at && (
-            <p className="text-xs text-[#B0ADA6] mt-2">
+            <p className="text-xs text-ez-faint mt-2">
               {t(isAr, 'common.submittedAt')}{' '}
               {new Date(caisse.eod_submitted_at).toLocaleTimeString('fr-FR', { timeZone: STORE_TIME_ZONE, hour: '2-digit', minute: '2-digit' })}
             </p>
@@ -263,7 +263,7 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
         </div>
 
         {/* Summary */}
-        <div className="bg-white border border-[#E8E5DE] rounded-2xl p-5 space-y-3">
+        <div className="bg-white border border-ez-border rounded-2xl p-5 space-y-3">
           <SummaryRow label={t(isAr, 'common.openingAmount')}       value={formatMAD(caisse.ouverture)}          />
           <SummaryRow label={t(isAr, 'common.totalSales')}          value={formatMAD(caisse.total_ventes)}      color="text-emerald-600" />
           <SummaryRow label={t(isAr, 'common.totalRepairs')}    value={formatMAD(caisse.total_reparations)} color="text-emerald-600" />
@@ -272,7 +272,7 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
           )}
           <SummaryRow label={t(isAr, 'common.totalExpenses')}        value={formatMAD(caisse.total_depenses)}    color="text-red-500" />
           {caisse.payment_breakdown && <PaymentBreakdownMini isAr={isAr} breakdown={caisse.payment_breakdown} />}
-          <div className="border-t border-[#E8E5DE] pt-3">
+          <div className="border-t border-ez-border pt-3">
             <SummaryRow label={t(isAr, 'common.theoreticalBalance')} value={formatMAD(caisse.solde_theorique)} bold />
             <SummaryRow label={t(isAr, 'common.actualBalance')}       value={formatMAD(caisse.solde_reel ?? 0)} bold />
             {caisse.ecart != null && (
@@ -310,15 +310,15 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
           <div className="w-16 h-16 rounded-2xl bg-emerald-50 flex items-center justify-center mx-auto mb-4">
             <CheckCircle className="w-8 h-8 text-emerald-500" />
           </div>
-          <h2 className="font-display text-2xl font-bold text-[#1A1A1A] tracking-wide mb-1">
+          <h2 className="font-display text-2xl font-bold text-ez-text tracking-wide mb-1">
             {isAr ? 'صندوق الدفع مغلق' : 'Caisse clôturée'}
           </h2>
-          <p className="text-[#6B6860] text-sm">
+          <p className="text-ez-subtle text-sm">
             {isAr ? 'تمت الموافقة على إغلاق اليوم' : 'La clôture du jour a été approuvée'}
           </p>
         </div>
 
-        <div className="bg-white border border-[#E8E5DE] rounded-2xl p-5 space-y-3">
+        <div className="bg-white border border-ez-border rounded-2xl p-5 space-y-3">
           <SummaryRow label={t(isAr, 'common.openingAmount')}          value={formatMAD(caisse.ouverture)} />
           <SummaryRow label={t(isAr, 'common.totalSales')}          value={formatMAD(caisse.total_ventes)}      color="text-emerald-600" />
           <SummaryRow label={t(isAr, 'common.totalRepairs')}    value={formatMAD(caisse.total_reparations)} color="text-emerald-600" />
@@ -327,7 +327,7 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
           )}
           <SummaryRow label={t(isAr, 'common.totalExpenses')}        value={formatMAD(caisse.total_depenses)}    color="text-red-500" />
           {caisse.payment_breakdown && <PaymentBreakdownMini isAr={isAr} breakdown={caisse.payment_breakdown} />}
-          <div className="border-t border-[#E8E5DE] pt-3">
+          <div className="border-t border-ez-border pt-3">
             <SummaryRow label={t(isAr, 'common.theoreticalBalance')}   value={formatMAD(caisse.solde_theorique)} bold />
             <SummaryRow label={t(isAr, 'common.actualBalance')}         value={formatMAD(caisse.solde_reel ?? 0)} bold />
             {caisse.ecart != null && (
@@ -355,10 +355,10 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="font-display text-3xl font-bold text-[#1A1A1A] tracking-wide">
+          <h1 className="font-display text-3xl font-bold text-ez-text tracking-wide">
             {isAr ? 'كاسيير اليوم' : 'Caisse du jour'}
           </h1>
-          <p className="text-[#6B6860] text-sm mt-0.5">
+          <p className="text-ez-subtle text-sm mt-0.5">
             {formatDate(caisse.date)}
             {' · '}
             <span className="text-emerald-600 font-medium">
@@ -378,14 +378,14 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
       </div>
 
       {/* Opening amount */}
-      <div className="bg-white border border-[#E8E5DE] rounded-2xl p-4 flex items-center gap-4">
+      <div className="bg-white border border-ez-border rounded-2xl p-4 flex items-center gap-4">
         <div className="w-10 h-10 rounded-xl flex items-center justify-center"
              style={{ backgroundColor: `${primary}15` }}>
           <Vault className="w-5 h-5" style={{ color: primary }} />
         </div>
         <div>
-          <p className="text-xs text-[#6B6860]">{isAr ? 'مبلغ الافتتاح' : 'Montant d\'ouverture'}</p>
-          <p className="font-display text-xl font-bold text-[#1A1A1A]">{formatMAD(caisse.ouverture)}</p>
+          <p className="text-xs text-ez-subtle">{isAr ? 'مبلغ الافتتاح' : 'Montant d\'ouverture'}</p>
+          <p className="font-display text-xl font-bold text-ez-text">{formatMAD(caisse.ouverture)}</p>
         </div>
       </div>
 
@@ -417,16 +417,16 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
         ].map((card, i) => {
           const Icon = card.icon
           return (
-            <div key={card.label} className={`bg-white border border-[#E8E5DE] rounded-2xl p-4 ${i === 0 ? 'col-span-2 sm:col-span-1' : ''}`}>
+            <div key={card.label} className={`bg-white border border-ez-border rounded-2xl p-4 ${i === 0 ? 'col-span-2 sm:col-span-1' : ''}`}>
               <div className="flex items-center justify-between mb-2">
-                <p className="text-xs text-[#6B6860] leading-snug">{card.label}</p>
+                <p className="text-xs text-ez-subtle leading-snug">{card.label}</p>
                 <div className="w-7 h-7 rounded-lg flex items-center justify-center"
                      style={{ backgroundColor: card.bg }}>
                   <Icon className="w-3.5 h-3.5" style={{ color: card.color }} />
                 </div>
               </div>
-              <p className="font-display text-lg font-bold text-[#1A1A1A]">{formatMAD(card.value)}</p>
-              {card.count && <p className="text-xs text-[#B0ADA6] mt-0.5">{card.count}</p>}
+              <p className="font-display text-lg font-bold text-ez-text">{formatMAD(card.value)}</p>
+              {card.count && <p className="text-xs text-ez-faint mt-0.5">{card.count}</p>}
             </div>
           )
         })}
@@ -434,8 +434,8 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
 
       {/* Payment breakdown */}
       {caisse.payment_breakdown && (
-        <div className="bg-white border border-[#E8E5DE] rounded-2xl p-5">
-          <p className="text-xs font-bold text-[#6B6860] uppercase tracking-widest mb-4">
+        <div className="bg-white border border-ez-border rounded-2xl p-5">
+          <p className="text-xs font-bold text-ez-subtle uppercase tracking-widest mb-4">
             {isAr ? 'تفصيل طرق الدفع' : 'Répartition paiements'}
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
@@ -444,9 +444,9 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
               { label: t(isAr, 'common.transfer'), value: caisse.payment_breakdown.transfer },
               { label: t(isAr, 'common.advances'),  value: caisse.payment_breakdown.credit },
             ].map(row => (
-              <div key={row.label} className="flex items-center justify-between sm:block sm:text-center p-3 bg-[#F8F7F4] rounded-xl">
-                <p className="text-sm sm:text-xs text-[#6B6860] sm:mb-1">{row.label}</p>
-                <p className="font-bold text-sm text-[#1A1A1A]">{formatMAD(row.value)}</p>
+              <div key={row.label} className="flex items-center justify-between sm:block sm:text-center p-3 bg-ez-bg rounded-xl">
+                <p className="text-sm sm:text-xs text-ez-subtle sm:mb-1">{row.label}</p>
+                <p className="font-bold text-sm text-ez-text">{formatMAD(row.value)}</p>
               </div>
             ))}
           </div>
@@ -459,7 +459,7 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
                 <span className="text-xs font-medium text-red-700">
                   {isAr ? 'مرتجعات مستردة' : 'Retours remboursés'}
                 </span>
-                {(caisse.nb_retours ?? 0) > 0 && <span className="text-[10px] text-red-400">{caisse.nb_retours} op.</span>}
+                {(caisse.nb_retours ?? 0) > 0 && <span className="text-xs text-red-400">{caisse.nb_retours} op.</span>}
               </div>
               <span className="text-xs text-red-700 text-right">
                 <b className="text-sm">- {formatMAD(caisse.payment_breakdown.retours_cash ?? 0)}</b> {isAr ? 'نقدًا' : 'espèces'}
@@ -479,7 +479,7 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
                   {isAr ? 'مبادلات (غير نقدي)' : 'Reprises (hors espèces)'}
                 </span>
                 {(caisse.nb_reprises ?? 0) > 0 && (
-                  <span className="text-[10px] text-blue-400">
+                  <span className="text-xs text-blue-400">
                     {caisse.nb_reprises} op.
                   </span>
                 )}
@@ -497,13 +497,13 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
            style={{ borderColor: primary }}>
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-xs text-[#6B6860] uppercase tracking-widest">
+            <p className="text-xs text-ez-subtle uppercase tracking-widest">
               {isAr ? 'الرصيد النظري المتوقع' : 'Solde théorique attendu'}
             </p>
             <p className="font-display text-3xl font-bold mt-1" style={{ color: primary }}>
               {formatMAD(caisse.solde_theorique)}
             </p>
-            <p className="text-xs text-[#B0ADA6] mt-1">
+            <p className="text-xs text-ez-faint mt-1">
               {isAr
                 ? `${formatMAD(caisse.ouverture)} + ${formatMAD(caisse.payment_breakdown?.cash ?? 0)} (نقد فقط) + ${formatMAD(caisse.total_reparations)} - ${formatMAD(caisse.total_depenses)}`
                 : `${formatMAD(caisse.ouverture)} + ${formatMAD(caisse.payment_breakdown?.cash ?? 0)} (espèces) + rép. - dépenses`}
@@ -533,13 +533,13 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
         size="sm"
       >
         <div className="space-y-5">
-          <div className="flex items-start gap-3 p-4 bg-[#F8F7F4] rounded-xl border border-[#E8E5DE]">
+          <div className="flex items-start gap-3 p-4 bg-ez-bg rounded-xl border border-ez-border">
             <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-medium text-[#1A1A1A]">
+              <p className="text-sm font-medium text-ez-text">
                 {isAr ? 'عد النقود في الصندوق الآن' : 'Comptez le cash dans le tiroir maintenant'}
               </p>
-              <p className="text-xs text-[#6B6860] mt-0.5">
+              <p className="text-xs text-ez-subtle mt-0.5">
                 {isAr
                   ? `الرصيد المتوقع: ${formatMAD(caisse.solde_theorique)}`
                   : `Solde théorique: ${formatMAD(caisse.solde_theorique)}`}
@@ -617,8 +617,8 @@ function SummaryRow({
 }: { label: string; value: string; bold?: boolean; color?: string }) {
   return (
     <div className="flex items-center justify-between py-1">
-      <span className={`text-sm ${bold ? 'font-bold text-[#1A1A1A]' : 'text-[#6B6860]'}`}>{label}</span>
-      <span className={`text-sm font-bold ${color || (bold ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]')}`}>{value}</span>
+      <span className={`text-sm ${bold ? 'font-bold text-ez-text' : 'text-ez-subtle'}`}>{label}</span>
+      <span className={`text-sm font-bold ${color || (bold ? 'text-ez-text' : 'text-ez-text')}`}>{value}</span>
     </div>
   )
 }
@@ -636,9 +636,9 @@ function PaymentBreakdownMini({
         { label: t(isAr, 'common.transfer'), value: breakdown.transfer },
         { label: isAr ? 'آجل متبقي' : 'Crédit dû', value: breakdown.credit },
       ].map(row => (
-        <div key={row.label} className="text-center p-2 bg-[#F8F7F4] rounded-lg">
-          <p className="text-[10px] text-[#6B6860] mb-0.5">{row.label}</p>
-          <p className="text-xs font-bold text-[#1A1A1A]">{formatMAD(row.value)}</p>
+        <div key={row.label} className="text-center p-2 bg-ez-bg rounded-lg">
+          <p className="text-xs text-ez-subtle mb-0.5">{row.label}</p>
+          <p className="text-xs font-bold text-ez-text">{formatMAD(row.value)}</p>
         </div>
       ))}
     </div>

@@ -32,9 +32,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="fr" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700&display=swap" rel="stylesheet" />
       </head>
-      <body className={`${inter.variable} font-body bg-ez-black text-ez-text antialiased`}>
+      <body className={`${inter.variable} font-body text-ez-text antialiased`}>
         <HtmlLangSync />
         <AuthProvider>
           <DataProvider>{children}</DataProvider>
@@ -49,7 +49,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               background: '#1A1A1A',
               color:      '#E5E5E5',
               border:     '1px solid #2A2A2A',
-              fontFamily: "'Inter', sans-serif",
+              fontFamily: 'var(--font-inter), sans-serif',
               fontSize:   '13px',
             },
           }}

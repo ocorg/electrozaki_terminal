@@ -81,10 +81,10 @@ const COLUMNS: {
     status:  'recupere',
     labelFr: 'Récupéré',
     labelAr: 'تم الاستلام',
-    color:   'text-slate-500',
-    bg:      'bg-slate-50',
-    border:  'border-slate-200',
-    dot:     'bg-slate-400',
+    color:   'text-ez-faint',
+    bg:      'bg-ez-bg',
+    border:  'border-ez-border',
+    dot:     'bg-ez-placeholder',
     icon:    Package,
   },
 ]
@@ -158,31 +158,31 @@ function AddPartForm({ repId, isAr, onAdded }: { repId: string; isAr: boolean; o
   }
 
   return (
-    <div className="border-t border-[#E8E5DE] pt-4">
+    <div className="border-t border-ez-border pt-4">
       <div className="flex items-center justify-between mb-2">
-        <p className="text-xs font-bold text-[#6B6860] uppercase tracking-widest">
+        <p className="text-xs font-bold text-ez-subtle uppercase tracking-widest">
           {isAr ? 'إضافة قطعة' : 'Ajouter une pièce'}
         </p>
         <button onClick={() => setOpen(!open)}
-          className="text-xs text-[#C9A440] font-medium hover:underline">
+          className="text-xs text-gold font-medium hover:underline">
           {open ? (t(isAr, 'common.cancel')) : (isAr ? '+ إضافة' : '+ Ajouter')}
         </button>
       </div>
       {open && (
         <div className="space-y-2">
-          <input className="w-full border border-[#E8E5DE] rounded-xl px-3 py-2 text-sm"
+          <input className="w-full border border-ez-border rounded-xl px-3 py-2 text-sm"
             placeholder={isAr ? 'وصف القطعة *' : 'Description *'}
             value={desc} onChange={e => setDesc(e.target.value)} />
           <div className="grid grid-cols-2 gap-2">
-            <input type="number" className="border border-[#E8E5DE] rounded-xl px-3 py-2 text-sm"
+            <input type="number" className="border border-ez-border rounded-xl px-3 py-2 text-sm"
               placeholder={isAr ? 'التكلفة (درهم) *' : 'Coût (MAD) *'}
               value={cout} onChange={e => setCout(e.target.value)} />
-            <input className="border border-[#E8E5DE] rounded-xl px-3 py-2 text-sm"
+            <input className="border border-ez-border rounded-xl px-3 py-2 text-sm"
               placeholder={t(isAr, 'common.supplier')}
               value={fournisseur} onChange={e => setFournisseur(e.target.value)} />
           </div>
           <button onClick={handleAdd} disabled={adding || !desc || !cout}
-            className="w-full py-2 rounded-xl bg-[#C9A440] text-white text-sm font-bold disabled:opacity-50">
+            className="w-full py-2 rounded-xl bg-gold text-white text-sm font-bold disabled:opacity-50">
             {adding ? '...' : (t(isAr, 'common.add'))}
           </button>
         </div>
@@ -435,10 +435,10 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
       <div className="flex-shrink-0 px-4 sm:px-6 pt-4 sm:pt-6 pb-4 space-y-4">
         <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
           <div className="min-w-0">
-            <h1 className="font-display text-2xl sm:text-3xl font-bold text-[#1A1A1A] tracking-wide">
+            <h1 className="font-display text-2xl sm:text-3xl font-bold text-ez-text tracking-wide">
               {t(isAr, 'common.repairs')}
             </h1>
-            <p className="text-[#6B6860] text-sm mt-0.5">
+            <p className="text-ez-subtle text-sm mt-0.5">
               {isAr
                 ? `${activeCount} إصلاح نشط`
                 : `${activeCount} réparation${activeCount !== 1 ? 's' : ''} active${activeCount !== 1 ? 's' : ''}`}
@@ -448,7 +448,7 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
             <button
               onClick={fetchRepairs}
               disabled={manualRefresh}
-              className="p-2 rounded-xl border border-[#E8E5DE] bg-white text-[#6B6860] hover:bg-[#F8F7F4] transition-all disabled:opacity-50"
+              className="p-2 rounded-xl border border-ez-border bg-white text-ez-subtle hover:bg-ez-bg transition-all disabled:opacity-50"
             >
               <RefreshCw className={`w-4 h-4 ${manualRefresh ? 'animate-spin' : ''}`} />
             </button>
@@ -465,9 +465,9 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
 
         {/* Search */}
         <div className="relative max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#B0ADA6]" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ez-faint" />
           <input
-            className="w-full pl-9 pr-9 py-2.5 bg-white border border-[#E8E5DE] rounded-xl text-sm placeholder:text-[#B0ADA6] focus:outline-none transition-all"
+            className="w-full pl-9 pr-9 py-2.5 bg-white border border-ez-border rounded-xl text-sm placeholder:text-ez-placeholder focus:outline-none transition-all"
             placeholder={isAr ? 'بحث بالموديل، الماركة، الرقم...' : 'Rechercher modèle, marque, série...'}
             value={search}
             onChange={e => setSearch(e.target.value)}
@@ -476,7 +476,7 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
           />
           {search && (
             <button onClick={() => setSearch('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#B0ADA6] hover:text-[#1A1A1A]">
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-ez-faint hover:text-ez-text">
               <X className="w-4 h-4" />
             </button>
           )}
@@ -492,9 +492,9 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
               const n  = (byStatus[col.status] || []).length
               return (
                 <button key={col.status} type="button" onClick={() => setMobileCol(col.status)}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-sm font-semibold whitespace-nowrap transition-all ${on ? `${col.bg} ${col.border} ${col.color}` : 'bg-white border-[#E8E5DE] text-[#6B6860]'}`}>
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-sm font-semibold whitespace-nowrap transition-all ${on ? `${col.bg} ${col.border} ${col.color}` : 'bg-white border-ez-border text-ez-subtle'}`}>
                   {statusLabel(col.status)}
-                  <span className={`text-xs font-bold px-1.5 rounded-full ${on ? 'bg-white/70' : 'bg-[#F2F0EB]'}`}>{n}</span>
+                  <span className={`text-xs font-bold px-1.5 rounded-full ${on ? 'bg-white/70' : 'bg-ez-muted'}`}>{n}</span>
                 </button>
               )
             })}
@@ -507,10 +507,10 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
         {loading ? (
           <div className="flex gap-4 h-full">
             {COLUMNS.map(col => (
-              <div key={col.status} className="w-72 flex-shrink-0 bg-white border border-[#E8E5DE] rounded-2xl p-4 space-y-3">
-                <div className="h-5 bg-[#F2F0EB] rounded animate-pulse w-1/2" />
+              <div key={col.status} className="w-72 flex-shrink-0 bg-white border border-ez-border rounded-2xl p-4 space-y-3">
+                <div className="h-5 bg-ez-muted rounded animate-pulse w-1/2" />
                 {[...Array(2)].map((_, i) => (
-                  <div key={i} className="h-28 bg-[#F8F7F4] rounded-xl animate-pulse" />
+                  <div key={i} className="h-28 bg-ez-bg rounded-xl animate-pulse" />
                 ))}
               </div>
             ))}
@@ -523,17 +523,17 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
               return (
                 <div
                   key={col.status}
-                  className={`w-full lg:w-72 flex-shrink-0 flex-col rounded-2xl border ${col.bg} ${col.border} overflow-hidden ${mobileCol === col.status ? 'flex' : 'hidden lg:flex'}`}
+                  className={`w-full lg:w-72 flex-shrink-0 flex-col rounded-2xl border bg-ez-muted/60 border-ez-border overflow-hidden ${mobileCol === col.status ? 'flex' : 'hidden lg:flex'}`}
                 >
                   {/* Column header */}
-                  <div className={`flex items-center justify-between px-4 py-3 border-b ${col.border}`}>
+                  <div className={`flex items-center justify-between px-4 py-3 border-b border-ez-border bg-white`}>
                     <div className="flex items-center gap-2">
                       <ColIcon className={`w-4 h-4 ${col.color}`} />
                       <span className={`font-display font-bold text-sm tracking-wide ${col.color}`}>
                         {statusLabel(col.status)}
                       </span>
                     </div>
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${col.color} bg-white/60`}>
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${col.color} ${col.bg}`}>
                       {items.length}
                     </span>
                   </div>
@@ -562,11 +562,11 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
                               {/* Device */}
                               <div className="flex items-start justify-between gap-2">
                                 <div className="min-w-0">
-                                  <p className="text-sm font-bold text-[#1A1A1A] truncate">
+                                  <p className="text-sm font-bold text-ez-text truncate">
                                     {rep.marque ? `${rep.marque} ` : ''}{rep.model}
                                   </p>
                                   {rep.device_serial && (
-                                    <p className="text-xs text-[#B0ADA6] font-mono truncate">
+                                    <p className="text-xs text-ez-faint font-mono truncate">
                                       {rep.device_serial}
                                     </p>
                                   )}
@@ -580,31 +580,31 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
                               {rep.type_reparation !== 'materiel' && (() => {
                                 const KindIcon = KIND_ICON[rep.type_reparation]
                                 return (
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#F2F0EB] text-[#6B6860]">
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-ez-muted text-ez-subtle">
                                     <KindIcon className="w-3 h-3" />{codeLabel('repair_kind', rep.type_reparation, isAr ? 'ar' : 'fr')}
                                   </span>
                                 )
                               })()}
-                              <p className="text-xs text-[#6B6860] line-clamp-2">{rep.probleme}</p>
+                              <p className="text-xs text-ez-subtle line-clamp-2">{rep.probleme}</p>
                               {rep.statut === 'devis_envoye' && (
-                                <p className="text-[11px] font-medium text-violet-700">
+                                <p className="text-xs font-medium text-violet-700">
                                   {isAr ? 'في انتظار رد العميل' : 'En attente de la réponse du client'}
                                 </p>
                               )}
                               {rep.devis_refuse_le && rep.statut !== 'recupere' && (
-                                <p className="text-[11px] font-medium text-red-600">{isAr ? 'رفض العميل السعر — للإرجاع' : 'Devis refusé — à restituer'}</p>
+                                <p className="text-xs font-medium text-red-600">{isAr ? 'رفض العميل السعر — للإرجاع' : 'Devis refusé — à restituer'}</p>
                               )}
 
                               {/* Client */}
                               {rep.clients && (
-                                <div className="flex items-center gap-1.5 text-xs text-[#B0ADA6]">
+                                <div className="flex items-center gap-1.5 text-xs text-ez-faint">
                                   <User className="w-3 h-3 flex-shrink-0" />
                                   <span className="truncate">{rep.clients.nom}</span>
                                 </div>
                               )}
 
                               {/* Dates */}
-                              <div className="flex items-center gap-1.5 text-xs text-[#B0ADA6]">
+                              <div className="flex items-center gap-1.5 text-xs text-ez-faint">
                                 <Calendar className="w-3 h-3 flex-shrink-0" />
                                 <span>{formatDate(rep.date_depot)}</span>
                                 {rep.date_prevue && (
@@ -619,8 +619,8 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
 
                               {/* Cost */}
                               {(rep.cout_reparation ?? 0) > 0 && (
-                                <div className="flex items-center justify-between pt-1 border-t border-[#F2F0EB]">
-                                  <div className="flex items-center gap-1 text-xs text-[#6B6860]">
+                                <div className="flex items-center justify-between pt-1 border-t border-ez-muted">
+                                  <div className="flex items-center gap-1 text-xs text-ez-subtle">
                                     <DollarSign className="w-3 h-3" />
                                     {formatMAD(rep.cout_reparation ?? 0)}
                                   </div>
@@ -679,15 +679,15 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
                   </span>
                 )
               })()}
-              <span className="text-xs text-[#B0ADA6]">{formatDate(detailRep.date_depot)}</span>
-              <span className="ms-auto text-xs font-medium text-[#6B6860]">
+              <span className="text-xs text-ez-faint">{formatDate(detailRep.date_depot)}</span>
+              <span className="ms-auto text-xs font-medium text-ez-subtle">
                 {codeLabel('repair_kind', detailRep.type_reparation, isAr ? 'ar' : 'fr')}
               </span>
             </div>
             {detailRep.problemes.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
                 {detailRep.problemes.map(p => (
-                  <span key={p} className="px-2 py-0.5 rounded-full text-xs bg-[#F2F0EB] text-[#1A1A1A]">
+                  <span key={p} className="px-2 py-0.5 rounded-full text-xs bg-ez-muted text-ez-text">
                     {codeLabel('repair_problem', p, isAr ? 'ar' : 'fr')}
                   </span>
                 ))}
@@ -697,7 +697,7 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
               <div className="flex gap-2">
                 {detailRep.photos_depot.map(url => (
                   <a key={url} href={url} target="_blank" rel="noopener noreferrer"
-                     className="w-20 h-20 rounded-lg overflow-hidden border border-[#E8E5DE] bg-[#F8F7F4]">
+                     className="w-20 h-20 rounded-lg overflow-hidden border border-ez-border bg-ez-bg">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={url} alt={isAr ? 'صورة الإيداع' : 'Photo au dépôt'} className="w-full h-full object-cover" />
                   </a>
@@ -739,24 +739,24 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
 
             {/* Financial summary */}
             {(detailRep.cout_reparation ?? 0) > 0 && (
-              <div className="bg-[#F8F7F4] rounded-xl p-4 space-y-2">
-                <p className="text-xs font-bold text-[#6B6860] uppercase tracking-widest mb-3">
+              <div className="bg-ez-bg rounded-xl p-4 space-y-2">
+                <p className="text-xs font-bold text-ez-subtle uppercase tracking-widest mb-3">
                   {isAr ? 'المالية' : 'Financier'}
                 </p>
                 <div className="flex justify-between text-sm">
-                  <span className="text-[#6B6860]">{isAr ? 'تكلفة الإصلاح' : 'Coût réparation'}</span>
+                  <span className="text-ez-subtle">{isAr ? 'تكلفة الإصلاح' : 'Coût réparation'}</span>
                   <span className="font-bold">{formatMAD(detailRep.cout_reparation ?? 0)}</span>
                 </div>
                 {(detailRep.avance_rep ?? 0) > 0 && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-[#6B6860]">{isAr ? 'التسبيق' : 'Avance reçue'}</span>
+                    <span className="text-ez-subtle">{isAr ? 'التسبيق' : 'Avance reçue'}</span>
                     <span className="font-bold text-emerald-600">- {formatMAD(detailRep.avance_rep ?? 0)}</span>
                   </div>
                 )}
                 <div className="flex justify-between items-center text-sm">
-                  <span className="text-[#6B6860]">{isAr ? 'طريقة الأداء' : 'Payé par'}</span>
+                  <span className="text-ez-subtle">{isAr ? 'طريقة الأداء' : 'Payé par'}</span>
                   <Select
-                    className="bg-white border border-[#E8E5DE] rounded-lg px-2 py-1 text-sm"
+                    className="bg-white border border-ez-border rounded-lg px-2 py-1 text-sm"
                     value={detailRep.mode_paiement ?? 'especes'}
                     onChange={e => patchRepair(detailRep, { mode_paiement: e.target.value })}
                   >
@@ -765,8 +765,8 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
                   </Select>
                 </div>
                 {(detailRep.fariq_rep ?? 0) !== 0 && (
-                  <div className="flex justify-between text-sm pt-2 border-t border-[#E8E5DE]">
-                    <span className="font-bold text-[#1A1A1A]">{t(isAr, 'common.remainingToPay')}</span>
+                  <div className="flex justify-between text-sm pt-2 border-t border-ez-border">
+                    <span className="font-bold text-ez-text">{t(isAr, 'common.remainingToPay')}</span>
                     <span className={`font-bold ${(detailRep.fariq_rep ?? 0) > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
                       {formatMAD(detailRep.fariq_rep ?? 0)}
                     </span>
@@ -778,14 +778,14 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
             {/* Parts */}
             {detailRep.reparations_parts && detailRep.reparations_parts.length > 0 && (
               <div>
-                <p className="text-xs font-bold text-[#6B6860] uppercase tracking-widest mb-3">
+                <p className="text-xs font-bold text-ez-subtle uppercase tracking-widest mb-3">
                   {isAr ? 'القطع المستخدمة' : 'Pièces utilisées'}
                 </p>
                 <div className="space-y-2">
                   {detailRep.reparations_parts.map(part => (
-                    <div key={part.part_id} className="flex justify-between items-center py-2 border-b border-[#F2F0EB] text-sm last:border-0">
-                      <span className="text-[#1A1A1A]">{part.description}</span>
-                      <span className="font-bold text-[#6B6860]">{formatMAD(part.cout)}</span>
+                    <div key={part.part_id} className="flex justify-between items-center py-2 border-b border-ez-muted text-sm last:border-0">
+                      <span className="text-ez-text">{part.description}</span>
+                      <span className="font-bold text-ez-subtle">{formatMAD(part.cout)}</span>
                     </div>
                   ))}
                 </div>
@@ -910,7 +910,7 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
         size="sm"
       >
         <div className="space-y-4" dir={isAr ? 'rtl' : 'ltr'}>
-          <p className="text-sm text-[#6B6860]">
+          <p className="text-sm text-ez-subtle">
             {isAr
               ? 'ستختفي التذكرة من القوائم ومن الصندوق، مع الاحتفاظ بها في السجل.'
               : "Le ticket disparaît des listes et de la caisse, mais reste dans l'historique avec le motif."}
@@ -947,7 +947,7 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
                 <button key={k} type="button"
                   onClick={() => setForm(prev => ({ ...prev, type_reparation: k, problemes: [] }))}
                   className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm font-medium transition-all ${
-                    on ? 'border-[#C9A440] bg-[#FAF5E8] text-[#1A1A1A]' : 'border-[#E8E5DE] text-[#6B6860] hover:bg-[#F8F7F4]'}`}>
+                    on ? 'border-gold bg-gold-50 text-ez-text' : 'border-ez-border text-ez-subtle hover:bg-ez-bg'}`}>
                   <KindIcon className="w-4 h-4" />{codeLabel('repair_kind', k, isAr ? 'ar' : 'fr')}
                 </button>
               )
@@ -963,7 +963,7 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
                   <button key={p} type="button"
                     onClick={() => setForm(prev => ({ ...prev, problemes: on ? prev.problemes.filter(x => x !== p) : [...prev.problemes, p] }))}
                     className={`px-3 py-1.5 rounded-full border text-xs transition-all ${
-                      on ? 'border-[#C9A440] bg-[#C9A440] text-white' : 'border-[#E8E5DE] text-[#6B6860] hover:bg-[#F8F7F4]'}`}>
+                      on ? 'border-gold bg-gold text-white' : 'border-ez-border text-ez-subtle hover:bg-ez-bg'}`}>
                     {codeLabel('repair_problem', p, isAr ? 'ar' : 'fr')}
                   </button>
                 )
@@ -1049,13 +1049,13 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
                   {form.photos_depot.map(url => (
                     <button key={url} type="button" title={isAr ? 'حذف' : 'Retirer'}
                       onClick={() => setForm(prev => ({ ...prev, photos_depot: prev.photos_depot.filter(u => u !== url) }))}
-                      className="w-11 h-11 rounded-lg overflow-hidden border border-[#E8E5DE]">
+                      className="w-11 h-11 rounded-lg overflow-hidden border border-ez-border">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={url} alt="" className="w-full h-full object-cover" />
                     </button>
                   ))}
                   {form.photos_depot.length < 3 && (
-                    <label className="w-11 h-11 rounded-lg border-2 border-dashed border-[#E8E5DE] flex items-center justify-center text-[#B0ADA6] cursor-pointer hover:border-[#C9A440]">
+                    <label className="w-11 h-11 rounded-lg border-2 border-dashed border-ez-border flex items-center justify-center text-ez-faint cursor-pointer hover:border-gold">
                       {photoUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
                       <input type="file" accept="image/*" capture="environment" multiple className="hidden"
                         onChange={e => { addPhotos(e.target.files); e.target.value = '' }} />
@@ -1094,7 +1094,7 @@ export default function RepairsModule({ storeId }: RepairsModuleProps) {
               placeholder={isAr ? 'ملاحظة للتقني أو العميل...' : 'Note interne...'} />
           </Field>
 
-          <div className="flex gap-3 justify-end pt-2 border-t border-[#E8E5DE]">
+          <div className="flex gap-3 justify-end pt-2 border-t border-ez-border">
             <Btn variant="secondary" onClick={() => { setFormOpen(false); setForm({ ...EMPTY_FORM }) }}>
               {t(isAr, 'common.cancel')}
             </Btn>
@@ -1147,8 +1147,8 @@ function QuoteSender({ rep, isAr, onSent }: { rep: RepairWithExtras; isAr: boole
   }
 
   return (
-    <div className="rounded-xl border border-[#E8E5DE] p-4 space-y-2">
-      <p className="text-xs font-bold text-[#6B6860] uppercase tracking-widest">{isAr ? 'إرسال سعر للموافقة' : 'Envoyer un devis à valider'}</p>
+    <div className="rounded-xl border border-ez-border p-4 space-y-2">
+      <p className="text-xs font-bold text-ez-subtle uppercase tracking-widest">{isAr ? 'إرسال سعر للموافقة' : 'Envoyer un devis à valider'}</p>
       <div className="flex gap-2">
         <input type="number" min={0} className={inputClass} placeholder={isAr ? 'السعر (درهم)' : 'Prix (DH)'}
           value={price} onChange={e => setPrice(e.target.value)} />
@@ -1156,7 +1156,7 @@ function QuoteSender({ rep, isAr, onSent }: { rep: RepairWithExtras; isAr: boole
           <FileText className="w-4 h-4" />{isAr ? 'إرسال' : 'Envoyer'}
         </Btn>
       </div>
-      <p className="text-[11px] text-[#B0ADA6]">
+      <p className="text-xs text-ez-faint">
         {isAr ? 'يفتح واتساب برسالة جاهزة ورابط التتبع.' : 'Ouvre WhatsApp avec le message et le lien de suivi (le client peut accepter en ligne).'}
       </p>
     </div>
@@ -1169,10 +1169,10 @@ function InfoRow({
 }: { icon: React.ReactNode; label: string; value: string }) {
   return (
     <div className="flex items-start gap-2">
-      <span className="text-[#B0ADA6] mt-0.5 flex-shrink-0">{icon}</span>
+      <span className="text-ez-faint mt-0.5 flex-shrink-0">{icon}</span>
       <div className="min-w-0">
-        <p className="text-xs text-[#B0ADA6]">{label}</p>
-        <p className="text-sm font-medium text-[#1A1A1A] break-words">{value}</p>
+        <p className="text-xs text-ez-faint">{label}</p>
+        <p className="text-sm font-medium text-ez-text break-words">{value}</p>
       </div>
     </div>
   )

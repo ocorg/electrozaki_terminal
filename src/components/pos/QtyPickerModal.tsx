@@ -28,20 +28,20 @@ export default function QtyPickerModal({ device, qty, onQtyChange, onConfirm, on
            closeLabel={t(isAr, 'common.close')}>
       <div className="text-center">
         <Package className="w-8 h-8 mx-auto mb-3" style={{ color: primary }} />
-        <p className="text-sm font-bold text-[#1A1A1A] mb-1 leading-snug line-clamp-2">{device._displayName}</p>
-        <p className="text-xs text-[#B0ADA6] mb-5">
+        <p className="text-sm font-bold text-ez-text mb-1 leading-snug line-clamp-2">{device._displayName}</p>
+        <p className="text-xs text-ez-faint mb-5">
           {formatMAD(device.price)} / {isAr ? 'وحدة' : 'unité'}
         </p>
         <div className="flex items-center justify-center gap-6 mb-6">
           <button type="button" onClick={() => onQtyChange(Math.max(1, qty - 1))}
             aria-label={isAr ? 'إنقاص' : 'Diminuer'}
-            className="w-11 h-11 rounded-xl border-2 border-[#E8E5DE] flex items-center justify-center text-[#6B6860] hover:border-red-300 hover:text-red-500 hover:bg-red-50 transition-all">
+            className="w-11 h-11 rounded-xl border-2 border-ez-border flex items-center justify-center text-ez-subtle hover:border-red-300 hover:text-red-500 hover:bg-red-50 transition-all">
             <Minus className="w-4 h-4" />
           </button>
-          <span className="text-3xl font-bold text-[#1A1A1A] tabular-nums w-12 text-center">{qty}</span>
+          <span className="text-3xl font-bold text-ez-text tabular-nums w-12 text-center">{qty}</span>
           <button type="button" onClick={() => onQtyChange(qty + 1)}
             aria-label={isAr ? 'زيادة' : 'Augmenter'}
-            className="w-11 h-11 rounded-xl border-2 border-[#E8E5DE] flex items-center justify-center text-[#6B6860] transition-all"
+            className="w-11 h-11 rounded-xl border-2 border-ez-border flex items-center justify-center text-ez-subtle transition-all"
             onMouseEnter={e => { e.currentTarget.style.borderColor = primary; e.currentTarget.style.color = primary }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = '#E8E5DE'; e.currentTarget.style.color = '#6B6860' }}>
             <Plus className="w-4 h-4" />

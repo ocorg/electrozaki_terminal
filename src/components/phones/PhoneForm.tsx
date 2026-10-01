@@ -207,7 +207,7 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
               return sel ? (
                 <div className="flex items-center gap-2 mt-1.5">
                   <span
-                    className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                    className="text-xs font-bold px-2 py-0.5 rounded-full"
                     style={sel.type_fournisseur === 'A'
                       ? { backgroundColor: '#FAF5E8', color: '#C9A440', border: '1px solid #E8D494' }
                       : { backgroundColor: '#EFF6FF', color: '#3B82F6', border: '1px solid #BFDBFE' }
@@ -387,9 +387,9 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
           {(form.replaced_components || []).length > 0 && (
             <div className="space-y-1.5">
               {(form.replaced_components || []).map((comp, idx) => (
-                <div key={idx} className="flex items-center gap-2 px-3 py-2 bg-[#F8F7F4] rounded-xl">
-                  <span className="flex-1 text-sm text-[#1A1A1A] font-medium truncate">{comp.name}</span>
-                  <span className="text-xs text-[#6B6860] flex-shrink-0">
+                <div key={idx} className="flex items-center gap-2 px-3 py-2 bg-ez-bg rounded-xl">
+                  <span className="flex-1 text-sm text-ez-text font-medium truncate">{comp.name}</span>
+                  <span className="text-xs text-ez-subtle flex-shrink-0">
                     {comp.condition === 'original' ? 'Original' : 'Standard (Générique)'}
                   </span>
                   <button
@@ -398,7 +398,7 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
                       const updated = (form.replaced_components || []).filter((_, i) => i !== idx)
                       set('replaced_components', updated)
                     }}
-                    className="text-xs text-[#B0ADA6] hover:text-red-500 transition-colors flex-shrink-0 ml-1"
+                    className="text-xs text-ez-faint hover:text-red-500 transition-colors flex-shrink-0 ml-1"
                   >✕</button>
                 </div>
               ))}
@@ -439,7 +439,7 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
                 setNewCompName('')
                 setNewCompCondition('original')
               }}
-              className="flex-shrink-0 px-3 py-2 rounded-xl text-sm font-bold border border-[#E8E5DE] text-[#6B6860] hover:border-[#C9A440] hover:text-[#C9A440] transition-all"
+              className="flex-shrink-0 px-3 py-2 rounded-xl text-sm font-bold border border-ez-border text-ez-subtle hover:border-gold hover:text-gold transition-all"
             >+</button>
           </div>
         </div>
@@ -473,11 +473,11 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
 
         {/* Prix de vente — lecture seule pour le staff */}
         {!canSeeFinancials && (
-          <div className="border-t border-[#E8E5DE] pt-4">
-            <p className="text-xs font-bold text-[#6B6860] uppercase tracking-widest mb-1">
+          <div className="border-t border-ez-border pt-4">
+            <p className="text-xs font-bold text-ez-subtle uppercase tracking-widest mb-1">
               {t(isAr, 'common.salePrices')}
             </p>
-            <p className="text-[11px] text-[#8A877F] mb-3">
+            <p className="text-xs text-ez-faint mb-3">
               {isAr ? 'الأسعار يحددها المسير' : isEdit ? 'Les prix sont modifiés par un gérant.' : 'Les prix seront ajoutés par un gérant.'}
             </p>
             <div className="grid grid-cols-2 gap-4">
@@ -486,7 +486,7 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
                   type="number"
                   readOnly
                   tabIndex={-1}
-                  className={`${inputClass} bg-[#F8F7F4] cursor-default select-none`}
+                  className={`${inputClass} bg-ez-bg cursor-default select-none`}
                   value={form.prix_vente_recommande ?? ''}
                 />
               </Field>
@@ -495,7 +495,7 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
                   type="number"
                   readOnly
                   tabIndex={-1}
-                  className={`${inputClass} bg-[#F8F7F4] cursor-default select-none`}
+                  className={`${inputClass} bg-ez-bg cursor-default select-none`}
                   value={form.prix_vente_minimum ?? ''}
                 />
               </Field>
@@ -506,8 +506,8 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
         {/* Financial fields */}
         {canSeeFinancials && (
           <>
-            <div className="border-t border-[#E8E5DE] pt-4">
-              <p className="text-xs font-bold text-[#6B6860] uppercase tracking-widest mb-4">
+            <div className="border-t border-ez-border pt-4">
+              <p className="text-xs font-bold text-ez-subtle uppercase tracking-widest mb-4">
                 {isAr ? 'الأسعار (للإدارة فقط)' : 'Prix & marges (gestion uniquement)'}
               </p>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
@@ -527,7 +527,7 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
             </div>
 
             {/* Promo */}
-            <div className="grid grid-cols-2 gap-4 pt-3 border-t border-[#E8E5DE]">
+            <div className="grid grid-cols-2 gap-4 pt-3 border-t border-ez-border">
               <Field label={isAr ? 'نوع التخفيض' : 'Type de promo'}>
                 <Select
                   className={selectClass}
@@ -579,7 +579,7 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
             )}
 
             {isApple && canSeeFinancials && (
-              <div className="grid grid-cols-2 gap-4 p-4 bg-[#F8F7F4] rounded-xl border border-[#E8E5DE]">
+              <div className="grid grid-cols-2 gap-4 p-4 bg-ez-bg rounded-xl border border-ez-border">
                 <Field label="Compte iCloud">
                   <input type="text" className={inputClass} placeholder="exemple@icloud.com"
                     value={form.icloud_compte || ''} onChange={e => set('icloud_compte', e.target.value)} />
@@ -594,7 +594,7 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
         )}
 
         {/* Actions */}
-        <div className="flex gap-3 justify-end pt-2 border-t border-[#E8E5DE]">
+        <div className="flex gap-3 justify-end pt-2 border-t border-ez-border">
           <Btn variant="secondary" type="button" onClick={onClose}>
             {t(isAr, 'common.cancel')}
           </Btn>

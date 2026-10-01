@@ -174,7 +174,7 @@ export default function ClientsModule({ storeId }: ClientsModuleProps) {
           actions={
             <div className="flex items-center gap-2">
               <button onClick={fetchClients} disabled={manualRefresh}
-                className="p-2 rounded-xl border border-[#E8E5DE] bg-white text-[#6B6860] hover:bg-[#F8F7F4] transition-all disabled:opacity-50">
+                className="p-2 rounded-xl border border-ez-border bg-white text-ez-subtle hover:bg-ez-bg transition-all disabled:opacity-50">
                 <RefreshCw className={`w-4 h-4 ${manualRefresh ? 'animate-spin' : ''}`} />
               </button>
               <Btn variant="primary" onClick={openAdd}
@@ -193,19 +193,19 @@ export default function ClientsModule({ storeId }: ClientsModuleProps) {
             { label: isAr ? 'رقم الأعمال'     : 'CA total',         value: formatMAD(totalCA),   color: '#10B981', money: true },
             { label: isAr ? 'تسبيقات مفتوحة'  : 'Avances ouvertes', value: String(openCredits),  color: openCredits > 0 ? '#F59E0B' : '#10B981' },
           ].map(s => (
-            <div key={s.label} className={`bg-white border border-[#E8E5DE] rounded-xl px-4 py-3 ${s.money ? 'col-span-2 sm:col-span-1 order-last sm:order-none' : ''}`}
+            <div key={s.label} className={`bg-white border border-ez-border rounded-xl px-4 py-3 ${s.money ? 'col-span-2 sm:col-span-1 order-last sm:order-none' : ''}`}
                  style={{ borderLeftColor: s.color, borderLeftWidth: '3px' }}>
-              <p className="text-xs text-[#6B6860]">{s.label}</p>
-              <p className="font-display font-bold text-lg text-[#1A1A1A]">{s.value}</p>
+              <p className="text-xs text-ez-subtle">{s.label}</p>
+              <p className="font-display font-bold text-lg text-ez-text">{s.value}</p>
             </div>
           ))}
         </div>
 
         {/* Search */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#B0ADA6]" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ez-faint" />
           <input
-            className="w-full pl-9 pr-9 py-2.5 bg-white border border-[#E8E5DE] rounded-xl text-sm placeholder:text-[#B0ADA6] focus:outline-none transition-all"
+            className="w-full pl-9 pr-9 py-2.5 bg-white border border-ez-border rounded-xl text-sm placeholder:text-ez-placeholder focus:outline-none transition-all"
             placeholder={isAr ? 'بحث بالاسم أو الهاتف...' : 'Rechercher par nom ou téléphone...'}
             value={search}
             onChange={e => setSearch(e.target.value)}
@@ -214,7 +214,7 @@ export default function ClientsModule({ storeId }: ClientsModuleProps) {
           />
           {search && (
             <button onClick={() => setSearch('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#B0ADA6] hover:text-[#1A1A1A]">
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-ez-faint hover:text-ez-text">
               <X className="w-4 h-4" />
             </button>
           )}
@@ -223,9 +223,9 @@ export default function ClientsModule({ storeId }: ClientsModuleProps) {
 
       {/* ── List ──────────────────────────────────────────── */}
       <div className="flex-1 overflow-auto px-4 sm:px-6 pb-6">
-        <div className="bg-white border border-[#E8E5DE] rounded-2xl overflow-hidden">
+        <div className="bg-white border border-ez-border rounded-2xl overflow-hidden">
           {loading ? (
-            <div className="divide-y divide-[#F2F0EB]">
+            <div className="divide-y divide-ez-muted">
               {[...Array(6)].map((_, i) => <SkeletonRow key={i} />)}
             </div>
           ) : clients.length === 0 ? (
@@ -246,11 +246,11 @@ export default function ClientsModule({ storeId }: ClientsModuleProps) {
               }
             />
           ) : (
-            <div className="divide-y divide-[#F2F0EB]">
+            <div className="divide-y divide-ez-muted">
               {clients.map(client => (
                 <div
                   key={client.client_id}
-                  className="flex items-center gap-4 px-5 py-4 hover:bg-[#F8F7F4] transition-all cursor-pointer"
+                  className="flex items-center gap-4 px-5 py-4 hover:bg-ez-bg transition-all cursor-pointer"
                   onClick={() => { setSelected(client); loadClientHistory(client.client_id) }}
                 >
                   {/* Avatar */}
@@ -261,14 +261,14 @@ export default function ClientsModule({ storeId }: ClientsModuleProps) {
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-[#1A1A1A] truncate">{client.nom}</p>
+                    <p className="text-sm font-bold text-ez-text truncate">{client.nom}</p>
                     <div className="flex items-center gap-3 mt-0.5">
-                      <span className="text-xs text-[#B0ADA6] flex items-center gap-1">
+                      <span className="text-xs text-ez-faint flex items-center gap-1">
                         <Phone className="w-3 h-3" />
                         {client.telephone}
                       </span>
                       {client.date_premier_achat && (
-                        <span className="text-xs text-[#B0ADA6]">
+                        <span className="text-xs text-ez-faint">
                           {isAr ? 'منذ' : 'depuis'} {formatDate(client.date_premier_achat)}
                         </span>
                       )}
@@ -289,7 +289,7 @@ export default function ClientsModule({ storeId }: ClientsModuleProps) {
                     )}
                   </div>
 
-                  <ChevronRight className="w-4 h-4 text-[#B0ADA6] flex-shrink-0" />
+                  <ChevronRight className="w-4 h-4 text-ez-faint flex-shrink-0" />
                 </div>
               ))}
             </div>
@@ -316,10 +316,10 @@ export default function ClientsModule({ storeId }: ClientsModuleProps) {
               ].map(k => {
                 const Icon = k.icon
                 return (
-                  <div key={k.label} className="bg-[#F8F7F4] rounded-xl p-3 text-center">
+                  <div key={k.label} className="bg-ez-bg rounded-xl p-3 text-center">
                     <Icon className="w-4 h-4 mx-auto mb-1" style={{ color: k.color }} />
-                    <p className="font-bold text-sm text-[#1A1A1A]">{k.value}</p>
-                    <p className="text-xs text-[#B0ADA6] mt-0.5">{k.label}</p>
+                    <p className="font-bold text-sm text-ez-text">{k.value}</p>
+                    <p className="text-xs text-ez-faint mt-0.5">{k.label}</p>
                   </div>
                 )
               })}
@@ -327,11 +327,11 @@ export default function ClientsModule({ storeId }: ClientsModuleProps) {
 
             {/* Contact details */}
             <div className="space-y-3">
-              <div className="flex items-center gap-3 p-3 bg-[#F8F7F4] rounded-xl">
-                <Phone className="w-4 h-4 text-[#B0ADA6] flex-shrink-0" />
+              <div className="flex items-center gap-3 p-3 bg-ez-bg rounded-xl">
+                <Phone className="w-4 h-4 text-ez-faint flex-shrink-0" />
                 <div>
-                  <p className="text-xs text-[#B0ADA6]">{isAr ? 'الهاتف الرئيسي' : 'Téléphone'}</p>
-                  <p className="text-sm font-medium text-[#1A1A1A]">{selected.telephone}</p>
+                  <p className="text-xs text-ez-faint">{isAr ? 'الهاتف الرئيسي' : 'Téléphone'}</p>
+                  <p className="text-sm font-medium text-ez-text">{selected.telephone}</p>
                 </div>
                 <a href={`tel:${selected.telephone}`}
                   className="ml-auto text-xs font-bold py-1 px-3 rounded-lg"
@@ -341,31 +341,31 @@ export default function ClientsModule({ storeId }: ClientsModuleProps) {
               </div>
 
               {selected.telephone_2 && (
-                <div className="flex items-center gap-3 p-3 bg-[#F8F7F4] rounded-xl">
-                  <Phone className="w-4 h-4 text-[#B0ADA6] flex-shrink-0" />
+                <div className="flex items-center gap-3 p-3 bg-ez-bg rounded-xl">
+                  <Phone className="w-4 h-4 text-ez-faint flex-shrink-0" />
                   <div>
-                    <p className="text-xs text-[#B0ADA6]">{t(isAr, 'common.secondaryPhone')}</p>
-                    <p className="text-sm font-medium text-[#1A1A1A]">{selected.telephone_2}</p>
+                    <p className="text-xs text-ez-faint">{t(isAr, 'common.secondaryPhone')}</p>
+                    <p className="text-sm font-medium text-ez-text">{selected.telephone_2}</p>
                   </div>
                 </div>
               )}
 
               {selected.email && (
-                <div className="flex items-center gap-3 p-3 bg-[#F8F7F4] rounded-xl">
-                  <Mail className="w-4 h-4 text-[#B0ADA6] flex-shrink-0" />
+                <div className="flex items-center gap-3 p-3 bg-ez-bg rounded-xl">
+                  <Mail className="w-4 h-4 text-ez-faint flex-shrink-0" />
                   <div>
-                    <p className="text-xs text-[#B0ADA6]">Email</p>
-                    <p className="text-sm font-medium text-[#1A1A1A]">{selected.email}</p>
+                    <p className="text-xs text-ez-faint">Email</p>
+                    <p className="text-sm font-medium text-ez-text">{selected.email}</p>
                   </div>
                 </div>
               )}
 
               {selected.adresse && (
-                <div className="flex items-center gap-3 p-3 bg-[#F8F7F4] rounded-xl">
-                  <MapPin className="w-4 h-4 text-[#B0ADA6] flex-shrink-0" />
+                <div className="flex items-center gap-3 p-3 bg-ez-bg rounded-xl">
+                  <MapPin className="w-4 h-4 text-ez-faint flex-shrink-0" />
                   <div>
-                    <p className="text-xs text-[#B0ADA6]">{t(isAr, 'common.address')}</p>
-                    <p className="text-sm font-medium text-[#1A1A1A]">{selected.adresse}</p>
+                    <p className="text-xs text-ez-faint">{t(isAr, 'common.address')}</p>
+                    <p className="text-sm font-medium text-ez-text">{selected.adresse}</p>
                   </div>
                 </div>
               )}
@@ -379,41 +379,41 @@ export default function ClientsModule({ storeId }: ClientsModuleProps) {
             </div>
 
             {/* History tabs */}
-            <div className="border-t border-[#E8E5DE] pt-4">
+            <div className="border-t border-ez-border pt-4">
               <div className="flex gap-2 mb-3">
                 {(['txns', 'repairs'] as const).map(tab => (
                   <button key={tab} onClick={() => setHistoryTab(tab)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${historyTab === tab ? 'border-[#C9A440] bg-[#C9A440] text-white' : 'border-[#E8E5DE] bg-white text-[#6B6860]'}`}>
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${historyTab === tab ? 'border-gold bg-gold text-white' : 'border-ez-border bg-white text-ez-subtle'}`}>
                     {tab === 'txns' ? (isAr ? 'المشتريات' : 'Achats') : (t(isAr, 'common.repairs'))}
                   </button>
                 ))}
               </div>
 
               {historyLoading ? (
-                <div className="py-4 text-center text-xs text-[#B0ADA6]">Chargement...</div>
+                <div className="py-4 text-center text-xs text-ez-faint">Chargement...</div>
               ) : historyTab === 'txns' ? (
                 clientTxns.length === 0 ? (
-                  <p className="text-xs text-[#B0ADA6] py-2">{t(isAr, 'common.noTransactions')}</p>
+                  <p className="text-xs text-ez-faint py-2">{t(isAr, 'common.noTransactions')}</p>
                 ) : (
                   <div className="space-y-2 max-h-48 overflow-y-auto">
                     {clientTxns.map((t: any) => (
-                      <div key={t.txn_id} className="flex justify-between items-center py-2 border-b border-[#F2F0EB] text-xs last:border-0">
-                        <span className="text-[#6B6860] font-mono">{t.txn_id}</span>
-                        <span className="text-[#6B6860]">{t.date_vente}</span>
-                        <span className="font-bold text-[#1A1A1A]">{formatMAD(t.prix_vente)}</span>
+                      <div key={t.txn_id} className="flex justify-between items-center py-2 border-b border-ez-muted text-xs last:border-0">
+                        <span className="text-ez-subtle font-mono">{t.txn_id}</span>
+                        <span className="text-ez-subtle">{t.date_vente}</span>
+                        <span className="font-bold text-ez-text">{formatMAD(t.prix_vente)}</span>
                       </div>
                     ))}
                   </div>
                 )
               ) : (
                 clientReps.length === 0 ? (
-                  <p className="text-xs text-[#B0ADA6] py-2">{isAr ? 'لا توجد إصلاحات' : 'Aucune réparation'}</p>
+                  <p className="text-xs text-ez-faint py-2">{isAr ? 'لا توجد إصلاحات' : 'Aucune réparation'}</p>
                 ) : (
                   <div className="space-y-2 max-h-48 overflow-y-auto">
                     {clientReps.map((r: any) => (
-                      <div key={r.rep_id} className="flex justify-between items-center py-2 border-b border-[#F2F0EB] text-xs last:border-0">
-                        <span className="text-[#6B6860] font-mono">{r.rep_id}</span>
-                        <span className="text-[#1A1A1A]">{r.marque} {r.model}</span>
+                      <div key={r.rep_id} className="flex justify-between items-center py-2 border-b border-ez-muted text-xs last:border-0">
+                        <span className="text-ez-subtle font-mono">{r.rep_id}</span>
+                        <span className="text-ez-text">{r.marque} {r.model}</span>
                         <span className={`font-bold ${r.statut === 'recupere' ? 'text-emerald-600' : 'text-amber-600'}`}>{codeLabel('repair_status', r.statut, isAr ? 'ar' : 'fr')}</span>
                       </div>
                     ))}
@@ -453,7 +453,7 @@ export default function ClientsModule({ storeId }: ClientsModuleProps) {
             })()}
 
             {/* Actions */}
-            <div className="flex gap-3 pt-2 border-t border-[#E8E5DE]">
+            <div className="flex gap-3 pt-2 border-t border-ez-border">
               <Btn variant="secondary" className="flex-1" onClick={() => setSelected(null)}>
                 {t(isAr, 'common.close')}
               </Btn>

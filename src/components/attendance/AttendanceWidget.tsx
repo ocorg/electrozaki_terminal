@@ -71,13 +71,13 @@ export default function AttendanceWidget({ storeId, compact }: AttendanceWidgetP
 
   if (compact) {
     return (
-      <div className="flex items-center gap-3 bg-white border border-[#E8E5DE] rounded-xl px-3 py-2"
+      <div className="flex items-center gap-3 bg-white border border-ez-border rounded-xl px-3 py-2"
            style={{ borderLeftColor: isCurrentlyIn ? '#10B981' : '#EF4444', borderLeftWidth: '3px' }}>
         <div className={`w-2 h-2 rounded-full flex-shrink-0 ${isCurrentlyIn ? 'bg-emerald-500' : 'bg-red-400'}`} />
-        <p className="flex-1 min-w-0 text-xs text-[#1A1A1A] truncate">
+        <p className="flex-1 min-w-0 text-xs text-ez-text truncate">
           <b>{isCurrentlyIn ? (isAr ? 'حاضر' : 'En service') : (isAr ? 'خارج الخدمة' : 'Hors service')}</b>
           {lastPunch && (
-            <span className="text-[#6B6860]">
+            <span className="text-ez-subtle">
               {' · '}{lastPunch.punch_type === 'entree' ? (isAr ? 'دخل في' : 'entrée à') : (isAr ? 'خرج في' : 'sortie à')} {time(lastPunch.punched_at)}
             </span>
           )}
@@ -100,23 +100,23 @@ export default function AttendanceWidget({ storeId, compact }: AttendanceWidgetP
   }
 
   return (
-    <div className="bg-white border border-[#E8E5DE] rounded-2xl p-5"
+    <div className="bg-white border border-ez-border rounded-2xl p-5"
          style={{ borderLeftColor: isCurrentlyIn ? '#10B981' : '#B0ADA6', borderLeftWidth: '3px' }}>
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-xs text-[#6B6860] font-medium uppercase tracking-widest">
+          <p className="text-xs text-ez-subtle font-medium uppercase tracking-widest">
             {isAr ? 'الحضور' : 'Pointage'}
           </p>
           <div className="flex items-center gap-2 mt-1">
-            <div className={`w-2 h-2 rounded-full ${isCurrentlyIn ? 'bg-emerald-500' : 'bg-slate-300'}`} />
-            <p className="text-sm font-bold text-[#1A1A1A]">
+            <div className={`w-2 h-2 rounded-full ${isCurrentlyIn ? 'bg-emerald-500' : 'bg-[#D4D0C8]'}`} />
+            <p className="text-sm font-bold text-ez-text">
               {isCurrentlyIn
                 ? (isAr ? 'حاضر' : 'En service')
                 : (isAr ? 'خارج الخدمة' : 'Hors service')}
             </p>
           </div>
           {lastPunch && (
-            <p className="text-xs text-[#B0ADA6] mt-0.5">
+            <p className="text-xs text-ez-faint mt-0.5">
               {isAr
                 ? (lastPunch.punch_type === 'entree' ? 'دخل في' : 'خرج في')
                 : (lastPunch.punch_type === 'entree' ? 'Entrée à' : 'Sortie à')}
@@ -152,8 +152,8 @@ export default function AttendanceWidget({ storeId, compact }: AttendanceWidgetP
 
       {/* Today's punch history */}
       {punches.length > 0 && (
-        <div className="mt-4 pt-3 border-t border-[#F2F0EB]">
-          <p className="text-[10px] font-bold text-[#B0ADA6] uppercase tracking-widest mb-2">
+        <div className="mt-4 pt-3 border-t border-ez-muted">
+          <p className="text-xs font-bold text-ez-faint uppercase tracking-widest mb-2">
             {isAr ? 'سجل اليوم' : "Historique du jour"}
           </p>
           <div className="flex flex-wrap gap-2">
@@ -162,7 +162,7 @@ export default function AttendanceWidget({ storeId, compact }: AttendanceWidgetP
                 className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border ${
                   p.punch_type === 'entree'
                     ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-                    : 'bg-slate-50 border-slate-200 text-slate-600'
+                    : 'bg-ez-bg border-ez-border text-ez-subtle'
                 }`}>
                 {p.punch_type === 'entree'
                   ? <LogIn className="w-3 h-3" />

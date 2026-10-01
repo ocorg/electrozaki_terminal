@@ -146,7 +146,7 @@ export default function BZGChangelogPage() {
           actions={
             <div className="flex items-center gap-2">
               <button onClick={fetchChangelog} disabled={loading}
-                className="p-2 rounded-xl border border-[#E8E5DE] bg-white text-[#6B6860] hover:bg-[#F5F3FF] transition-all">
+                className="p-2 rounded-xl border border-ez-border bg-white text-ez-subtle hover:bg-[#F5F3FF] transition-all">
                 <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
               </button>
               <Btn variant="primary" onClick={() => setFormOpen(true)}
@@ -161,11 +161,11 @@ export default function BZGChangelogPage() {
 
       <div className="flex-1 overflow-auto px-4 sm:px-6 pb-6">
         {loading ? (
-          <div className="bg-white border border-[#E8E5DE] rounded-2xl overflow-hidden">
+          <div className="bg-white border border-ez-border rounded-2xl overflow-hidden">
             {[...Array(4)].map((_, i) => <SkeletonRow key={i} />)}
           </div>
         ) : entries.length === 0 ? (
-          <div className="bg-white border border-[#E8E5DE] rounded-2xl overflow-hidden">
+          <div className="bg-white border border-ez-border rounded-2xl overflow-hidden">
             <EmptyState
               icon={<FileText className="w-7 h-7" />}
               title={isAr ? 'لا توجد تغييرات مسجلة' : 'Aucune entrée'}
@@ -186,11 +186,11 @@ export default function BZGChangelogPage() {
                 {/* Month label */}
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-2 h-2 rounded-full bg-[#6366F1]" />
-                  <h3 className="font-display font-bold text-[#1A1A1A] tracking-wide">
+                  <h3 className="font-display font-bold text-ez-text tracking-wide">
                     {monthTitle(month)}
                   </h3>
-                  <div className="flex-1 h-px bg-[#E8E5DE]" />
-                  <span className="text-xs text-[#B0ADA6]">{monthEntries.length}</span>
+                  <div className="flex-1 h-px bg-ez-border" />
+                  <span className="text-xs text-ez-faint">{monthEntries.length}</span>
                 </div>
 
                 {/* Entries */}
@@ -199,12 +199,12 @@ export default function BZGChangelogPage() {
                     const modColor = MODULE_COLORS[entry.affected_module ?? ''] ?? '#6B6860'
                     return (
                       <div key={entry.change_id}
-                        className="bg-white border border-[#E8E5DE] rounded-2xl p-5 hover:shadow-sm transition-all">
+                        className="bg-white border border-ez-border rounded-2xl p-5 hover:shadow-sm transition-all">
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex-1 min-w-0">
                             {/* Title + tags */}
                             <div className="flex items-center gap-2 flex-wrap mb-2">
-                              <h4 className="font-bold text-sm text-[#1A1A1A]">{entry.title}</h4>
+                              <h4 className="font-bold text-sm text-ez-text">{entry.title}</h4>
                               {entry.version_tag && (
                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[#6366F1]/10 text-[#6366F1] text-xs font-bold border border-[#6366F1]/20">
                                   <Tag className="w-2.5 h-2.5" />
@@ -228,13 +228,13 @@ export default function BZGChangelogPage() {
 
                             {/* Description */}
                             {entry.description && (
-                              <p className="text-sm text-[#6B6860] leading-relaxed mb-3">
+                              <p className="text-sm text-ez-subtle leading-relaxed mb-3">
                                 {entry.description}
                               </p>
                             )}
 
                             {/* Footer */}
-                            <div className="flex items-center gap-4 text-xs text-[#B0ADA6]">
+                            <div className="flex items-center gap-4 text-xs text-ez-faint">
                               <span className="flex items-center gap-1">
                                 <User className="w-3 h-3" />
                                 {entry.author}

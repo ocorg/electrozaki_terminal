@@ -1,7 +1,7 @@
 // Phone-size (390×844) screenshots of ERP screens, for UI checks — TEST branch only.
 // Needs a dev server on :3100 pointed at the test branch (see memory: test branches).
 //   MSYS_NO_PATHCONV=1 DIRECT_URL=<test> SHOTS=<dir> PAGES=/ez/pos,/ez/stock/phones node scripts/ui-shots.mjs
-// Options: ROLE=employe|gerant (default proprietaire), WAIT=ms (default 2500), FULL=1, FILL=<css selector> + TEXT=<typed before the shot>, CLICK=<css selector> (extra shot -2), SCROLL=px (extra shot -3).
+// Options: DESKTOP=1 (1440×900), ROLE=employe|gerant (default proprietaire), WAIT=ms (default 2500), FULL=1, FILL=<css selector> + TEXT=<typed before the shot>, CLICK=<css selector> (extra shot -2), SCROLL=px (extra shot -3).
 // Creates a temporary owner account and deletes it at the end.
 import 'dotenv/config'
 import pg from 'pg'
@@ -41,7 +41,10 @@ absorb(await fetch(BASE + '/api/auth/callback/credentials', {
 }))
 
 const browser = await chromium.launch()
-const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true, locale: 'fr-FR' })
+const desktop = process.env.DESKTOP === '1'
+const ctx = await browser.newContext(desktop
+  ? { viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1, locale: 'fr-FR' }
+  : { viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true, locale: 'fr-FR' })
 await ctx.addCookies([...jar].map(([name, value]) => ({ name, value, domain: 'localhost', path: '/' })))
 const page = await ctx.newPage()
 page.on('console', m => { if (m.type() === 'error') console.log('  console.error:', m.text().slice(0, 300)) })

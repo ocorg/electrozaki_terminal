@@ -278,7 +278,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                 <Filter className="w-4 h-4" />
                 {isAr ? 'تصفية' : 'Filtres'}
                 {hasFilters && (
-                  <span className="w-4 h-4 rounded-full text-white text-[10px] font-bold flex items-center justify-center"
+                  <span className="w-4 h-4 rounded-full text-white text-xs font-bold flex items-center justify-center"
                         style={{ backgroundColor: primary }}>
                     {[filterStatus, filterMarque, filterLocation, filterStorage, filterPromo, search].filter(Boolean).length}
                   </span>
@@ -287,7 +287,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
               <button
                 onClick={handleManualRefresh}
                 disabled={manualRefresh}
-                className="p-2 rounded-xl border border-[#E8E5DE] bg-white text-[#6B6860] hover:bg-[#F8F7F4] transition-all disabled:opacity-50"
+                className="p-2 rounded-xl border border-ez-border bg-white text-ez-subtle hover:bg-ez-bg transition-all disabled:opacity-50"
               >
                 <RefreshCw className={`w-4 h-4 ${manualRefresh ? 'animate-spin' : ''}`} />
               </button>
@@ -320,9 +320,9 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
         {/* Search */}
         <div className="flex gap-2">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#B0ADA6]" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ez-faint" />
             <input
-              className="w-full pl-9 pr-10 py-2.5 bg-white border border-[#E8E5DE] rounded-xl text-sm text-[#1A1A1A] placeholder:text-[#B0ADA6] focus:outline-none transition-all"
+              className="w-full pl-9 pr-10 py-2.5 bg-white border border-ez-border rounded-xl text-sm text-ez-text placeholder:text-ez-placeholder focus:outline-none transition-all"
               placeholder={isAr ? 'بحث بـ IMEI، الماركة، الموديل...' : 'Rechercher IMEI, marque, modèle...'}
               value={search}
               onChange={e => onSearch(e.target.value)}
@@ -331,7 +331,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
             />
             {search && (
               <button onClick={() => onSearch('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#B0ADA6] hover:text-[#1A1A1A]">
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-ez-faint hover:text-ez-text">
                 <X className="w-4 h-4" />
               </button>
             )}
@@ -349,7 +349,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
               {isAr ? 'المتوفرة فقط' : 'Disponibles uniquement'}
             </span>
             {hiddenByAuto > 0 && (
-              <span className="text-[#6B6860]">
+              <span className="text-ez-subtle">
                 {hiddenByAuto} autre{hiddenByAuto > 1 ? 's' : ''} (vendu, réservé…)
               </span>
             )}
@@ -361,7 +361,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
 
         {/* Filters panel */}
         {showFilters && (
-          <div className="flex flex-wrap gap-3 p-4 bg-white border border-[#E8E5DE] rounded-2xl animate-fade-in">
+          <div className="flex flex-wrap gap-3 p-4 bg-white border border-ez-border rounded-2xl animate-fade-in">
             <div className="flex flex-wrap gap-2">
               {STATUSES.map(s => (
                 <button
@@ -382,10 +382,10 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
               ))}
             </div>
 
-            <div className="w-px bg-[#E8E5DE]" />
+            <div className="w-px bg-ez-border" />
 
             <Select
-              className="text-sm border border-[#E8E5DE] rounded-xl px-3 py-1.5 bg-white text-[#6B6860] focus:outline-none"
+              className="text-sm border border-ez-border rounded-xl px-3 py-1.5 bg-white text-ez-subtle focus:outline-none"
               value={filterMarque}
               onChange={e => setFilterMarque(e.target.value)}
             >
@@ -394,7 +394,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
             </Select>
 
             <Select
-              className="text-sm border border-[#E8E5DE] rounded-xl px-3 py-1.5 bg-white text-[#6B6860] focus:outline-none"
+              className="text-sm border border-ez-border rounded-xl px-3 py-1.5 bg-white text-ez-subtle focus:outline-none"
               value={filterLocation}
               onChange={e => setFilterLocation(e.target.value)}
             >
@@ -403,7 +403,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
             </Select>
 
             <Select
-              className="text-sm border border-[#E8E5DE] rounded-xl px-3 py-1.5 bg-white text-[#6B6860] focus:outline-none"
+              className="text-sm border border-ez-border rounded-xl px-3 py-1.5 bg-white text-ez-subtle focus:outline-none"
               value={filterStorage}
               onChange={e => setFilterStorage(e.target.value)}
             >
@@ -438,7 +438,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
         {/* Status summary strip */}
         <div className="flex flex-wrap gap-x-3 gap-y-1">
           {STATUSES.map(s => (
-            <div key={s} className="flex items-center gap-1.5 text-xs text-[#6B6860] whitespace-nowrap">
+            <div key={s} className="flex items-center gap-1.5 text-xs text-ez-subtle whitespace-nowrap">
               <span className="w-2 h-2 rounded-full" style={{ backgroundColor: STATUS_COLORS[s] }} />
               {counts[s]} {statusLabel(s)}
             </div>
@@ -448,14 +448,14 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
 
       {/* ── List ──────────────────────────────────────────── */}
       <div className="flex-1 overflow-auto px-4 sm:px-6 pb-6">
-        <div className="bg-white border border-[#E8E5DE] rounded-2xl overflow-hidden">
+        <div className="bg-white border border-ez-border rounded-2xl overflow-hidden">
 
           {/* Table header */}
-          <div className="hidden lg:grid border-b border-[#F2F0EB] px-5 py-3 text-[10px] font-bold text-[#B0ADA6] uppercase tracking-widest"
-               style={{ gridTemplateColumns: '2fr 1fr 0.7fr 0.7fr 0.7fr 0.6fr 1fr 180px' }}>
+          <div className="hidden lg:grid border-b border-ez-muted px-5 py-3 text-xs font-bold text-ez-faint uppercase tracking-wide gap-2"
+               style={{ gridTemplateColumns: '2fr 1fr 0.7fr 0.7fr 0.8fr 0.7fr 1fr 180px' }}>
             <span>{isAr ? 'الجهاز' : 'Appareil'}</span>
             <span>IMEI</span>
-            <span>{isAr ? 'الذاكرة / RAM' : 'Stockage / RAM'}</span>
+            <span>{isAr ? 'الذاكرة' : 'Stockage'}</span>
             <span>{isAr ? 'البطارية' : 'Batterie'}</span>
             <span>{t(isAr, 'common.location')}</span>
             <span>{t(isAr, 'common.status')}</span>
@@ -464,7 +464,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
           </div>
 
           {loading ? (
-            <div className="divide-y divide-[#F2F0EB]">
+            <div className="divide-y divide-ez-muted">
               {[...Array(6)].map((_, i) => <SkeletonRow key={i} />)}
             </div>
           ) : phones.length === 0 ? (
@@ -484,7 +484,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
               }
             />
           ) : (
-            <div className="divide-y divide-[#F2F0EB]">
+            <div className="divide-y divide-ez-muted">
               {visiblePhones.map(phone => {
                 const warrantyFlag = getWarrantyFlag(phone.date_entree
                   ? new Date(new Date(phone.date_entree).getTime() + (phone.warranty_months ?? 6) * 30 * 86400000).toISOString()
@@ -499,8 +499,8 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                   <div
                     key={phone.phone_id}
                     onClick={canOpen(phone) ? () => openEdit(phone) : undefined}
-                    className={`hidden lg:grid items-center px-5 py-3.5 hover:bg-[#F8F7F4] transition-all ${canOpen(phone) ? 'cursor-pointer' : ''}`}
-                    style={{ gridTemplateColumns: '2fr 1fr 0.7fr 0.7fr 0.7fr 0.6fr 1fr 180px' }}
+                    className={`hidden lg:grid items-center gap-2 px-5 py-3.5 hover:bg-ez-bg transition-all ${canOpen(phone) ? 'cursor-pointer' : ''}`}
+                    style={{ gridTemplateColumns: '2fr 1fr 0.7fr 0.7fr 0.8fr 0.7fr 1fr 180px' }}
                   >
                     {/* Device name */}
                     <div className="flex items-center gap-3 min-w-0">
@@ -509,9 +509,9 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                         <Smartphone className="w-4 h-4" style={{ color: primary }} />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-[#1A1A1A] truncate">{deviceName}</p>
+                        <p className="text-sm font-medium text-ez-text truncate">{deviceName}</p>
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <p className="text-xs text-[#B0ADA6]">
+                          <p className="text-xs text-ez-faint">
                             {phone.condition === 'neuf' ? (t(isAr, 'common.new'))
                               : phone.condition === 'occasion' ? (t(isAr, 'common.used'))
                               : (t(isAr, 'common.damaged'))}
@@ -527,7 +527,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                         </div>
                         {getProspectMatchCount(phone) > 0 && (
                           <div className="flex items-center gap-1 mt-1">
-                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700">
+                            <span className="text-xs font-bold px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700">
                               {getProspectMatchCount(phone)} prospect{getProspectMatchCount(phone) > 1 ? 's' : ''}
                             </span>
                           </div>
@@ -553,7 +553,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                             {(phone.replaced_components || []).map((comp, idx) => (
                               <span
                                 key={idx}
-                                className="text-[10px] font-bold tracking-wide uppercase px-1.5 py-0.5 border-l-2"
+                                className="text-xs font-bold tracking-wide uppercase px-1.5 py-0.5 border-l-2"
                                 style={{ backgroundColor: '#FFFBEB', color: '#92400E', borderColor: '#F59E0B' }}
                               >
                                 {comp.name.toUpperCase()} — {comp.condition === 'original' ? 'ORIGINAL' : 'STANDARD'}
@@ -561,7 +561,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                             ))}
                             {phone.is_damaged && (
                               <span
-                                className="text-[10px] font-bold tracking-wide uppercase px-1.5 py-0.5 border-l-2"
+                                className="text-xs font-bold tracking-wide uppercase px-1.5 py-0.5 border-l-2"
                                 style={{ backgroundColor: '#FFF1F2', color: '#991B1B', borderColor: '#F87171' }}
                                 title={phone.damage_notes || undefined}
                               >
@@ -571,7 +571,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                           </div>
                         )}
                         {phone.is_damaged && phone.damage_notes && (
-                          <p className="text-[11px] text-[#991B1B] mt-1 line-clamp-2" title={phone.damage_notes}>
+                          <p className="text-xs text-[#991B1B] mt-1 line-clamp-2" title={phone.damage_notes}>
                             ⚠ {phone.damage_notes}
                           </p>
                         )}
@@ -579,17 +579,17 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                     </div>
 
                     {/* IMEI */}
-                    <p className="text-xs text-[#6B6860] font-mono truncate">
+                    <p className="text-xs text-ez-subtle font-mono truncate">
                       {phone.imei || '—'}
                     </p>
 
                     {/* Specs — Stockage + RAM */}
                     <div>
-                      <p className="text-xs text-[#6B6860]">
+                      <p className="text-xs text-ez-subtle">
                         {phone.stockage || '—'}
                       </p>
                       {phone.marque.toLowerCase() !== 'apple' && (
-                        <p className="text-[10px] text-[#B0ADA6] mt-0.5">
+                        <p className="text-xs text-ez-faint mt-0.5">
                           {phone.ram ? `${phone.ram} RAM` : 'N/A'}
                         </p>
                       )}
@@ -600,8 +600,8 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
 
                     {/* Location */}
                     <div className="flex items-center gap-1.5">
-                      <MapPin className="w-3 h-3 text-[#B0ADA6] flex-shrink-0" />
-                      <span className="text-xs text-[#6B6860] truncate">
+                      <MapPin className="w-3 h-3 text-ez-faint flex-shrink-0" />
+                      <span className="text-xs text-ez-subtle truncate">
                         {phone.location === 'magasin_principal' ? (isAr ? 'المحل الرئيسي' : 'Principal')
                           : phone.location === 'magasin_secondaire' ? (isAr ? 'المحل الثاني' : 'Secondaire')
                           : (t(isAr, 'common.external'))}
@@ -617,7 +617,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                     <div>
                       {phone.promo_type && phone.promo_montant ? (
                         <>
-                          <p className="text-xs text-[#B0ADA6] line-through">
+                          <p className="text-xs text-ez-faint line-through">
                             {phone.prix_vente_recommande ? formatMAD(phone.prix_vente_recommande) : '—'}
                           </p>
                           <p className="text-sm font-bold" style={{ color: '#C9A440' }}>
@@ -634,7 +634,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                         </>
                       ) : (
                         <>
-                          <p className="text-sm font-bold text-[#1A1A1A]">
+                          <p className="text-sm font-bold text-ez-text">
                             {phone.prix_vente_recommande ? formatMAD(phone.prix_vente_recommande) : '—'}
                           </p>
                           {canSeeFinancials && phone.prix_achat && phone.prix_vente_recommande && (
@@ -709,9 +709,9 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                 return (
                   <div key={`mob-${phone.phone_id}`}
                        onClick={canOpen(phone) ? () => openEdit(phone) : undefined}
-                       className={`lg:hidden px-4 py-3.5 space-y-2 transition-all ${canOpen(phone) ? 'hover:bg-[#F8F7F4] active:bg-[#F2F0EB] cursor-pointer' : ''}`}>
+                       className={`lg:hidden px-4 py-3.5 space-y-2 transition-all ${canOpen(phone) ? 'hover:bg-ez-bg active:bg-ez-muted cursor-pointer' : ''}`}>
                     <div className="flex items-start justify-between gap-3">
-                      <p className="text-[15px] font-semibold text-[#1A1A1A] leading-snug line-clamp-2">{deviceName}</p>
+                      <p className="text-[15px] font-semibold text-ez-text leading-snug line-clamp-2">{deviceName}</p>
                       {phone.prix_vente_recommande != null && (
                         <p className="text-base font-bold flex-shrink-0 tabular-nums" style={{ color: primary }}>
                           {formatMAD(phone.prix_vente_recommande)}
@@ -720,19 +720,19 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                     </div>
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <StatusBadge domain="device_status" code={phone.status} lang={isAr ? 'ar' : 'fr'} size="sm" />
-                      {phone.stockage && <span className={`${chip} bg-[#F2F0EB] text-[#1A1A1A] font-mono`}>{phone.stockage}</span>}
+                      {phone.stockage && <span className={`${chip} bg-ez-muted text-ez-text font-mono`}>{phone.stockage}</span>}
                       {phone.marque.toLowerCase() !== 'apple' && phone.ram && (
-                        <span className={`${chip} bg-[#F2F0EB] text-[#6B6860]`}>{phone.ram}</span>
+                        <span className={`${chip} bg-ez-muted text-ez-subtle`}>{phone.ram}</span>
                       )}
                       {phone.battery_level != null && (
                         <span className={`${chip} ${
-                          phone.marque.toLowerCase() !== 'apple' ? 'bg-[#F2F0EB] text-[#6B6860]'
+                          phone.marque.toLowerCase() !== 'apple' ? 'bg-ez-muted text-ez-subtle'
                           : phone.battery_level > 79  ? 'bg-emerald-50 text-emerald-700'
                           : phone.battery_level >= 60 ? 'bg-amber-50 text-amber-700'
                           : 'bg-red-50 text-red-700'
                         }`}>🔋 {phone.battery_level}%</span>
                       )}
-                      {phone.couleur && <span className={`${chip} bg-[#F2F0EB] text-[#6B6860]`}>{phone.couleur}</span>}
+                      {phone.couleur && <span className={`${chip} bg-ez-muted text-ez-subtle`}>{phone.couleur}</span>}
                       {phone.promo_type && (
                         <span className={`${chip} font-bold`} style={{ backgroundColor: '#FAF5E8', color: '#A8862E', border: '1px solid #E8D494' }}>PROMO</span>
                       )}
@@ -771,7 +771,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                       </div>
                     )}
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-xs font-mono text-[#8A877F] truncate">
+                      <span className="text-xs font-mono text-ez-faint truncate">
                         {phone.imei ? `IMEI ${phone.imei}` : phone.phone_id}
                       </span>
                       <div className="flex items-center gap-2 flex-shrink-0">
@@ -793,7 +793,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
               })}
               {phones.length > shown && (
                 <button onClick={() => setShown(n => n + PAGE)}
-                  className="w-full py-3 text-sm font-medium text-[#6B6860] hover:bg-[#F8F7F4] transition-all">
+                  className="w-full py-3 text-sm font-medium text-ez-subtle hover:bg-ez-bg transition-all">
                   {isAr ? `عرض المزيد (${phones.length - shown})` : `Afficher plus (${phones.length - shown})`}
                 </button>
               )}
@@ -815,7 +815,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
         size="sm"
         closeLabel={t(isAr, 'common.close')}
       >
-        <p className="text-sm text-[#6B6860] mb-6">
+        <p className="text-sm text-ez-subtle mb-6">
           {t(isAr, 'common.irreversible')}
         </p>
         <div className="flex gap-3 justify-end">
@@ -916,7 +916,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
             grouped[item.marque].push(item)
           })
 
-          const sharedInput = 'w-full border border-[#E8E5DE] rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#C9A440] transition-all bg-white'
+          const sharedInput = 'w-full border border-ez-border rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-gold transition-all bg-white'
 
           return (
             <div className="space-y-4">
@@ -926,9 +926,9 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
               <datalist id="dl-couleur">{suggestions.couleurs.map(v => <option key={v} value={v} />)}</datalist>
               <datalist id="dl-type">{suggestions.types.map(v => <option key={v} value={v} />)}</datalist>
 
-              <div className="bg-[#F8F7F4] border border-[#E8E5DE] rounded-xl p-4 space-y-3">
-                <p className="text-xs font-bold text-[#1A1A1A] flex items-center gap-2">
-                  <Plus className="w-3.5 h-3.5 text-[#C9A440]" />
+              <div className="bg-ez-bg border border-ez-border rounded-xl p-4 space-y-3">
+                <p className="text-xs font-bold text-ez-text flex items-center gap-2">
+                  <Plus className="w-3.5 h-3.5 text-gold" />
                   {isAr ? 'إضافة موديل' : 'Ajouter un modèle'}
                 </p>
                 <div className="grid grid-cols-2 gap-2">
@@ -940,7 +940,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                     { key: 'type',    label: 'Type',                             list: 'dl-type',    ph: 'Normal, Pro...' },
                   ].map(({ key, label, list, ph }) => (
                     <div key={key}>
-                      <p className="text-[10px] font-bold text-[#B0ADA6] uppercase tracking-wider mb-1">{label}</p>
+                      <p className="text-xs font-bold text-ez-faint uppercase tracking-wider mb-1">{label}</p>
                       <input
                         list={list}
                         className={sharedInput}
@@ -953,37 +953,37 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                 </div>
                 <button onClick={saveCatalogEntry}
                   disabled={catSaving || !catForm.marque || !catForm.model || !catForm.couleur}
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#1A1A1A] text-white text-xs font-bold hover:bg-[#333] transition-all disabled:opacity-40">
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-ez-dark text-white text-xs font-bold hover:bg-[#333] transition-all disabled:opacity-40">
                   {catSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
                   {t(isAr, 'common.add')}
                 </button>
               </div>
 
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#B0ADA6]" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ez-faint" />
                 <input className={`${sharedInput} pl-9`}
                   placeholder={isAr ? 'بحث...' : 'Rechercher...'}
                   value={catSearch}
                   onChange={e => setCatSearch(e.target.value)} />
               </div>
 
-              <div className="border border-[#E8E5DE] rounded-xl overflow-hidden max-h-72 overflow-y-auto">
+              <div className="border border-ez-border rounded-xl overflow-hidden max-h-72 overflow-y-auto">
                 {catalogItems.length === 0 ? (
-                  <div className="flex items-center justify-center py-10 text-sm text-[#B0ADA6] gap-2">
+                  <div className="flex items-center justify-center py-10 text-sm text-ez-faint gap-2">
                     <BookOpen className="w-4 h-4" />
                     {isAr ? 'الكتالوج فارغ' : 'Catalogue vide'}
                   </div>
                 ) : filtered.length === 0 ? (
-                  <p className="text-center text-xs text-[#B0ADA6] py-6">
+                  <p className="text-center text-xs text-ez-faint py-6">
                     {t(isAr, 'common.noResults')}
                   </p>
                 ) : Object.entries(grouped).map(([brand, items]) => (
                   <div key={brand}>
-                    <div className="px-4 py-2 bg-[#F8F7F4] border-b border-[#E8E5DE] sticky top-0">
-                      <p className="text-[10px] font-bold text-[#6B6860] uppercase tracking-wider">{brand}</p>
+                    <div className="px-4 py-2 bg-ez-bg border-b border-ez-border sticky top-0">
+                      <p className="text-xs font-bold text-ez-subtle uppercase tracking-wider">{brand}</p>
                     </div>
                     {items.map(item => (
-                      <div key={item.catalog_id} className="border-b border-[#F2F0EB] last:border-0">
+                      <div key={item.catalog_id} className="border-b border-ez-muted last:border-0">
                         {editingId === item.catalog_id ? (
                           <div className="px-4 py-3 bg-amber-50 space-y-2">
                             <div className="grid grid-cols-2 gap-2">
@@ -995,7 +995,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                                 { k: 'type',    list: 'dl-type',    ph: 'Type' },
                               ].map(({ k, list, ph }) => (
                                 <input key={k} list={list}
-                                  className="border border-amber-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-[#C9A440] bg-white"
+                                  className="border border-amber-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-gold bg-white"
                                   placeholder={ph}
                                   value={(editForm as Record<string, string>)[k]}
                                   onChange={e => setEditForm(f => ({ ...f, [k]: e.target.value }))} />
@@ -1003,33 +1003,33 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                             </div>
                             <div className="flex gap-2">
                               <button onClick={updateCatalogEntry} disabled={catSaving}
-                                className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#1A1A1A] text-white text-xs font-bold disabled:opacity-40">
+                                className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-ez-dark text-white text-xs font-bold disabled:opacity-40">
                                 {catSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
                                 {t(isAr, 'common.saveAlt')}
                               </button>
                               <button onClick={() => setEditingId(null)}
-                                className="px-3 py-1.5 rounded-lg border border-[#E8E5DE] text-xs text-[#6B6860] hover:bg-white transition-all">
+                                className="px-3 py-1.5 rounded-lg border border-ez-border text-xs text-ez-subtle hover:bg-white transition-all">
                                 {t(isAr, 'common.cancel')}
                               </button>
                             </div>
                           </div>
                         ) : (
-                          <div className="flex items-center justify-between px-4 py-2.5 hover:bg-[#F8F7F4] transition-all group">
+                          <div className="flex items-center justify-between px-4 py-2.5 hover:bg-ez-bg transition-all group">
                             <div className="min-w-0">
-                              <p className="text-xs font-semibold text-[#1A1A1A] truncate">{item.model}</p>
-                              <p className="text-[10px] text-[#B0ADA6]">
+                              <p className="text-xs font-semibold text-ez-text truncate">{item.model}</p>
+                              <p className="text-xs text-ez-faint">
                                 {[item.serie, item.type !== 'Normal' && item.type, item.couleur].filter(Boolean).join(' · ')}
                               </p>
                             </div>
                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0">
                               <button onClick={() => { setEditingId(item.catalog_id); setEditForm({ marque: item.marque, serie: item.serie, type: item.type, model: item.model, couleur: item.couleur }) }}
-                                className="p-1.5 rounded-lg text-[#B0ADA6] hover:text-[#C9A440] hover:bg-amber-50 transition-all">
+                                className="p-1.5 rounded-lg text-ez-faint hover:text-gold hover:bg-amber-50 transition-all">
                                 <Edit2 className="w-3.5 h-3.5" />
                               </button>
                               {user?.role === 'proprietaire' && (
                                 <button onClick={() => deleteCatalogEntry(item.catalog_id)}
                                   disabled={catDeleting === item.catalog_id}
-                                  className="p-1.5 rounded-lg text-[#B0ADA6] hover:text-red-500 hover:bg-red-50 transition-all">
+                                  className="p-1.5 rounded-lg text-ez-faint hover:text-red-500 hover:bg-red-50 transition-all">
                                   {catDeleting === item.catalog_id
                                     ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
                                     : <Trash2 className="w-3.5 h-3.5" />}
@@ -1044,7 +1044,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                 ))}
               </div>
 
-              <p className="text-[10px] text-[#B0ADA6] text-center">
+              <p className="text-xs text-ez-faint text-center">
                 {catalogItems.length} {isAr ? 'إدخال' : 'entrée(s)'}
                 {' · '}{isAr ? 'النوع والحقول الأخرى: أدخل قيمة جديدة لإضافتها تلقائياً' : 'Tapez une nouvelle valeur dans n\'importe quel champ pour l\'ajouter aux suggestions'}
               </p>

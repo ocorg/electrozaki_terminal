@@ -65,14 +65,14 @@ export default function BZGStaffPage() {
             : `${presentCount} présent${presentCount !== 1 ? 's' : ''} · ${absentCount} sorti${absentCount !== 1 ? 's' : ''}`}
           actions={
             <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2 bg-white border border-[#E8E5DE] rounded-xl px-3 py-2">
-                <Calendar className="w-4 h-4 text-[#B0ADA6]" />
+              <div className="flex items-center gap-2 bg-white border border-ez-border rounded-xl px-3 py-2">
+                <Calendar className="w-4 h-4 text-ez-faint" />
                 <input type="date" value={selectedDate}
                   onChange={e => setSelectedDate(e.target.value)}
-                  className="text-sm text-[#1A1A1A] focus:outline-none bg-transparent" />
+                  className="text-sm text-ez-text focus:outline-none bg-transparent" />
               </div>
               <button onClick={fetchAll} disabled={loading}
-                className="p-2 rounded-xl border border-[#E8E5DE] bg-white text-[#6B6860] hover:bg-[#F5F3FF] transition-all">
+                className="p-2 rounded-xl border border-ez-border bg-white text-ez-subtle hover:bg-[#F5F3FF] transition-all">
                 <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
               </button>
             </div>
@@ -86,14 +86,14 @@ export default function BZGStaffPage() {
             const present    = storeUsers.filter(p => p.punch_type === 'entree').length
             return (
               <div key={store.id}
-                className="bg-white border border-[#E8E5DE] rounded-2xl p-4"
+                className="bg-white border border-ez-border rounded-2xl p-4"
                 style={{ borderLeftColor: store.color, borderLeftWidth: '3px' }}>
                 <p className="text-xs font-bold tracking-wide" style={{ color: store.color }}>
                   {store.name}
                 </p>
-                <p className="font-display font-bold text-2xl text-[#1A1A1A] mt-1">
+                <p className="font-display font-bold text-2xl text-ez-text mt-1">
                   {present}
-                  <span className="text-sm font-normal text-[#B0ADA6] ml-1">
+                  <span className="text-sm font-normal text-ez-faint ml-1">
                     / {storeUsers.length} {isAr ? 'موظف' : 'employé(s)'}
                   </span>
                 </p>
@@ -117,18 +117,18 @@ export default function BZGStaffPage() {
 
           return (
             <div key={store.id}>
-              <h3 className="font-display font-bold text-[#1A1A1A] tracking-wide mb-3 flex items-center gap-2">
+              <h3 className="font-display font-bold text-ez-text tracking-wide mb-3 flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full" style={{ backgroundColor: store.color }} />
                 {store.name}
               </h3>
 
-              <div className="bg-white border border-[#E8E5DE] rounded-2xl overflow-hidden">
+              <div className="bg-white border border-ez-border rounded-2xl overflow-hidden">
                 {loading ? (
-                  <div className="divide-y divide-[#F2F0EB]">
+                  <div className="divide-y divide-ez-muted">
                     {[...Array(2)].map((_, i) => <SkeletonRow key={i} />)}
                   </div>
                 ) : (
-                  <div className="divide-y divide-[#F2F0EB]">
+                  <div className="divide-y divide-ez-muted">
                     {storeLatest.map(latest => {
                       const userPunches = [...punches]
                         .filter(p => p.user_id === latest.user_id)
@@ -139,10 +139,10 @@ export default function BZGStaffPage() {
                         <div key={latest.user_id} className="px-5 py-4">
                           <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center gap-3">
-                              <div className={`w-2.5 h-2.5 rounded-full ${isIn ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                              <div className={`w-2.5 h-2.5 rounded-full ${isIn ? 'bg-emerald-500' : 'bg-[#D4D0C8]'}`} />
                               <div>
-                                <p className="text-sm font-bold text-[#1A1A1A]">{latest.user_name}</p>
-                                <p className={`text-xs font-medium ${isIn ? 'text-emerald-600' : 'text-slate-500'}`}>
+                                <p className="text-sm font-bold text-ez-text">{latest.user_name}</p>
+                                <p className={`text-xs font-medium ${isIn ? 'text-emerald-600' : 'text-ez-faint'}`}>
                                   {isIn
                                     ? (t(isAr, 'common.present'))
                                     : (t(isAr, 'common.exited'))}
@@ -155,7 +155,7 @@ export default function BZGStaffPage() {
                             </div>
 
                             {/* Punch count */}
-                            <span className="text-xs text-[#B0ADA6]">
+                            <span className="text-xs text-ez-faint">
                               {userPunches.length} {isAr ? 'بصمة' : 'pointage(s)'}
                             </span>
                           </div>
@@ -167,7 +167,7 @@ export default function BZGStaffPage() {
                                 className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border ${
                                   p.punch_type === 'entree'
                                     ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-                                    : 'bg-slate-50 border-slate-200 text-slate-600'
+                                    : 'bg-ez-bg border-ez-border text-ez-subtle'
                                 }`}>
                                 {p.punch_type === 'entree'
                                   ? <LogIn className="w-3 h-3" />
@@ -190,7 +190,7 @@ export default function BZGStaffPage() {
         })}
 
         {!loading && punches.length === 0 && (
-          <div className="bg-white border border-[#E8E5DE] rounded-2xl overflow-hidden">
+          <div className="bg-white border border-ez-border rounded-2xl overflow-hidden">
             <EmptyState
               icon={<Users className="w-7 h-7" />}
               title={isAr ? 'لا يوجد تسجيل حضور' : 'Aucun pointage'}

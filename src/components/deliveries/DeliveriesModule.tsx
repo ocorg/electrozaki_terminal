@@ -213,7 +213,7 @@ function DeliveryLabel({ delivery, device_name, open, onClose }: LabelProps) {
           </div>
         </div>
 
-        <p className="text-xs text-[#B0ADA6] text-center">
+        <p className="text-xs text-ez-faint text-center">
           Format: 40×30 mm — Compatible Phomemo
         </p>
 
@@ -222,7 +222,7 @@ function DeliveryLabel({ delivery, device_name, open, onClose }: LabelProps) {
           <button
             onClick={handlePDF}
             disabled={exporting}
-            className="flex items-center justify-center gap-2 p-3 rounded-xl border border-[#E8E5DE] bg-white hover:bg-[#F8F7F4] text-sm text-[#6B6860] transition-all disabled:opacity-50"
+            className="flex items-center justify-center gap-2 p-3 rounded-xl border border-ez-border bg-white hover:bg-ez-bg text-sm text-ez-subtle transition-all disabled:opacity-50"
           >
             {exporting
               ? <Loader2 className="w-4 h-4" style={{ animation: 'spin 1s linear infinite' }} />
@@ -233,7 +233,7 @@ function DeliveryLabel({ delivery, device_name, open, onClose }: LabelProps) {
           <button
             onClick={handlePrint}
             disabled={exporting}
-            className="flex items-center justify-center gap-2 p-3 rounded-xl border border-[#E8E5DE] bg-white hover:bg-[#F8F7F4] text-sm text-[#6B6860] transition-all disabled:opacity-50"
+            className="flex items-center justify-center gap-2 p-3 rounded-xl border border-ez-border bg-white hover:bg-ez-bg text-sm text-ez-subtle transition-all disabled:opacity-50"
           >
             <Printer className="w-4 h-4" /> Imprimer
           </button>
@@ -361,7 +361,7 @@ export default function DeliveriesModule({ storeId }: DeliveriesModuleProps) {
 
   if (!['gerant', 'proprietaire'].includes(user?.role ?? '')) {
     return (
-      <div className="p-6 text-sm text-[#6B6860]">
+      <div className="p-6 text-sm text-ez-subtle">
         Accès réservé aux managers et propriétaires.
       </div>
     )
@@ -371,21 +371,21 @@ export default function DeliveriesModule({ storeId }: DeliveriesModuleProps) {
     <div className="flex flex-col h-full overflow-hidden animate-fade-in">
 
       {/* ── Header ── */}
-      <div className="flex-shrink-0 px-4 sm:px-6 pt-4 sm:pt-6 pb-4 flex items-center justify-between border-b border-[#E8E5DE]">
+      <div className="flex-shrink-0 px-4 sm:px-6 pt-4 sm:pt-6 pb-4 flex items-center justify-between border-b border-ez-border">
         <div>
           <h1
-            className="font-bold text-xl text-[#1A1A1A]"
+            className="font-bold text-xl text-ez-text"
             style={{ fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.04em' }}
           >
             LIVRAISONS
           </h1>
-          <p className="text-sm text-[#B0ADA6] mt-0.5">
+          <p className="text-sm text-ez-faint mt-0.5">
             {deliveries.length} livraison{deliveries.length !== 1 ? 's' : ''}
           </p>
         </div>
         <div className="flex items-center gap-3">
           {/* View toggle */}
-          <div className="flex border border-[#E8E5DE] rounded-xl overflow-hidden">
+          <div className="flex border border-ez-border rounded-xl overflow-hidden">
             {(['kanban', 'list'] as const).map(v => (
               <button
                 key={v}
@@ -418,7 +418,7 @@ export default function DeliveriesModule({ storeId }: DeliveriesModuleProps) {
       {loading ? (
         <div className="flex-1 flex items-center justify-center">
           <Loader2
-            className="w-6 h-6 text-[#B0ADA6]"
+            className="w-6 h-6 text-ez-faint"
             style={{ animation: 'spin 1s linear infinite' }}
           />
         </div>
@@ -432,20 +432,20 @@ export default function DeliveriesModule({ storeId }: DeliveriesModuleProps) {
               return (
                 <div
                   key={col.key}
-                  className="flex flex-col w-64 flex-shrink-0 bg-[#F8F7F4] border border-[#E8E5DE] rounded-2xl overflow-hidden"
+                  className="flex flex-col w-64 flex-shrink-0 bg-ez-bg border border-ez-border rounded-2xl overflow-hidden"
                   onDragOver={e => e.preventDefault()}
                   onDrop={e => onDrop(e, col.key)}
                 >
                   {/* Column header */}
-                  <div className="flex items-center justify-between px-4 py-3 border-b border-[#E8E5DE] flex-shrink-0">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-ez-border flex-shrink-0">
                     <div className="flex items-center gap-2">
                       <div
                         className="w-2 h-2 rounded-full"
                         style={{ backgroundColor: col.color }}
                       />
-                      <p className="text-xs font-bold text-[#1A1A1A]">{col.label}</p>
+                      <p className="text-xs font-bold text-ez-text">{col.label}</p>
                     </div>
-                    <span className="text-xs text-[#B0ADA6] font-bold">
+                    <span className="text-xs text-ez-faint font-bold">
                       {colItems.length}
                     </span>
                   </div>
@@ -453,7 +453,7 @@ export default function DeliveriesModule({ storeId }: DeliveriesModuleProps) {
                   {/* Cards */}
                   <div className="flex-1 overflow-y-auto p-3 space-y-3">
                     {colItems.length === 0 ? (
-                      <div className="text-center py-8 text-[#B0ADA6]">
+                      <div className="text-center py-8 text-ez-faint">
                         <Package className="w-6 h-6 mx-auto mb-2 opacity-30" />
                         <p className="text-xs">Aucune</p>
                       </div>
@@ -463,7 +463,7 @@ export default function DeliveriesModule({ storeId }: DeliveriesModuleProps) {
                           key={d.delivery_id}
                           draggable={!col.terminal}
                           onDragStart={() => onDragStart(d.delivery_id)}
-                          className={`bg-white border border-[#E8E5DE] rounded-xl p-3 space-y-2 shadow-sm ${
+                          className={`bg-white border border-ez-border rounded-xl p-3 space-y-2 shadow-sm ${
                             !col.terminal
                               ? 'cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow'
                               : ''
@@ -472,13 +472,13 @@ export default function DeliveriesModule({ storeId }: DeliveriesModuleProps) {
                           {/* Card header */}
                           <div className="flex items-start justify-between">
                             <div className="min-w-0 flex-1">
-                              <p className="text-xs font-bold text-[#1A1A1A]">
+                              <p className="text-xs font-bold text-ez-text">
                                 {d.delivery_id}
                               </p>
-                              <p className="text-xs text-[#6B6860] truncate">
+                              <p className="text-xs text-ez-subtle truncate">
                                 {d.client_name}
                               </p>
-                              <p className="text-[10px] text-[#B0ADA6]">
+                              <p className="text-xs text-ez-faint">
                                 {d.client_phone}
                               </p>
                             </div>
@@ -503,14 +503,14 @@ export default function DeliveriesModule({ storeId }: DeliveriesModuleProps) {
                               {formatMAD(d.montant_total)}
                             </span>
                             {d.montant_avance > 0 && (
-                              <span className="text-[10px] text-amber-600">
+                              <span className="text-xs text-amber-600">
                                 +{formatMAD(d.montant_avance)}
                               </span>
                             )}
                           </div>
 
                           {/* Scenario badge */}
-                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#F8F7F4] border border-[#E8E5DE] text-[#6B6860]">
+                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-ez-bg border border-ez-border text-ez-subtle">
                             {SCENARIO_SHORT[d.payment_scenario]}
                           </span>
 
@@ -520,7 +520,7 @@ export default function DeliveriesModule({ storeId }: DeliveriesModuleProps) {
                               delivery:    d,
                               device_name: d.delivery_items[0]?.device_id ?? '—',
                             })}
-                            className="w-full text-[10px] py-1 rounded-lg border border-[#E8E5DE] text-[#6B6860] hover:bg-[#F8F7F4] transition-all flex items-center justify-center gap-1"
+                            className="w-full text-xs py-1 rounded-lg border border-ez-border text-ez-subtle hover:bg-ez-bg transition-all flex items-center justify-center gap-1"
                           >
                             <Printer className="w-3 h-3" /> Étiquette
                           </button>
@@ -534,7 +534,7 @@ export default function DeliveriesModule({ storeId }: DeliveriesModuleProps) {
                                   <button
                                     key={nc.key}
                                     onClick={() => updateStatus(d.delivery_id, nc.key)}
-                                    className="text-[9px] px-1.5 py-0.5 rounded-lg border border-[#E8E5DE] text-[#6B6860] hover:bg-[#F8F7F4] transition-all whitespace-nowrap"
+                                    className="text-[9px] px-1.5 py-0.5 rounded-lg border border-ez-border text-ez-subtle hover:bg-ez-bg transition-all whitespace-nowrap"
                                   >
                                     → {nc.label.split(' ')[0]}
                                   </button>
@@ -573,10 +573,10 @@ export default function DeliveriesModule({ storeId }: DeliveriesModuleProps) {
       ) : (
         /* ── List view ── */
         <div className="flex-1 overflow-auto px-4 sm:px-6 pb-6 pt-4">
-          <div className="bg-white border border-[#E8E5DE] rounded-2xl overflow-hidden">
+          <div className="bg-white border border-ez-border rounded-2xl overflow-hidden">
             {/* Table header */}
             <div
-              className="grid border-b border-[#F2F0EB] px-5 py-3 text-[10px] font-bold text-[#B0ADA6] uppercase tracking-widest"
+              className="grid border-b border-ez-muted px-5 py-3 text-xs font-bold text-ez-faint uppercase tracking-wide"
               style={{ gridTemplateColumns: '1fr 1.5fr 0.5fr 1fr 1fr 1fr' }}
             >
               <span>ID</span>
@@ -588,7 +588,7 @@ export default function DeliveriesModule({ storeId }: DeliveriesModuleProps) {
             </div>
 
             {deliveries.length === 0 ? (
-              <div className="text-center py-16 text-[#B0ADA6]">
+              <div className="text-center py-16 text-ez-faint">
                 <Truck className="w-8 h-8 mx-auto mb-3 opacity-40" />
                 <p className="text-sm">Aucune livraison enregistrée</p>
               </div>
@@ -598,24 +598,24 @@ export default function DeliveriesModule({ storeId }: DeliveriesModuleProps) {
                 return (
                   <div
                     key={d.delivery_id}
-                    className="grid items-center px-5 py-3.5 border-b border-[#F2F0EB] last:border-0 hover:bg-[#F8F7F4] transition-all"
+                    className="grid items-center px-5 py-3.5 border-b border-ez-muted last:border-0 hover:bg-ez-bg transition-all"
                     style={{ gridTemplateColumns: '1fr 1.5fr 0.5fr 1fr 1fr 1fr' }}
                   >
-                    <p className="text-xs font-mono font-bold text-[#1A1A1A]">
+                    <p className="text-xs font-mono font-bold text-ez-text">
                       {d.delivery_id}
                     </p>
                     <div>
-                      <p className="text-xs font-bold text-[#1A1A1A]">{d.client_name}</p>
-                      <p className="text-[10px] text-[#B0ADA6]">{d.client_phone}</p>
+                      <p className="text-xs font-bold text-ez-text">{d.client_name}</p>
+                      <p className="text-xs text-ez-faint">{d.client_phone}</p>
                     </div>
-                    <p className="text-xs text-[#6B6860]">
+                    <p className="text-xs text-ez-subtle">
                       {d.delivery_items.length}
                     </p>
-                    <p className="text-[10px] text-[#6B6860]">
+                    <p className="text-xs text-ez-subtle">
                       {SCENARIO_SHORT[d.payment_scenario]}
                     </p>
                     <span
-                      className="inline-flex items-center text-[10px] font-bold px-2 py-1 rounded-full border w-fit"
+                      className="inline-flex items-center text-xs font-bold px-2 py-1 rounded-full border w-fit"
                       style={{
                         color:           col?.color,
                         borderColor:     col?.color,
@@ -646,7 +646,7 @@ export default function DeliveriesModule({ storeId }: DeliveriesModuleProps) {
           <div className="grid grid-cols-2 gap-3">
 
             <div className="col-span-2">
-              <label className="text-xs font-bold text-[#6B6860] uppercase tracking-widest block mb-1">
+              <label className="text-xs font-bold text-ez-subtle uppercase tracking-widest block mb-1">
                 Nom client *
               </label>
               <input
@@ -658,7 +658,7 @@ export default function DeliveriesModule({ storeId }: DeliveriesModuleProps) {
             </div>
 
             <div>
-              <label className="text-xs font-bold text-[#6B6860] uppercase tracking-widest block mb-1">
+              <label className="text-xs font-bold text-ez-subtle uppercase tracking-widest block mb-1">
                 Téléphone *
               </label>
               <input
@@ -670,7 +670,7 @@ export default function DeliveriesModule({ storeId }: DeliveriesModuleProps) {
             </div>
 
             <div>
-              <label className="text-xs font-bold text-[#6B6860] uppercase tracking-widest block mb-1">
+              <label className="text-xs font-bold text-ez-subtle uppercase tracking-widest block mb-1">
                 Scénario paiement *
               </label>
               <Select
@@ -685,7 +685,7 @@ export default function DeliveriesModule({ storeId }: DeliveriesModuleProps) {
             </div>
 
             <div className="col-span-2">
-              <label className="text-xs font-bold text-[#6B6860] uppercase tracking-widest block mb-1">
+              <label className="text-xs font-bold text-ez-subtle uppercase tracking-widest block mb-1">
                 Adresse de livraison *
               </label>
               <input
@@ -697,7 +697,7 @@ export default function DeliveriesModule({ storeId }: DeliveriesModuleProps) {
             </div>
 
             <div>
-              <label className="text-xs font-bold text-[#6B6860] uppercase tracking-widest block mb-1">
+              <label className="text-xs font-bold text-ez-subtle uppercase tracking-widest block mb-1">
                 Montant total (MAD) *
               </label>
               <input
@@ -711,7 +711,7 @@ export default function DeliveriesModule({ storeId }: DeliveriesModuleProps) {
 
             {form.payment_scenario !== 'paiement_livraison' && (
               <div>
-                <label className="text-xs font-bold text-[#6B6860] uppercase tracking-widest block mb-1">
+                <label className="text-xs font-bold text-ez-subtle uppercase tracking-widest block mb-1">
                   Avance reçue (MAD)
                 </label>
                 <input
@@ -724,7 +724,7 @@ export default function DeliveriesModule({ storeId }: DeliveriesModuleProps) {
             )}
 
             <div className="col-span-2">
-              <label className="text-xs font-bold text-[#6B6860] uppercase tracking-widest block mb-1">
+              <label className="text-xs font-bold text-ez-subtle uppercase tracking-widest block mb-1">
                 Appareil *
               </label>
               <div className="flex gap-2">
@@ -747,7 +747,7 @@ export default function DeliveriesModule({ storeId }: DeliveriesModuleProps) {
             </div>
 
             <div className="col-span-2">
-              <label className="text-xs font-bold text-[#6B6860] uppercase tracking-widest block mb-1">
+              <label className="text-xs font-bold text-ez-subtle uppercase tracking-widest block mb-1">
                 Notes
               </label>
               <textarea

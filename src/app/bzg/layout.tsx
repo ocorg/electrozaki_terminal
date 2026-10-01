@@ -40,7 +40,7 @@ export default function BZGLayout({ children }: { children: React.ReactNode }) {
             </span>
             <button
               onClick={() => setSidebarOpen(true)}
-              className="p-2 rounded-lg text-[#6B6860] hover:bg-[#F5F3FF] transition-all"
+              className="p-2 rounded-lg text-ez-subtle hover:bg-[#F5F3FF] transition-all"
             >
               <Menu className="w-5 h-5" />
             </button>

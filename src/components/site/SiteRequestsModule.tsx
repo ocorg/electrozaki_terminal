@@ -94,7 +94,7 @@ export default function SiteRequestsModule() {
           </span>
           <Chip tone={REPAIR_STATUS[r.status].tone}>{isAr ? REPAIR_STATUS[r.status].ar : REPAIR_STATUS[r.status].fr}</Chip>
         </div>
-        <p className="inline-flex items-center gap-1 text-[11px] font-bold text-ez-subtle uppercase tracking-wide">
+        <p className="inline-flex items-center gap-1 text-xs font-bold text-ez-subtle uppercase tracking-wide">
           <KindIcon className="w-3.5 h-3.5" />{codeLabel('repair_kind', kind.code, lang)}
         </p>
         <p className="font-bold text-ez-text">{r.customerName}</p>

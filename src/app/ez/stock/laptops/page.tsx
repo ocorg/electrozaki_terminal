@@ -100,7 +100,7 @@ export default function EZLaptopsPage() {
           actions={
             <div className="flex items-center gap-2">
               <button onClick={fetchLaptops} disabled={manualRefresh}
-                className="p-2 rounded-xl border border-[#E8E5DE] bg-white text-[#6B6860] hover:bg-[#F8F7F4] transition-all">
+                className="p-2 rounded-xl border border-ez-border bg-white text-ez-subtle hover:bg-ez-bg transition-all">
                 <RefreshCw className={`w-4 h-4 ${manualRefresh ? 'animate-spin' : ''}`} />
               </button>
               <Btn variant="primary" onClick={openAdd} style={{ backgroundColor: primary } as React.CSSProperties}>
@@ -113,12 +113,12 @@ export default function EZLaptopsPage() {
 
         <div className="flex gap-3">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#B0ADA6]" />
-            <input className="w-full pl-9 pr-4 py-2.5 bg-white border border-[#E8E5DE] rounded-xl text-sm placeholder:text-[#B0ADA6] focus:outline-none"
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ez-faint" />
+            <input className="w-full pl-9 pr-4 py-2.5 bg-white border border-ez-border rounded-xl text-sm placeholder:text-ez-placeholder focus:outline-none"
               placeholder={isAr ? 'بحث...' : 'Rechercher série, marque, modèle...'}
               value={search} onChange={e => setSearch(e.target.value)} />
           </div>
-          <Select className="text-sm border border-[#E8E5DE] rounded-xl px-3 py-2.5 bg-white text-[#6B6860] focus:outline-none"
+          <Select className="text-sm border border-ez-border rounded-xl px-3 py-2.5 bg-white text-ez-subtle focus:outline-none"
             value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
             <option value="">{t(isAr, 'common.allStatuses')}</option>
             {STATUSES.map(s => <option key={s} value={s}>{codeLabel('device_status', s, isAr ? 'ar' : 'fr')}</option>)}
@@ -127,9 +127,9 @@ export default function EZLaptopsPage() {
       </div>
 
       <div className="flex-1 overflow-auto px-4 sm:px-6 pb-6">
-        <div className="bg-white border border-[#E8E5DE] rounded-2xl overflow-hidden">
+        <div className="bg-white border border-ez-border rounded-2xl overflow-hidden">
           {loading ? (
-            <div className="divide-y divide-[#F2F0EB]">{[...Array(4)].map((_, i) => <SkeletonRow key={i} />)}</div>
+            <div className="divide-y divide-ez-muted">{[...Array(4)].map((_, i) => <SkeletonRow key={i} />)}</div>
           ) : laptops.length === 0 ? (
             <EmptyState icon={<LaptopIcon className="w-7 h-7" />}
               title={isAr ? 'لا توجد لابتوبات' : 'Aucun laptop'}
@@ -137,7 +137,7 @@ export default function EZLaptopsPage() {
                 <Plus className="w-4 h-4" />{t(isAr, 'common.add')}
               </Btn>} />
           ) : (
-            <div className="divide-y divide-[#F2F0EB]">
+            <div className="divide-y divide-ez-muted">
               {laptops.map(laptop => {
                 const name = `${laptop.marque} ${laptop.model}${laptop.stockage ? ' ' + laptop.stockage : ''}`
                 const warrantyFlag = getWarrantyFlag(
@@ -147,19 +147,19 @@ export default function EZLaptopsPage() {
                 )
                 return (
                   <div key={laptop.laptop_id}
-                    className="flex items-center gap-4 px-5 py-3.5 hover:bg-[#F8F7F4] transition-all">
+                    className="flex items-center gap-4 px-5 py-3.5 hover:bg-ez-bg transition-all">
                     <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
                       style={{ backgroundColor: `${primary}12` }}>
                       <LaptopIcon className="w-4 h-4" style={{ color: primary }} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-[#1A1A1A] truncate">
+                      <p className="text-sm font-medium text-ez-text truncate">
                         {name} {warrantyFlag && <span>{warrantyFlag}</span>}
                       </p>
                       <div className="flex items-center gap-3 mt-0.5">
                         <BatteryBar level={laptop.battery_level} />
-                        {laptop.ram && <span className="text-xs text-[#B0ADA6]">{laptop.ram}</span>}
-                        <span className="text-xs text-[#B0ADA6] flex items-center gap-1">
+                        {laptop.ram && <span className="text-xs text-ez-faint">{laptop.ram}</span>}
+                        <span className="text-xs text-ez-faint flex items-center gap-1">
                           <MapPin className="w-3 h-3" />
                           {laptop.location === 'magasin_principal' ? (isAr ? 'الرئيسي' : 'Principal') : (isAr ? 'الثاني' : 'Secondaire')}
                         </span>
@@ -173,7 +173,7 @@ export default function EZLaptopsPage() {
                         </p>
                       )}
                       <button onClick={() => openEdit(laptop)}
-                        className="p-1.5 rounded-lg text-[#B0ADA6] hover:text-[#1A1A1A] hover:bg-[#F2F0EB] transition-all">
+                        className="p-1.5 rounded-lg text-ez-faint hover:text-ez-text hover:bg-ez-muted transition-all">
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
@@ -261,8 +261,8 @@ export default function EZLaptopsPage() {
             </Field>
           </div>
           {canFinancials && (
-            <div className="border-t border-[#E8E5DE] pt-4">
-              <p className="text-xs font-bold text-[#6B6860] uppercase tracking-widest mb-4">
+            <div className="border-t border-ez-border pt-4">
+              <p className="text-xs font-bold text-ez-subtle uppercase tracking-widest mb-4">
                 {isAr ? 'الأسعار' : 'Prix'}
               </p>
               <div className="grid grid-cols-3 gap-4">
@@ -287,7 +287,7 @@ export default function EZLaptopsPage() {
               </div>
             </div>
           )}
-          <div className="flex gap-3 justify-end pt-2 border-t border-[#E8E5DE]">
+          <div className="flex gap-3 justify-end pt-2 border-t border-ez-border">
             <Btn variant="secondary" type="button" onClick={() => setFormOpen(false)}>
               {t(isAr, 'common.cancel')}
             </Btn>

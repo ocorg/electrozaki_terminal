@@ -122,13 +122,13 @@ export default function BZGDashboard() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="font-display text-3xl font-bold text-[#1A1A1A] tracking-wide">
+          <h1 className="font-display text-3xl font-bold text-ez-text tracking-wide">
             {isAr ? 'لوحة BZG' : 'Tableau de bord BZG'}
           </h1>
-          <p className="text-[#6B6860] text-sm mt-1">
+          <p className="text-ez-subtle text-sm mt-1">
             {isAr ? `مرحباً، ${user?.display_name}` : `Bonjour, ${user?.display_name}`}
             {lastSync && (
-              <span className="ml-3 text-[#B0ADA6] text-xs">
+              <span className="ml-3 text-ez-faint text-xs">
                 <Clock className="w-3 h-3 inline mb-0.5" />
                 {' '}{lastSync.toLocaleTimeString('fr-FR', { timeZone: STORE_TIME_ZONE, hour: '2-digit', minute: '2-digit' })}
               </span>
@@ -152,14 +152,14 @@ export default function BZGDashboard() {
         ].map(kpi => {
           const Icon = kpi.icon
           return (
-            <div key={kpi.label} className="bg-white border border-[#E8E5DE] rounded-2xl p-5"
+            <div key={kpi.label} className="bg-white border border-ez-border rounded-2xl p-5"
                  style={{ borderLeftColor: kpi.color, borderLeftWidth: '3px' }}>
               <div className="flex items-start justify-between mb-2">
-                <p className="text-[#6B6860] text-xs">{kpi.label}</p>
+                <p className="text-ez-subtle text-xs">{kpi.label}</p>
                 <Icon className="w-4 h-4" style={{ color: kpi.color }} />
               </div>
-              {loading ? <div className="h-7 bg-[#F2F0EB] rounded w-1/2 animate-pulse" />
-                       : <p className="font-display text-2xl font-bold text-[#1A1A1A]">{kpi.value}</p>}
+              {loading ? <div className="h-7 bg-ez-muted rounded w-1/2 animate-pulse" />
+                       : <p className="font-display text-2xl font-bold text-ez-text">{kpi.value}</p>}
             </div>
           )
         })}
@@ -181,18 +181,18 @@ export default function BZGDashboard() {
             : '#B0ADA6'
 
           return (
-            <div key={store.id} className="bg-white border-2 border-[#E8E5DE] rounded-2xl overflow-hidden"
+            <div key={store.id} className="bg-white border-2 border-ez-border rounded-2xl overflow-hidden"
                  style={{ borderTopColor: store.color, borderTopWidth: '3px' }}>
-              <div className="flex items-center gap-3 px-5 py-4 border-b border-[#E8E5DE]">
+              <div className="flex items-center gap-3 px-5 py-4 border-b border-ez-border">
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center"
                      style={{ backgroundColor: store.bg }}>
                   <span className="text-xs font-bold" style={{ color: store.color }}>
                     {store.id.split('-')[0]}
                   </span>
                 </div>
-                <h3 className="font-display font-bold text-[#1A1A1A] tracking-wide">{store.name}</h3>
+                <h3 className="font-display font-bold text-ez-text tracking-wide">{store.name}</h3>
               </div>
-              <div className="grid grid-cols-2 gap-px bg-[#F2F0EB]">
+              <div className="grid grid-cols-2 gap-px bg-ez-muted">
                 {[
                   { label: isAr ? 'اليوم' : "Aujourd'hui", value: snap ? formatMAD(snap.ca_today) : '—' },
                   { label: isAr ? 'الشهر' : 'Ce mois',     value: snap ? formatMAD(snap.ca_month) : '—' },
@@ -200,9 +200,9 @@ export default function BZGDashboard() {
                   { label: isAr ? 'صندوق الدفع' : 'Caisse', value: caisseLabel, valueColor: caisseColor },
                 ].map(cell => (
                   <div key={cell.label} className="bg-white px-4 py-3">
-                    <p className="text-xs text-[#B0ADA6] mb-1">{cell.label}</p>
+                    <p className="text-xs text-ez-faint mb-1">{cell.label}</p>
                     {loading
-                      ? <div className="h-5 bg-[#F2F0EB] rounded w-2/3 animate-pulse" />
+                      ? <div className="h-5 bg-ez-muted rounded w-2/3 animate-pulse" />
                       : <p className="font-bold text-sm" style={{ color: cell.valueColor || '#1A1A1A' }}>
                           {cell.value}
                         </p>
@@ -219,10 +219,10 @@ export default function BZGDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         {/* Pending EOD approvals */}
-        <div className="bg-white border border-[#E8E5DE] rounded-2xl overflow-hidden">
-          <div className="flex items-center gap-2 px-5 py-4 border-b border-[#E8E5DE]">
+        <div className="bg-white border border-ez-border rounded-2xl overflow-hidden">
+          <div className="flex items-center gap-2 px-5 py-4 border-b border-ez-border">
             <Vault className="w-4 h-4 text-[#F59E0B]" />
-            <h2 className="font-display font-bold text-[#1A1A1A] tracking-wide">
+            <h2 className="font-display font-bold text-ez-text tracking-wide">
               {isAr ? 'موافقات الإغلاق المعلقة' : 'Clôtures en attente'}
             </h2>
             {pendingEOD.length > 0 && (
@@ -232,25 +232,25 @@ export default function BZGDashboard() {
             )}
           </div>
           {loading ? (
-            <div className="divide-y divide-[#F2F0EB]"><SkeletonRow /><SkeletonRow /></div>
+            <div className="divide-y divide-ez-muted"><SkeletonRow /><SkeletonRow /></div>
           ) : pendingEOD.length === 0 ? (
             <EmptyState
               icon={<CheckCircle className="w-6 h-6 text-emerald-400" />}
               title={isAr ? 'لا يوجد شيء معلق' : 'Aucune clôture en attente'}
             />
           ) : (
-            <div className="divide-y divide-[#F2F0EB]">
+            <div className="divide-y divide-ez-muted">
               {pendingEOD.map(eod => {
                 const store = STORES.find(s => s.id === eod.store_id)
                 return (
                   <div key={eod.caisse_id} className="p-5">
                     <div className="flex items-center justify-between mb-3">
                       <div>
-                        <p className="font-medium text-sm text-[#1A1A1A]">{eod.store_name}</p>
-                        <p className="text-xs text-[#B0ADA6]">{formatDate(eod.date)}</p>
+                        <p className="font-medium text-sm text-ez-text">{eod.store_name}</p>
+                        <p className="text-xs text-ez-faint">{formatDate(eod.date)}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-xs text-[#6B6860]">
+                        <p className="text-xs text-ez-subtle">
                           {t(isAr, 'common.gap')}
                         </p>
                         <p className={`font-bold text-sm ${!eod.ecart || eod.ecart === 0 ? 'text-emerald-600' : 'text-red-500'}`}>
@@ -259,13 +259,13 @@ export default function BZGDashboard() {
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-2 mb-3 text-xs">
-                      <div className="bg-[#F8F7F4] rounded-lg px-3 py-2">
-                        <p className="text-[#B0ADA6]">{isAr ? 'متوقع' : 'Théorique'}</p>
-                        <p className="font-bold text-[#1A1A1A]">{eod.solde_theorique != null ? formatMAD(eod.solde_theorique) : '—'}</p>
+                      <div className="bg-ez-bg rounded-lg px-3 py-2">
+                        <p className="text-ez-faint">{isAr ? 'متوقع' : 'Théorique'}</p>
+                        <p className="font-bold text-ez-text">{eod.solde_theorique != null ? formatMAD(eod.solde_theorique) : '—'}</p>
                       </div>
-                      <div className="bg-[#F8F7F4] rounded-lg px-3 py-2">
-                        <p className="text-[#B0ADA6]">{isAr ? 'فعلي' : 'Réel'}</p>
-                        <p className="font-bold text-[#1A1A1A]">{eod.solde_reel != null ? formatMAD(eod.solde_reel) : '—'}</p>
+                      <div className="bg-ez-bg rounded-lg px-3 py-2">
+                        <p className="text-ez-faint">{isAr ? 'فعلي' : 'Réel'}</p>
+                        <p className="font-bold text-ez-text">{eod.solde_reel != null ? formatMAD(eod.solde_reel) : '—'}</p>
                       </div>
                     </div>
                     <div className="flex gap-2">
@@ -294,39 +294,39 @@ export default function BZGDashboard() {
         </div>
 
         {/* Staff presence today */}
-        <div className="bg-white border border-[#E8E5DE] rounded-2xl overflow-hidden">
-          <div className="flex items-center gap-2 px-5 py-4 border-b border-[#E8E5DE]">
+        <div className="bg-white border border-ez-border rounded-2xl overflow-hidden">
+          <div className="flex items-center gap-2 px-5 py-4 border-b border-ez-border">
             <Users className="w-4 h-4 text-[#6366F1]" />
-            <h2 className="font-display font-bold text-[#1A1A1A] tracking-wide">
+            <h2 className="font-display font-bold text-ez-text tracking-wide">
               {isAr ? 'حضور الفريق اليوم' : "Présence équipe aujourd'hui"}
             </h2>
           </div>
           {loading ? (
-            <div className="divide-y divide-[#F2F0EB]"><SkeletonRow /><SkeletonRow /></div>
+            <div className="divide-y divide-ez-muted"><SkeletonRow /><SkeletonRow /></div>
           ) : staffLatest.length === 0 ? (
             <EmptyState
               icon={<Users className="w-6 h-6" />}
               title={isAr ? 'لا يوجد حضور مسجل' : 'Aucune présence enregistrée'}
             />
           ) : (
-            <div className="divide-y divide-[#F2F0EB]">
+            <div className="divide-y divide-ez-muted">
               {staffLatest.map(p => {
                 const store = STORES.find(s => s.id === p.store_id)
                 const isIn  = p.punch_type === 'entree'
                 return (
                   <div key={p.user_name} className="flex items-center gap-4 px-5 py-3">
-                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${isIn ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${isIn ? 'bg-emerald-500' : 'bg-[#D4D0C8]'}`} />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-[#1A1A1A]">{p.user_name}</p>
-                      <p className="text-xs text-[#B0ADA6]" style={{ color: store?.color }}>
+                      <p className="text-sm font-medium text-ez-text">{p.user_name}</p>
+                      <p className="text-xs text-ez-faint" style={{ color: store?.color }}>
                         {store?.name ?? p.store_id}
                       </p>
                     </div>
                     <div className="text-right flex-shrink-0">
-                      <p className={`text-xs font-bold ${isIn ? 'text-emerald-600' : 'text-slate-500'}`}>
+                      <p className={`text-xs font-bold ${isIn ? 'text-emerald-600' : 'text-ez-faint'}`}>
                         {isIn ? (t(isAr, 'common.present')) : (t(isAr, 'common.exited'))}
                       </p>
-                      <p className="text-xs text-[#B0ADA6]">
+                      <p className="text-xs text-ez-faint">
                         {new Date(p.punched_at).toLocaleTimeString('fr-FR', { timeZone: STORE_TIME_ZONE, hour: '2-digit', minute: '2-digit' })}
                       </p>
                     </div>

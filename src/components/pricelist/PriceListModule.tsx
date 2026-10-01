@@ -63,35 +63,35 @@ export default function PriceListModule() {
         <PageHeader title="Liste des prix" subtitle="Prix de vente et dernier prix (le minimum en négociation)"
           actions={
             <button type="button" onClick={() => window.print()}
-              className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[#E8E5DE] bg-white text-sm text-[#1A1A1A] hover:border-[#C9A440]">
+              className="flex items-center gap-2 px-3 py-2 rounded-xl border border-ez-border bg-white text-sm text-ez-text hover:border-gold">
               <Printer className="w-4 h-4" />Imprimer
             </button>
           } />
-        <div className="flex gap-1 p-1 bg-white border border-[#E8E5DE] rounded-xl w-fit">
+        <div className="flex gap-1 p-1 bg-white border border-ez-border rounded-xl w-fit">
           {([['phones', 'Téléphones disponibles', Smartphone, phonesQ.data?.length], ['accessories', 'Accessoires', Package, accQ.data?.filter(a => a.quantite > 0).length]] as const).map(([k, label, Icon, n]) => (
             <button key={k} type="button" onClick={() => { setTab(k); setGroup('') }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold ${tab === k ? 'bg-[#1A1A1A] text-white' : 'text-[#6B6860]'}`}>
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold ${tab === k ? 'bg-ez-dark text-white' : 'text-ez-subtle'}`}>
               <Icon className="w-4 h-4" />{label}{n !== undefined && <span className="opacity-60">{n}</span>}
             </button>
           ))}
         </div>
         <div className="flex flex-wrap gap-2">
           <div className="relative flex-1 min-w-[14rem]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#B0ADA6]" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ez-faint" />
             <input value={q} onChange={e => setQ(e.target.value)}
               placeholder={tab === 'phones' ? 'Modèle, stockage, couleur, IMEI…' : 'Nom, marque, catégorie…'}
-              className="w-full pl-9 pr-9 py-2.5 bg-white border border-[#E8E5DE] rounded-xl text-sm focus:outline-none focus:border-[#C9A440]" />
-            {q && <button type="button" onClick={() => setQ('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#B0ADA6]"><X className="w-4 h-4" /></button>}
+              className="w-full pl-9 pr-9 py-2.5 bg-white border border-ez-border rounded-xl text-sm focus:outline-none focus:border-gold" />
+            {q && <button type="button" onClick={() => setQ('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-ez-faint"><X className="w-4 h-4" /></button>}
           </div>
           <Select value={group} onChange={e => setGroup(e.target.value)}
-            className="text-sm border border-[#E8E5DE] rounded-xl px-3 py-2 bg-white text-[#6B6860]">
+            className="text-sm border border-ez-border rounded-xl px-3 py-2 bg-white text-ez-subtle">
             <option value="">{tab === 'phones' ? 'Toutes les marques' : 'Toutes les catégories'}</option>
             {tab === 'phones'
               ? brands.map(b => <option key={b} value={b}>{b}</option>)
               : accCats.map(c => <option key={c.code} value={c.code}>{c.fr}</option>)}
           </Select>
           {tab === 'accessories' && (
-            <label className="flex items-center gap-2 text-sm text-[#6B6860] px-2">
+            <label className="flex items-center gap-2 text-sm text-ez-subtle px-2">
               <input type="checkbox" checked={withEmpty} onChange={e => setWithEmpty(e.target.checked)} />Afficher les épuisés
             </label>
           )}
@@ -106,7 +106,7 @@ export default function PriceListModule() {
 
       <div className="flex-1 overflow-y-auto px-4 sm:px-6 pb-6 print:overflow-visible print:px-0">
         {loading ? (
-          <div className="bg-white border border-[#E8E5DE] rounded-2xl">{[0, 1, 2].map(i => <SkeletonRow key={i} />)}</div>
+          <div className="bg-white border border-ez-border rounded-2xl">{[0, 1, 2].map(i => <SkeletonRow key={i} />)}</div>
         ) : tab === 'phones' ? (
           <List
             count={phones.length}
@@ -116,12 +116,12 @@ export default function PriceListModule() {
               return {
                 key: p.phone_id,
                 cells: [
-                  <span key="n"><b className="text-[#1A1A1A]">{phoneName(p)}{p.stockage ? ` ${p.stockage}` : ''}</b>{p.couleur && <span className="text-[#6B6860]"> · {p.couleur}</span>}</span>,
-                  <span key="e" className="text-[#6B6860]">{p.condition === 'neuf' ? 'Neuf' : 'Occasion'}{p.battery_level != null ? ` · 🔋${p.battery_level}%` : ''}{p.is_damaged ? ' · endommagé' : ''}</span>,
-                  <span key="i" className="font-mono text-xs text-[#8A877F]">{p.imei ?? '—'}</span>,
+                  <span key="n"><b className="text-ez-text">{phoneName(p)}{p.stockage ? ` ${p.stockage}` : ''}</b>{p.couleur && <span className="text-ez-subtle"> · {p.couleur}</span>}</span>,
+                  <span key="e" className="text-ez-subtle">{p.condition === 'neuf' ? 'Neuf' : 'Occasion'}{p.battery_level != null ? ` · 🔋${p.battery_level}%` : ''}{p.is_damaged ? ' · endommagé' : ''}</span>,
+                  <span key="i" className="font-mono text-xs text-ez-faint">{p.imei ?? '—'}</span>,
                   promo !== null
-                    ? <span key="p"><s className="text-[#8A877F] text-xs mr-1">{mad(p.prix_vente_recommande)}</s><b className="text-[#A8862E]">{mad(Math.round(promo))}</b></span>
-                    : <b key="p" className="text-[#1A1A1A]">{mad(p.prix_vente_recommande)}</b>,
+                    ? <span key="p"><s className="text-ez-faint text-xs mr-1">{mad(p.prix_vente_recommande)}</s><b className="text-[#A8862E]">{mad(Math.round(promo))}</b></span>
+                    : <b key="p" className="text-ez-text">{mad(p.prix_vente_recommande)}</b>,
                   <b key="m" className="text-emerald-700">{mad(p.prix_vente_minimum)}</b>,
                 ],
               }
@@ -134,10 +134,10 @@ export default function PriceListModule() {
             rows={accessories.map(a => ({
               key: a.acc_id,
               cells: [
-                <span key="n"><b className="text-[#1A1A1A]">{a.nom}</b>{a.marque && <span className="text-[#6B6860]"> · {a.marque}</span>}</span>,
-                <span key="c" className="text-[#6B6860]">{categoryLabel(accCats, a.categorie, false)}</span>,
-                <span key="s" className={a.quantite > 0 ? 'text-[#1A1A1A]' : 'text-red-600'}>{a.quantite}</span>,
-                <b key="p" className="text-[#1A1A1A]">{mad(a.prix_vente_recommande)}</b>,
+                <span key="n"><b className="text-ez-text">{a.nom}</b>{a.marque && <span className="text-ez-subtle"> · {a.marque}</span>}</span>,
+                <span key="c" className="text-ez-subtle">{categoryLabel(accCats, a.categorie, false)}</span>,
+                <span key="s" className={a.quantite > 0 ? 'text-ez-text' : 'text-red-600'}>{a.quantite}</span>,
+                <b key="p" className="text-ez-text">{mad(a.prix_vente_recommande)}</b>,
                 <b key="m" className="text-emerald-700">{mad(a.prix_vente_minimum)}</b>,
               ],
             }))}
@@ -150,17 +150,17 @@ export default function PriceListModule() {
 
 /** Table on wide screens and paper, cards on phones. */
 function List({ head, rows, count }: { head: string[]; rows: { key: string; cells: React.ReactNode[] }[]; count: number }) {
-  if (count === 0) return <p className="text-sm text-[#8A877F] bg-white border border-[#E8E5DE] rounded-2xl p-4">Aucun article.</p>
+  if (count === 0) return <p className="text-sm text-ez-faint bg-white border border-ez-border rounded-2xl p-4">Aucun article.</p>
   return (
-    <div className="bg-white border border-[#E8E5DE] rounded-2xl overflow-hidden print:border-0 print:rounded-none">
-      <p className="px-4 py-2 text-xs text-[#8A877F] border-b border-[#F2F0EB] print:hidden">{count} article(s)</p>
+    <div className="bg-white border border-ez-border rounded-2xl overflow-hidden print:border-0 print:rounded-none">
+      <p className="px-4 py-2 text-xs text-ez-faint border-b border-ez-muted print:hidden">{count} article(s)</p>
       <table className="w-full text-sm hidden md:table print:table">
         <thead>
-          <tr className="text-[11px] uppercase tracking-wide text-[#8A877F] border-b border-[#E8E5DE]">
+          <tr className="text-xs uppercase tracking-wide text-ez-faint border-b border-ez-border">
             {head.map((h, i) => <th key={h} className={`py-2 px-3 font-semibold ${i >= head.length - 2 ? 'text-right' : 'text-left'}`}>{h}</th>)}
           </tr>
         </thead>
-        <tbody className="divide-y divide-[#F2F0EB]">
+        <tbody className="divide-y divide-ez-muted">
           {rows.map(r => (
             <tr key={r.key} className="break-inside-avoid">
               {r.cells.map((c, i) => <td key={i} className={`py-2 px-3 ${i >= r.cells.length - 2 ? 'text-right tabular-nums whitespace-nowrap' : ''}`}>{c}</td>)}
@@ -168,14 +168,14 @@ function List({ head, rows, count }: { head: string[]; rows: { key: string; cell
           ))}
         </tbody>
       </table>
-      <div className="md:hidden print:hidden divide-y divide-[#F2F0EB]">
+      <div className="md:hidden print:hidden divide-y divide-ez-muted">
         {rows.map(r => (
           <div key={r.key} className="px-4 py-3 space-y-1">
             <div className="text-[15px]">{r.cells[0]}</div>
             <div className="text-xs flex flex-wrap gap-x-3">{r.cells[1]}{r.cells[2]}</div>
             <div className="flex justify-between text-sm pt-1">
-              <span><span className="text-xs text-[#8A877F]">Prix </span>{r.cells[3]}</span>
-              <span><span className="text-xs text-[#8A877F]">Dernier prix </span>{r.cells[4]}</span>
+              <span><span className="text-xs text-ez-faint">Prix </span>{r.cells[3]}</span>
+              <span><span className="text-xs text-ez-faint">Dernier prix </span>{r.cells[4]}</span>
             </div>
           </div>
         ))}

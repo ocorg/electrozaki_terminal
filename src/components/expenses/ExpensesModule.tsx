@@ -171,29 +171,29 @@ export default function ExpensesModule({ storeId }: ExpensesModuleProps) {
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 gap-4">
-        <div className="bg-white border border-[#E8E5DE] rounded-2xl p-5"
+        <div className="bg-white border border-ez-border rounded-2xl p-5"
              style={{ borderLeftColor: primary, borderLeftWidth: '3px' }}>
-          <p className="text-xs text-[#6B6860] mb-1">{isAr ? 'اليوم' : "Aujourd'hui"}</p>
-          <p className="font-display text-2xl font-bold text-[#1A1A1A]">{formatMAD(totalToday)}</p>
+          <p className="text-xs text-ez-subtle mb-1">{isAr ? 'اليوم' : "Aujourd'hui"}</p>
+          <p className="font-display text-2xl font-bold text-ez-text">{formatMAD(totalToday)}</p>
         </div>
-        <div className="bg-white border border-[#E8E5DE] rounded-2xl p-5"
+        <div className="bg-white border border-ez-border rounded-2xl p-5"
              style={{ borderLeftColor: '#EF4444', borderLeftWidth: '3px' }}>
-          <p className="text-xs text-[#6B6860] mb-1">{isAr ? 'إجمالي الفترة' : 'Total période'}</p>
-          <p className="font-display text-2xl font-bold text-[#1A1A1A]">{formatMAD(totalPeriod)}</p>
+          <p className="text-xs text-ez-subtle mb-1">{isAr ? 'إجمالي الفترة' : 'Total période'}</p>
+          <p className="font-display text-2xl font-bold text-ez-text">{formatMAD(totalPeriod)}</p>
         </div>
       </div>
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
         <div className="flex items-center gap-2">
-          <Calendar className="w-4 h-4 text-[#B0ADA6]" />
+          <Calendar className="w-4 h-4 text-ez-faint" />
           <input
             type="date"
             className={`${inputClass} w-auto text-sm py-2`}
             value={dateFrom}
             onChange={e => setDateFrom(e.target.value)}
           />
-          <span className="text-[#B0ADA6] text-sm">→</span>
+          <span className="text-ez-faint text-sm">→</span>
           <input
             type="date"
             className={`${inputClass} w-auto text-sm py-2`}
@@ -215,16 +215,16 @@ export default function ExpensesModule({ storeId }: ExpensesModuleProps) {
         </Select>
         <button
           onClick={fetchExpenses}
-          className="p-2 rounded-xl border border-[#E8E5DE] bg-white text-[#6B6860] hover:bg-[#F8F7F4] transition-all"
+          className="p-2 rounded-xl border border-ez-border bg-white text-ez-subtle hover:bg-ez-bg transition-all"
         >
           <RefreshCw className={`w-4 h-4 ${manualRefresh ? 'animate-spin' : ''}`} />
         </button>
       </div>
 
       {/* List */}
-      <div className="bg-white border border-[#E8E5DE] rounded-2xl overflow-hidden">
+      <div className="bg-white border border-ez-border rounded-2xl overflow-hidden">
         {loading ? (
-          <div className="divide-y divide-[#F2F0EB]">
+          <div className="divide-y divide-ez-muted">
             {[...Array(4)].map((_, i) => <SkeletonRow key={i} />)}
           </div>
         ) : expenses.length === 0 ? (
@@ -240,18 +240,18 @@ export default function ExpensesModule({ storeId }: ExpensesModuleProps) {
             }
           />
         ) : (
-          <div className="divide-y divide-[#F2F0EB]">
+          <div className="divide-y divide-ez-muted">
             {expenses.map(exp => {
               const Icon = getCatIcon(exp.categorie)
               return (
                 <div key={exp.exp_id}
-                     className="flex items-center gap-4 px-5 py-3.5 hover:bg-[#F8F7F4] transition-all">
+                     className="flex items-center gap-4 px-5 py-3.5 hover:bg-ez-bg transition-all">
                   <div className="w-9 h-9 rounded-xl bg-red-50 flex items-center justify-center flex-shrink-0">
                     <Icon className="w-4 h-4 text-red-500" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-[#1A1A1A]">{getCatLabel(exp.categorie)}</p>
-                    <p className="text-xs text-[#B0ADA6]">
+                    <p className="text-sm font-medium text-ez-text">{getCatLabel(exp.categorie)}</p>
+                    <p className="text-xs text-ez-faint">
                       {formatDate(exp.date)}
                       {exp.facture_ref && ` · Réf: ${exp.facture_ref}`}
                       {exp.notes && ` · ${exp.notes}`}
@@ -264,7 +264,7 @@ export default function ExpensesModule({ storeId }: ExpensesModuleProps) {
                     <button
                       onClick={() => handleDelete(exp.exp_id)}
                       disabled={deleting === exp.exp_id}
-                      className="p-1.5 rounded-lg text-[#B0ADA6] hover:text-red-500 hover:bg-red-50 transition-all flex-shrink-0 disabled:opacity-50"
+                      className="p-1.5 rounded-lg text-ez-faint hover:text-red-500 hover:bg-red-50 transition-all flex-shrink-0 disabled:opacity-50"
                     >
                       {deleting === exp.exp_id
                         ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -377,11 +377,11 @@ export default function ExpensesModule({ storeId }: ExpensesModuleProps) {
                     setUploading(false)
                   }
                 }}
-                className="w-full text-sm text-[#6B6860] file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-[#F2F0EB] file:text-[#1A1A1A] cursor-pointer"
+                className="w-full text-sm text-ez-subtle file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-ez-muted file:text-ez-text cursor-pointer"
               />
-              {uploading && <p className="text-xs text-[#B0ADA6]">{isAr ? 'جارٍ الرفع...' : 'Téléversement...'}</p>}
+              {uploading && <p className="text-xs text-ez-faint">{isAr ? 'جارٍ الرفع...' : 'Téléversement...'}</p>}
               {form.receipt_photo_url && (
-                <img src={form.receipt_photo_url} alt="reçu" className="h-24 rounded-xl object-cover border border-[#E8E5DE]" />
+                <img src={form.receipt_photo_url} alt="reçu" className="h-24 rounded-xl object-cover border border-ez-border" />
               )}
             </div>
           </Field>      

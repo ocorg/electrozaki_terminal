@@ -195,10 +195,10 @@ export default function RetourModal({ open, onClose, storeId, primary, onRetourD
       <div className="space-y-4">
 
         {/* Tabs */}
-        <div className="flex gap-1 p-1 bg-[#F8F7F4] border border-[#E8E5DE] rounded-xl w-fit">
+        <div className="flex gap-1 p-1 bg-ez-bg border border-ez-border rounded-xl w-fit">
           {([['sale', L("Retour d'une vente", 'إرجاع بيع'), RotateCcw], ['avoirs', L('Avoirs', 'الأرصدة'), Ticket]] as const).map(([key, label, Icon]) => (
             <button key={key} type="button" onClick={() => { setTab(key); setQ(''); setSelected(null); setPayout(null) }}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${tab === key ? 'bg-white shadow-sm text-[#1A1A1A]' : 'text-[#6B6860]'}`}>
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${tab === key ? 'bg-white shadow-sm text-ez-text' : 'text-ez-subtle'}`}>
               <Icon className="w-3.5 h-3.5" />{label}
             </button>
           ))}
@@ -207,36 +207,36 @@ export default function RetourModal({ open, onClose, storeId, primary, onRetourD
         {/* Search */}
         <div className="space-y-2">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#B0ADA6]" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ez-faint" />
             <input autoFocus value={q} onChange={e => setQ(e.target.value)}
               placeholder={tab === 'sale'
                 ? L('Client, téléphone, article, IMEI ou n° de vente (TXN-…)', 'العميل، الهاتف، المنتج، IMEI أو رقم البيع')
                 : L('Client, téléphone ou n° d’avoir (RET-…)', 'العميل، الهاتف أو رقم الرصيد')}
-              className="w-full pl-9 pr-9 py-2.5 bg-white border border-[#E8E5DE] rounded-xl text-sm placeholder:text-[#B0ADA6] focus:outline-none focus:border-[#C9A440]" />
+              className="w-full pl-9 pr-9 py-2.5 bg-white border border-ez-border rounded-xl text-sm placeholder:text-ez-placeholder focus:outline-none focus:border-gold" />
             {q && (
-              <button type="button" onClick={() => setQ('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#B0ADA6] hover:text-[#1A1A1A]">
+              <button type="button" onClick={() => setQ('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-ez-faint hover:text-ez-text">
                 <X className="w-4 h-4" />
               </button>
             )}
           </div>
           {tab === 'sale' && (
-            <div className="flex flex-wrap items-center gap-2 text-xs text-[#6B6860]">
+            <div className="flex flex-wrap items-center gap-2 text-xs text-ez-subtle">
               <span>{L('Vendu entre le', 'بيع بين')}</span>
-              <input type="date" value={from} onChange={e => setFrom(e.target.value)} className="border border-[#E8E5DE] rounded-lg px-2 py-1" />
+              <input type="date" value={from} onChange={e => setFrom(e.target.value)} className="border border-ez-border rounded-lg px-2 py-1" />
               <span>{L('et le', 'و')}</span>
-              <input type="date" value={to} onChange={e => setTo(e.target.value)} className="border border-[#E8E5DE] rounded-lg px-2 py-1" />
+              <input type="date" value={to} onChange={e => setTo(e.target.value)} className="border border-ez-border rounded-lg px-2 py-1" />
               {(from || to) && <button type="button" onClick={() => { setFrom(''); setTo('') }} className="text-red-500">{L('Effacer', 'مسح')}</button>}
             </div>
           )}
         </div>
 
         {/* Results */}
-        <div className="max-h-64 overflow-y-auto border border-[#E8E5DE] rounded-xl divide-y divide-[#F2F0EB]">
+        <div className="max-h-64 overflow-y-auto border border-ez-border rounded-xl divide-y divide-ez-muted">
           {loading ? (
-            <div className="flex items-center justify-center py-10"><Loader2 className="w-5 h-5 text-[#B0ADA6] animate-spin" /></div>
+            <div className="flex items-center justify-center py-10"><Loader2 className="w-5 h-5 text-ez-faint animate-spin" /></div>
           ) : tab === 'sale' ? (
             sales.length === 0 ? (
-              <p className="text-center text-sm text-[#B0ADA6] py-10">{q || from || to ? L('Aucune vente trouvée', 'لا توجد نتائج') : L('Aucune vente', 'لا توجد مبيعات')}</p>
+              <p className="text-center text-sm text-ez-faint py-10">{q || from || to ? L('Aucune vente trouvée', 'لا توجد نتائج') : L('Aucune vente', 'لا توجد مبيعات')}</p>
             ) : sales.map(s => {
               const done = leftQty(s) <= 0
               const w    = warranty(s)
@@ -246,11 +246,11 @@ export default function RetourModal({ open, onClose, storeId, primary, onRetourD
                   className="w-full flex items-start gap-4 px-4 py-3 text-left transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{ backgroundColor: on ? `${primary}12` : 'white', borderLeft: on ? `3px solid ${primary}` : '3px solid transparent' }}>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-[#1A1A1A] truncate">{s.qty > 1 ? `${s.qty} × ` : ''}{s.device_label}</p>
-                    <p className="text-xs text-[#6B6860]">
+                    <p className="text-sm font-bold text-ez-text truncate">{s.qty > 1 ? `${s.qty} × ` : ''}{s.device_label}</p>
+                    <p className="text-xs text-ez-subtle">
                       <span className="font-mono">{s.txn_id}</span> · {s.client?.nom ?? L('Comptoir', 'عميل عابر')}{s.client?.telephone ? ` · ${s.client.telephone}` : ''}
                     </p>
-                    <p className="text-xs text-[#B0ADA6] flex flex-wrap items-center gap-x-2">
+                    <p className="text-xs text-ez-faint flex flex-wrap items-center gap-x-2">
                       <span>{day(s.date_vente)} · {codeLabel('payment_method', s.payment_method as Code<'payment_method'>, lang)}</span>
                       {w && <span className={w.ok ? 'text-emerald-600' : 'text-red-500'}>{w.ok ? '✓ ' : ''}{w.text}</span>}
                     </p>
@@ -264,13 +264,13 @@ export default function RetourModal({ open, onClose, storeId, primary, onRetourD
             })
           ) : (
             avoirs.length === 0 ? (
-              <p className="text-center text-sm text-[#B0ADA6] py-10">{L('Aucun avoir disponible', 'لا توجد أرصدة')}</p>
+              <p className="text-center text-sm text-ez-faint py-10">{L('Aucun avoir disponible', 'لا توجد أرصدة')}</p>
             ) : avoirs.map(a => (
               <div key={a.retour_id} className="flex items-center gap-3 px-4 py-3">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-[#1A1A1A]"><span className="font-mono">{a.retour_id}</span> · {a.client?.nom ?? L('Client comptoir', 'عميل عابر')}</p>
-                  <p className="text-xs text-[#6B6860] truncate">{L('Retour de', 'إرجاع')} {a.item} · {day(a.date)}</p>
-                  <p className="text-xs text-[#B0ADA6]">{L('Solde', 'الرصيد')} <b className="text-emerald-700">{formatMAD(a.avoir_solde)}</b> / {formatMAD(a.montant)}</p>
+                  <p className="text-sm font-bold text-ez-text"><span className="font-mono">{a.retour_id}</span> · {a.client?.nom ?? L('Client comptoir', 'عميل عابر')}</p>
+                  <p className="text-xs text-ez-subtle truncate">{L('Retour de', 'إرجاع')} {a.item} · {day(a.date)}</p>
+                  <p className="text-xs text-ez-faint">{L('Solde', 'الرصيد')} <b className="text-emerald-700">{formatMAD(a.avoir_solde)}</b> / {formatMAD(a.montant)}</p>
                 </div>
                 <div className="flex flex-col gap-1.5 flex-shrink-0">
                   <Btn size="sm" onClick={() => { onAvoir({ retour_id: a.retour_id, solde: a.avoir_solde, label: a.item }); onClose() }}
@@ -279,7 +279,7 @@ export default function RetourModal({ open, onClose, storeId, primary, onRetourD
                   </Btn>
                   {isManager && (
                     <button type="button" onClick={() => { setPayout(a); setPayoutAmt(a.avoir_solde); setPayoutMode('especes') }}
-                      className="text-[11px] font-bold text-[#6B6860] hover:text-red-600">
+                      className="text-xs font-bold text-ez-subtle hover:text-red-600">
                       {L('Rembourser le solde', 'استرداد الرصيد')}
                     </button>
                   )}
@@ -291,18 +291,18 @@ export default function RetourModal({ open, onClose, storeId, primary, onRetourD
 
         {/* ── Return form ── */}
         {tab === 'sale' && selected && (
-          <div className="bg-[#F8F7F4] border border-[#E8E5DE] rounded-xl p-4 space-y-3">
+          <div className="bg-ez-bg border border-ez-border rounded-xl p-4 space-y-3">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-sm font-bold truncate">{selected.device_label}</p>
-                <p className="text-xs text-[#6B6860]"><span className="font-mono">{selected.txn_id}</span> · {selected.client?.nom ?? '—'} · {day(selected.date_vente)}</p>
+                <p className="text-xs text-ez-subtle"><span className="font-mono">{selected.txn_id}</span> · {selected.client?.nom ?? '—'} · {day(selected.date_vente)}</p>
               </div>
               {(() => {
                 const w = warranty(selected)
                 if (!w) return null
                 const Icon = w.ok ? ShieldCheck : ShieldOff
                 return (
-                  <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-lg border flex-shrink-0 ${w.ok ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-600'}`}>
+                  <span className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-lg border flex-shrink-0 ${w.ok ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-600'}`}>
                     <Icon className="w-3.5 h-3.5" />{w.ok ? L('Sous garantie', 'تحت الضمان') : L('Garantie expirée', 'انتهى الضمان')}
                   </span>
                 )
@@ -312,24 +312,24 @@ export default function RetourModal({ open, onClose, storeId, primary, onRetourD
             <div className="grid grid-cols-2 gap-3">
               {leftQty(selected) > 1 ? (
                 <div>
-                  <label className="text-xs font-bold text-[#6B6860] block mb-1">{L(`Quantité rendue (sur ${leftQty(selected)})`, 'الكمية المرجعة')}</label>
+                  <label className="text-xs font-bold text-ez-subtle block mb-1">{L(`Quantité rendue (sur ${leftQty(selected)})`, 'الكمية المرجعة')}</label>
                   <div className="flex items-center gap-2">
-                    <button type="button" onClick={() => changeQty(qty - 1)} className="w-8 h-8 rounded-lg border border-[#E8E5DE] bg-white font-bold">−</button>
+                    <button type="button" onClick={() => changeQty(qty - 1)} className="w-8 h-8 rounded-lg border border-ez-border bg-white font-bold">−</button>
                     <span className="w-8 text-center font-bold">{qty}</span>
-                    <button type="button" onClick={() => changeQty(qty + 1)} className="w-8 h-8 rounded-lg border border-[#E8E5DE] bg-white font-bold">+</button>
+                    <button type="button" onClick={() => changeQty(qty + 1)} className="w-8 h-8 rounded-lg border border-ez-border bg-white font-bold">+</button>
                   </div>
                 </div>
               ) : <div />}
               <div>
-                <label className="text-xs font-bold text-[#6B6860] block mb-1">{L(`Montant (max ${formatMAD(leftMoney(selected))})`, 'المبلغ')}</label>
+                <label className="text-xs font-bold text-ez-subtle block mb-1">{L(`Montant (max ${formatMAD(leftMoney(selected))})`, 'المبلغ')}</label>
                 <input type="number" min={0} max={leftMoney(selected)} value={montant}
                   onChange={e => setMontant(Math.max(0, Math.min(leftMoney(selected), Number(e.target.value) || 0)))}
-                  className="w-full border border-[#E8E5DE] rounded-xl px-3 py-2 text-sm bg-white focus:outline-none" />
+                  className="w-full border border-ez-border rounded-xl px-3 py-2 text-sm bg-white focus:outline-none" />
               </div>
             </div>
 
             <div>
-              <p className="text-xs font-bold text-[#6B6860] mb-1">{L('Rendre au client', 'الإرجاع للعميل')}</p>
+              <p className="text-xs font-bold text-ez-subtle mb-1">{L('Rendre au client', 'الإرجاع للعميل')}</p>
               <div className="grid grid-cols-3 gap-2">
                 {(['especes', 'virement', 'avoir'] as Mode[]).map(m => (
                   <button key={m} type="button" onClick={() => setMode(m)} style={choice(mode === m)}
@@ -339,7 +339,7 @@ export default function RetourModal({ open, onClose, storeId, primary, onRetourD
                 ))}
               </div>
               {mode === 'avoir' && (
-                <p className="text-[11px] text-[#6B6860] mt-1">
+                <p className="text-xs text-ez-subtle mt-1">
                   {L("Aucun argent ne sort : l'avoir est ajouté à la vente en cours, le client paie la différence. Un solde restant reste utilisable plus tard.",
                     'لا يخرج أي مال: يضاف الرصيد إلى البيع الحالي')}
                 </p>
@@ -347,7 +347,7 @@ export default function RetourModal({ open, onClose, storeId, primary, onRetourD
             </div>
 
             <div>
-              <p className="text-xs font-bold text-[#6B6860] mb-1">{L("L'article va", 'وجهة المنتج')}</p>
+              <p className="text-xs font-bold text-ez-subtle mb-1">{L("L'article va", 'وجهة المنتج')}</p>
               <div className="grid grid-cols-3 gap-2">
                 {destinations.map(d => (
                   <button key={d} type="button" onClick={() => setDest(d)} style={choice(dest === d)}
@@ -357,7 +357,7 @@ export default function RetourModal({ open, onClose, storeId, primary, onRetourD
                 ))}
               </div>
               {dest === 'defectueux' && (
-                <p className="text-[11px] text-[#6B6860] mt-1">
+                <p className="text-xs text-ez-subtle mt-1">
                   {selected.device_type === 'accessoire'
                     ? L("Non remis en stock (perte).", 'لا يعاد إلى المخزون')
                     : L('Remis en stock avec la mention « endommagé » (hors site web).', 'يعاد مع علامة معطوب')}
@@ -366,22 +366,22 @@ export default function RetourModal({ open, onClose, storeId, primary, onRetourD
             </div>
 
             <div>
-              <label className="text-xs font-bold text-[#6B6860] block mb-1">{L('Motif du retour *', 'سبب الإرجاع *')}</label>
+              <label className="text-xs font-bold text-ez-subtle block mb-1">{L('Motif du retour *', 'سبب الإرجاع *')}</label>
               <input value={reason} onChange={e => setReason(e.target.value)}
                 placeholder={L('Ex : défaut écran, ne correspond pas, changement de modèle…', 'مثال: عيب في الشاشة...')}
-                className="w-full border border-[#E8E5DE] rounded-xl px-3 py-2 text-sm bg-white focus:outline-none" />
+                className="w-full border border-ez-border rounded-xl px-3 py-2 text-sm bg-white focus:outline-none" />
             </div>
           </div>
         )}
 
         {/* ── Pay back what is left on a store credit ── */}
         {tab === 'avoirs' && payout && (
-          <div className="bg-[#F8F7F4] border border-[#E8E5DE] rounded-xl p-4 space-y-3">
+          <div className="bg-ez-bg border border-ez-border rounded-xl p-4 space-y-3">
             <p className="text-sm font-bold">{L(`Rembourser l'avoir ${payout.retour_id}`, `استرداد الرصيد ${payout.retour_id}`)}</p>
             <div className="grid grid-cols-2 gap-3">
               <input type="number" min={1} max={payout.avoir_solde} value={payoutAmt}
                 onChange={e => setPayoutAmt(Math.max(0, Math.min(payout.avoir_solde, Number(e.target.value) || 0)))}
-                className="border border-[#E8E5DE] rounded-xl px-3 py-2 text-sm bg-white" />
+                className="border border-ez-border rounded-xl px-3 py-2 text-sm bg-white" />
               <div className="grid grid-cols-2 gap-2">
                 {(['especes', 'virement'] as const).map(m => (
                   <button key={m} type="button" onClick={() => setPayoutMode(m)} style={choice(payoutMode === m)}

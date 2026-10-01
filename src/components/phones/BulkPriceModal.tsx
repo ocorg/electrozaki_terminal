@@ -55,7 +55,7 @@ export default function BulkPriceModal({ open, onClose, storeId, brands }: { ope
   const blocking = changed.some(r => r.warning === 'Dernier prix au-dessus du prix de vente')
   const choice = <T extends string>(value: T, current: T, set: (v: T) => void, label: string) => (
     <button key={value} type="button" onClick={() => { set(value); reset() }}
-      className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${current === value ? 'bg-[#1A1A1A] border-[#1A1A1A] text-white' : 'bg-white border-[#E8E5DE] text-[#6B6860]'}`}>
+      className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${current === value ? 'bg-ez-dark border-ez-dark text-white' : 'bg-white border-ez-border text-ez-subtle'}`}>
       {label}
     </button>
   )
@@ -92,7 +92,7 @@ export default function BulkPriceModal({ open, onClose, storeId, brands }: { ope
           </Field>
         </div>
 
-        <div className="flex flex-wrap items-end gap-3 p-3 rounded-xl bg-[#F8F7F4] border border-[#E8E5DE]">
+        <div className="flex flex-wrap items-end gap-3 p-3 rounded-xl bg-ez-bg border border-ez-border">
           <div className="flex gap-2">
             {choice('1' as string, String(direction), v => setDirection(v === '1' ? 1 : -1), 'Hausse +')}
             {choice('-1' as string, String(direction), v => setDirection(v === '1' ? 1 : -1), 'Baisse −')}
@@ -114,34 +114,34 @@ export default function BulkPriceModal({ open, onClose, storeId, brands }: { ope
         </div>
 
         {field === 'vente' && (
-          <p className="text-xs text-[#6B6860]">
+          <p className="text-xs text-ez-subtle">
             Seul le prix de vente change : le vendeur pourra toujours descendre jusqu’à l’ancien dernier prix. Choisissez « Les deux » pour relever aussi le dernier prix.
           </p>
         )}
 
         {rows && (
-          <div className="border border-[#E8E5DE] rounded-xl overflow-hidden">
-            <p className="px-3 py-2 text-sm font-semibold bg-[#F8F7F4] border-b border-[#E8E5DE]">
+          <div className="border border-ez-border rounded-xl overflow-hidden">
+            <p className="px-3 py-2 text-sm font-semibold bg-ez-bg border-b border-ez-border">
               {changed.length} téléphone(s) concerné(s)
             </p>
             {rows.length === 0 ? (
-              <p className="px-3 py-4 text-sm text-[#8A877F]">Aucun téléphone ne correspond à ces critères.</p>
+              <p className="px-3 py-4 text-sm text-ez-faint">Aucun téléphone ne correspond à ces critères.</p>
             ) : (
-              <div className="max-h-72 overflow-y-auto divide-y divide-[#F2F0EB]">
+              <div className="max-h-72 overflow-y-auto divide-y divide-ez-muted">
                 {rows.map(r => (
                   <div key={r.phone_id} className="px-3 py-2 text-sm flex flex-wrap items-center gap-x-4 gap-y-1">
                     <div className="flex-1 min-w-[12rem]">
-                      <p className="font-medium text-[#1A1A1A]">{r.name}</p>
-                      <p className="text-xs text-[#8A877F] font-mono">{r.phone_id}</p>
+                      <p className="font-medium text-ez-text">{r.name}</p>
+                      <p className="text-xs text-ez-faint font-mono">{r.phone_id}</p>
                     </div>
                     {field !== 'minimum' && (
                       <span className="tabular-nums text-xs flex items-center gap-1">
-                        <span className="text-[#8A877F]">Vente</span> {mad(r.pv)} <ArrowRight className="w-3 h-3" /> <b>{mad(r.newPv)}</b>
+                        <span className="text-ez-faint">Vente</span> {mad(r.pv)} <ArrowRight className="w-3 h-3" /> <b>{mad(r.newPv)}</b>
                       </span>
                     )}
                     {field !== 'vente' && (
                       <span className="tabular-nums text-xs flex items-center gap-1">
-                        <span className="text-[#8A877F]">Dernier</span> {mad(r.pm)} <ArrowRight className="w-3 h-3" /> <b>{mad(r.newPm)}</b>
+                        <span className="text-ez-faint">Dernier</span> {mad(r.pm)} <ArrowRight className="w-3 h-3" /> <b>{mad(r.newPm)}</b>
                       </span>
                     )}
                     {r.warning && <span className="w-full text-xs text-amber-700 flex items-center gap-1"><AlertTriangle className="w-3 h-3" />{r.warning}</span>}

@@ -313,14 +313,14 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
             : `${credits.length} client(s) avec solde ouvert · Total : ${formatMAD(totalDue)}`}
           actions={
             <button onClick={handleManualRefresh} disabled={manualRefresh}
-              className="p-2 rounded-xl border border-[#E8E5DE] bg-white text-[#6B6860] hover:bg-[#F5F3FF] transition-all">
+              className="p-2 rounded-xl border border-ez-border bg-white text-ez-subtle hover:bg-[#F5F3FF] transition-all">
               <RefreshCw className={`w-4 h-4 ${manualRefresh ? 'animate-spin' : ''}`} />
             </button>
           }
         />
 
         {/* Tabs */}
-        <div className="flex gap-1 p-1 bg-[#F2F0EB] rounded-2xl w-fit">
+        <div className="flex gap-1 p-1 bg-ez-muted rounded-2xl w-fit">
           {[
             { key: 'credits', label: isAr ? 'الذمم الحالية' : 'Crédits en cours' },
             { key: 'imports', label: isAr ? 'استيراد تاريخي' : 'Import historique' },
@@ -328,8 +328,8 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
             <button key={t.key} onClick={() => setTab(t.key as 'credits' | 'imports')}
               className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
                 tab === t.key
-                  ? 'bg-white text-[#1A1A1A] shadow-sm'
-                  : 'text-[#6B6860] hover:text-[#1A1A1A]'
+                  ? 'bg-white text-ez-text shadow-sm'
+                  : 'text-ez-subtle hover:text-ez-text'
               }`}>
               {t.label}
             </button>
@@ -342,9 +342,9 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
 
         {/* ── TAB 1 — Crédits en cours ─────────────────────── */}
         {tab === 'credits' && (
-          <div className="bg-white border border-[#E8E5DE] rounded-2xl overflow-hidden">
+          <div className="bg-white border border-ez-border rounded-2xl overflow-hidden">
             {loading ? (
-              <div className="divide-y divide-[#F2F0EB]">
+              <div className="divide-y divide-ez-muted">
                 {[...Array(4)].map((_, i) => <SkeletonRow key={i} />)}
               </div>
             ) : credits.length === 0 ? (
@@ -353,28 +353,28 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
                 title={isAr ? 'لا توجد ذمم مفتوحة' : 'Aucun crédit en cours'}
               />
             ) : (
-              <div className="divide-y divide-[#F2F0EB]">
+              <div className="divide-y divide-ez-muted">
                 {/* Table header */}
-                <div className="hidden sm:grid grid-cols-4 gap-4 px-5 py-3 bg-[#F8F7F4]">
+                <div className="hidden sm:grid grid-cols-4 gap-4 px-5 py-3 bg-ez-bg">
                   {[
                     t(isAr, 'common.client'),
                     t(isAr, 'common.phoneField'),
                     isAr ? 'الرصيد المستحق' : 'Solde dû',
                     '',
                   ].map((h, i) => (
-                    <p key={i} className="text-xs font-bold text-[#B0ADA6] uppercase tracking-wider">{h}</p>
+                    <p key={i} className="text-xs font-bold text-ez-faint uppercase tracking-wider">{h}</p>
                   ))}
                 </div>
                 {credits.map(c => (
                   <div key={c.client_id}
-                    className="grid grid-cols-1 sm:grid-cols-4 gap-2 sm:gap-4 items-center px-5 py-4 hover:bg-[#F8F7F4] transition-all">
+                    className="grid grid-cols-1 sm:grid-cols-4 gap-2 sm:gap-4 items-center px-5 py-4 hover:bg-ez-bg transition-all">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-xl bg-red-50 flex items-center justify-center flex-shrink-0">
                         <User className="w-4 h-4 text-red-500" />
                       </div>
-                      <p className="text-sm font-bold text-[#1A1A1A]">{c.nom}</p>
+                      <p className="text-sm font-bold text-ez-text">{c.nom}</p>
                     </div>
-                    <p className="text-sm text-[#6B6860] font-mono">{c.telephone}</p>
+                    <p className="text-sm text-ez-subtle font-mono">{c.telephone}</p>
                     <p className="text-sm font-bold text-red-500">{formatMAD(c.solde_impaye)}</p>
                     <button
                       onClick={() => { setPayTarget(c); setPayForm(f => ({ ...f, montant: String(c.solde_impaye) })) }}
@@ -393,8 +393,8 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
         {tab === 'imports' && (
           <div className="space-y-6">
             {/* Import form */}
-            <div className="bg-white border border-[#E8E5DE] rounded-2xl p-6 space-y-4">
-              <p className="text-sm font-bold text-[#1A1A1A] flex items-center gap-2">
+            <div className="bg-white border border-ez-border rounded-2xl p-6 space-y-4">
+              <p className="text-sm font-bold text-ez-text flex items-center gap-2">
                 <Plus className="w-4 h-4" />
                 {isAr ? 'إضافة دين تاريخي' : 'Importer un crédit historique'}
               </p>
@@ -409,8 +409,8 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
                     onClick={() => setImportForm(f => ({ ...f, useExisting: opt.v, client_id: '', client_name_free: '' }))}
                     className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all ${
                       importForm.useExisting === opt.v
-                        ? 'bg-[#1A1A1A] text-white border-[#1A1A1A]'
-                        : 'bg-white text-[#6B6860] border-[#E8E5DE]'
+                        ? 'bg-ez-dark text-white border-ez-dark'
+                        : 'bg-white text-ez-subtle border-ez-border'
                     }`}>
                     {opt.l}
                   </button>
@@ -422,7 +422,7 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
                 {importForm.useExisting ? (
                   <Field label={isAr ? 'العميل *' : 'Client *'}>
                     <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#B0ADA6]" />
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ez-faint" />
                       <input
                         className={`${inputClass} pl-9`}
                         placeholder={t(isAr, 'common.searchClient')}
@@ -432,7 +432,7 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
                         autoComplete="off"
                       />
                       {showClientDrop && clientSuggestions.length > 0 && (
-                        <div className="absolute z-30 w-full mt-1 bg-white border border-[#E8E5DE] rounded-xl shadow-xl overflow-hidden max-h-48 overflow-y-auto">
+                        <div className="absolute z-30 w-full mt-1 bg-white border border-ez-border rounded-xl shadow-xl overflow-hidden max-h-48 overflow-y-auto">
                           {clientSuggestions.map(c => (
                             <button key={c.client_id} type="button"
                               onMouseDown={() => {
@@ -440,10 +440,10 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
                                 setClientSearch(`${c.nom} — ${c.telephone}`)
                                 setShowClientDrop(false)
                               }}
-                              className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-[#F8F7F4] text-left border-b border-[#F2F0EB] last:border-0">
+                              className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-ez-bg text-left border-b border-ez-muted last:border-0">
                               <div className="flex-1 min-w-0">
-                                <p className="text-xs font-semibold text-[#1A1A1A] truncate">{c.nom}</p>
-                                <p className="text-[10px] text-[#B0ADA6] font-mono">{c.telephone}</p>
+                                <p className="text-xs font-semibold text-ez-text truncate">{c.nom}</p>
+                                <p className="text-xs text-ez-faint font-mono">{c.telephone}</p>
                               </div>
                             </button>
                           ))}
@@ -499,7 +499,7 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
               </div>
 
               <button onClick={submitImport} disabled={submitting}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#1A1A1A] text-white text-sm font-bold hover:bg-[#333] transition-all disabled:opacity-50">
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-ez-dark text-white text-sm font-bold hover:bg-[#333] transition-all disabled:opacity-50">
                 <Plus className="w-4 h-4" />
                 {submitting
                   ? (t(isAr, 'common.saving'))
@@ -509,13 +509,13 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
 
             {/* Imports table */}
             {imports.length > 0 && (
-              <div className="bg-white border border-[#E8E5DE] rounded-2xl overflow-hidden">
-                <div className="px-5 py-3 bg-[#F8F7F4] border-b border-[#E8E5DE]">
-                  <p className="text-xs font-bold text-[#B0ADA6] uppercase tracking-wider">
+              <div className="bg-white border border-ez-border rounded-2xl overflow-hidden">
+                <div className="px-5 py-3 bg-ez-bg border-b border-ez-border">
+                  <p className="text-xs font-bold text-ez-faint uppercase tracking-wider">
                     {isAr ? 'الديون المستوردة' : 'Crédits importés'} ({imports.length})
                   </p>
                 </div>
-                <div className="divide-y divide-[#F2F0EB]">
+                <div className="divide-y divide-ez-muted">
                   {imports.map(imp => {
                     const displayName = imp.clients?.nom ?? imp.client_name_free ?? '—'
                     const displayPhone = imp.clients?.telephone ?? imp.client_phone_free ?? '—'
@@ -523,17 +523,17 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
 
                     return (
                       <div key={imp.import_id}
-                        className="flex items-center gap-4 px-5 py-3 hover:bg-[#F8F7F4] transition-all flex-wrap">
+                        className="flex items-center gap-4 px-5 py-3 hover:bg-ez-bg transition-all flex-wrap">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <p className="text-sm font-bold text-[#1A1A1A]">{displayName}</p>
+                            <p className="text-sm font-bold text-ez-text">{displayName}</p>
                             {isUnlinked && (
-                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                              <span className="text-xs font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">
                                 {isAr ? 'غير مرتبط' : 'Non lié'}
                               </span>
                             )}
                           </div>
-                          <p className="text-xs text-[#B0ADA6] mt-0.5">
+                          <p className="text-xs text-ez-faint mt-0.5">
                             {displayPhone} · {formatDate(imp.date_origine)}
                             {imp.description && ` · ${imp.description}`}
                           </p>
@@ -545,12 +545,12 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
                               : formatMAD(imp.montant_du - (imp.montant_paye ?? 0))}
                           </p>
                           {(imp.montant_paye ?? 0) > 0 && (
-                            <p className="text-[10px] text-[#B0ADA6]">
+                            <p className="text-xs text-ez-faint">
                               {formatMAD(imp.montant_paye)} / {formatMAD(imp.montant_du)} {isAr ? 'مدفوع' : 'payé'}
                             </p>
                           )}
                           {imp.statut === 'solde' && (
-                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
+                            <span className="text-xs font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
                               {isAr ? 'مسدد' : 'Soldé'}
                             </span>
                           )}
@@ -641,7 +641,7 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
 
             <div className="flex gap-3 pt-2">
               <button onClick={() => setPayTarget(null)}
-                className="flex-1 py-2.5 rounded-xl border border-[#E8E5DE] text-sm font-bold text-[#6B6860] hover:bg-[#F8F7F4] transition-all">
+                className="flex-1 py-2.5 rounded-xl border border-ez-border text-sm font-bold text-ez-subtle hover:bg-ez-bg transition-all">
                 {t(isAr, 'common.cancel')}
               </button>
               <button onClick={submitPayment} disabled={submitting}
@@ -670,7 +670,7 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
                 </span>
               </p>
               {(importPayTarget.montant_paye ?? 0) > 0 && (
-                <p className="text-xs text-[#6B6860] mt-1">
+                <p className="text-xs text-ez-subtle mt-1">
                   {isAr ? 'مدفوع مسبقاً:' : 'Déjà réglé :'}{' '}
                   <span className="font-bold text-emerald-700">{formatMAD(importPayTarget.montant_paye)}</span>
                   {' '}{isAr ? 'من أصل' : 'sur'}{' '}
@@ -707,7 +707,7 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
             </Field>
             <div className="flex gap-3 pt-2">
               <button onClick={() => setImportPayTarget(null)}
-                className="flex-1 py-2.5 rounded-xl border border-[#E8E5DE] text-sm font-bold text-[#6B6860] hover:bg-[#F8F7F4] transition-all">
+                className="flex-1 py-2.5 rounded-xl border border-ez-border text-sm font-bold text-ez-subtle hover:bg-ez-bg transition-all">
                 {t(isAr, 'common.cancel')}
               </button>
               <button onClick={submitImportPayment} disabled={submitting}
@@ -727,13 +727,13 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
           onClose={() => setLinkTarget(null)}
         >
           <div className="space-y-4">
-            <p className="text-xs text-[#6B6860]">
+            <p className="text-xs text-ez-subtle">
               {isAr
                 ? `الدين المستورد: ${linkTarget.client_name_free} — ${formatMAD(linkTarget.montant_du)}`
                 : `Import : ${linkTarget.client_name_free} — ${formatMAD(linkTarget.montant_du)}`}
             </p>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#B0ADA6]" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ez-faint" />
               <input className={`${inputClass} pl-9`}
                 placeholder={t(isAr, 'common.searchClient')}
                 value={linkSearch}
@@ -741,16 +741,16 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
                 autoFocus />
             </div>
             {linkSuggestions.length > 0 && (
-              <div className="border border-[#E8E5DE] rounded-xl overflow-hidden max-h-48 overflow-y-auto">
+              <div className="border border-ez-border rounded-xl overflow-hidden max-h-48 overflow-y-auto">
                 {linkSuggestions.map(c => (
                   <button key={c.client_id}
                     onClick={() => linkImport(linkTarget.import_id, c.client_id)}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-[#F8F7F4] text-left border-b border-[#F2F0EB] last:border-0 transition-all">
+                    className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-ez-bg text-left border-b border-ez-muted last:border-0 transition-all">
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-[#1A1A1A]">{c.nom}</p>
-                      <p className="text-[10px] text-[#B0ADA6] font-mono">{c.telephone}</p>
+                      <p className="text-xs font-semibold text-ez-text">{c.nom}</p>
+                      <p className="text-xs text-ez-faint font-mono">{c.telephone}</p>
                     </div>
-                    <span className="text-[10px] font-bold text-blue-600">
+                    <span className="text-xs font-bold text-blue-600">
                       {isAr ? 'اختيار' : 'Choisir'}
                     </span>
                   </button>

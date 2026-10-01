@@ -116,7 +116,7 @@ export function ConfirmSaleModal({
             <h2 className="text-white font-semibold tracking-tight">
               Confirmer la vente
             </h2>
-            <p className="font-mono text-[#C9A440] text-xs mt-0.5 tracking-wide">
+            <p className="font-mono text-gold text-xs mt-0.5 tracking-wide">
               {doc_ref}
             </p>
           </div>
@@ -156,7 +156,7 @@ export function ConfirmSaleModal({
 
           {/* Amount */}
           <div>
-            <label className="block text-[10px] text-white/40 uppercase tracking-widest mb-2">
+            <label className="block text-xs text-white/40 uppercase tracking-widest mb-2">
               Montant encaissé (MAD)
             </label>
             <div className="relative">
@@ -170,7 +170,7 @@ export function ConfirmSaleModal({
                 placeholder="0.00"
                 className="w-full px-4 py-3.5 pr-16 bg-white/5 border border-white/15 rounded-xl
                            text-white text-2xl font-semibold tracking-tight focus:outline-none
-                           focus:border-[#C9A440]/60 transition-colors disabled:opacity-50
+                           focus:border-gold/60 transition-colors disabled:opacity-50
                            placeholder-white/15"
               />
               <span className="absolute right-4 top-1/2 -translate-y-1/2
@@ -182,7 +182,7 @@ export function ConfirmSaleModal({
 
           {/* Payment method */}
           <div>
-            <label className="block text-[10px] text-white/40 uppercase tracking-widest mb-2">
+            <label className="block text-xs text-white/40 uppercase tracking-widest mb-2">
               Mode de règlement
             </label>
             <div className="grid grid-cols-2 gap-3">
@@ -202,7 +202,7 @@ export function ConfirmSaleModal({
                     className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2
                                 transition-all duration-150 disabled:opacity-50 ${
                       active
-                        ? 'border-[#C9A440] bg-[#C9A440]/10 text-[#C9A440]'
+                        ? 'border-gold bg-gold/10 text-gold'
                         : 'border-white/10 bg-white/[0.03] text-white/35 hover:border-white/20 hover:text-white/60'
                     }`}
                   >
@@ -217,7 +217,7 @@ export function ConfirmSaleModal({
 
           {/* Optional notes */}
           <div>
-            <label className="block text-[10px] text-white/40 uppercase tracking-widest mb-2">
+            <label className="block text-xs text-white/40 uppercase tracking-widest mb-2">
               Notes <span className="normal-case text-white/25">(optionnel)</span>
             </label>
             <textarea
@@ -227,7 +227,7 @@ export function ConfirmSaleModal({
               rows={2}
               placeholder="Acompte, réduction, observations..."
               className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm
-                         text-white placeholder-white/20 focus:outline-none focus:border-[#C9A440]/50
+                         text-white placeholder-white/20 focus:outline-none focus:border-gold/50
                          transition-colors disabled:opacity-50 resize-none"
             />
           </div>
@@ -262,7 +262,7 @@ export function ConfirmSaleModal({
             onClick={handleConfirm}
             disabled={loading || amount <= 0}
             className="flex-1 flex items-center justify-center gap-2 px-4 py-3
-                       text-sm font-semibold bg-[#C9A440] hover:bg-[#d4aa48] text-black
+                       text-sm font-semibold bg-gold hover:bg-[#d4aa48] text-black
                        rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {loading ? (

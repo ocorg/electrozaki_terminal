@@ -217,7 +217,7 @@ export function SavTab() {
 
         {/* Lookup */}
         <section className="bg-white/[0.03] border border-white/10 rounded-2xl p-5">
-          <p className="text-[10px] text-white/40 uppercase tracking-widest mb-4">
+          <p className="text-xs text-white/40 uppercase tracking-widest mb-4">
             Recherche · البحث
           </p>
           <div className="flex gap-2">
@@ -229,13 +229,13 @@ export function SavTab() {
               placeholder="EZ-2025-000001 ou IMEI (15 chiffres)"
               className="flex-1 px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl
                          font-mono text-sm text-white placeholder-white/20 focus:outline-none
-                         focus:border-[#C9A440]/50 transition-colors"
+                         focus:border-gold/50 transition-colors"
             />
             <button
               onClick={handleLookup}
               disabled={looking}
-              className="flex items-center gap-2 px-4 py-2.5 bg-[#C9A440]/10
-                         hover:bg-[#C9A440]/20 border border-[#C9A440]/30 text-[#C9A440]
+              className="flex items-center gap-2 px-4 py-2.5 bg-gold/10
+                         hover:bg-gold/20 border border-gold/30 text-gold
                          rounded-xl transition-all disabled:opacity-40 text-sm"
             >
               {looking
@@ -274,7 +274,7 @@ export function SavTab() {
           <>
             {/* Mode */}
             <section className="bg-white/[0.03] border border-white/10 rounded-2xl p-5">
-              <p className="text-[10px] text-white/40 uppercase tracking-widest mb-4">
+              <p className="text-xs text-white/40 uppercase tracking-widest mb-4">
                 Mode
               </p>
               <div className="flex gap-2">
@@ -284,7 +284,7 @@ export function SavTab() {
                     onClick={() => set('mode', m)}
                     className={`flex-1 py-2.5 text-sm font-medium rounded-xl border transition-all ${
                       form.mode === m
-                        ? 'border-[#C9A440] bg-[#C9A440]/10 text-[#C9A440]'
+                        ? 'border-gold bg-gold/10 text-gold'
                         : 'border-white/10 text-white/40 hover:border-white/20 hover:text-white/60'
                     }`}
                   >
@@ -297,12 +297,12 @@ export function SavTab() {
             {/* PEC fields */}
             {(form.mode === 'PEC' || form.mode === 'BOTH') && (
               <section className="bg-white/[0.03] border border-white/10 rounded-2xl p-5">
-                <p className="text-[10px] text-white/40 uppercase tracking-widest mb-4">
+                <p className="text-xs text-white/40 uppercase tracking-widest mb-4">
                   Prise en charge · الاستلام
                 </p>
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-[10px] text-white/30 uppercase tracking-widest mb-1">
+                    <label className="block text-xs text-white/30 uppercase tracking-widest mb-1">
                       Problème signalé *
                     </label>
                     <textarea
@@ -312,11 +312,11 @@ export function SavTab() {
                       placeholder="Description du problème rapporté par le client..."
                       className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg
                                  text-white text-sm placeholder-white/15 focus:outline-none
-                                 focus:border-[#C9A440]/50 transition-colors resize-none"
+                                 focus:border-gold/50 transition-colors resize-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] text-white/30 uppercase tracking-widest mb-2">
+                    <label className="block text-xs text-white/30 uppercase tracking-widest mb-2">
                       Défauts constatés à l'accueil
                     </label>
                     <div className="grid grid-cols-2 gap-2">
@@ -342,7 +342,7 @@ export function SavTab() {
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-[10px] text-white/30 uppercase tracking-widest mb-1">
+                      <label className="block text-xs text-white/30 uppercase tracking-widest mb-1">
                         Accessoires déposés
                       </label>
                       <input
@@ -352,11 +352,11 @@ export function SavTab() {
                         placeholder="Câble, coque..."
                         className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg
                                    text-white text-sm placeholder-white/15 focus:outline-none
-                                   focus:border-[#C9A440]/50 transition-colors"
+                                   focus:border-gold/50 transition-colors"
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] text-white/30 uppercase tracking-widest mb-1">
+                      <label className="block text-xs text-white/30 uppercase tracking-widest mb-1">
                         Date prévue de retour
                       </label>
                       <input
@@ -364,7 +364,7 @@ export function SavTab() {
                         value={form.date_prevue}
                         onChange={e => set('date_prevue', e.target.value)}
                         className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg
-                                   text-white text-sm focus:outline-none focus:border-[#C9A440]/50 transition-colors"
+                                   text-white text-sm focus:outline-none focus:border-gold/50 transition-colors"
                       />
                     </div>
                   </div>
@@ -375,12 +375,12 @@ export function SavTab() {
             {/* RST fields */}
             {(form.mode === 'RST' || form.mode === 'BOTH') && (
               <section className="bg-white/[0.03] border border-white/10 rounded-2xl p-5">
-                <p className="text-[10px] text-white/40 uppercase tracking-widest mb-4">
+                <p className="text-xs text-white/40 uppercase tracking-widest mb-4">
                   Restitution · الإرجاع
                 </p>
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-[10px] text-white/30 uppercase tracking-widest mb-1">
+                    <label className="block text-xs text-white/30 uppercase tracking-widest mb-1">
                       Interventions / Pièces remplacées
                     </label>
                     <textarea
@@ -390,18 +390,18 @@ export function SavTab() {
                       placeholder="Remplacement batterie, écran, connecteur charge..."
                       className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg
                                  text-white text-sm placeholder-white/15 focus:outline-none
-                                 focus:border-[#C9A440]/50 transition-colors resize-none"
+                                 focus:border-gold/50 transition-colors resize-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] text-white/30 uppercase tracking-widest mb-1">
+                    <label className="block text-xs text-white/30 uppercase tracking-widest mb-1">
                       État à la restitution
                     </label>
                     <Select
                       value={form.etat_retour}
                       onChange={e => set('etat_retour', e.target.value)}
                       className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg
-                                 text-white text-sm focus:outline-none focus:border-[#C9A440]/50 transition-colors"
+                                 text-white text-sm focus:outline-none focus:border-gold/50 transition-colors"
                     >
                       <option value="">Sélectionner...</option>
                       <option value="Réparé — fonctionne correctement">Réparé — fonctionne correctement</option>
@@ -411,7 +411,7 @@ export function SavTab() {
                     </Select>
                   </div>
                   <div>
-                    <label className="block text-[10px] text-white/30 uppercase tracking-widest mb-1">
+                    <label className="block text-xs text-white/30 uppercase tracking-widest mb-1">
                       Observations
                     </label>
                     <textarea
@@ -421,7 +421,7 @@ export function SavTab() {
                       placeholder="Optionnel..."
                       className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg
                                  text-white text-sm placeholder-white/15 focus:outline-none
-                                 focus:border-[#C9A440]/50 transition-colors resize-none"
+                                 focus:border-gold/50 transition-colors resize-none"
                     />
                   </div>
                 </div>
@@ -431,7 +431,7 @@ export function SavTab() {
             <button
               onClick={handlePrint}
               disabled={printing || (!form.probleme && (form.mode === 'PEC' || form.mode === 'BOTH'))}
-              className="w-full flex items-center justify-center gap-3 py-4 bg-[#C9A440]
+              className="w-full flex items-center justify-center gap-3 py-4 bg-gold
                          hover:bg-[#d4aa48] text-black font-semibold rounded-xl transition-all
                          disabled:opacity-40 disabled:cursor-not-allowed text-base"
             >

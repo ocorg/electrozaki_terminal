@@ -8,7 +8,7 @@ import { codeLabel, type CodeDomain, type Code, type Lang } from '@/lib/codes'
 
 // ── Status Badge ──────────────────────────────────────────────
 const GREEN  = 'bg-emerald-50 text-emerald-700 border-emerald-200'
-const SLATE  = 'bg-slate-100 text-slate-600 border-slate-200'
+const SLATE  = 'bg-ez-muted text-ez-subtle border-ez-border'
 const BLUE   = 'bg-blue-50 text-blue-700 border-blue-200'
 const ORANGE = 'bg-orange-50 text-orange-700 border-orange-200'
 const AMBER  = 'bg-amber-50 text-amber-700 border-amber-200'
@@ -31,11 +31,11 @@ interface StatusBadgeProps<D extends CodeDomain> {
 
 export function StatusBadge<D extends CodeDomain>({ domain, code, lang = 'fr', size = 'sm' }: StatusBadgeProps<D>) {
   if (!code) return null
-  const style = STATUS_STYLES[domain]?.[code] || 'bg-gray-100 text-gray-600 border-gray-200'
+  const style = STATUS_STYLES[domain]?.[code] || 'bg-ez-muted text-ez-subtle border-ez-border'
   const label = codeLabel(domain, code as Code<D>, lang)
   return (
     <span className={cn(
-      'inline-flex items-center border rounded-full font-medium',
+      'inline-flex w-fit items-center border rounded-full font-medium whitespace-nowrap',
       size === 'sm' ? 'px-2 py-0.5 text-xs' : 'px-3 py-1 text-sm',
       style
     )}>
@@ -203,8 +203,8 @@ export function Btn({ children, onClick, variant = 'primary', size = 'md', disab
 // crédit, supprimer). A visible border, a 32px target and gap-2 between them
 // keep each one easy to hit; the title doubles as the hover label.
 const ROW_ACTION_TONES = {
-  neutral: 'hover:text-[#1A1A1A] hover:bg-[#F2F0EB] hover:border-[#D9D5CC]',
-  gold:    'hover:text-[#C9A440] hover:bg-[#FAF5E8] hover:border-[#EADFB8]',
+  neutral: 'hover:text-ez-text hover:bg-ez-muted hover:border-[#D9D5CC]',
+  gold:    'hover:text-gold hover:bg-gold-50 hover:border-[#EADFB8]',
   danger:  'hover:text-red-600 hover:bg-red-50 hover:border-red-200',
 }
 
@@ -221,7 +221,7 @@ export function RowAction({ title, onClick, tone = 'neutral', children }: {
       title={title}
       aria-label={title}
       className={cn(
-        'flex items-center justify-center w-8 h-8 flex-shrink-0 rounded-lg border border-[#EEEBE4] bg-white text-[#8A877F] transition-all',
+        'flex items-center justify-center w-8 h-8 flex-shrink-0 rounded-lg border border-[#EEEBE4] bg-white text-ez-faint transition-all',
         ROW_ACTION_TONES[tone],
       )}
     >
@@ -232,7 +232,7 @@ export function RowAction({ title, onClick, tone = 'neutral', children }: {
 
 /** Thin separator that sets a destructive action apart from the others. */
 export function RowActionDivider() {
-  return <span aria-hidden className="w-px h-5 bg-[#E8E5DE] mx-0.5 flex-shrink-0" />
+  return <span aria-hidden className="w-px h-5 bg-ez-border mx-0.5 flex-shrink-0" />
 }
 
 // ── Page Header ───────────────────────────────────────────────

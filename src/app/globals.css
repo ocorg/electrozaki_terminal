@@ -17,7 +17,19 @@
   body {
     background-color: #F8F7F4;
     color: #1A1A1A;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-inter), 'Inter', sans-serif;
+    /* prices and quantities line up in columns */
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Visible keyboard / scanner focus (mouse clicks don't show it) */
+  :where(a, button, [role="button"], summary, select, [tabindex]:not([tabindex="-1"])):focus-visible {
+    outline: 2px solid #C9A440 !important;
+    outline-offset: 2px;
+  }
+  :where(input, textarea):focus-visible {
+    outline: 2px solid rgba(201, 164, 64, 0.45) !important;
+    outline-offset: 0;
   }
 
   ::selection {

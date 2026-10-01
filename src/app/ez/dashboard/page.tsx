@@ -142,15 +142,15 @@ function ChartTip({
 }) {
   if (!active || !payload?.length) return null
   return (
-    <div className="bg-white border border-[#E8E5DE] rounded-xl shadow-lg p-3 text-xs min-w-[150px]">
-      <p className="font-bold text-[#1A1A1A] mb-2 capitalize">{label}</p>
+    <div className="bg-white border border-ez-border rounded-xl shadow-lg p-3 text-xs min-w-[150px]">
+      <p className="font-bold text-ez-text mb-2 capitalize">{label}</p>
       {payload.map(e => (
         <div key={e.dataKey} className="flex items-center justify-between gap-4 py-0.5">
           <div className="flex items-center gap-1.5">
             <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: e.color }} />
-            <span className="text-[#6B6860]">{e.name}</span>
+            <span className="text-ez-subtle">{e.name}</span>
           </div>
-          <span className="font-bold text-[#1A1A1A]">
+          <span className="font-bold text-ez-text">
             {e.dataKey === 'count' ? e.value : formatMAD(e.value)}
           </span>
         </div>
@@ -283,6 +283,9 @@ export default function EZDashboard() {
     icon: React.ElementType; color: string; bg: string
   }
 
+  // Gold for the headline figure, green/red only when they mean something
+  // (profit sign, stock alerts); everything else stays neutral
+  const NEUTRAL = { color: '#6B6860', bg: '#F2F0EB' }
   const kpisFin: KpiDef[] = data && canFin ? [
     {
       label: isAr ? `رقم الأعمال — ${periodLabel}` : `CA — ${periodLabel}`,
@@ -303,13 +306,13 @@ export default function EZDashboard() {
       label: isAr ? 'الربح الصافي' : 'Bénéfice net',
       value: formatMAD(data.benefice_net),
       icon:  Wallet,
-      color: data.benefice_net >= 0 ? '#3B82F6' : '#EF4444',
-      bg:    data.benefice_net >= 0 ? '#EFF6FF' : '#FEF2F2',
+      color: data.benefice_net >= 0 ? NEUTRAL.color : '#EF4444',
+      bg:    data.benefice_net >= 0 ? NEUTRAL.bg : '#FEF2F2',
     },
     {
       label: isAr ? 'متوسط السلة' : 'Panier moyen',
       value: formatMAD(data.panier_moyen),
-      icon:  Target, color: '#8B5CF6', bg: '#F5F3FF',
+      icon:  Target, ...NEUTRAL,
     },
   ] : []
 
@@ -317,19 +320,19 @@ export default function EZDashboard() {
     {
       label: isAr ? `عدد المبيعات — ${periodLabel}` : `Ventes — ${periodLabel}`,
       value: String(data.nb_ventes),
-      icon:  ShoppingCart, color: '#6366F1', bg: '#EEF2FF',
+      icon:  ShoppingCart, ...NEUTRAL,
     },
     {
       label: t(isAr, 'common.activeRepairs'),
       value: String(data.active_repairs),
-      icon:  Wrench, color: '#F59E0B', bg: '#FFFBEB',
+      icon:  Wrench, ...NEUTRAL,
     },
     {
       label: t(isAr, 'common.stockAlerts'),
       value: String(data.low_stock_count),
       icon:  AlertTriangle,
-      color: data.low_stock_count > 0 ? '#EF4444' : '#10B981',
-      bg:    data.low_stock_count > 0 ? '#FEF2F2' : '#F0FDF4',
+      color: data.low_stock_count > 0 ? '#EF4444' : NEUTRAL.color,
+      bg:    data.low_stock_count > 0 ? '#FEF2F2' : NEUTRAL.bg,
     },
   ] : []
 
@@ -357,13 +360,13 @@ export default function EZDashboard() {
       {/* ── Header + period selector ── */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-4">
         <div className="flex-1">
-          <h1 className="font-display text-3xl font-bold text-[#1A1A1A] tracking-wide">
+          <h1 className="font-display text-3xl font-bold text-ez-text tracking-wide">
             {isAr ? 'لوحة التحكم' : 'Tableau de bord'}
           </h1>
-          <p className="text-[#6B6860] text-sm mt-1 flex items-center gap-2 flex-wrap">
+          <p className="text-ez-subtle text-sm mt-1 flex items-center gap-2 flex-wrap">
             {isAr ? `مرحباً، ${user?.display_name}` : `Bonjour, ${user?.display_name}`}
             {lastSync && (
-              <span className="text-[#B0ADA6] text-xs flex items-center gap-1">
+              <span className="text-ez-faint text-xs flex items-center gap-1">
                 <Clock className="w-3 h-3" />
                 {lastSync.toLocaleTimeString('fr-FR', { timeZone: STORE_TIME_ZONE, hour: '2-digit', minute: '2-digit' })}
               </span>
@@ -372,7 +375,7 @@ export default function EZDashboard() {
         </div>
         <div className="flex items-center gap-2">
           {/* Period tabs */}
-          <div className="flex bg-[#F8F7F4] border border-[#E8E5DE] rounded-xl p-1 gap-1">
+          <div className="flex bg-ez-bg border border-ez-border rounded-xl p-1 gap-1">
             {(['day', 'week', 'month'] as Period[]).map(p => (
               <button
                 key={p}
@@ -393,7 +396,7 @@ export default function EZDashboard() {
           <button
             onClick={fetchDashboard}
             disabled={manualRefresh}
-            className="p-2 rounded-xl border border-[#E8E5DE] bg-white text-[#6B6860] hover:bg-[#F8F7F4] transition-all disabled:opacity-50"
+            className="p-2 rounded-xl border border-ez-border bg-white text-ez-subtle hover:bg-ez-bg transition-all disabled:opacity-50"
           >
             <RefreshCw className={`w-4 h-4 ${manualRefresh ? 'animate-spin' : ''}`} />
           </button>
@@ -404,7 +407,7 @@ export default function EZDashboard() {
       {loading && !data ? (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[...Array(canFin ? 7 : 3)].map((_, i) => (
-            <div key={i} className="bg-white border border-[#E8E5DE] rounded-2xl p-5 animate-pulse h-24" />
+            <div key={i} className="bg-white border border-ez-border rounded-2xl p-5 animate-pulse h-24" />
           ))}
         </div>
       ) : (
@@ -414,11 +417,11 @@ export default function EZDashboard() {
             return (
               <div
                 key={kpi.label}
-                className="bg-white border border-[#E8E5DE] rounded-2xl p-5 hover:shadow-md transition-all"
-                style={{ borderLeftColor: kpi.color, borderLeftWidth: '3px' }}
+                className="bg-white border border-ez-border rounded-2xl p-5 hover:shadow-md transition-all"
+                style={kpi.color !== NEUTRAL.color ? { borderLeftColor: kpi.color, borderLeftWidth: '3px' } : undefined}
               >
                 <div className="flex items-start justify-between mb-3">
-                  <p className="text-[#6B6860] text-xs leading-snug">{kpi.label}</p>
+                  <p className="text-ez-subtle text-xs leading-snug">{kpi.label}</p>
                   <div
                     className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
                     style={{ backgroundColor: kpi.bg }}
@@ -426,8 +429,8 @@ export default function EZDashboard() {
                     <Icon className="w-4 h-4" style={{ color: kpi.color }} />
                   </div>
                 </div>
-                <p className="font-display text-2xl font-bold text-[#1A1A1A]">{kpi.value}</p>
-                {kpi.sub && <p className="text-xs text-[#6B6860] mt-0.5">{kpi.sub}</p>}
+                <p className="font-display text-2xl font-bold text-ez-text">{kpi.value}</p>
+                {kpi.sub && <p className="text-xs text-ez-subtle mt-0.5">{kpi.sub}</p>}
               </div>
             )
           })}
@@ -436,20 +439,20 @@ export default function EZDashboard() {
 
       {/* ── Chart (owner / manager only) ── */}
       {canFin && (
-        <div className="bg-white border border-[#E8E5DE] rounded-2xl overflow-hidden">
+        <div className="bg-white border border-ez-border rounded-2xl overflow-hidden">
           {/* Chart header + toggles */}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3 px-5 py-4 border-b border-[#E8E5DE]">
-            <h2 className="font-display font-bold text-[#1A1A1A] tracking-wide flex items-center gap-2 flex-shrink-0">
-              <BarChart2 className="w-4 h-4 text-[#C9A440]" />
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 px-5 py-4 border-b border-ez-border">
+            <h2 className="font-display font-bold text-ez-text tracking-wide flex items-center gap-2 flex-shrink-0">
+              <BarChart2 className="w-4 h-4 text-gold" />
               {isAr ? 'تطور الأداء' : 'Évolution des performances'}
-              <span className="text-xs font-normal text-[#B0ADA6]">— {periodLabel}</span>
+              <span className="text-xs font-normal text-ez-faint">— {periodLabel}</span>
             </h2>
             <div className="flex flex-wrap gap-2 sm:ml-auto">
               {chartSeries.map(s => (
                 <button
                   key={s.key}
                   onClick={() => s.set((v: boolean) => !v)}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-bold border transition-all"
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-bold border transition-all"
                   style={{
                     backgroundColor: s.show ? `${s.color}15` : 'white',
                     borderColor:     s.show ? s.color : '#E8E5DE',
@@ -467,7 +470,7 @@ export default function EZDashboard() {
           <div className="p-4">
             {loading ? (
               <div className="h-64 flex items-center justify-center">
-                <RefreshCw className="w-5 h-5 animate-spin text-[#B0ADA6]" />
+                <RefreshCw className="w-5 h-5 animate-spin text-ez-faint" />
               </div>
             ) : data && data.chart_data.some(p => p.revenue > 0 || p.count > 0) ? (
               <ResponsiveContainer width="100%" height={280}>
@@ -546,7 +549,7 @@ export default function EZDashboard() {
                 </ComposedChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-64 flex flex-col items-center justify-center gap-2 text-[#B0ADA6]">
+              <div className="h-64 flex flex-col items-center justify-center gap-2 text-ez-faint">
                 <BarChart2 className="w-8 h-8 opacity-30" />
                 <p className="text-sm">{isAr ? 'لا توجد بيانات لهذه الفترة' : 'Aucune donnée pour cette période'}</p>
               </div>
@@ -590,19 +593,19 @@ export default function EZDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         {/* Recent transactions */}
-        <div className="lg:col-span-2 bg-white border border-[#E8E5DE] rounded-2xl overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-[#E8E5DE]">
-            <h2 className="font-display font-bold text-[#1A1A1A] tracking-wide">
+        <div className="lg:col-span-2 bg-white border border-ez-border rounded-2xl overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-ez-border">
+            <h2 className="font-display font-bold text-ez-text tracking-wide">
               {isAr ? 'آخر المعاملات' : 'Transactions récentes'}
             </h2>
             <Link href="/ez/transactions"
-              className="text-xs text-[#C9A440] hover:underline flex items-center gap-1">
+              className="text-xs text-gold hover:underline flex items-center gap-1">
               {t(isAr, 'common.viewAll')} <ArrowRight className="w-3 h-3" />
             </Link>
           </div>
 
           {loading && !data ? (
-            <div className="divide-y divide-[#F2F0EB]">
+            <div className="divide-y divide-ez-muted">
               {[...Array(5)].map((_, i) => <SkeletonRow key={i} />)}
             </div>
           ) : !data?.recent_txns.length ? (
@@ -611,23 +614,23 @@ export default function EZDashboard() {
               title={t(isAr, 'common.noTransactions')}
             />
           ) : (
-            <div className="divide-y divide-[#F2F0EB]">
+            <div className="divide-y divide-ez-muted">
               {data.recent_txns.map(txn => (
                 <div
                   key={txn.txn_id}
-                  className="flex items-center gap-4 px-5 py-3 hover:bg-[#F8F7F4] transition-all"
+                  className="flex items-center gap-4 px-5 py-3 hover:bg-ez-bg transition-all"
                 >
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-[#1A1A1A] truncate">
+                    <p className="text-sm font-medium text-ez-text truncate">
                       {txn.client_nom || (isAr ? 'عميل عابر' : 'Client comptoir')}
                     </p>
-                    <p className="text-xs text-[#B0ADA6]">
+                    <p className="text-xs text-ez-faint">
                       {txn.device_id} · {formatDate(txn.date_vente)}
                     </p>
                   </div>
                   <div className="text-right flex-shrink-0">
                     {canFin && (
-                      <p className="text-sm font-bold text-[#C9A440]">
+                      <p className="text-sm font-bold text-gold">
                         {formatMAD(collected(txn))}
                       </p>
                     )}
@@ -643,12 +646,12 @@ export default function EZDashboard() {
         <div className="space-y-4">
 
           {/* Repair breakdown */}
-          <div className="bg-white border border-[#E8E5DE] rounded-2xl overflow-hidden">
-            <div className="px-5 py-4 border-b border-[#E8E5DE] flex items-center justify-between">
-              <h2 className="font-display font-bold text-[#1A1A1A] tracking-wide">
+          <div className="bg-white border border-ez-border rounded-2xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-ez-border flex items-center justify-between">
+              <h2 className="font-display font-bold text-ez-text tracking-wide">
                 {t(isAr, 'common.repairs')}
               </h2>
-              <Link href="/ez/repairs" className="text-xs text-[#C9A440] hover:underline">
+              <Link href="/ez/repairs" className="text-xs text-gold hover:underline">
                 {t(isAr, 'common.viewAll')}
               </Link>
             </div>
@@ -661,9 +664,9 @@ export default function EZDashboard() {
                 <div key={row.status} className="flex items-center justify-between py-1">
                   <div className="flex items-center gap-2">
                     <div className="w-2 h-2 rounded-full" style={{ backgroundColor: row.color }} />
-                    <span className="text-sm text-[#6B6860]">{row.label}</span>
+                    <span className="text-sm text-ez-subtle">{row.label}</span>
                   </div>
-                  <span className="font-bold text-sm text-[#1A1A1A]">
+                  <span className="font-bold text-sm text-ez-text">
                     {loading ? '—' : (data?.repair_counts[row.status] || 0)}
                   </span>
                 </div>
@@ -673,9 +676,9 @@ export default function EZDashboard() {
 
           {/* Alerts */}
           {data && data.pending_credits > 0 && (
-            <div className="bg-white border border-[#E8E5DE] rounded-2xl overflow-hidden">
-              <div className="px-5 py-4 border-b border-[#E8E5DE]">
-                <h2 className="font-display font-bold text-[#1A1A1A] tracking-wide">
+            <div className="bg-white border border-ez-border rounded-2xl overflow-hidden">
+              <div className="px-5 py-4 border-b border-ez-border">
+                <h2 className="font-display font-bold text-ez-text tracking-wide">
                   {isAr ? 'تنبيهات' : 'Alertes'}
                 </h2>
               </div>
@@ -699,10 +702,10 @@ export default function EZDashboard() {
 
       {/* ── Payment breakdown (owner / manager only) ── */}
       {canFin && data && brkTotal > 0 && (
-        <div className="bg-white border border-[#E8E5DE] rounded-2xl p-5">
-          <h2 className="font-display font-bold text-[#1A1A1A] tracking-wide mb-4">
+        <div className="bg-white border border-ez-border rounded-2xl p-5">
+          <h2 className="font-display font-bold text-ez-text tracking-wide mb-4">
             {isAr ? 'تفصيل طرق الدفع' : 'Répartition des paiements'}
-            <span className="text-xs font-normal text-[#B0ADA6] ml-2">— {periodLabel}</span>
+            <span className="text-xs font-normal text-ez-faint ml-2">— {periodLabel}</span>
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">
             {[
@@ -715,13 +718,13 @@ export default function EZDashboard() {
               return (
                 <div key={row.key}>
                   <div className="flex justify-between text-xs mb-1.5">
-                    <span className="font-medium text-[#6B6860]">{row.label}</span>
-                    <span className="font-bold text-[#1A1A1A]">
+                    <span className="font-medium text-ez-subtle">{row.label}</span>
+                    <span className="font-bold text-ez-text">
                       {formatMAD(row.value)}
-                      <span className="text-[#B0ADA6] font-normal ml-1">({pct}%)</span>
+                      <span className="text-ez-faint font-normal ml-1">({pct}%)</span>
                     </span>
                   </div>
-                  <div className="h-2 bg-[#F2F0EB] rounded-full overflow-hidden">
+                  <div className="h-2 bg-ez-muted rounded-full overflow-hidden">
                     <div
                       className="h-full rounded-full transition-all duration-500"
                       style={{ width: `${pct}%`, backgroundColor: row.color }}

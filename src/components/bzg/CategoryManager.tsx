@@ -105,7 +105,7 @@ export default function CategoryManager() {
 
   if (loading) return (
     <div className="flex items-center justify-center py-10">
-      <Loader2 className="w-5 h-5 animate-spin text-[#B0ADA6]" />
+      <Loader2 className="w-5 h-5 animate-spin text-ez-faint" />
     </div>
   )
 
@@ -114,21 +114,21 @@ export default function CategoryManager() {
       {SECTIONS.map(({ key, fr, ar, color }) => {
         const s = sections[key]
         return (
-          <div key={key} className="bg-white border border-[#E8E5DE] rounded-2xl overflow-hidden">
+          <div key={key} className="bg-white border border-ez-border rounded-2xl overflow-hidden">
 
             {/* Section header */}
-            <div className="flex items-center justify-between px-5 py-3 border-b border-[#F2F0EB]"
+            <div className="flex items-center justify-between px-5 py-3 border-b border-ez-muted"
               style={{ borderLeftColor: color, borderLeftWidth: 3 }}>
               <div className="flex items-center gap-2">
                 <Tag className="w-4 h-4" style={{ color }} />
-                <span className="text-sm font-bold text-[#1A1A1A]">{isAr ? ar : fr}</span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#F2F0EB] text-[#6B6860]">
+                <span className="text-sm font-bold text-ez-text">{isAr ? ar : fr}</span>
+                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-ez-muted text-ez-subtle">
                   {s.categories.length}
                 </span>
               </div>
               {s.dirty && (
                 <button onClick={() => save(key)} disabled={s.saving}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-[#1A1A1A] text-white hover:bg-[#333] transition-all disabled:opacity-50">
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-ez-dark text-white hover:bg-[#333] transition-all disabled:opacity-50">
                   {s.saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
                   {t(isAr, 'common.save')}
                 </button>
@@ -138,19 +138,19 @@ export default function CategoryManager() {
             {/* Chips */}
             <div className="px-4 pt-4 pb-2 flex flex-wrap gap-2">
               {s.categories.length === 0 ? (
-                <div className="flex items-center gap-2 text-xs text-[#B0ADA6] py-1">
+                <div className="flex items-center gap-2 text-xs text-ez-faint py-1">
                   <AlertCircle className="w-3.5 h-3.5" />
                   {isAr ? 'لا توجد فئات — أضف أدناه' : 'Aucune catégorie — ajoutez ci-dessous'}
                 </div>
               ) : s.categories.map(cat => (
                 <div key={itemKey(cat)}
-                  className="flex items-center gap-1 pl-3 pr-1.5 py-1.5 rounded-full text-xs font-semibold border border-[#E8E5DE] bg-[#F8F7F4]">
-                  <span className="text-[#1A1A1A]">{isAr ? cat.ar : cat.fr}</span>
-                  <span className="text-[9px] text-[#B0ADA6]">
+                  className="flex items-center gap-1 pl-3 pr-1.5 py-1.5 rounded-full text-xs font-semibold border border-ez-border bg-ez-bg">
+                  <span className="text-ez-text">{isAr ? cat.ar : cat.fr}</span>
+                  <span className="text-[9px] text-ez-faint">
                     {isAr ? `(${cat.fr})` : `(${cat.ar})`}
                   </span>
                   <button onClick={() => remove(key, itemKey(cat))}
-                    className="ml-1 w-4 h-4 rounded-full bg-[#E8E5DE] text-[#6B6860] hover:bg-red-100 hover:text-red-500 transition-all flex items-center justify-center">
+                    className="ml-1 w-4 h-4 rounded-full bg-ez-border text-ez-subtle hover:bg-red-100 hover:text-red-500 transition-all flex items-center justify-center">
                     <X className="w-2.5 h-2.5" />
                   </button>
                 </div>
@@ -161,7 +161,7 @@ export default function CategoryManager() {
             <div className="px-4 pb-4 flex gap-2 items-center flex-wrap">
               <input
                 type="text"
-                className="flex-1 min-w-[130px] border border-[#E8E5DE] rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#C9A440] transition-all"
+                className="flex-1 min-w-[130px] border border-ez-border rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-gold transition-all"
                 placeholder="Français — ex: Pochette"
                 value={s.inputFr}
                 onChange={e => patch(key, { inputFr: e.target.value })}
@@ -169,7 +169,7 @@ export default function CategoryManager() {
               />
               <input
                 type="text"
-                className="flex-1 min-w-[130px] border border-[#E8E5DE] rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#C9A440] transition-all"
+                className="flex-1 min-w-[130px] border border-ez-border rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-gold transition-all"
                 placeholder="عربي — مثال: جيب"
                 dir="rtl"
                 value={s.inputAr}
@@ -178,12 +178,12 @@ export default function CategoryManager() {
               />
               <button onClick={() => add(key)}
                 disabled={!s.inputFr.trim() || !s.inputAr.trim()}
-                className="p-2 rounded-xl bg-[#C9A440] text-white hover:bg-[#b8922d] disabled:opacity-30 transition-all flex-shrink-0">
+                className="p-2 rounded-xl bg-gold text-white hover:bg-[#b8922d] disabled:opacity-30 transition-all flex-shrink-0">
                 <Plus className="w-4 h-4" />
               </button>
             </div>
 
-            <p className="px-5 pb-3 text-[10px] text-[#B0ADA6]">
+            <p className="px-5 pb-3 text-xs text-ez-faint">
               {isAr
                 ? 'أدخل الاسم بالفرنسية والعربية ← يُعرض الصحيح حسب اللغة في كل مكان ← لا تنسَ الحفظ'
                 : 'Saisissez FR + AR → le bon label s\'affiche selon la langue partout → pensez à enregistrer'}

@@ -304,7 +304,7 @@ export default function PhoneCreditPanel({
       <>
         <button
           onClick={() => setShowNewCreditModal(true)}
-          className="mt-3 w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-[#C9A440]/30 text-[#C9A440] text-sm font-medium hover:bg-[#C9A440]/10 transition-all duration-200"
+          className="mt-3 w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-gold/30 text-gold text-sm font-medium hover:bg-gold/10 transition-all duration-200"
         >
           <CreditCard className="w-4 h-4" />
           Vendre à crédit / Avance
@@ -334,7 +334,7 @@ export default function PhoneCreditPanel({
         {/* En-tête */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/[0.02]">
           <div className="flex items-center gap-2">
-            <CreditCard className="w-4 h-4 text-[#C9A440]" />
+            <CreditCard className="w-4 h-4 text-gold" />
             <span className="text-sm font-semibold text-white">Vente à Crédit</span>
             <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
               credit.statut === 'solde'
@@ -369,7 +369,7 @@ export default function PhoneCreditPanel({
             { label: 'Reste dû',        value: credit.montant_restant, color: credit.montant_restant > 0 ? 'text-amber-400' : 'text-green-400' },
           ].map(({ label, value, color }) => (
             <div key={label} className="bg-white/5 rounded-lg p-2.5 text-center">
-              <p className="text-[10px] text-white/40 mb-1">{label}</p>
+              <p className="text-xs text-white/40 mb-1">{label}</p>
               <p className={`text-sm font-bold ${color}`}>
                 {value.toLocaleString('fr-MA')} <span className="text-xs font-normal">DH</span>
               </p>
@@ -395,7 +395,7 @@ export default function PhoneCreditPanel({
               {credit.reprise_etat ? ` · ${codeLabel('reprise_etat', credit.reprise_etat as Code<'reprise_etat'>, 'fr')}` : ''}
             </p>
             <div className="flex items-center justify-between">
-              <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                 credit.reprise_remise
                   ? 'bg-green-500/20 text-green-400'
                   : 'bg-amber-500/20 text-amber-400'
@@ -408,7 +408,7 @@ export default function PhoneCreditPanel({
                 <button
                   onClick={handleReceiveReprise}
                   disabled={submitting}
-                  className="text-[10px] px-2.5 py-1 rounded-lg bg-blue-500/20 text-blue-300 hover:bg-blue-500/30 transition-all disabled:opacity-50 flex items-center gap-1"
+                  className="text-xs px-2.5 py-1 rounded-lg bg-blue-500/20 text-blue-300 hover:bg-blue-500/30 transition-all disabled:opacity-50 flex items-center gap-1"
                 >
                   Marquer comme reçu →
                 </button>
@@ -425,7 +425,7 @@ export default function PhoneCreditPanel({
           </div>
           <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden">
             <div
-              className={`h-full rounded-full transition-all duration-700 ${isFullyPaid ? 'bg-green-500' : 'bg-[#C9A440]'}`}
+              className={`h-full rounded-full transition-all duration-700 ${isFullyPaid ? 'bg-green-500' : 'bg-gold'}`}
               style={{ width: `${Math.min(Number(credit.pct_paye), 100)}%` }}
             />
           </div>
@@ -434,7 +434,7 @@ export default function PhoneCreditPanel({
         {/* Historique paiements */}
         {payments.length > 0 && (
           <div className="border-t border-white/10">
-            <p className="px-4 py-2 text-[10px] text-white/30 uppercase tracking-widest font-medium">
+            <p className="px-4 py-2 text-xs text-white/30 uppercase tracking-widest font-medium">
               Historique — {payments.length} versement{payments.length > 1 ? 's' : ''}
             </p>
             <div className="divide-y divide-white/5 max-h-44 overflow-y-auto">
@@ -476,7 +476,7 @@ export default function PhoneCreditPanel({
               disabled={!canDischarge || submitting}
               className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
                 canDischarge
-                  ? 'bg-[#C9A440] hover:bg-[#b8932e] text-black cursor-pointer'
+                  ? 'bg-gold hover:bg-[#b8932e] text-black cursor-pointer'
                   : 'bg-white/5 text-white/25 cursor-not-allowed'
               }`}
               title={!canDischarge ? `Reste ${credit.montant_restant.toLocaleString('fr-MA')} DH à payer` : 'Décharger et générer la FAC'}
@@ -557,7 +557,7 @@ function NewCreditModal({
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
           <div className="flex items-center gap-2">
-            <CreditCard className="w-5 h-5 text-[#C9A440]" />
+            <CreditCard className="w-5 h-5 text-gold" />
             <h3 className="font-semibold text-white">Nouvelle vente à crédit</h3>
           </div>
           <button onClick={onClose} aria-label="Fermer" className="text-white/40 hover:text-white transition-colors">
@@ -575,20 +575,20 @@ function NewCreditModal({
                 value={form.client_name}
                 onChange={(e) => setForm((f) => ({ ...f, client_name: e.target.value }))}
                 placeholder="Nom complet *"
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[#C9A440]/50"
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-gold/50"
               />
               <div className="grid grid-cols-2 gap-2">
                 <input
                   value={form.client_tel}
                   onChange={(e) => setForm((f) => ({ ...f, client_tel: e.target.value }))}
                   placeholder="Téléphone"
-                  className="bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[#C9A440]/50"
+                  className="bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-gold/50"
                 />
                 <input
                   value={form.client_cin}
                   onChange={(e) => setForm((f) => ({ ...f, client_cin: e.target.value }))}
                   placeholder="CIN"
-                  className="bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[#C9A440]/50"
+                  className="bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-gold/50"
                 />
               </div>
             </div>
@@ -604,7 +604,7 @@ function NewCreditModal({
                   value={form.montant_total}
                   onChange={(e) => setForm((f) => ({ ...f, montant_total: e.target.value }))}
                   placeholder="Prix convenu total *"
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 pr-12 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[#C9A440]/50"
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 pr-12 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-gold/50"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-white/30">DH</span>
               </div>
@@ -615,14 +615,14 @@ function NewCreditModal({
                     value={form.avance_initiale}
                     onChange={(e) => setForm((f) => ({ ...f, avance_initiale: e.target.value }))}
                     placeholder="Avance initiale"
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 pr-10 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[#C9A440]/50"
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 pr-10 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-gold/50"
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-white/30">DH</span>
                 </div>
                 <Select
                   value={form.payment_method}
                   onChange={(e) => setForm((f) => ({ ...f, payment_method: e.target.value }))}
-                  className="bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-[#C9A440]/50"
+                  className="bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-gold/50"
                 >
                   <option value="especes">نقد — Espèces</option>
                   <option value="virement">تحويل — Virement</option>
@@ -811,7 +811,7 @@ function NewCreditModal({
             onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
             placeholder="Notes (optionnel)"
             rows={2}
-            className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[#C9A440]/50 resize-none"
+            className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-gold/50 resize-none"
           />
         </div>
 
@@ -826,7 +826,7 @@ function NewCreditModal({
           <button
             onClick={onConfirm}
             disabled={submitting}
-            className="flex-1 py-2.5 rounded-xl bg-[#C9A440] hover:bg-[#b8932e] text-black text-sm font-semibold transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+            className="flex-1 py-2.5 rounded-xl bg-gold hover:bg-[#b8932e] text-black text-sm font-semibold transition-all disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
             Créer le crédit
@@ -884,7 +884,7 @@ function PaymentModal({
               value={form.montant}
               onChange={(e) => setForm((f) => ({ ...f, montant: e.target.value }))}
               placeholder="Montant du versement"
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 pr-12 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[#C9A440]/50"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 pr-12 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-gold/50"
               autoFocus
             />
             <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-white/30">DH</span>
@@ -914,7 +914,7 @@ function PaymentModal({
                 onClick={() => setForm((f) => ({ ...f, payment_method: method }))}
                 className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm font-medium transition-all ${
                   form.payment_method === method
-                    ? 'border-[#C9A440] bg-[#C9A440]/15 text-[#C9A440]'
+                    ? 'border-gold bg-gold/15 text-gold'
                     : 'border-white/10 bg-white/5 text-white/50 hover:border-white/20'
                 }`}
               >
@@ -931,7 +931,7 @@ function PaymentModal({
             type="date"
             value={form.date_paiement}
             onChange={(e) => setForm((f) => ({ ...f, date_paiement: e.target.value }))}
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#C9A440]/50"
+            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-gold/50"
           />
 
           {/* Alerte solde complet */}
@@ -953,7 +953,7 @@ function PaymentModal({
           <button
             onClick={onConfirm}
             disabled={submitting}
-            className="flex-1 py-2.5 rounded-xl bg-[#C9A440] hover:bg-[#b8932e] text-black text-sm font-semibold transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+            className="flex-1 py-2.5 rounded-xl bg-gold hover:bg-[#b8932e] text-black text-sm font-semibold transition-all disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
             Enregistrer
@@ -1026,7 +1026,7 @@ function DischargeResultModal({
           </button>
           <button
             onClick={onGoToDocuments}
-            className="flex-1 py-2.5 rounded-xl bg-[#C9A440] hover:bg-[#b8932e] text-black text-sm font-semibold flex items-center justify-center gap-1.5 transition-all"
+            className="flex-1 py-2.5 rounded-xl bg-gold hover:bg-[#b8932e] text-black text-sm font-semibold flex items-center justify-center gap-1.5 transition-all"
           >
             Créer FAC
             <ArrowUpRight className="w-4 h-4" />

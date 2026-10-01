@@ -29,7 +29,7 @@ const STORES = [
 const ROLE_STYLES: Record<string, string> = {
   owner:   'bg-purple-50 text-purple-700 border-purple-200',
   manager: 'bg-blue-50 text-blue-700 border-blue-200',
-  staff:   'bg-slate-50 text-slate-600 border-slate-200',
+  staff:   'bg-ez-bg text-ez-subtle border-ez-border',
 }
 
 export default function BZGUsersPage() {
@@ -218,7 +218,7 @@ export default function BZGUsersPage() {
                 </button>
               )}
               <button onClick={fetchUsers} disabled={loading}
-                className="p-2 rounded-xl border border-[#E8E5DE] bg-white text-[#6B6860] hover:bg-[#F5F3FF] transition-all">
+                className="p-2 rounded-xl border border-ez-border bg-white text-ez-subtle hover:bg-[#F5F3FF] transition-all">
                 <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
               </button>
             </div>
@@ -227,18 +227,18 @@ export default function BZGUsersPage() {
       </div>
 
       <div className="flex-1 overflow-auto px-4 sm:px-6 pb-6">
-        <div className="bg-white border border-[#E8E5DE] rounded-2xl overflow-hidden">
+        <div className="bg-white border border-ez-border rounded-2xl overflow-hidden">
           {loading ? (
-            <div className="divide-y divide-[#F2F0EB]">
+            <div className="divide-y divide-ez-muted">
               {[...Array(4)].map((_, i) => <SkeletonRow key={i} />)}
             </div>
           ) : (
-            <div className="divide-y divide-[#F2F0EB]">
+            <div className="divide-y divide-ez-muted">
               {users.map(u => {
                 const store   = STORES.find(s => s.id === u.store_id)
                 const isSelf  = u.id === self?.id
                 return (
-                  <div key={u.id} className="flex items-center gap-4 px-5 py-4 hover:bg-[#F8F7F4] transition-all">
+                  <div key={u.id} className="flex items-center gap-4 px-5 py-4 hover:bg-ez-bg transition-all">
                     {/* Avatar — clickable for own profile or by owner/manager */}
                     <label
                       className="relative w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 font-bold text-sm bg-[#6366F1]/10 text-[#6366F1] cursor-pointer group overflow-hidden"
@@ -272,15 +272,15 @@ export default function BZGUsersPage() {
                     {/* Info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-sm font-bold text-[#1A1A1A]">
+                        <p className="text-sm font-bold text-ez-text">
                           {u.display_name}
                           {isSelf && (
-                            <span className="ml-2 text-xs text-[#B0ADA6]">
+                            <span className="ml-2 text-xs text-ez-faint">
                               ({isAr ? 'أنت' : 'vous'})
                             </span>
                           )}
                         </p>
-                        <span className={`inline-flex items-center border rounded-lg px-2 py-0.5 text-[10px] font-bold tracking-wide ${ROLE_STYLES[u.role] ?? ''}`}>
+                        <span className={`inline-flex items-center border rounded-lg px-2 py-0.5 text-xs font-bold tracking-wide ${ROLE_STYLES[u.role] ?? ''}`}>
                           {codeLabel('user_role', u.role as UserRole, isAr ? 'ar' : 'fr')}
                         </span>
                       </div>
@@ -312,7 +312,7 @@ export default function BZGUsersPage() {
                     {self?.role === 'proprietaire' || (self?.role === 'gerant' && u.role !== 'proprietaire') ? (
                       <button
                         onClick={() => openEdit(u)}
-                        className="p-2 rounded-xl border border-[#E8E5DE] text-[#6B6860] hover:text-[#1A1A1A] hover:bg-[#F2F0EB] transition-all flex-shrink-0"
+                        className="p-2 rounded-xl border border-ez-border text-ez-subtle hover:text-ez-text hover:bg-ez-muted transition-all flex-shrink-0"
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
@@ -358,7 +358,7 @@ export default function BZGUsersPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(s => !s)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#B0ADA6] hover:text-[#6B6860] transition-colors text-xs"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-ez-faint hover:text-ez-subtle transition-colors text-xs"
                 >
                   {showPassword ? (isAr ? 'إخفاء' : 'Masquer') : (isAr ? 'إظهار' : 'Afficher')}
                 </button>
@@ -372,7 +372,7 @@ export default function BZGUsersPage() {
                 <option value="gerant">{codeLabel('user_role', 'gerant', isAr ? 'ar' : 'fr')}</option>
                 {self?.role === 'proprietaire' && <option value="proprietaire">{codeLabel('user_role', 'proprietaire', isAr ? 'ar' : 'fr')}</option>}
                 {self?.role === 'gerant' && (
-                  <option value="proprietaire" disabled className="text-gray-400">
+                  <option value="proprietaire" disabled className="text-ez-placeholder">
                     {codeLabel('user_role', 'proprietaire', isAr ? 'ar' : 'fr')} (accès refusé)
                   </option>
                 )}
@@ -387,32 +387,32 @@ export default function BZGUsersPage() {
               </Select>
             </Field>
 
-            <div className="flex items-center justify-between p-3 bg-[#F8F7F4] rounded-xl">
+            <div className="flex items-center justify-between p-3 bg-ez-bg rounded-xl">
               <div>
-                <p className="text-sm font-medium text-[#1A1A1A]">
+                <p className="text-sm font-medium text-ez-text">
                   {t(isAr, 'common.storeLocked')}
                 </p>
-                <p className="text-xs text-[#6B6860] mt-0.5">
+                <p className="text-xs text-ez-subtle mt-0.5">
                   {isAr ? 'إعادة توجيه مباشرة بدون اختيار' : 'Auto-activé pour les rôles staff'}
                 </p>
               </div>
               <button
                 onClick={() => setCreateForm(p => ({ ...p, store_locked: !p.store_locked }))}
-                className={`w-10 h-6 rounded-full transition-all ${createForm.store_locked ? 'bg-[#6366F1]' : 'bg-[#E8E5DE]'}`}
+                className={`w-10 h-6 rounded-full transition-all ${createForm.store_locked ? 'bg-[#6366F1]' : 'bg-ez-border'}`}
               >
                 <div className={`w-4 h-4 rounded-full bg-white shadow transition-all mx-1 ${createForm.store_locked ? 'translate-x-4' : 'translate-x-0'}`} />
               </button>
             </div>
 
-            <div className="flex items-center justify-between p-3 bg-[#F8F7F4] rounded-xl">
+            <div className="flex items-center justify-between p-3 bg-ez-bg rounded-xl">
               <div>
-                <p className="text-sm font-medium text-[#1A1A1A]">
+                <p className="text-sm font-medium text-ez-text">
                   {t(isAr, 'common.accountActive')}
                 </p>
               </div>
               <button
                 onClick={() => setCreateForm(p => ({ ...p, is_active: !p.is_active }))}
-                className={`w-10 h-6 rounded-full transition-all ${createForm.is_active ? 'bg-emerald-500' : 'bg-[#E8E5DE]'}`}
+                className={`w-10 h-6 rounded-full transition-all ${createForm.is_active ? 'bg-emerald-500' : 'bg-ez-border'}`}
               >
                 <div className={`w-4 h-4 rounded-full bg-white shadow transition-all mx-1 ${createForm.is_active ? 'translate-x-4' : 'translate-x-0'}`} />
               </button>
@@ -464,35 +464,35 @@ export default function BZGUsersPage() {
               </Select>
             </Field>
 
-            <div className="flex items-center justify-between p-3 bg-[#F8F7F4] rounded-xl">
+            <div className="flex items-center justify-between p-3 bg-ez-bg rounded-xl">
               <div>
-                <p className="text-sm font-medium text-[#1A1A1A]">
+                <p className="text-sm font-medium text-ez-text">
                   {t(isAr, 'common.storeLocked')}
                 </p>
-                <p className="text-xs text-[#6B6860] mt-0.5">
+                <p className="text-xs text-ez-subtle mt-0.5">
                   {isAr ? 'لا يمكنه الوصول لمتاجر أخرى' : 'Redirigé directement sans sélection'}
                 </p>
               </div>
               <button
                 onClick={() => setForm(p => ({ ...p, store_locked: !p.store_locked }))}
-                className={`w-10 h-6 rounded-full transition-all ${form.store_locked ? 'bg-[#6366F1]' : 'bg-[#E8E5DE]'}`}
+                className={`w-10 h-6 rounded-full transition-all ${form.store_locked ? 'bg-[#6366F1]' : 'bg-ez-border'}`}
               >
                 <div className={`w-4 h-4 rounded-full bg-white shadow transition-all mx-1 ${form.store_locked ? 'translate-x-4' : 'translate-x-0'}`} />
               </button>
             </div>
 
-            <div className="flex items-center justify-between p-3 bg-[#F8F7F4] rounded-xl">
+            <div className="flex items-center justify-between p-3 bg-ez-bg rounded-xl">
               <div>
-                <p className="text-sm font-medium text-[#1A1A1A]">
+                <p className="text-sm font-medium text-ez-text">
                   {t(isAr, 'common.accountActive')}
                 </p>
-                <p className="text-xs text-[#6B6860] mt-0.5">
+                <p className="text-xs text-ez-subtle mt-0.5">
                   {isAr ? 'إلغاء التفعيل يمنع تسجيل الدخول' : 'Désactiver bloque la connexion'}
                 </p>
               </div>
               <button
                 onClick={() => setForm(p => ({ ...p, is_active: !p.is_active }))}
-                className={`w-10 h-6 rounded-full transition-all ${form.is_active ? 'bg-emerald-500' : 'bg-[#E8E5DE]'}`}
+                className={`w-10 h-6 rounded-full transition-all ${form.is_active ? 'bg-emerald-500' : 'bg-ez-border'}`}
               >
                 <div className={`w-4 h-4 rounded-full bg-white shadow transition-all mx-1 ${form.is_active ? 'translate-x-4' : 'translate-x-0'}`} />
               </button>

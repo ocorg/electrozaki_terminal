@@ -104,7 +104,7 @@ function LiveClock() {
     , 1000)
     return () => clearInterval(id)
   }, [])
-  return <p className="text-xs font-mono font-bold text-[#6B6860] tabular-nums">{time}</p>
+  return <p className="text-xs font-mono font-bold text-ez-subtle tabular-nums">{time}</p>
 }
 
 // ─── Component ───────────────────────────────────────────────
@@ -546,12 +546,12 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
       {/* ── SUCCESS OVERLAY — grid stays mounted, no re-fetch on dismiss ── */}
       {successTxn && (
         <div className="absolute inset-0 z-30 flex items-center justify-center bg-white/90 backdrop-blur-sm">
-          <div className="text-center bg-white border border-[#E8E5DE] rounded-2xl p-10 max-w-sm shadow-lg">
+          <div className="text-center bg-white border border-ez-border rounded-2xl p-10 max-w-sm shadow-lg">
             <CheckCircle className="w-14 h-14 text-emerald-500 mx-auto mb-4" />
-            <h2 className="font-display text-2xl font-bold text-[#1A1A1A] mb-1">
+            <h2 className="font-display text-2xl font-bold text-ez-text mb-1">
               {isAr ? 'تم تسجيل البيع' : 'Vente enregistrée'}
             </h2>
-            <p className="text-[#6B6860] text-sm mb-6">
+            <p className="text-ez-subtle text-sm mb-6">
               {isAr ? `معاملة رقم ${successTxn}` : `Transaction ${successTxn}`}
             </p>
             <div className="flex gap-3 justify-center">
@@ -571,9 +571,9 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
 
       {/* ── CATEGORY SIDEBAR — vertical, lg+ only ────────── */}
       {!isSearching && (
-        <div className="hidden lg:flex flex-col w-32 flex-shrink-0 border-r border-[#E8E5DE] bg-white overflow-hidden">
-          <div className="px-3 py-3 border-b border-[#E8E5DE] flex-shrink-0">
-            <p className="text-[9px] font-bold text-[#B0ADA6] uppercase tracking-widest text-center">
+        <div className="hidden lg:flex flex-col w-32 flex-shrink-0 border-r border-ez-border bg-white overflow-hidden">
+          <div className="px-3 py-3 border-b border-ez-border flex-shrink-0">
+            <p className="text-[9px] font-bold text-ez-faint uppercase tracking-widest text-center">
               {isAr ? 'الفئات' : 'Catégories'}
             </p>
           </div>
@@ -583,7 +583,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
               const isActive = activeCategory === cat.key
               return (
                 <button key={cat.key} onClick={() => setActiveCategory(cat.key)}
-                  className="w-full flex flex-col items-center gap-1 px-1 py-3 rounded-xl text-[10px] font-bold transition-all text-center leading-tight mb-0.5"
+                  className="w-full flex flex-col items-center gap-1 px-1 py-3 rounded-xl text-xs font-bold transition-all text-center leading-tight mb-0.5"
                   style={{
                     backgroundColor: isActive ? `${cc}18` : 'transparent',
                     color:           isActive ? cc : '#9CA3AF',
@@ -600,10 +600,10 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
       )}
 
       {/* ── LEFT panel ───────────────────────────────────── */}
-      <div className="flex-shrink-0 lg:flex-shrink lg:flex-1 flex flex-col lg:overflow-hidden lg:border-r border-[#E8E5DE]">
+      <div className="flex-shrink-0 lg:flex-shrink lg:flex-1 flex flex-col lg:overflow-hidden lg:border-r border-ez-border">
 
         {/* Zone A — the phone's top bar already shows the store name */}
-        <div className="hidden lg:flex items-center justify-between px-5 py-3 border-b border-[#E8E5DE] flex-shrink-0 bg-white">
+        <div className="hidden lg:flex items-center justify-between px-5 py-3 border-b border-ez-border flex-shrink-0 bg-white">
           <p className="font-bold text-sm tracking-widest" style={{ color: primary, fontFamily: "'Barlow Condensed', sans-serif" }}>
             {portal.storeName.toUpperCase()}
           </p>
@@ -614,9 +614,9 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
         <div className="px-4 lg:px-5 pt-4 pb-2 flex-shrink-0">
           <div className="flex gap-2">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#B0ADA6]" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ez-faint" />
               <input
-                className="w-full pl-9 pr-10 py-3 bg-white border-2 border-[#E8E5DE] rounded-xl text-sm placeholder:text-[#B0ADA6] focus:outline-none transition-all"
+                className="w-full pl-9 pr-10 py-3 bg-white border-2 border-ez-border rounded-xl text-sm placeholder:text-ez-placeholder focus:outline-none transition-all"
                 placeholder={isAr ? 'IMEI، ماركة، موديل، إكسسوار...' : 'IMEI, marque, modèle, accessoire...'}
                 value={search}
                 onChange={e => setSearch(e.target.value)}
@@ -625,7 +625,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                 onBlur={e =>  { e.target.style.borderColor = '#E8E5DE'; e.target.style.boxShadow = 'none' }}
               />
               {search ? (
-                <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#B0ADA6] hover:text-[#1A1A1A]">
+                <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-ez-faint hover:text-ez-text">
                   <X className="w-4 h-4" />
                 </button>
               ) : null}
@@ -661,23 +661,23 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
         <div className="max-h-[55vh] lg:max-h-none lg:flex-1 overflow-y-auto px-4 lg:px-5 pb-2">
           {displayLoading ? (
             <div className="flex items-center justify-center h-32">
-              <Loader2 className="w-6 h-6 text-[#B0ADA6]" style={{ animation: 'spin 1s linear infinite' }} />
+              <Loader2 className="w-6 h-6 text-ez-faint" style={{ animation: 'spin 1s linear infinite' }} />
             </div>
           ) : isSearching && results.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-32 text-center">
-              <Search className="w-8 h-8 text-[#B0ADA6] mb-2 opacity-40" />
-              <p className="text-sm text-[#B0ADA6]">{t(isAr, 'common.noResults')}</p>
+              <Search className="w-8 h-8 text-ez-faint mb-2 opacity-40" />
+              <p className="text-sm text-ez-faint">{t(isAr, 'common.noResults')}</p>
             </div>
           ) : !isSearching && gridItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-32 text-center">
-              <Package className="w-8 h-8 text-[#B0ADA6] mb-2 opacity-40" />
-              <p className="text-sm text-[#B0ADA6]">{isAr ? 'لا توجد منتجات متاحة' : 'Aucun produit disponible'}</p>
+              <Package className="w-8 h-8 text-ez-faint mb-2 opacity-40" />
+              <p className="text-sm text-ez-faint">{isAr ? 'لا توجد منتجات متاحة' : 'Aucun produit disponible'}</p>
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-1">
               {displayItems.map(item => (
                 <button key={item._id} onClick={() => addToCart(item)}
-                  className="bg-white border border-[#E8E5DE] rounded-2xl p-3 text-left hover:shadow-md transition-all active:scale-[0.98]"
+                  className="bg-white border border-ez-border rounded-2xl p-3 text-left hover:shadow-md transition-all active:scale-[0.98]"
                   onMouseEnter={e => (e.currentTarget.style.borderColor = primary)}
                   onMouseLeave={e => (e.currentTarget.style.borderColor = '#E8E5DE')}>
                   <div className="mb-2">
@@ -688,8 +688,8 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                         </div>
                     }
                   </div>
-                  <p className="text-[13px] lg:text-xs font-bold text-[#1A1A1A] leading-tight line-clamp-2 lg:truncate">{item._displayName}</p>
-                  <p className="text-xs lg:text-[10px] text-[#8A877F] mt-0.5 truncate">
+                  <p className="text-[13px] lg:text-xs font-bold text-ez-text leading-tight line-clamp-2">{item._displayName}</p>
+                  <p className="text-xs lg:text-xs text-ez-faint mt-0.5 truncate">
                     {item._type === 'accessory'
                       ? (t(isAr, 'common.accessory'))
                       : ((item as Phone).imei ? (item as Phone).imei?.slice(-6) : (t(isAr, 'common.available')))}
@@ -701,7 +701,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
               ))}
               {allItems.length > shown && (
                 <button onClick={() => setShown(n => n + GRID_PAGE)}
-                  className="col-span-full py-3 text-sm font-medium text-[#6B6860] hover:bg-white rounded-xl transition-all">
+                  className="col-span-full py-3 text-sm font-medium text-ez-subtle hover:bg-white rounded-xl transition-all">
                   {isAr ? `عرض المزيد (${allItems.length - shown})` : `Afficher plus (${allItems.length - shown})`}
                 </button>
               )}
@@ -710,18 +710,18 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
         </div>
 
         {/* Zone E — Cart strip */}
-        <div className="flex-shrink-0 border-t border-[#E8E5DE] bg-white">
+        <div className="flex-shrink-0 border-t border-ez-border bg-white">
           <div className="px-4 lg:px-5 py-3 lg:max-h-48 lg:overflow-y-auto">
             {cart.length === 0 ? (
-              <div className="flex items-center gap-3 text-[#B0ADA6] py-1">
+              <div className="flex items-center gap-3 text-ez-faint py-1">
                 <ShoppingCart className="w-4 h-4" />
                 <p className="text-sm lg:text-xs">{isAr ? 'السلة فارغة — اضغط على بطاقة لإضافتها' : 'Panier vide — tapez une carte pour ajouter'}</p>
               </div>
             ) : (
               <div className="space-y-2">
                 {cart.map((item, idx) => (
-                  <div key={item._id} className="flex flex-wrap lg:flex-nowrap items-center gap-x-3 gap-y-2 bg-[#F8F7F4] border border-[#E8E5DE] rounded-xl px-3 py-2">
-                    <span className="text-xs font-bold text-[#B0ADA6] w-5 text-center flex-shrink-0">{idx + 1}</span>
+                  <div key={item._id} className="flex flex-wrap lg:flex-nowrap items-center gap-x-3 gap-y-2 bg-ez-bg border border-ez-border rounded-xl px-3 py-2">
+                    <span className="text-xs font-bold text-ez-faint w-5 text-center flex-shrink-0">{idx + 1}</span>
                     {(item as unknown as { marque?: string }).marque
                       ? <BrandLogo marque={(item as unknown as { marque?: string }).marque!} size="sm" />
                       : <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${primary}12` }}>
@@ -730,7 +730,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                     }
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <p className="text-sm lg:text-xs font-bold text-[#1A1A1A] lg:truncate">{item._displayName}</p>
+                        <p className="text-sm lg:text-xs font-bold text-ez-text line-clamp-2">{item._displayName}</p>
                         {(item as Phone).promo_type && (item as Phone).promo_montant && (
                           <span className="flex-shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded-full"
                             style={{ backgroundColor: '#FAF5E8', color: '#C9A440', border: '1px solid #E8D494' }}>
@@ -741,7 +741,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                         )}
                       </div>
                       {(item as Phone).imei && (
-                        <p className="text-xs lg:text-[10px] text-[#8A877F] font-mono truncate">{(item as Phone).imei}</p>
+                        <p className="text-xs lg:text-xs text-ez-faint font-mono truncate">{(item as Phone).imei}</p>
                       )}
                       {(item as Phone).promo_type && (item as Phone).promo_montant && (item as Phone).prix_vente_recommande && (
                         <p className="text-[9px] font-bold mt-0.5" style={{ color: '#C9A440' }}>
@@ -755,30 +755,30 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                         <div className="flex items-center gap-0.5">
                           <button type="button"
                             onClick={() => setCart(prev => prev.map(c => c._id === item._id ? { ...c, qty: Math.max(1, (c.qty ?? 1) - 1) } : c))}
-                            className="w-6 h-6 rounded-lg border border-[#E8E5DE] flex items-center justify-center text-[#6B6860] hover:bg-red-50 hover:border-red-200 hover:text-red-500 transition-all">
+                            className="w-6 h-6 rounded-lg border border-ez-border flex items-center justify-center text-ez-subtle hover:bg-red-50 hover:border-red-200 hover:text-red-500 transition-all">
                             <Minus className="w-3 h-3" />
                           </button>
-                          <span className="w-6 text-center text-xs font-bold text-[#1A1A1A] tabular-nums">{item.qty ?? 1}</span>
+                          <span className="w-6 text-center text-xs font-bold text-ez-text tabular-nums">{item.qty ?? 1}</span>
                           <button type="button"
                             onClick={() => setCart(prev => prev.map(c => c._id === item._id ? { ...c, qty: (c.qty ?? 1) + 1 } : c))}
-                            className="w-6 h-6 rounded-lg border border-[#E8E5DE] flex items-center justify-center text-[#6B6860] hover:bg-[#F2F0EB] transition-all">
+                            className="w-6 h-6 rounded-lg border border-ez-border flex items-center justify-center text-ez-subtle hover:bg-ez-muted transition-all">
                             <Plus className="w-3 h-3" />
                           </button>
                         </div>
                       )}
                       <input type="number" min={0} step={0.01} inputMode="decimal"
-                        className="w-24 border border-[#E8E5DE] rounded-lg px-2 py-1 text-xs font-bold text-right bg-white focus:outline-none"
+                        className="w-24 border border-ez-border rounded-lg px-2 py-1 text-xs font-bold text-right bg-white focus:outline-none"
                         value={priceInputs[item._id] !== undefined ? priceInputs[item._id] : (item.prix_vente_saisi || '')}
                         onChange={e => handlePriceChange(item._id, e.target.value)}
                         onBlur={e   => handlePriceBlur(item._id, e.target.value)}
                         style={{ borderColor: isBelowMinimum(item.prix_vente_saisi, (item as Phone).prix_vente_minimum) ? '#F59E0B' : undefined }} />
                       {canSeeAchat && (item as Phone).prix_achat && (
-                        <span className={`text-[10px] font-bold w-16 text-right flex-shrink-0 ${item.prix_vente_saisi - ((item as Phone).prix_achat || 0) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                        <span className={`text-xs font-bold w-16 text-right flex-shrink-0 ${item.prix_vente_saisi - ((item as Phone).prix_achat || 0) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                           {formatMAD(item.prix_vente_saisi - ((item as Phone).prix_achat || 0))}
                         </span>
                       )}
                       <button onClick={() => removeFromCart(item._id)}
-                        className="p-1 rounded-lg text-[#B0ADA6] hover:text-red-500 hover:bg-red-50 transition-all">
+                        className="p-1 rounded-lg text-ez-faint hover:text-red-500 hover:bg-red-50 transition-all">
                         <X className="w-3.5 h-3.5" />
                       </button>
                     </div>
@@ -792,12 +792,12 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
       </div>
 
       {/* ── RIGHT panel ──────────────────────────────────────── */}
-      <div className="w-full lg:w-96 flex-shrink-0 flex flex-col bg-[#F8F7F4] border-t lg:border-t-0 border-[#E8E5DE] lg:overflow-y-auto">
+      <div className="w-full lg:w-96 flex-shrink-0 flex flex-col bg-ez-bg border-t lg:border-t-0 border-ez-border lg:overflow-y-auto">
         <div className="p-5 space-y-5">
 
           {/* Operation type */}
           <div>
-            <p className="text-xs font-bold text-[#6B6860] uppercase tracking-widest mb-3 flex items-center gap-2">
+            <p className="text-xs font-bold text-ez-subtle uppercase tracking-widest mb-3 flex items-center gap-2">
               <ArrowLeftRight className="w-3.5 h-3.5" />
               {isAr ? 'نوع العملية' : "Type d'opération"}
             </p>
@@ -898,7 +898,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
 
           {/* Payment */}
           <div>
-            <p className="text-xs font-bold text-[#6B6860] uppercase tracking-widest mb-3 flex items-center gap-2">
+            <p className="text-xs font-bold text-ez-subtle uppercase tracking-widest mb-3 flex items-center gap-2">
               <CreditCard className="w-3.5 h-3.5" />
               {isAr ? 'طريقة الدفع' : 'Paiement'}
             </p>
@@ -939,7 +939,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                   placeholder={isAr ? 'مبلغ التسبيق (درهم)' : 'Montant avance (MAD)'}
                   value={saleForm.avance || ''} onChange={e => setSale('avance', Number(e.target.value))} />
                 <div>
-                  <p className="text-[10px] font-bold text-[#6B6860] uppercase tracking-widest mb-1.5">
+                  <p className="text-xs font-bold text-ez-subtle uppercase tracking-widest mb-1.5">
                     {isAr ? 'طريقة دفع التسبيق *' : "Paiement de l'avance *"}
                   </p>
                   <div className="grid grid-cols-2 gap-2">
@@ -956,7 +956,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                     ))}
                   </div>
                   {saleForm.avance > 0 && !saleForm.avance_sub_method && (
-                    <p className="text-[10px] text-amber-600 mt-1 font-medium">
+                    <p className="text-xs text-amber-600 mt-1 font-medium">
                       {isAr ? '⚠ يرجى تحديد كيفية دفع التسبيق' : "⚠ Précisez comment l'avance a été réglée"}
                     </p>
                   )}
@@ -976,8 +976,8 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
 
             {/* Inline client — آجل or تسبيق only */}
             {(saleForm.payment_method === 'credit' || saleForm.payment_method === 'avance') && (
-              <div className="mt-3 p-3 bg-white border border-[#E8E5DE] rounded-xl space-y-2 animate-fade-in">
-                <p className="text-[10px] font-bold text-[#6B6860] uppercase tracking-widest flex items-center gap-1.5">
+              <div className="mt-3 p-3 bg-white border border-ez-border rounded-xl space-y-2 animate-fade-in">
+                <p className="text-xs font-bold text-ez-subtle uppercase tracking-widest flex items-center gap-1.5">
                   <User className="w-3 h-3" />
                   {t(isAr, 'common.client')}
                   {saleForm.payment_method === 'credit' && (
@@ -1000,17 +1000,17 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                     onBlur={() => setTimeout(() => setShowClientDrop(false), 150)}
                     autoComplete="off" />
                   {showClientDrop && clientSuggestions.length > 0 && (
-                    <div className="absolute z-50 w-full mt-1 bg-white border border-[#E8E5DE] rounded-xl shadow-xl overflow-hidden max-h-44 overflow-y-auto">
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-ez-border rounded-xl shadow-xl overflow-hidden max-h-44 overflow-y-auto">
                       {clientSuggestions.map(c => (
                         <button key={c.client_id} type="button"
                           onMouseDown={() => selectClientSuggestion(c)}
-                          className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-[#F8F7F4] transition-all text-left border-b border-[#F2F0EB] last:border-0">
+                          className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-ez-bg transition-all text-left border-b border-ez-muted last:border-0">
                           <div className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${primary}15` }}>
                             <User className="w-3 h-3" style={{ color: primary }} />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-xs font-semibold text-[#1A1A1A] truncate">{c.nom}</p>
-                            <p className="text-[10px] text-[#B0ADA6] font-mono">{c.telephone}</p>
+                            <p className="text-xs font-semibold text-ez-text truncate">{c.nom}</p>
+                            <p className="text-xs text-ez-faint font-mono">{c.telephone}</p>
                           </div>
                         </button>
                       ))}
@@ -1031,21 +1031,21 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
             value={saleForm.notes} onChange={e => setSale('notes', e.target.value)} />
 
           {/* Summary */}
-          <div className="bg-white border border-[#E8E5DE] rounded-2xl p-4 space-y-2">
+          <div className="bg-white border border-ez-border rounded-2xl p-4 space-y-2">
             <div className="flex justify-between text-sm">
-              <span className="text-[#6B6860]">{isAr ? 'مجموع السلة' : 'Total panier'}</span>
-              <span className="font-bold text-[#1A1A1A]">{formatMAD(totalVente)}</span>
+              <span className="text-ez-subtle">{isAr ? 'مجموع السلة' : 'Total panier'}</span>
+              <span className="font-bold text-ez-text">{formatMAD(totalVente)}</span>
             </div>
             {saleForm.avance > 0 && (
               <div className="flex justify-between text-sm">
-                <span className="text-[#6B6860]">{t(isAr, 'common.avance')}</span>
-                <span className="text-[#1A1A1A]">- {formatMAD(saleForm.avance)}</span>
+                <span className="text-ez-subtle">{t(isAr, 'common.avance')}</span>
+                <span className="text-ez-text">- {formatMAD(saleForm.avance)}</span>
               </div>
             )}
             {saleForm.type_operation === 'echange' && saleForm.valeur_echange > 0 && (
               <div className="flex justify-between text-sm">
-                <span className="text-[#6B6860]">{isAr ? 'قيمة الاستبدال' : 'Valeur échange'}</span>
-                <span className="text-[#1A1A1A]">- {formatMAD(saleForm.valeur_echange)}</span>
+                <span className="text-ez-subtle">{isAr ? 'قيمة الاستبدال' : 'Valeur échange'}</span>
+                <span className="text-ez-text">- {formatMAD(saleForm.valeur_echange)}</span>
               </div>
             )}
             {avoir && (
@@ -1053,7 +1053,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                 <span className="text-emerald-800 min-w-0 truncate">
                   {isAr ? 'رصيد' : 'Avoir'} <b className="font-mono">{avoir.retour_id}</b>
                   {avoir.solde > avoirUsed && (
-                    <span className="text-[11px] text-emerald-600"> · {isAr ? 'يبقى' : 'reste'} {formatMAD(avoir.solde - avoirUsed)}</span>
+                    <span className="text-xs text-emerald-600"> · {isAr ? 'يبقى' : 'reste'} {formatMAD(avoir.solde - avoirUsed)}</span>
                   )}
                 </span>
                 <span className="flex items-center gap-2 flex-shrink-0">
@@ -1070,17 +1070,17 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
               </div>
             )}
             <div className="flex justify-between text-sm font-bold">
-              <span className="text-[#1A1A1A]">{isAr ? 'المبلغ المُحصَّل الآن' : 'À encaisser maintenant'}</span>
-              <span className="text-[#1A1A1A]">{formatMAD(aEncaisser)}</span>
+              <span className="text-ez-text">{isAr ? 'المبلغ المُحصَّل الآن' : 'À encaisser maintenant'}</span>
+              <span className="text-ez-text">{formatMAD(aEncaisser)}</span>
             </div>
             {montantRendu > 0 && (
               <div className="flex justify-between text-sm">
-                <span className="text-[#6B6860]">{isAr ? 'المبلغ المُسلَّم' : 'Espèces remises'}</span>
-                <span className="text-[#1A1A1A]">{formatMAD(saleForm.payment_method === 'especes' ? saleForm.montant_especes : saleForm.montant_especes + saleForm.montant_carte)}</span>
+                <span className="text-ez-subtle">{isAr ? 'المبلغ المُسلَّم' : 'Espèces remises'}</span>
+                <span className="text-ez-text">{formatMAD(saleForm.payment_method === 'especes' ? saleForm.montant_especes : saleForm.montant_especes + saleForm.montant_carte)}</span>
               </div>
             )}
-            <div className="flex justify-between items-end pt-2 border-t border-[#E8E5DE]">
-              <span className="font-bold text-[#1A1A1A]">{isAr ? 'المتبقي للدفع' : 'Reste à payer'}</span>
+            <div className="flex justify-between items-end pt-2 border-t border-ez-border">
+              <span className="font-bold text-ez-text">{isAr ? 'المتبقي للدفع' : 'Reste à payer'}</span>
               <div className="text-right">
                 <p className="font-display font-bold text-xl" style={{ color: primary }}>{formatMAD(displayFariq)}</p>
                 <StatusBadge domain="payment_status" code={statutPaiement} lang={isAr ? 'ar' : 'fr'} />
@@ -1103,13 +1103,13 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
           {/* Reset */}
           <button type="button"
             onClick={() => { setCart([]); setPriceInputs({}); setSaleForm({ ...EMPTY_SALE }); setOverrideAuthorizedBy(null); setOverrideReason(''); setSelectedClientId(null); setClientSuggestions([]); setAvoir(null) }}
-            className="w-full py-2.5 rounded-2xl text-xs font-bold border border-[#E8E5DE] text-[#B0ADA6] hover:border-red-300 hover:text-red-400 transition-all">
+            className="w-full py-2.5 rounded-2xl text-xs font-bold border border-ez-border text-ez-faint hover:border-red-300 hover:text-red-400 transition-all">
             {isAr ? '× مسح الكل' : '× Réinitialiser'}
           </button>
 
           {/* Cash Drop */}
           <button type="button" onClick={() => setCashDropOpen(true)}
-            className="w-full py-2.5 rounded-2xl text-xs font-bold border border-[#E8E5DE] text-[#6B6860] hover:border-emerald-400 hover:text-emerald-600 transition-all flex items-center justify-center gap-1.5">
+            className="w-full py-2.5 rounded-2xl text-xs font-bold border border-ez-border text-ez-subtle hover:border-emerald-400 hover:text-emerald-600 transition-all flex items-center justify-center gap-1.5">
             <span>＋</span>
             {t(isAr, 'common.manualCashDeposit')}
           </button>

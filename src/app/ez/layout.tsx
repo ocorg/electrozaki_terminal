@@ -32,14 +32,14 @@ export default function EZLayout({ children }: { children: React.ReactNode }) {
         {/* Main */}
         <div className="flex-1 flex flex-col overflow-hidden min-w-0 print:overflow-visible">
           {/* Mobile topbar */}
-          <header className="lg:hidden print:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-[#E8E5DE] flex-shrink-0">
-            <span className="font-bold text-[#C9A440] tracking-widest text-lg"
+          <header className="lg:hidden print:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-ez-border flex-shrink-0">
+            <span className="font-bold text-gold tracking-widest text-lg"
                   style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>
               ELECTRO ZAKI
             </span>
             <button
               onClick={() => setSidebarOpen(true)}
-              className="p-2 rounded-lg text-[#6B6860] hover:bg-[#F2F0EB] transition-all"
+              className="p-2 rounded-lg text-ez-subtle hover:bg-ez-muted transition-all"
             >
               <Menu className="w-5 h-5" />
             </button>

@@ -113,7 +113,7 @@ export function AcquisitionTab() {
                 onClick={() => set('mode', m)}
                 className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${
                   form.mode === m
-                    ? 'bg-[#C9A440] text-black'
+                    ? 'bg-gold text-black'
                     : 'text-white/50 hover:text-white hover:bg-white/5'
                 }`}
               >
@@ -125,7 +125,7 @@ export function AcquisitionTab() {
           {/* ECH: facture liée */}
           {form.mode === 'ECH' && (
             <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4">
-              <label className="block text-[10px] text-amber-400/70 uppercase tracking-widest mb-2">
+              <label className="block text-xs text-amber-400/70 uppercase tracking-widest mb-2">
                 Référence facture de vente liée
               </label>
               <input
@@ -135,19 +135,19 @@ export function AcquisitionTab() {
                 placeholder="EZ-2025-000001"
                 className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg
                            font-mono text-sm text-white placeholder-white/20 focus:outline-none
-                           focus:border-[#C9A440]/50 transition-colors"
+                           focus:border-gold/50 transition-colors"
               />
             </div>
           )}
 
           {/* Vendeur */}
           <section className="bg-white/[0.03] border border-white/10 rounded-2xl p-5">
-            <p className="text-[10px] text-white/40 uppercase tracking-widest mb-4">
+            <p className="text-xs text-white/40 uppercase tracking-widest mb-4">
               {form.mode === 'RCH' ? 'Vendeur · البائع' : 'Client — Reprise · الزبون'}
             </p>
             <div className="space-y-3">
               <div>
-                <label className="block text-[10px] text-white/30 uppercase tracking-widest mb-1">
+                <label className="block text-xs text-white/30 uppercase tracking-widest mb-1">
                   <User className="inline w-3 h-3 mr-1" />
                   Nom complet
                 </label>
@@ -158,12 +158,12 @@ export function AcquisitionTab() {
                   placeholder="Mohamed Alami"
                   className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg
                              text-white text-sm placeholder-white/15 focus:outline-none
-                             focus:border-[#C9A440]/50 transition-colors"
+                             focus:border-gold/50 transition-colors"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] text-white/30 uppercase tracking-widest mb-1">
+                  <label className="block text-xs text-white/30 uppercase tracking-widest mb-1">
                     <Phone className="inline w-3 h-3 mr-1" />
                     Téléphone
                   </label>
@@ -174,11 +174,11 @@ export function AcquisitionTab() {
                     placeholder="06 XX XX XX XX"
                     className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg
                                text-white text-sm placeholder-white/15 focus:outline-none
-                               focus:border-[#C9A440]/50 transition-colors"
+                               focus:border-gold/50 transition-colors"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] text-white/30 uppercase tracking-widest mb-1">
+                  <label className="block text-xs text-white/30 uppercase tracking-widest mb-1">
                     <CreditCard className="inline w-3 h-3 mr-1" />
                     CIN
                   </label>
@@ -188,7 +188,7 @@ export function AcquisitionTab() {
                     onChange={e => set('vendor_cin', e.target.value)}
                     className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg
                                text-white text-sm placeholder-white/15 focus:outline-none
-                               focus:border-[#C9A440]/50 transition-colors"
+                               focus:border-gold/50 transition-colors"
                   />
                 </div>
               </div>
@@ -197,7 +197,7 @@ export function AcquisitionTab() {
 
           {/* Appareil */}
           <section className="bg-white/[0.03] border border-white/10 rounded-2xl p-5">
-            <p className="text-[10px] text-white/40 uppercase tracking-widest mb-4">
+            <p className="text-xs text-white/40 uppercase tracking-widest mb-4">
               Appareil · الجهاز
             </p>
             <div className="grid grid-cols-2 gap-3">
@@ -209,7 +209,7 @@ export function AcquisitionTab() {
                 { key: 'imei',     label: 'IMEI',      span: true  },
               ] as { key: keyof RepriseForm; label: string; span: boolean }[]).map(({ key, label, span }) => (
                 <div key={key} className={span ? 'col-span-2' : ''}>
-                  <label className="block text-[10px] text-white/30 uppercase tracking-widest mb-1">
+                  <label className="block text-xs text-white/30 uppercase tracking-widest mb-1">
                     {label}
                   </label>
                   <input
@@ -217,20 +217,20 @@ export function AcquisitionTab() {
                     value={form[key] as string}
                     onChange={e => set(key, e.target.value)}
                     className={`w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg
-                               text-white text-sm focus:outline-none focus:border-[#C9A440]/50
+                               text-white text-sm focus:outline-none focus:border-gold/50
                                transition-colors ${key === 'imei' ? 'font-mono' : ''}`}
                   />
                 </div>
               ))}
               <div>
-                <label className="block text-[10px] text-white/30 uppercase tracking-widest mb-1">
+                <label className="block text-xs text-white/30 uppercase tracking-widest mb-1">
                   État
                 </label>
                 <Select
                   value={form.condition}
                   onChange={e => set('condition', e.target.value)}
                   className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg
-                             text-white text-sm focus:outline-none focus:border-[#C9A440]/50 transition-colors"
+                             text-white text-sm focus:outline-none focus:border-gold/50 transition-colors"
                 >
                   {['Neuf', 'Très bon état', 'Bon état', 'État moyen', 'Pour pièces'].map(c => (
                     <option key={c} value={c}>{c}</option>
@@ -238,7 +238,7 @@ export function AcquisitionTab() {
                 </Select>
               </div>
               <div>
-                <label className="block text-[10px] text-white/30 uppercase tracking-widest mb-1">
+                <label className="block text-xs text-white/30 uppercase tracking-widest mb-1">
                   Prix d'achat (MAD)
                 </label>
                 <input
@@ -247,7 +247,7 @@ export function AcquisitionTab() {
                   value={form.prix_achat || ''}
                   onChange={e => set('prix_achat', parseFloat(e.target.value) || 0)}
                   className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg
-                             text-white text-sm focus:outline-none focus:border-[#C9A440]/50 transition-colors"
+                             text-white text-sm focus:outline-none focus:border-gold/50 transition-colors"
                 />
               </div>
             </div>
@@ -255,7 +255,7 @@ export function AcquisitionTab() {
 
           {/* Checklist comptes */}
           <section className="bg-white/[0.03] border border-white/10 rounded-2xl p-5">
-            <p className="text-[10px] text-white/40 uppercase tracking-widest mb-4">
+            <p className="text-xs text-white/40 uppercase tracking-widest mb-4">
               Vérification comptes · فحص الحسابات
             </p>
             <div className="space-y-2">
@@ -281,10 +281,10 @@ export function AcquisitionTab() {
 
           {/* Extras */}
           <section className="bg-white/[0.03] border border-white/10 rounded-2xl p-5">
-            <p className="text-[10px] text-white/40 uppercase tracking-widest mb-4">Extras</p>
+            <p className="text-xs text-white/40 uppercase tracking-widest mb-4">Extras</p>
             <div className="space-y-3">
               <div>
-                <label className="block text-[10px] text-white/30 uppercase tracking-widest mb-1">
+                <label className="block text-xs text-white/30 uppercase tracking-widest mb-1">
                   Accessoires inclus
                 </label>
                 <input
@@ -294,11 +294,11 @@ export function AcquisitionTab() {
                   placeholder="Boîte, chargeur, câble..."
                   className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg
                              text-white text-sm placeholder-white/15 focus:outline-none
-                             focus:border-[#C9A440]/50 transition-colors"
+                             focus:border-gold/50 transition-colors"
                 />
               </div>
               <div>
-                <label className="block text-[10px] text-white/30 uppercase tracking-widest mb-1">
+                <label className="block text-xs text-white/30 uppercase tracking-widest mb-1">
                   Observations / Défauts
                 </label>
                 <textarea
@@ -308,7 +308,7 @@ export function AcquisitionTab() {
                   placeholder="Rayures, pixels morts, défauts constatés..."
                   className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg
                              text-white text-sm placeholder-white/15 focus:outline-none
-                             focus:border-[#C9A440]/50 transition-colors resize-none"
+                             focus:border-gold/50 transition-colors resize-none"
                 />
               </div>
             </div>
@@ -317,7 +317,7 @@ export function AcquisitionTab() {
           <button
             onClick={handlePrint}
             disabled={printing || !form.vendor_name || !form.marque || form.prix_achat <= 0}
-            className="w-full flex items-center justify-center gap-3 py-4 bg-[#C9A440]
+            className="w-full flex items-center justify-center gap-3 py-4 bg-gold
                        hover:bg-[#d4aa48] text-black font-semibold rounded-xl transition-all
                        disabled:opacity-40 disabled:cursor-not-allowed text-base"
           >
@@ -330,7 +330,7 @@ export function AcquisitionTab() {
         {/* Right: preview */}
         <div className="hidden xl:block">
           <div className="sticky top-6">
-            <p className="text-[10px] text-white/30 uppercase tracking-widest mb-3">Aperçu</p>
+            <p className="text-xs text-white/30 uppercase tracking-widest mb-3">Aperçu</p>
             <div className="bg-white rounded-xl shadow-2xl overflow-hidden" style={{ aspectRatio: '210/297' }}>
               <div className="w-full h-full overflow-auto scale-[0.6] origin-top-left" style={{ width: '166.67%', height: '166.67%' }}>
                 <AcquisitionPrintTemplate form={form} docRef="EN COURS..." today={today} />

@@ -155,7 +155,7 @@ export default function MovementsModule({ storeId }: MovementsModuleProps) {
           actions={
             <div className="flex items-center gap-2">
               <button onClick={fetchMovements} disabled={manualRefresh}
-                className="p-2 rounded-xl border border-[#E8E5DE] bg-white text-[#6B6860] hover:bg-[#F8F7F4] transition-all">
+                className="p-2 rounded-xl border border-ez-border bg-white text-ez-subtle hover:bg-ez-bg transition-all">
                 <RefreshCw className={`w-4 h-4 ${manualRefresh ? 'animate-spin' : ''}`} />
               </button>
               {canMove && (
@@ -172,9 +172,9 @@ export default function MovementsModule({ storeId }: MovementsModuleProps) {
         {/* Search */}
         <div className="flex gap-2">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#B0ADA6]" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ez-faint" />
             <input
-              className="w-full pl-9 pr-4 py-2.5 bg-white border border-[#E8E5DE] rounded-xl text-sm placeholder:text-[#B0ADA6] focus:outline-none transition-all"
+              className="w-full pl-9 pr-4 py-2.5 bg-white border border-ez-border rounded-xl text-sm placeholder:text-ez-placeholder focus:outline-none transition-all"
               placeholder={isAr ? 'بحث بمعرف الجهاز...' : 'Rechercher par ID appareil...'}
               value={search}
               onChange={e => setSearch(e.target.value)}
@@ -183,7 +183,7 @@ export default function MovementsModule({ storeId }: MovementsModuleProps) {
             />
             {search && (
               <button onClick={() => setSearch('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#B0ADA6] hover:text-[#1A1A1A]">
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-ez-faint hover:text-ez-text">
                 <X className="w-4 h-4" />
               </button>
             )}
@@ -198,9 +198,9 @@ export default function MovementsModule({ storeId }: MovementsModuleProps) {
 
       {/* List */}
       <div className="flex-1 overflow-auto px-4 sm:px-6 pb-6">
-        <div className="bg-white border border-[#E8E5DE] rounded-2xl overflow-hidden">
+        <div className="bg-white border border-ez-border rounded-2xl overflow-hidden">
           {loading ? (
-            <div className="divide-y divide-[#F2F0EB]">
+            <div className="divide-y divide-ez-muted">
               {[...Array(5)].map((_, i) => <SkeletonRow key={i} />)}
             </div>
           ) : filtered.length === 0 ? (
@@ -218,12 +218,12 @@ export default function MovementsModule({ storeId }: MovementsModuleProps) {
               }
             />
           ) : (
-            <div className="divide-y divide-[#F2F0EB]">
+            <div className="divide-y divide-ez-muted">
               {filtered.map(mov => {
                 const Icon = DEVICE_ICONS[mov.device_type] ?? Package
                 return (
                   <div key={mov.movement_id}
-                    className="flex items-center gap-4 px-5 py-4 hover:bg-[#F8F7F4] transition-all">
+                    className="flex items-center gap-4 px-5 py-4 hover:bg-ez-bg transition-all">
                     {/* Icon */}
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
                          style={{ backgroundColor: `${primary}12` }}>
@@ -233,16 +233,16 @@ export default function MovementsModule({ storeId }: MovementsModuleProps) {
                     {/* Main info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-sm font-bold text-[#1A1A1A]">{mov.device_id}</p>
-                        <span className="text-xs text-[#B0ADA6]">·</span>
-                        <span className="text-xs text-[#6B6860]">{reasonLabel(mov.reason)}</span>
+                        <p className="text-sm font-bold text-ez-text">{mov.device_id}</p>
+                        <span className="text-xs text-ez-faint">·</span>
+                        <span className="text-xs text-ez-subtle">{reasonLabel(mov.reason)}</span>
                       </div>
 
                       {/* Route */}
                       <div className="flex items-center gap-1.5 mt-1">
-                        <MapPin className="w-3 h-3 text-[#B0ADA6] flex-shrink-0" />
-                        <span className="text-xs text-[#6B6860]">{locLabel(mov.from_location)}</span>
-                        <ArrowRight className="w-3 h-3 text-[#B0ADA6]" />
+                        <MapPin className="w-3 h-3 text-ez-faint flex-shrink-0" />
+                        <span className="text-xs text-ez-subtle">{locLabel(mov.from_location)}</span>
+                        <ArrowRight className="w-3 h-3 text-ez-faint" />
                         <span className="text-xs font-medium" style={{ color: primary }}>
                           {locLabel(mov.to_location)}
                           {mov.external_name ? ` (${mov.external_name})` : ''}
@@ -250,14 +250,14 @@ export default function MovementsModule({ storeId }: MovementsModuleProps) {
                       </div>
 
                       {mov.notes && (
-                        <p className="text-xs text-[#B0ADA6] mt-0.5 truncate">{mov.notes}</p>
+                        <p className="text-xs text-ez-faint mt-0.5 truncate">{mov.notes}</p>
                       )}
                     </div>
 
                     {/* Date + raccourci retour */}
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <div className="text-right">
-                        <div className="flex items-center gap-1 text-xs text-[#B0ADA6]">
+                        <div className="flex items-center gap-1 text-xs text-ez-faint">
                           <Clock className="w-3 h-3" />
                           {formatDate(mov.moved_at)}
                         </div>
@@ -284,7 +284,7 @@ export default function MovementsModule({ storeId }: MovementsModuleProps) {
                             })
                             setFormOpen(true)
                           }}
-                          className="p-2 rounded-xl border border-[#E8E5DE] bg-white text-[#B0ADA6] hover:text-[#C9A440] hover:border-[#C9A440] hover:bg-[#FAF5E8] transition-all"
+                          className="p-2 rounded-xl border border-ez-border bg-white text-ez-faint hover:text-gold hover:border-gold hover:bg-gold-50 transition-all"
                           title={isAr ? 'تسجيل الإرجاع' : 'Enregistrer le retour'}
                         >
                           <RotateCcw className="w-3.5 h-3.5" />
@@ -347,14 +347,14 @@ export default function MovementsModule({ storeId }: MovementsModuleProps) {
                 <button
                   type="button"
                   onClick={() => setForm(p => ({ ...p, is_inter_store: false }))}
-                  className={`flex-1 py-2 rounded-xl text-sm font-medium border transition-all ${!form.is_inter_store ? 'bg-[#C9A440] text-white border-[#C9A440]' : 'bg-white text-[#6B6860] border-[#E8E5DE]'}`}
+                  className={`flex-1 py-2 rounded-xl text-sm font-medium border transition-all ${!form.is_inter_store ? 'bg-gold text-white border-gold' : 'bg-white text-ez-subtle border-ez-border'}`}
                 >
                   {isAr ? 'داخل المحل' : 'Intra-magasin'}
                 </button>
                 <button
                   type="button"
                   onClick={() => setForm(p => ({ ...p, is_inter_store: true }))}
-                  className={`flex-1 py-2 rounded-xl text-sm font-medium border transition-all ${form.is_inter_store ? 'bg-[#C9A440] text-white border-[#C9A440]' : 'bg-white text-[#6B6860] border-[#E8E5DE]'}`}
+                  className={`flex-1 py-2 rounded-xl text-sm font-medium border transition-all ${form.is_inter_store ? 'bg-gold text-white border-gold' : 'bg-white text-ez-subtle border-ez-border'}`}
                 >
                   {isAr ? 'بين المحلات' : 'Inter-magasin'}
                 </button>
@@ -426,7 +426,7 @@ export default function MovementsModule({ storeId }: MovementsModuleProps) {
             <div className="flex items-center gap-3 p-3 rounded-xl border"
                  style={{ backgroundColor: `${primary}08`, borderColor: `${primary}25` }}>
               <MapPin className="w-4 h-4 flex-shrink-0" style={{ color: primary }} />
-              <p className="text-sm text-[#1A1A1A]">
+              <p className="text-sm text-ez-text">
                 <span className="font-bold">{form.device_id}</span>
                 {' : '}
                 {locLabel(form.from_location)}

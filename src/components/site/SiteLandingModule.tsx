@@ -127,10 +127,10 @@ export default function SiteLandingModule() {
                       {[p.category?.name, p.productIds.length ? `${p.productIds.length} ${L('produit(s) choisi(s)', 'منتج')}` : null].filter(Boolean).join(' + ')}
                     </p>
                     <div className="grid grid-cols-4 gap-2 pt-2 border-t border-ez-border text-center">
-                      <div><p className="text-lg font-bold tabular-nums">{p.views}</p><p className="text-[10px] uppercase text-ez-subtle flex items-center justify-center gap-1"><Eye className="w-3 h-3" />{L('visites', 'زيارات')}</p></div>
-                      <div><p className="text-lg font-bold tabular-nums">{p.orders}</p><p className="text-[10px] uppercase text-ez-subtle flex items-center justify-center gap-1"><ShoppingBag className="w-3 h-3" />{L('commandes', 'طلبات')}</p></div>
-                      <div><p className="text-lg font-bold tabular-nums">{conv}%</p><p className="text-[10px] uppercase text-ez-subtle">{L('conversion', 'تحويل')}</p></div>
-                      <div><p className="text-sm font-bold tabular-nums pt-1">{mad(p.revenue)}</p><p className="text-[10px] uppercase text-ez-subtle">{L('ventes', 'مبيعات')}</p></div>
+                      <div><p className="text-lg font-bold tabular-nums">{p.views}</p><p className="text-xs uppercase text-ez-subtle flex items-center justify-center gap-1"><Eye className="w-3 h-3" />{L('visites', 'زيارات')}</p></div>
+                      <div><p className="text-lg font-bold tabular-nums">{p.orders}</p><p className="text-xs uppercase text-ez-subtle flex items-center justify-center gap-1"><ShoppingBag className="w-3 h-3" />{L('commandes', 'طلبات')}</p></div>
+                      <div><p className="text-lg font-bold tabular-nums">{conv}%</p><p className="text-xs uppercase text-ez-subtle">{L('conversion', 'تحويل')}</p></div>
+                      <div><p className="text-sm font-bold tabular-nums pt-1">{mad(p.revenue)}</p><p className="text-xs uppercase text-ez-subtle">{L('ventes', 'مبيعات')}</p></div>
                     </div>
                   </div>
                   <div className="flex items-center gap-1 px-3 py-2 border-t border-ez-border">
@@ -175,7 +175,7 @@ function QrModal({ url, title, slug, onClose }: { url: string; title: string; sl
         {src ? <img src={src} alt={url} className="mx-auto w-64 h-64" /> : <RefreshCw className="w-6 h-6 mx-auto animate-spin" />}
         <p className="text-xs font-mono break-all text-ez-subtle select-all">{url}</p>
         {src && <a href={src} download={`qr-${slug}.png`} className="inline-flex items-center justify-center gap-2 w-full py-2 rounded-xl bg-ez-muted text-sm font-medium">{L('Télécharger le QR code (PNG)', 'تحميل رمز QR')}</a>}
-        <p className="text-[11px] text-ez-subtle">{L('À imprimer sur les flyers, l’étiquette de vitrine ou à poster en story.', 'للطباعة على الملصقات أو نشره.')}</p>
+        <p className="text-xs text-ez-subtle">{L('À imprimer sur les flyers, l’étiquette de vitrine ou à poster en story.', 'للطباعة على الملصقات أو نشره.')}</p>
       </div>
     </Modal>
   )

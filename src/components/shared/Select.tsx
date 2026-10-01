@@ -219,7 +219,7 @@ export function Select({
               return (
                 <React.Fragment key={`${o.group ?? ''}|${o.value}|${i}`}>
                   {header && (
-                    <p className="px-3 pt-2.5 pb-1 text-[10px] font-bold uppercase tracking-widest text-ez-placeholder">{header}</p>
+                    <p className="px-3 pt-2.5 pb-1 text-xs font-bold uppercase tracking-widest text-ez-placeholder">{header}</p>
                   )}
                   <div
                     role="option"

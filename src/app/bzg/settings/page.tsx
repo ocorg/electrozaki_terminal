@@ -119,11 +119,11 @@ export default function BZGSettingsPage() {
 
         {/* ── Key-Value Settings (category keys managed separately below) ── */}
         <div className="mt-8">
-          <h2 className="font-display text-xl font-bold text-[#1A1A1A] tracking-wide mb-4">
+          <h2 className="font-display text-xl font-bold text-ez-text tracking-wide mb-4">
             {isAr ? 'إعدادات متقدمة (مفتاح / قيمة)' : 'Paramètres avancés (clé / valeur)'}
           </h2>
           {kvSettings.filter(s => !s.key.startsWith('categories_')).length === 0 ? (
-            <p className="text-sm text-[#B0ADA6]">
+            <p className="text-sm text-ez-faint">
               {isAr ? 'لا توجد إعدادات بعد' : 'Aucun paramètre configuré.'}
             </p>
           ) : (
@@ -131,12 +131,12 @@ export default function BZGSettingsPage() {
               {kvSettings.filter(s => !s.key.startsWith('categories_')).map(s => (
                 <div
                   key={kvKey(s.store_id, s.key)}
-                  className="bg-white border border-[#E8E5DE] rounded-xl p-4 flex items-center gap-4"
+                  className="bg-white border border-ez-border rounded-xl p-4 flex items-center gap-4"
                 >
                   <div className="flex-shrink-0 w-52">
-                    <p className="text-xs font-mono text-[#6B6860]">{s.key}</p>
+                    <p className="text-xs font-mono text-ez-subtle">{s.key}</p>
                     {s.notes && (
-                      <p className="text-[10px] text-[#B0ADA6] mt-0.5">{s.notes}</p>
+                      <p className="text-xs text-ez-faint mt-0.5">{s.notes}</p>
                     )}
                     <span
                       className="mt-1 inline-block text-[9px] font-bold font-mono px-1.5 py-0.5 rounded"
@@ -149,7 +149,7 @@ export default function BZGSettingsPage() {
                     </span>
                   </div>
                   <input
-                    className="flex-1 border border-[#E8E5DE] rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#C9A440] transition-all"
+                    className="flex-1 border border-ez-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-gold transition-all"
                     value={kvEdits[kvKey(s.store_id, s.key)] ?? ''}
                     onChange={e =>
                       setKvEdits(p => ({ ...p, [kvKey(s.store_id, s.key)]: e.target.value }))
@@ -157,7 +157,7 @@ export default function BZGSettingsPage() {
                   />
                   <button
                     onClick={() => saveKvSetting(s.key, s.store_id)}
-                    className="px-4 py-2 rounded-xl bg-[#C9A440] text-white text-sm font-bold hover:opacity-90 transition-all flex-shrink-0"
+                    className="px-4 py-2 rounded-xl bg-gold text-white text-sm font-bold hover:opacity-90 transition-all flex-shrink-0"
                   >
                     {t(isAr, 'common.saveAlt')}
                   </button>
@@ -171,7 +171,7 @@ export default function BZGSettingsPage() {
         {loading ? (
           <div className="space-y-4">
             {[...Array(2)].map((_, i) => (
-              <div key={i} className="h-64 bg-white border border-[#E8E5DE] rounded-2xl animate-pulse" />
+              <div key={i} className="h-64 bg-white border border-ez-border rounded-2xl animate-pulse" />
             ))}
           </div>
         ) : (
@@ -180,11 +180,11 @@ export default function BZGSettingsPage() {
             return (
               <div
                 key={store.store_id}
-                className="bg-white border-2 border-[#E8E5DE] rounded-2xl overflow-hidden"
+                className="bg-white border-2 border-ez-border rounded-2xl overflow-hidden"
                 style={{ borderTopColor: edit.theme_color ?? store.theme_color, borderTopWidth: '3px' }}
               >
                 {/* Header */}
-                <div className="flex items-center gap-3 px-5 py-4 border-b border-[#E8E5DE]">
+                <div className="flex items-center gap-3 px-5 py-4 border-b border-ez-border">
                   <div
                     className="w-8 h-8 rounded-lg flex items-center justify-center"
                     style={{ backgroundColor: `${edit.theme_color ?? store.theme_color}20` }}
@@ -192,8 +192,8 @@ export default function BZGSettingsPage() {
                     <Store className="w-4 h-4" style={{ color: edit.theme_color ?? store.theme_color }} />
                   </div>
                   <div>
-                    <p className="font-display font-bold text-[#1A1A1A] tracking-wide">{store.name}</p>
-                    <p className="text-xs text-[#B0ADA6]">{store.store_id}</p>
+                    <p className="font-display font-bold text-ez-text tracking-wide">{store.name}</p>
+                    <p className="text-xs text-ez-faint">{store.store_id}</p>
                   </div>
                 </div>
 
@@ -233,7 +233,7 @@ export default function BZGSettingsPage() {
                     <div className="flex items-center gap-3">
                       <input
                         type="color"
-                        className="w-10 h-10 rounded-xl cursor-pointer border border-[#E8E5DE]"
+                        className="w-10 h-10 rounded-xl cursor-pointer border border-ez-border"
                         value={edit.theme_color ?? store.theme_color}
                         onChange={e => setEdit(store.store_id, 'theme_color', e.target.value)}
                       />
@@ -244,7 +244,7 @@ export default function BZGSettingsPage() {
                         onChange={e => setEdit(store.store_id, 'theme_color', e.target.value)}
                         placeholder="#C9A440"
                       />
-                      <Palette className="w-4 h-4 text-[#B0ADA6]" />
+                      <Palette className="w-4 h-4 text-ez-faint" />
                     </div>
                   </Field>
 
@@ -269,14 +269,14 @@ export default function BZGSettingsPage() {
       {/* ── Category Manager ──────────────────────────────── */}
       <div className="px-4 sm:px-6 pb-6 mt-4 space-y-4">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-[#F2F0EB]">
-            <Tag className="w-4 h-4 text-[#C9A440]" />
+          <div className="p-2 rounded-xl bg-ez-muted">
+            <Tag className="w-4 h-4 text-gold" />
           </div>
           <div>
-            <p className="text-sm font-bold text-[#1A1A1A]">
+            <p className="text-sm font-bold text-ez-text">
               {isAr ? 'إدارة الفئات' : 'Gestion des catégories'}
             </p>
-            <p className="text-xs text-[#6B6860]">
+            <p className="text-xs text-ez-subtle">
               {isAr
                 ? 'أضف أو احذف فئات الإكسسوارات والمصاريف والموردين'
                 : 'Ajoutez ou supprimez des catégories pour les accessoires, dépenses et fournisseurs'}

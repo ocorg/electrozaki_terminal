@@ -50,15 +50,15 @@ export default function StoreControlSection() {
   }
 
   return (
-    <div className="mb-8 bg-white border border-[#E8E5DE] rounded-2xl overflow-hidden">
+    <div className="mb-8 bg-white border border-ez-border rounded-2xl overflow-hidden">
 
       {/* Header */}
-      <div className="px-6 py-4 border-b border-[#E8E5DE] flex items-center gap-2">
-        <Store className="w-4 h-4 text-[#6B6860]" />
-        <p className="font-bold text-sm text-[#1A1A1A]">
+      <div className="px-6 py-4 border-b border-ez-border flex items-center gap-2">
+        <Store className="w-4 h-4 text-ez-subtle" />
+        <p className="font-bold text-sm text-ez-text">
           Gestion des boutiques
         </p>
-        <span className="text-[10px] text-[#B0ADA6] ml-auto">
+        <span className="text-xs text-ez-faint ml-auto">
           Propriétaire uniquement
         </span>
       </div>
@@ -67,12 +67,12 @@ export default function StoreControlSection() {
       {loading ? (
         <div className="flex items-center justify-center py-10">
           <Loader2
-            className="w-5 h-5 text-[#B0ADA6]"
+            className="w-5 h-5 text-ez-faint"
             style={{ animation: 'spin 1s linear infinite' }}
           />
         </div>
       ) : (
-        <div className="divide-y divide-[#F2F0EB]">
+        <div className="divide-y divide-ez-muted">
           {stores.map(store => (
             <div
               key={store.store_id}
@@ -87,8 +87,8 @@ export default function StoreControlSection() {
                   {store.store_id.replace(/[^A-Z]/g, '').slice(0, 2)}
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-[#1A1A1A]">{store.name}</p>
-                  <p className="text-xs text-[#B0ADA6]">{store.store_id}</p>
+                  <p className="text-sm font-bold text-ez-text">{store.name}</p>
+                  <p className="text-xs text-ez-faint">{store.store_id}</p>
                 </div>
               </div>
 

@@ -278,7 +278,7 @@ function Card({ title, icon: Icon, note, children }: { title: string; icon: type
   return (
     <section className="bg-white border border-ez-border rounded-2xl p-4 space-y-3">
       <div>
-        <h2 className="text-sm font-bold text-ez-text flex items-center gap-2"><Icon className="w-4 h-4 text-[#C9A440]" />{title}</h2>
+        <h2 className="text-sm font-bold text-ez-text flex items-center gap-2"><Icon className="w-4 h-4 text-gold" />{title}</h2>
         {note && <p className="text-xs text-ez-subtle mt-0.5">{note}</p>}
       </div>
       {children}
@@ -302,7 +302,7 @@ function Tile({ icon: Icon, label, value, now, before, hint, lowerIsBetter }: {
         <Arrow className="w-3.5 h-3.5 flex-shrink-0" />
         {change === null ? L('pas de comparaison', 'لا مقارنة') : `${change > 0 ? '+' : ''}${change} % ${L('vs période précédente', 'مقارنة بالفترة السابقة')}`}
       </p>
-      {hint && <p className="text-[11px] text-ez-subtle mt-1">{hint}</p>}
+      {hint && <p className="text-xs text-ez-subtle mt-1">{hint}</p>}
     </div>
   )
 }
@@ -310,7 +310,7 @@ function Tile({ icon: Icon, label, value, now, before, hint, lowerIsBetter }: {
 function Mini({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl bg-ez-muted/60 px-3 py-2">
-      <p className="text-[11px] text-ez-subtle">{label}</p>
+      <p className="text-xs text-ez-subtle">{label}</p>
       <p className="text-lg font-bold text-ez-text tabular-nums">{value}</p>
     </div>
   )
@@ -341,20 +341,20 @@ function VisitorsChart({ series, bucket }: { series: Stats['series']; bucket: 'd
               onMouseEnter={() => setHover(i)} onFocus={() => setHover(i)} onBlur={() => setHover(null)}
               aria-label={`${fmt(d.day)} : ${d.visitors} ${L('visiteurs', 'زوار')}, ${d.views} ${L('pages vues', 'صفحات')}`}
               className="flex-1 h-full flex items-end focus:outline-none">
-              <span className={`block w-full rounded-t-[4px] transition-colors ${hover === i ? 'bg-[#A8862E]' : 'bg-[#C9A440]'}`}
+              <span className={`block w-full rounded-t-[4px] transition-colors ${hover === i ? 'bg-[#A8862E]' : 'bg-gold'}`}
                 style={{ height: `${Math.max(d.visitors > 0 ? 2 : 0, (d.visitors / max) * 100)}%` }} />
             </button>
           ))}
         </div>
-        <span className="absolute -top-1 left-0 text-[10px] text-ez-subtle tabular-nums">{num(max)}</span>
+        <span className="absolute -top-1 left-0 text-xs text-ez-subtle tabular-nums">{num(max)}</span>
         {h && (
-          <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-[#1A1A1A] text-white text-xs rounded-lg px-3 py-2 pointer-events-none shadow-lg whitespace-nowrap">
+          <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-ez-dark text-white text-xs rounded-lg px-3 py-2 pointer-events-none shadow-lg whitespace-nowrap">
             <p className="font-semibold">{bucket === 'week' ? L(`Semaine du ${fmt(h.day)}`, `أسبوع ${fmt(h.day)}`) : fmt(h.day)}</p>
             <p>{num(h.visitors)} {L('visiteurs', 'زوار')} · {num(h.views)} {L('pages vues', 'صفحات')}</p>
           </div>
         )}
       </div>
-      <div className="flex justify-between text-[10px] text-ez-subtle mt-1 tabular-nums">
+      <div className="flex justify-between text-xs text-ez-subtle mt-1 tabular-nums">
         <span>{fmt(series[0].day)}</span>
         {series.length > 2 && <span>{fmt(series[Math.floor(series.length / 2)].day)}</span>}
         <span>{fmt(series[series.length - 1].day)}</span>
@@ -371,7 +371,7 @@ function Funnel({ steps }: { steps: { label: string; value: number }[] }) {
         <div key={st.label} className="grid grid-cols-[minmax(0,11rem)_1fr_auto] items-center gap-3">
           <span className="text-sm text-ez-text truncate">{st.label}</span>
           <div className="h-6 bg-ez-muted rounded-[4px] overflow-hidden">
-            <div className="h-full bg-[#C9A440] rounded-[4px]" style={{ width: `${Math.max(st.value > 0 ? 1 : 0, (st.value / top) * 100)}%` }} />
+            <div className="h-full bg-gold rounded-[4px]" style={{ width: `${Math.max(st.value > 0 ? 1 : 0, (st.value / top) * 100)}%` }} />
           </div>
           <span className="text-sm tabular-nums w-28 text-right">
             <b>{num(st.value)}</b>
@@ -396,7 +396,7 @@ function RankedBars({ items, empty }: { items: { label: string; value: number }[
             <span className="tabular-nums"><b>{num(x.value)}</b> <span className="text-ez-subtle">· {pct(x.value, total)} %</span></span>
           </div>
           <div className="h-2 mt-1 bg-ez-muted rounded-full overflow-hidden">
-            <div className="h-full bg-[#C9A440] rounded-full" style={{ width: `${(x.value / max) * 100}%` }} />
+            <div className="h-full bg-gold rounded-full" style={{ width: `${(x.value / max) * 100}%` }} />
           </div>
         </div>
       ))}
@@ -410,7 +410,7 @@ function Table({ head, rows, empty }: { head: string[]; rows: React.ReactNode[][
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="text-[11px] uppercase tracking-wide text-ez-subtle border-b border-ez-border">
+          <tr className="text-xs uppercase tracking-wide text-ez-subtle border-b border-ez-border">
             {head.map((h, i) => <th key={h} className={`py-1.5 font-semibold ${i === 0 ? 'text-left' : 'text-right'}`}>{h}</th>)}
           </tr>
         </thead>

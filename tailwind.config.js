@@ -33,11 +33,12 @@ const config = {
           text:        '#1A1A1A',
           subtle:      '#6B6860',
           placeholder: '#B0ADA6',
+          faint:       '#8A877F',   // secondary text that must stay readable
         },
       },
       fontFamily: {
         display: ['Barlow Condensed', 'sans-serif'],
-        body:    ['Inter', 'sans-serif'],
+        body:    ['var(--font-inter)', 'Inter', 'sans-serif'],
       },
       borderRadius: {
         lg: '12px',

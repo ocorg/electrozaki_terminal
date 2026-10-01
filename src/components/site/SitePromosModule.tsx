@@ -66,7 +66,7 @@ function PromoPhonesTab() {
         <div className="bg-white border border-ez-border rounded-2xl overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-[11px] uppercase tracking-wide text-ez-subtle border-b border-ez-border">
+              <tr className="text-left text-xs uppercase tracking-wide text-ez-subtle border-b border-ez-border">
                 <th className="px-3 py-2">{L('Téléphone', 'الهاتف')}</th>
                 <th className="px-3 py-2">{L('État', 'الحالة')}</th>
                 <th className="px-3 py-2 text-right">{L('Prix normal', 'السعر العادي')}</th>
@@ -82,7 +82,7 @@ function PromoPhonesTab() {
                   <tr key={ph.phone_id}>
                     <td className="px-3 py-2">
                       <p className="font-semibold text-ez-text">{[ph.marque, ph.model, ph.stockage].filter(Boolean).join(' ')}</p>
-                      <p className="text-[11px] text-ez-subtle">
+                      <p className="text-xs text-ez-subtle">
                         <span className="font-mono">{ph.phone_id}</span>
                         {ph.couleur ? ` · ${ph.couleur}` : ''}
                         {ph.battery_level != null ? ` · ${ph.battery_level} %` : ''}

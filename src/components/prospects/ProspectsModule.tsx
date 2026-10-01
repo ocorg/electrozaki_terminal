@@ -247,7 +247,7 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
           actions={
             <div className="flex items-center gap-2">
               <button onClick={fetchProspects} disabled={manualRefresh}
-                className="p-2 rounded-xl border border-[#E8E5DE] bg-white text-[#6B6860] hover:bg-[#F8F7F4] transition-all disabled:opacity-50">
+                className="p-2 rounded-xl border border-ez-border bg-white text-ez-subtle hover:bg-ez-bg transition-all disabled:opacity-50">
                 <RefreshCw className={`w-4 h-4 ${manualRefresh ? 'animate-spin' : ''}`} />
               </button>
               <Btn variant="primary" onClick={openAdd}
@@ -261,16 +261,16 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
 
         {/* Search */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#B0ADA6]" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ez-faint" />
           <input
-            className="w-full pl-9 pr-10 py-2.5 bg-white border border-[#E8E5DE] rounded-xl text-sm placeholder:text-[#B0ADA6] focus:outline-none"
+            className="w-full pl-9 pr-10 py-2.5 bg-white border border-ez-border rounded-xl text-sm placeholder:text-ez-placeholder focus:outline-none"
             placeholder={isAr ? 'بحث بالاسم، الماركة، الموديل...' : 'Rechercher par nom, marque, modèle...'}
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
           {search && (
             <button onClick={() => setSearch('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#B0ADA6] hover:text-[#1A1A1A]">
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-ez-faint hover:text-ez-text">
               <X className="w-4 h-4" />
             </button>
           )}
@@ -279,14 +279,14 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
         {/* Filters */}
         <div className="flex flex-wrap gap-3">
           <Select
-            className="text-sm border border-[#E8E5DE] rounded-xl px-3 py-1.5 bg-white text-[#6B6860] focus:outline-none"
+            className="text-sm border border-ez-border rounded-xl px-3 py-1.5 bg-white text-ez-subtle focus:outline-none"
             value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
             <option value="">{t(isAr, 'common.allStatuses')}</option>
             {STATUTS.map(s => <option key={s} value={s}>{codeLabel('prospect_status', s, lang)}</option>)}
           </Select>
 
           <Select
-            className="text-sm border border-[#E8E5DE] rounded-xl px-3 py-1.5 bg-white text-[#6B6860] focus:outline-none"
+            className="text-sm border border-ez-border rounded-xl px-3 py-1.5 bg-white text-ez-subtle focus:outline-none"
             value={filterSource} onChange={e => setFilterSource(e.target.value)}>
             <option value="">{isAr ? 'كل المصادر' : 'Toutes sources'}</option>
             {SOURCES.map(s => <option key={s} value={s}>{codeLabel('prospect_source', s, lang)}</option>)}
@@ -307,18 +307,18 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {[...Array(6)].map((_, i) => (
-              <div key={i} className="bg-white border border-[#E8E5DE] rounded-2xl p-5 animate-pulse space-y-3">
-                <div className="h-4 bg-[#F2F0EB] rounded w-2/3" />
-                <div className="h-3 bg-[#F2F0EB] rounded w-1/3" />
-                <div className="h-10 bg-[#F2F0EB] rounded" />
-                <div className="h-3 bg-[#F2F0EB] rounded w-1/2" />
+              <div key={i} className="bg-white border border-ez-border rounded-2xl p-5 animate-pulse space-y-3">
+                <div className="h-4 bg-ez-muted rounded w-2/3" />
+                <div className="h-3 bg-ez-muted rounded w-1/3" />
+                <div className="h-10 bg-ez-muted rounded" />
+                <div className="h-3 bg-ez-muted rounded w-1/2" />
               </div>
             ))}
           </div>
         ) : prospects.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-48 text-center">
-            <ClipboardList className="w-10 h-10 text-[#B0ADA6] mb-3 opacity-40" />
-            <p className="text-sm text-[#6B6860] mb-4">
+            <ClipboardList className="w-10 h-10 text-ez-faint mb-3 opacity-40" />
+            <p className="text-sm text-ez-subtle mb-4">
               {hasFilters
                 ? (t(isAr, 'common.noResultsFiltered'))
                 : (isAr ? 'لا توجد طلبات بعد' : 'Aucun prospect pour le moment')}
@@ -348,17 +348,17 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
                   {/* Header */}
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="text-sm font-bold text-[#1A1A1A] truncate">{p.nom}</p>
+                      <p className="text-sm font-bold text-ez-text truncate">{p.nom}</p>
                       {p.telephone && (
-                        <p className="text-xs text-[#6B6860] font-mono mt-0.5">{p.telephone}</p>
+                        <p className="text-xs text-ez-subtle font-mono mt-0.5">{p.telephone}</p>
                       )}
                     </div>
                     <div className="flex items-center gap-1.5 flex-shrink-0 flex-wrap justify-end">
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                      <span className="text-xs font-bold px-2 py-0.5 rounded-full"
                         style={{ backgroundColor: srcStyle.bg, color: srcStyle.color }}>
                         {codeLabel('prospect_source', p.source, lang)}
                       </span>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border"
+                      <span className="text-xs font-bold px-2 py-0.5 rounded-full border"
                         style={{ backgroundColor: statStyle.bg, color: statStyle.color, borderColor: statStyle.border }}>
                         {codeLabel('prospect_status', p.statut, lang)}
                       </span>
@@ -366,7 +366,7 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
                   </div>
 
                   {/* Demand */}
-                  <div className="px-3 py-2.5 bg-[#F8F7F4] rounded-xl">
+                  <div className="px-3 py-2.5 bg-ez-bg rounded-xl">
                     <div className="flex flex-wrap gap-1.5">
                       {[
                         ...prospectBrands(p),
@@ -377,10 +377,10 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
                             : p.budget_max != null ? `≤ ${mad(p.budget_max)} MAD` : `≥ ${mad(p.budget_min)} MAD`]
                           : []),
                       ].map((c, i) => (
-                        <span key={i} className="text-xs font-bold text-[#1A1A1A] bg-white border border-[#E8E5DE] rounded-lg px-2 py-0.5">{c}</span>
+                        <span key={i} className="text-xs font-bold text-ez-text bg-white border border-ez-border rounded-lg px-2 py-0.5">{c}</span>
                       ))}
                       {!prospectBrands(p).length && !p.model && !p.stockage && p.budget_max == null && p.budget_min == null && (
-                        <span className="text-sm text-[#B0ADA6]">—</span>
+                        <span className="text-sm text-ez-faint">—</span>
                       )}
                     </div>
                   </div>
@@ -405,37 +405,37 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
                               return flawed > 0 ? <span className="font-medium text-amber-700"> · dont {flawed} endommagé{flawed > 1 ? 's' : ''} / pièces changées</span> : null
                             })()}
                           </span>
-                          <span className="text-[10px] font-bold text-emerald-700">
+                          <span className="text-xs font-bold text-emerald-700">
                             {listOpen ? (isAr ? 'إخفاء' : 'Masquer') : (isAr ? 'عرض' : 'Voir')}
                           </span>
                           <ChevronDown className={`w-3.5 h-3.5 text-emerald-700 transition-transform ${listOpen ? 'rotate-180' : ''}`} />
                         </button>
                         {listOpen && (
-                          <ul className="border-t border-emerald-200 bg-white divide-y divide-[#F2F0EB]">
+                          <ul className="border-t border-emerald-200 bg-white divide-y divide-ez-muted">
                             {shown.map(ph => {
                               const issue = phoneIssues(ph)
                               return (
                               <li key={ph.phone_id} className="flex items-center gap-2 px-2.5 py-2"
                                 style={issue.damaged ? { backgroundColor: '#FEF2F2' } : issue.replaced ? { backgroundColor: '#FFFBEB' } : undefined}>
                                 <div className="min-w-0 flex-1">
-                                  <p className="text-xs font-bold text-[#1A1A1A] truncate">
+                                  <p className="text-xs font-bold text-ez-text truncate">
                                     {(ph.model ?? '').toLowerCase().startsWith((ph.marque ?? '').toLowerCase()) ? ph.model : [ph.marque, ph.model].join(' ')} {ph.stockage ?? ''}
                                   </p>
                                   {(issue.damaged || issue.replaced > 0) && (
                                     <p className="flex flex-wrap gap-1 my-0.5">
                                       {issue.damaged && (
-                                        <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700">
+                                        <span className="inline-flex items-center gap-0.5 text-xs font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700">
                                           <AlertTriangle className="w-3 h-3" />Endommagé{ph.damage_notes ? ` : ${ph.damage_notes}` : ''}
                                         </span>
                                       )}
                                       {issue.replaced > 0 && (
-                                        <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">
+                                        <span className="inline-flex items-center gap-0.5 text-xs font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">
                                           <Wrench className="w-3 h-3" />Pièces changées : {(ph.replaced_components ?? []).map(c => c.name).join(', ')}
                                         </span>
                                       )}
                                     </p>
                                   )}
-                                  <p className="text-[10px] text-[#6B6860] flex items-center gap-1.5 flex-wrap">
+                                  <p className="text-xs text-ez-subtle flex items-center gap-1.5 flex-wrap">
                                     <span className="font-mono">{ph.phone_id}</span>
                                     <span>· {codeLabel('device_condition', ph.condition, lang)}</span>
                                     {ph.couleur && <span>· {ph.couleur}</span>}
@@ -446,7 +446,7 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
                                     )}
                                   </p>
                                 </div>
-                                <span className="text-xs font-bold text-[#1A1A1A] tabular-nums flex-shrink-0">
+                                <span className="text-xs font-bold text-ez-text tabular-nums flex-shrink-0">
                                   {mad(ph.prix_vente_recommande)} MAD
                                 </span>
                               </li>
@@ -456,7 +456,7 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
                               <li>
                                 <button type="button"
                                   onClick={() => setFullLists(s => toggleIn(s, p.prospect_id))}
-                                  className="w-full px-2.5 py-1.5 text-[11px] font-bold text-emerald-700 hover:bg-emerald-50 transition-colors">
+                                  className="w-full px-2.5 py-1.5 text-xs font-bold text-emerald-700 hover:bg-emerald-50 transition-colors">
                                   {fullLists.has(p.prospect_id)
                                     ? (isAr ? 'عرض أقل' : 'Voir moins')
                                     : (isAr ? `عرض الكل (${matches.length})` : `Voir les ${matches.length}`)}
@@ -471,34 +471,34 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
 
                   {/* Notes */}
                   {p.notes && (
-                    <p className="text-xs text-[#6B6860] leading-relaxed border-l-2 border-[#E8E5DE] pl-2.5">
+                    <p className="text-xs text-ez-subtle leading-relaxed border-l-2 border-ez-border pl-2.5">
                       {p.notes}
                     </p>
                   )}
 
                   {/* Footer */}
-                  <div className="flex items-center justify-between pt-2 border-t border-[#F2F0EB]">
-                    <p className="text-[10px] text-[#B0ADA6]">{formatDate(p.created_at)}</p>
+                  <div className="flex items-center justify-between pt-2 border-t border-ez-muted">
+                    <p className="text-xs text-ez-faint">{formatDate(p.created_at)}</p>
                     <div className="flex items-center gap-1">
                       {!isClosed && (
                         <>
                           {p.statut === 'nouveau' && (
                             <button
                               onClick={() => updateStatut(p.prospect_id, 'contacte')}
-                              className="px-2 py-1 text-[10px] font-bold rounded-lg bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-all">
+                              className="px-2 py-1 text-xs font-bold rounded-lg bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-all">
                               {isAr ? 'تم التواصل' : 'Contacté'}
                             </button>
                           )}
                           <button
                             onClick={() => updateStatut(p.prospect_id, 'converti')}
                             title={isAr ? 'تم البيع' : 'Marquer converti'}
-                            className="p-1.5 rounded-lg text-[#B0ADA6] hover:text-emerald-600 hover:bg-emerald-50 transition-all">
+                            className="p-1.5 rounded-lg text-ez-faint hover:text-emerald-600 hover:bg-emerald-50 transition-all">
                             <CheckCircle className="w-3.5 h-3.5" />
                           </button>
                           <button
                             onClick={() => updateStatut(p.prospect_id, 'perdu')}
                             title={isAr ? 'طلب مفقود' : 'Marquer perdu'}
-                            className="p-1.5 rounded-lg text-[#B0ADA6] hover:text-red-500 hover:bg-red-50 transition-all">
+                            className="p-1.5 rounded-lg text-ez-faint hover:text-red-500 hover:bg-red-50 transition-all">
                             <XCircle className="w-3.5 h-3.5" />
                           </button>
                         </>
@@ -506,19 +506,19 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
                       {isClosed && (
                         <button
                           onClick={() => updateStatut(p.prospect_id, 'nouveau')}
-                          className="px-2 py-1 text-[10px] font-bold rounded-lg bg-[#F8F7F4] text-[#6B6860] border border-[#E8E5DE] hover:bg-white transition-all">
+                          className="px-2 py-1 text-xs font-bold rounded-lg bg-ez-bg text-ez-subtle border border-ez-border hover:bg-white transition-all">
                           {isAr ? 'إعادة فتح' : 'Réouvrir'}
                         </button>
                       )}
                       <button
                         onClick={() => openEdit(p)}
-                        className="p-1.5 rounded-lg text-[#B0ADA6] hover:text-[#1A1A1A] hover:bg-[#F2F0EB] transition-all">
+                        className="p-1.5 rounded-lg text-ez-faint hover:text-ez-text hover:bg-ez-muted transition-all">
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
                       {canDelete && (
                         <button
                           onClick={() => handleDelete(p.prospect_id)}
-                          className="p-1.5 rounded-lg text-[#B0ADA6] hover:text-red-500 hover:bg-red-50 transition-all">
+                          className="p-1.5 rounded-lg text-ez-faint hover:text-red-500 hover:bg-red-50 transition-all">
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       )}
@@ -567,14 +567,14 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
           </Field>
 
           {/* What the client wants — every criterion optional, combined */}
-          <div className="space-y-3 p-3 bg-[#F8F7F4] rounded-xl">
-            <p className="text-xs font-bold text-[#6B6860] uppercase tracking-widest">
+          <div className="space-y-3 p-3 bg-ez-bg rounded-xl">
+            <p className="text-xs font-bold text-ez-subtle uppercase tracking-widest">
               {isAr ? 'ما يبحث عنه الزبون' : 'Ce que cherche le client'}
-              <span className="normal-case tracking-normal font-medium text-[#B0ADA6]"> · {isAr ? 'معيار واحد على الأقل' : 'au moins un critère'}</span>
+              <span className="normal-case tracking-normal font-medium text-ez-faint"> · {isAr ? 'معيار واحد على الأقل' : 'au moins un critère'}</span>
             </p>
 
             <div>
-              <p className="text-[10px] font-bold text-[#B0ADA6] uppercase tracking-wider mb-1.5">
+              <p className="text-xs font-bold text-ez-faint uppercase tracking-wider mb-1.5">
                 {isAr ? 'الماركة (يمكن اختيار عدة)' : 'Marque(s) — plusieurs possibles'}
               </p>
               <div className="flex flex-wrap gap-1.5">
@@ -606,7 +606,7 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
             />
 
             <div>
-              <p className="text-[10px] font-bold text-[#B0ADA6] uppercase tracking-wider mb-1.5">
+              <p className="text-xs font-bold text-ez-faint uppercase tracking-wider mb-1.5">
                 {isAr ? 'السعة الدنيا' : 'Stockage minimum'}
               </p>
               <div className="flex flex-wrap gap-1.5">
@@ -648,7 +648,7 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
           </Field>
 
           {/* Actions */}
-          <div className="flex gap-3 justify-end pt-1 border-t border-[#E8E5DE]">
+          <div className="flex gap-3 justify-end pt-1 border-t border-ez-border">
             <Btn variant="secondary" onClick={closeForm}>
               {t(isAr, 'common.cancel')}
             </Btn>

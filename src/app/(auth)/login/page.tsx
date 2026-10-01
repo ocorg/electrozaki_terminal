@@ -47,14 +47,14 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8F7F4] flex flex-col items-center justify-center p-6">
+    <div className="min-h-screen bg-ez-bg flex flex-col items-center justify-center p-6">
       <div className="absolute inset-0 bg-[radial-gradient(#00000008_1px,transparent_1px)] bg-[size:24px_24px]" />
 
       <div className="relative w-full max-w-sm">
 
         {/* Logo */}
         <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[#1A1A1A] mb-5 shadow-lg">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-ez-dark mb-5 shadow-lg">
             <span
               className="text-white font-bold text-xl tracking-widest"
               style={{ fontFamily: "'Barlow Condensed', sans-serif" }}
@@ -63,12 +63,12 @@ export default function LoginPage() {
             </span>
           </div>
           <h1
-            className="text-2xl font-bold text-[#1A1A1A] tracking-wide"
+            className="text-2xl font-bold text-ez-text tracking-wide"
             style={{ fontFamily: "'Barlow Condensed', sans-serif" }}
           >
             BZG Group
           </h1>
-          <p className="text-sm text-[#6B6860] mt-1">Connectez-vous pour continuer</p>
+          <p className="text-sm text-ez-subtle mt-1">Connectez-vous pour continuer</p>
         </div>
 
         {/* Inactive account warning */}
@@ -79,12 +79,12 @@ export default function LoginPage() {
         )}
 
         {/* Login card */}
-        <div className="bg-white border border-[#E8E5DE] rounded-2xl p-8 shadow-[0_4px_24px_rgba(0,0,0,0.06)]">
+        <div className="bg-white border border-ez-border rounded-2xl p-8 shadow-[0_4px_24px_rgba(0,0,0,0.06)]">
           <form onSubmit={handleLogin} className="space-y-5">
 
             {/* Email */}
             <div>
-              <label className="block text-xs text-[#6B6860] uppercase tracking-widest mb-2 font-medium">
+              <label className="block text-xs text-ez-subtle uppercase tracking-widest mb-2 font-medium">
                 Email
               </label>
               <input
@@ -95,7 +95,7 @@ export default function LoginPage() {
                 autoComplete="email"
                 autoFocus
                 placeholder="vous@bzggroup.ma"
-                className="w-full bg-[#F8F7F4] border border-[#E8E5DE] rounded-xl px-4 py-3 text-[#1A1A1A] text-sm placeholder:text-[#B0ADA6] focus:outline-none transition-all"
+                className="w-full bg-ez-bg border border-ez-border rounded-xl px-4 py-3 text-ez-text text-sm placeholder:text-ez-placeholder focus:outline-none transition-all"
                 onFocus={e => { e.target.style.borderColor = '#C9A440'; e.target.style.boxShadow = '0 0 0 3px #C9A44020' }}
                 onBlur={e =>  { e.target.style.borderColor = '#E8E5DE';  e.target.style.boxShadow = 'none' }}
               />
@@ -103,7 +103,7 @@ export default function LoginPage() {
 
             {/* Password */}
             <div>
-              <label className="block text-xs text-[#6B6860] uppercase tracking-widest mb-2 font-medium">
+              <label className="block text-xs text-ez-subtle uppercase tracking-widest mb-2 font-medium">
                 Mot de passe
               </label>
               <div className="relative">
@@ -114,14 +114,14 @@ export default function LoginPage() {
                   required
                   autoComplete="current-password"
                   placeholder="••••••••"
-                  className="w-full bg-[#F8F7F4] border border-[#E8E5DE] rounded-xl px-4 py-3 pr-11 text-[#1A1A1A] text-sm placeholder:text-[#B0ADA6] focus:outline-none transition-all"
+                  className="w-full bg-ez-bg border border-ez-border rounded-xl px-4 py-3 pr-11 text-ez-text text-sm placeholder:text-ez-placeholder focus:outline-none transition-all"
                   onFocus={e => { e.target.style.borderColor = '#C9A440'; e.target.style.boxShadow = '0 0 0 3px #C9A44020' }}
                   onBlur={e =>  { e.target.style.borderColor = '#E8E5DE';  e.target.style.boxShadow = 'none' }}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPass(!showPass)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#B0ADA6] hover:text-[#6B6860] transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-ez-faint hover:text-ez-subtle transition-colors"
                   tabIndex={-1}
                 >
                   {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -155,7 +155,7 @@ export default function LoginPage() {
           </form>
         </div>
 
-        <p className="text-center text-[#B0ADA6] text-xs mt-6">
+        <p className="text-center text-ez-faint text-xs mt-6">
           BZG Group © {new Date().getFullYear()}
         </p>
       </div>

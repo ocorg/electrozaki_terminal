@@ -53,30 +53,30 @@ export default function SelectStorePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#F8F7F4] flex items-center justify-center">
-        <Loader2 className="w-6 h-6 text-[#6B6860] animate-spin" />
+      <div className="min-h-screen bg-ez-bg flex items-center justify-center">
+        <Loader2 className="w-6 h-6 text-ez-subtle animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#F8F7F4] flex flex-col items-center justify-center p-6">
+    <div className="min-h-screen bg-ez-bg flex flex-col items-center justify-center p-6">
       <div className="absolute inset-0 bg-[radial-gradient(#00000008_1px,transparent_1px)] bg-[size:24px_24px]" />
 
       <div className="relative w-full max-w-lg">
         {/* Header */}
         <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[#1A1A1A] mb-4 shadow-lg">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-ez-dark mb-4 shadow-lg">
             <span className="text-white font-bold text-xl tracking-widest"
                   style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>
               BZG
             </span>
           </div>
-          <h1 className="text-2xl font-bold text-[#1A1A1A]"
+          <h1 className="text-2xl font-bold text-ez-text"
               style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>
             Bienvenue, {user?.display_name}
           </h1>
-          <p className="text-sm text-[#6B6860] mt-1 capitalize">
+          <p className="text-sm text-ez-subtle mt-1 capitalize">
             {codeLabel('user_role', user?.role, 'fr')} · Choisissez un portail
           </p>
         </div>
@@ -107,11 +107,11 @@ export default function SelectStorePage() {
 
               {/* Labels */}
               <div className="flex-1 min-w-0">
-                <p className="font-bold text-lg text-[#1A1A1A] tracking-wide"
+                <p className="font-bold text-lg text-ez-text tracking-wide"
                    style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>
                   {p.name}
                 </p>
-                <p className="text-xs text-[#B0ADA6] mt-0.5 truncate">{p.subtitle}</p>
+                <p className="text-xs text-ez-faint mt-0.5 truncate">{p.subtitle}</p>
               </div>
 
               {/* Arrow */}
@@ -132,7 +132,7 @@ export default function SelectStorePage() {
           <button
             onClick={handleLogout}
             disabled={loggingOut}
-            className="inline-flex items-center gap-2 text-sm text-[#B0ADA6] hover:text-red-500 transition-colors"
+            className="inline-flex items-center gap-2 text-sm text-ez-faint hover:text-red-500 transition-colors"
           >
             {loggingOut
               ? <Loader2 className="w-4 h-4 animate-spin" />
@@ -142,7 +142,7 @@ export default function SelectStorePage() {
           </button>
         </div>
 
-        <p className="text-center text-[#B0ADA6] text-xs mt-4">
+        <p className="text-center text-ez-faint text-xs mt-4">
           BZG Group © {new Date().getFullYear()}
         </p>
       </div>

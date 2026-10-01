@@ -157,7 +157,7 @@ function ProductsTab({ products, categories, isManager }: { products: Product[];
                 </div>
                 <div className="hidden sm:flex flex-col items-end gap-1">
                   <span className="text-sm font-bold">{p.isPhone ? `${L('dès', 'من')} ` : ''}{mad(p.recommendedSalePrice)}</span>
-                  <span className="text-[11px] text-ez-subtle">{p.stock !== null ? `${p.stock} ${L('en stock', 'في المخزون')}` : ''}</span>
+                  <span className="text-xs text-ez-subtle">{p.stock !== null ? `${p.stock} ${L('en stock', 'في المخزون')}` : ''}</span>
                 </div>
                 <Chip tone={av.tone}>{isAr ? av.ar : av.fr}</Chip>
                 {p.isPhone && p.giftCount > 0 && <span title={L('Accessoires / cadeaux liés', 'إكسسوارات مرتبطة')}><Gift className="w-4 h-4 text-gold" /></span>}

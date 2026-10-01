@@ -42,7 +42,7 @@ const STORES_FALLBACK = [
 const STATUS_STYLES = {
   ouverte:            { label: 'Ouverte',          labelAr: 'مفتوحة',              bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', dot: 'bg-emerald-500' },
   en_attente_cloture: { label: 'En attente',        labelAr: 'في انتظار الموافقة',  bg: 'bg-amber-50',   text: 'text-amber-700',   border: 'border-amber-200',   dot: 'bg-amber-500' },
-  cloturee:           { label: 'Clôturée',          labelAr: 'مغلقة',               bg: 'bg-slate-50',   text: 'text-slate-600',   border: 'border-slate-200',   dot: 'bg-slate-400' },
+  cloturee:           { label: 'Clôturée',          labelAr: 'مغلقة',               bg: 'bg-ez-bg',   text: 'text-ez-subtle',   border: 'border-ez-border',   dot: 'bg-ez-placeholder' },
 }
 
 export default function BZGCaissePage() {
@@ -136,7 +136,7 @@ export default function BZGCaissePage() {
             : (isAr ? 'كل الأيام متزامنة' : 'Tout est à jour')}
           actions={
             <button onClick={fetchRecords} disabled={manualRefresh}
-              className="p-2 rounded-xl border border-[#E8E5DE] bg-white text-[#6B6860] hover:bg-[#F5F3FF] transition-all">
+              className="p-2 rounded-xl border border-ez-border bg-white text-ez-subtle hover:bg-[#F5F3FF] transition-all">
               <RefreshCw className={`w-4 h-4 ${manualRefresh ? 'animate-spin' : ''}`} />
             </button>
           }
@@ -157,14 +157,14 @@ export default function BZGCaissePage() {
         {/* Filters */}
         <div className="flex flex-wrap gap-3">
           <Select
-            className="text-sm border border-[#E8E5DE] rounded-xl px-3 py-2.5 bg-white text-[#6B6860] focus:outline-none"
+            className="text-sm border border-ez-border rounded-xl px-3 py-2.5 bg-white text-ez-subtle focus:outline-none"
             value={filterStore} onChange={e => setFilterStore(e.target.value)}>
             <option value="">{t(isAr, 'common.allStores')}</option>
             {stores.map((s: { id: string; name: string; color: string }) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </Select>
 
           <Select
-            className="text-sm border border-[#E8E5DE] rounded-xl px-3 py-2.5 bg-white text-[#6B6860] focus:outline-none"
+            className="text-sm border border-ez-border rounded-xl px-3 py-2.5 bg-white text-ez-subtle focus:outline-none"
             value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
             <option value="">{t(isAr, 'common.allStatuses')}</option>
             <option value="ouverte">{t(isAr, 'common.openStatus')}</option>
@@ -172,14 +172,14 @@ export default function BZGCaissePage() {
             <option value="cloturee">{t(isAr, 'common.closedStatus')}</option>
           </Select>
 
-          <div className="flex items-center gap-2 bg-white border border-[#E8E5DE] rounded-xl px-3 py-2">
-            <Calendar className="w-4 h-4 text-[#B0ADA6]" />
+          <div className="flex items-center gap-2 bg-white border border-ez-border rounded-xl px-3 py-2">
+            <Calendar className="w-4 h-4 text-ez-faint" />
             <input type="date" value={selectedDate}
               onChange={e => setSelectedDate(e.target.value)}
-              className="text-sm text-[#1A1A1A] focus:outline-none bg-transparent" />
+              className="text-sm text-ez-text focus:outline-none bg-transparent" />
             {selectedDate && (
               <button onClick={() => setSelectedDate('')}
-                className="text-[#B0ADA6] hover:text-[#1A1A1A] transition-colors">
+                className="text-ez-faint hover:text-ez-text transition-colors">
                 ×
               </button>
             )}
@@ -189,9 +189,9 @@ export default function BZGCaissePage() {
 
       {/* Records list */}
       <div className="flex-1 overflow-auto px-4 sm:px-6 pb-6">
-        <div className="bg-white border border-[#E8E5DE] rounded-2xl overflow-hidden">
+        <div className="bg-white border border-ez-border rounded-2xl overflow-hidden">
           {loading ? (
-            <div className="divide-y divide-[#F2F0EB]">
+            <div className="divide-y divide-ez-muted">
               {[...Array(5)].map((_, i) => <SkeletonRow key={i} />)}
             </div>
           ) : records.length === 0 ? (
@@ -200,7 +200,7 @@ export default function BZGCaissePage() {
               title={isAr ? 'لا توجد سجلات' : 'Aucun enregistrement'}
             />
           ) : (
-            <div className="divide-y divide-[#F2F0EB]">
+            <div className="divide-y divide-ez-muted">
               {records.map(rec => {
                 const store   = stores.find((s: { id: string; name: string; color: string }) => s.id === rec.store_id)
                 const style   = STATUS_STYLES[rec.status]
@@ -208,7 +208,7 @@ export default function BZGCaissePage() {
                 const hasEcart = rec.ecart != null && rec.ecart !== 0
 
                 return (
-                  <div key={rec.caisse_id} className="hover:bg-[#F8F7F4] transition-all">
+                  <div key={rec.caisse_id} className="hover:bg-ez-bg transition-all">
                     <div className="flex items-center gap-4 px-5 py-4 cursor-pointer"
                          onClick={() => setExpanded(isExp ? null : rec.caisse_id)}>
                       {/* Status dot */}
@@ -217,7 +217,7 @@ export default function BZGCaissePage() {
                       {/* Info */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-sm font-bold text-[#1A1A1A]">
+                          <p className="text-sm font-bold text-ez-text">
                             {formatDate(rec.date)}
                           </p>
                           {store && (
@@ -225,7 +225,7 @@ export default function BZGCaissePage() {
                               {store.name}
                             </span>
                           )}
-                          <span className={`inline-flex items-center border rounded-lg px-2 py-0.5 text-[10px] font-bold ${style.bg} ${style.text} ${style.border}`}>
+                          <span className={`inline-flex items-center border rounded-lg px-2 py-0.5 text-xs font-bold ${style.bg} ${style.text} ${style.border}`}>
                             {isAr ? style.labelAr : style.label}
                           </span>
                           {hasEcart && (
@@ -234,7 +234,7 @@ export default function BZGCaissePage() {
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-[#B0ADA6] mt-0.5">
+                        <p className="text-xs text-ez-faint mt-0.5">
                           {isAr ? 'الرصيد النظري' : 'Solde théorique'}: {formatMAD(rec.solde_theorique)}
                           {rec.solde_reel != null && (
                             <> · {isAr ? 'الفعلي' : 'Réel'}: {formatMAD(rec.solde_reel)}</>
@@ -265,15 +265,15 @@ export default function BZGCaissePage() {
                       )}
 
                       {isExp
-                        ? <ChevronUp className="w-4 h-4 text-[#B0ADA6] flex-shrink-0" />
-                        : <ChevronDown className="w-4 h-4 text-[#B0ADA6] flex-shrink-0" />
+                        ? <ChevronUp className="w-4 h-4 text-ez-faint flex-shrink-0" />
+                        : <ChevronDown className="w-4 h-4 text-ez-faint flex-shrink-0" />
                       }
                     </div>
 
                     {/* Expanded detail */}
                     {isExp && (
                       <div className="px-5 pb-5 animate-fade-in">
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-[#F8F7F4] rounded-xl">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-ez-bg rounded-xl">
                           {[
                             { label: isAr ? 'الافتتاح' : 'Ouverture',    value: formatMAD(rec.ouverture),           negative: false },
                             { label: isAr ? 'المبيعات' : 'Ventes',              value: formatMAD(rec.total_ventes),      negative: false },
@@ -282,8 +282,8 @@ export default function BZGCaissePage() {
                             { label: t(isAr, 'common.expenses'),            value: formatMAD(rec.total_depenses),     negative: true },
                           ].map(item => (
                             <div key={item.label} className="text-center">
-                              <p className="text-xs text-[#B0ADA6] mb-1">{item.label}</p>
-                              <p className={`font-bold text-sm ${item.negative ? 'text-red-500' : 'text-[#1A1A1A]'}`}>
+                              <p className="text-xs text-ez-faint mb-1">{item.label}</p>
+                              <p className={`font-bold text-sm ${item.negative ? 'text-red-500' : 'text-ez-text'}`}>
                                 {item.negative ? '- ' : ''}{item.value}
                               </p>
                             </div>
@@ -309,7 +309,7 @@ export default function BZGCaissePage() {
                         )}
 
                         {rec.eod_submitted_at && (
-                          <p className="text-xs text-[#B0ADA6] mt-2 flex items-center gap-1">
+                          <p className="text-xs text-ez-faint mt-2 flex items-center gap-1">
                             <Clock className="w-3 h-3" />
                             {t(isAr, 'common.submittedAt')}{' '}
                             {new Date(rec.eod_submitted_at).toLocaleString('fr-FR', { timeZone: STORE_TIME_ZONE })}

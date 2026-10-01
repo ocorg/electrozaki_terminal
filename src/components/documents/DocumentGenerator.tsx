@@ -432,8 +432,8 @@ export function DocumentGenerator({ userProfile }: DocumentGeneratorProps) {
             className={`px-5 py-3 text-xs font-medium border-b-2 transition-colors
                         whitespace-nowrap flex-shrink-0 ${
               activeTab === tab.id
-                ? 'border-[#C9A440] text-[#C9A440]'
-                : 'border-transparent text-gray-500 hover:text-gray-200 hover:border-gray-600'
+                ? 'border-gold text-gold'
+                : 'border-transparent text-ez-faint hover:text-ez-border hover:border-ez-subtle'
             }`}
           >
             {tab.label}
@@ -446,8 +446,8 @@ export function DocumentGenerator({ userProfile }: DocumentGeneratorProps) {
             type="button"
             onClick={() => setScanning(true)}
             className="ml-auto mr-3 flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5
-                       text-xs border border-[#2a2a2a] rounded text-gray-400
-                       hover:text-[#C9A440] hover:border-[#C9A440]/40 transition-colors"
+                       text-xs border border-[#2a2a2a] rounded text-ez-placeholder
+                       hover:text-gold hover:border-gold/40 transition-colors"
           >
             <Camera className="w-3.5 h-3.5" />
             Scan IMEI
@@ -508,11 +508,11 @@ export function DocumentGenerator({ userProfile }: DocumentGeneratorProps) {
             {/* Targeting frame */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="relative w-72 h-28">
-                <span className="absolute top-0    left-0  w-7 h-7 border-t-2 border-l-2 border-[#C9A440]" />
-                <span className="absolute top-0    right-0 w-7 h-7 border-t-2 border-r-2 border-[#C9A440]" />
-                <span className="absolute bottom-0 left-0  w-7 h-7 border-b-2 border-l-2 border-[#C9A440]" />
-                <span className="absolute bottom-0 right-0 w-7 h-7 border-b-2 border-r-2 border-[#C9A440]" />
-                <div className="absolute inset-x-0 top-1/2 h-px bg-[#C9A440]/50 animate-pulse" />
+                <span className="absolute top-0    left-0  w-7 h-7 border-t-2 border-l-2 border-gold" />
+                <span className="absolute top-0    right-0 w-7 h-7 border-t-2 border-r-2 border-gold" />
+                <span className="absolute bottom-0 left-0  w-7 h-7 border-b-2 border-l-2 border-gold" />
+                <span className="absolute bottom-0 right-0 w-7 h-7 border-b-2 border-r-2 border-gold" />
+                <div className="absolute inset-x-0 top-1/2 h-px bg-gold/50 animate-pulse" />
               </div>
             </div>
 

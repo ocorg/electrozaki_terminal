@@ -398,7 +398,7 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
   function getTypeBadge(type: string) {
     const cfg = TYPE_CFG[type] ?? TYPE_CFG['B']
     return (
-      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+      <span className="text-xs font-bold px-2 py-0.5 rounded-full"
             style={{ backgroundColor: cfg.bg, color: cfg.color, border: cfg.border }}>
         {type} · {cfg.desc}
       </span>
@@ -422,7 +422,7 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
           actions={
             <div className="flex items-center gap-2">
               <button onClick={fetchSuppliers} disabled={manualRefresh}
-                className="p-2 rounded-xl border border-[#E8E5DE] bg-white text-[#6B6860] hover:bg-[#F8F7F4] transition-all">
+                className="p-2 rounded-xl border border-ez-border bg-white text-ez-subtle hover:bg-ez-bg transition-all">
                 <RefreshCw className={`w-4 h-4 ${manualRefresh ? 'animate-spin' : ''}`} />
               </button>
               <Btn variant="primary" onClick={openAdd}
@@ -436,28 +436,28 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
 
         {/* KPI strip */}
         <div className="grid grid-cols-2 gap-4">
-          <div className="bg-white border border-[#E8E5DE] rounded-xl px-4 py-3"
+          <div className="bg-white border border-ez-border rounded-xl px-4 py-3"
                style={{ borderLeftColor: primary, borderLeftWidth: '3px' }}>
-            <p className="text-xs text-[#6B6860]">{isAr ? 'إجمالي الموردين' : 'Total fournisseurs'}</p>
-            <p className="font-display font-bold text-xl text-[#1A1A1A]">{suppliers.length}</p>
+            <p className="text-xs text-ez-subtle">{isAr ? 'إجمالي الموردين' : 'Total fournisseurs'}</p>
+            <p className="font-display font-bold text-xl text-ez-text">{suppliers.length}</p>
           </div>
-          <div className="bg-white border border-[#E8E5DE] rounded-xl px-4 py-3"
+          <div className="bg-white border border-ez-border rounded-xl px-4 py-3"
                style={{ borderLeftColor: totalDue > 0 ? '#EF4444' : '#10B981', borderLeftWidth: '3px' }}>
-            <p className="text-xs text-[#6B6860]">{isAr ? 'المستحق الإجمالي' : 'Total dû aux fournisseurs'}</p>
-            <p className={`font-display font-bold text-xl ${totalDue > 0 ? 'text-red-500' : 'text-[#1A1A1A]'}`}>
+            <p className="text-xs text-ez-subtle">{isAr ? 'المستحق الإجمالي' : 'Total dû aux fournisseurs'}</p>
+            <p className={`font-display font-bold text-xl ${totalDue > 0 ? 'text-red-500' : 'text-ez-text'}`}>
               {formatMAD(totalDue)}
             </p>
             {ownStockDue > 0 && (
-              <p className="text-[11px] text-[#8A877F] mt-0.5">+ {formatMAD(ownStockDue)} notre stock (pour information)</p>
+              <p className="text-xs text-ez-faint mt-0.5">+ {formatMAD(ownStockDue)} notre stock (pour information)</p>
             )}
           </div>
         </div>
 
         {/* Search */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#B0ADA6]" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ez-faint" />
           <input
-            className="w-full pl-9 pr-9 py-2.5 bg-white border border-[#E8E5DE] rounded-xl text-sm placeholder:text-[#B0ADA6] focus:outline-none transition-all"
+            className="w-full pl-9 pr-9 py-2.5 bg-white border border-ez-border rounded-xl text-sm placeholder:text-ez-placeholder focus:outline-none transition-all"
             placeholder={isAr ? 'بحث...' : 'Rechercher par nom, téléphone...'}
             value={search}
             onChange={e => setSearch(e.target.value)}
@@ -466,7 +466,7 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
           />
           {search && (
             <button onClick={() => setSearch('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#B0ADA6] hover:text-[#1A1A1A]">
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-ez-faint hover:text-ez-text">
               <X className="w-4 h-4" />
             </button>
           )}
@@ -475,9 +475,9 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
 
       {/* ── Supplier list ────────────────────────────────────────────────────── */}
       <div className="flex-1 overflow-auto px-4 sm:px-6 pb-6">
-        <div className="bg-white border border-[#E8E5DE] rounded-2xl overflow-hidden">
+        <div className="bg-white border border-ez-border rounded-2xl overflow-hidden">
           {loading ? (
-            <div className="divide-y divide-[#F2F0EB]">
+            <div className="divide-y divide-ez-muted">
               {[...Array(4)].map((_, i) => <SkeletonRow key={i} />)}
             </div>
           ) : suppliers.length === 0 ? (
@@ -493,12 +493,12 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
               }
             />
           ) : (
-            <div className="divide-y divide-[#F2F0EB]">
+            <div className="divide-y divide-ez-muted">
               {suppliers.map(sup => {
                 const cfg = TYPE_CFG[sup.type_fournisseur] ?? TYPE_CFG['B']
                 return (
                   <div key={sup.supplier_id}
-                    className="flex items-center gap-4 px-5 py-4 hover:bg-[#F8F7F4] transition-all cursor-pointer"
+                    className="flex items-center gap-4 px-5 py-4 hover:bg-ez-bg transition-all cursor-pointer"
                     onClick={() => openDetail(sup)}>
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 font-bold text-sm"
                          style={{ backgroundColor: `${cfg.color}18`, color: cfg.color }}>
@@ -506,7 +506,7 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-sm font-bold text-[#1A1A1A]">{sup.nom}</p>
+                        <p className="text-sm font-bold text-ez-text">{sup.nom}</p>
                         <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
                               style={{ backgroundColor: cfg.bg, color: cfg.color, border: cfg.border }}>
                           {sup.type_fournisseur}
@@ -514,12 +514,12 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
                       </div>
                       <div className="flex items-center gap-3 mt-0.5 flex-wrap">
                         {sup.telephone && (
-                          <span className="text-xs text-[#B0ADA6] flex items-center gap-1">
+                          <span className="text-xs text-ez-faint flex items-center gap-1">
                             <Phone className="w-3 h-3" />{sup.telephone}
                           </span>
                         )}
                         {sup.ville && (
-                          <span className="text-xs text-[#B0ADA6] flex items-center gap-1">
+                          <span className="text-xs text-ez-faint flex items-center gap-1">
                             <MapPin className="w-3 h-3" />{sup.ville}
                           </span>
                         )}
@@ -527,18 +527,18 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
                     </div>
                     <div className="text-right flex-shrink-0">
                       {(sup.solde_du ?? 0) > 0 ? (
-                        <p className={`text-sm font-bold ${sup.type_fournisseur === OWN_STOCK ? 'text-[#6B6860]' : 'text-red-500'}`}>{formatMAD(sup.solde_du ?? 0)}</p>
+                        <p className={`text-sm font-bold ${sup.type_fournisseur === OWN_STOCK ? 'text-ez-subtle' : 'text-red-500'}`}>{formatMAD(sup.solde_du ?? 0)}</p>
                       ) : (sup.credit_disponible ?? 0) > 0 ? (
                         <p className="text-sm font-bold text-emerald-600">Crédit {formatMAD(sup.credit_disponible ?? 0)}</p>
                       ) : (
                         <p className="text-sm font-bold text-emerald-600">À jour ✓</p>
                       )}
-                      <p className="text-[10px] text-[#B0ADA6] mt-0.5">
+                      <p className="text-xs text-ez-faint mt-0.5">
                         {sup.nb_en_stock ?? 0} {isAr ? 'في المخزون' : 'en stock'}
                         {(sup.nb_vendus ?? 0) > 0 && ` · ${sup.nb_vendus} vendus`}
                       </p>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-[#B0ADA6] flex-shrink-0" />
+                    <ChevronRight className="w-4 h-4 text-ez-faint flex-shrink-0" />
                   </div>
                 )
               })}
@@ -556,13 +556,13 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
             <div className="flex items-center gap-2 flex-wrap">
               {getTypeBadge(selected.type_fournisseur)}
               {selected.categorie && (
-                <span className="text-xs text-[#6B6860]">{getCatLabel(selected.categorie)}</span>
+                <span className="text-xs text-ez-subtle">{getCatLabel(selected.categorie)}</span>
               )}
             </div>
 
             {/* ── Figures (same for every supplier) ── */}
             {selected.type_fournisseur === OWN_STOCK && (
-              <p className="text-xs text-[#6B6860] bg-[#F0FDF4] border border-[#BBF7D0] rounded-xl px-3 py-2">
+              <p className="text-xs text-ez-subtle bg-[#F0FDF4] border border-[#BBF7D0] rounded-xl px-3 py-2">
                 Notre propre stock : ces montants sont suivis pour information (ce que le stock « se doit »), ils ne sont pas comptés dans le total dû aux fournisseurs.
               </p>
             )}
@@ -578,7 +578,7 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
             {/* ── UNIFIED Phone list section ── */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-bold text-[#6B6860] uppercase tracking-widest">
+                <p className="text-xs font-bold text-ez-subtle uppercase tracking-widest">
                   {isAr ? `مبيعات غير مُسوَّاة (${phoneRows.length})` : `Téléphones vendus à régler (${phoneRows.length})`}
                 </p>
                 {phoneRows.length > 0 && (
@@ -593,7 +593,7 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
               </div>
 
               {phonesLoading ? (
-                <div className="flex items-center justify-center py-6 gap-2 text-[#B0ADA6]">
+                <div className="flex items-center justify-center py-6 gap-2 text-ez-faint">
                   <Loader2 className="w-4 h-4 animate-spin" />
                   <span className="text-sm">{isAr ? 'جارٍ التحميل...' : 'Chargement...'}</span>
                 </div>
@@ -626,13 +626,13 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
                           {isSel && <Check className="w-2.5 h-2.5 text-white" />}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs font-bold text-[#1A1A1A] truncate">
+                          <p className="text-xs font-bold text-ez-text truncate">
                             {phone.model.toLowerCase().startsWith((phone.marque ?? "").toLowerCase()) ? phone.model : `${phone.marque} ${phone.model}`}
                             {phone.stockage ? ` · ${phone.stockage}` : ''}
                             {phone.couleur  ? ` · ${phone.couleur}`  : ''}
                           </p>
                           {(phone.imei || phone.fac_ref) && (
-                            <p className="text-[10px] text-[#B0ADA6] truncate">
+                            <p className="text-xs text-ez-faint truncate">
                               {phone.imei ? `IMEI: ${phone.imei}` : ''}
                               {phone.fac_ref ? ` · ${phone.fac_ref}` : ''}
                             </p>
@@ -654,7 +654,7 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
               {phoneRows.length > 0 && (
                 <div className="mt-3 space-y-2">
                   <div className="px-4 py-2.5 rounded-xl space-y-1 text-sm" style={{ backgroundColor: '#FAF5E8', border: '1px solid #E8D494' }}>
-                    <div className="flex justify-between"><span className="text-[#6B6860]">Sélection ({selectedPhoneIds.size} tél.)</span><b>{formatMAD(selectedTotal)}</b></div>
+                    <div className="flex justify-between"><span className="text-ez-subtle">Sélection ({selectedPhoneIds.size} tél.)</span><b>{formatMAD(selectedTotal)}</b></div>
                     {creditUsed > 0 && <div className="flex justify-between text-emerald-700"><span>Crédit du fournisseur utilisé</span><b>− {formatMAD(creditUsed)}</b></div>}
                     <div className="flex justify-between font-bold" style={{ color: '#A8862E' }}><span>À payer maintenant</span><span>{formatMAD(toPayNow)}</span></div>
                   </div>
@@ -679,21 +679,21 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
                     <Plus className="w-4 h-4" />Donner une avance
                   </button>
                 ) : (
-                  <div className="p-3 bg-[#F8F7F4] border border-[#E8E5DE] rounded-xl space-y-3">
-                    <p className="text-xs font-bold text-[#6B6860] uppercase tracking-wider">Avance — ajoutée au crédit du fournisseur</p>
+                  <div className="p-3 bg-ez-bg border border-ez-border rounded-xl space-y-3">
+                    <p className="text-xs font-bold text-ez-subtle uppercase tracking-wider">Avance — ajoutée au crédit du fournisseur</p>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <p className="text-[10px] text-[#B0ADA6] uppercase tracking-wider font-bold mb-1">{t(isAr, 'common.amountMad')}</p>
+                        <p className="text-xs text-ez-faint uppercase tracking-wider font-bold mb-1">{t(isAr, 'common.amountMad')}</p>
                         <input type="number" min={0} step={0.01} className={inputClass} placeholder="0.00" autoFocus
                           value={payMontant} onChange={e => setPayMontant(e.target.value)} />
                       </div>
                       <div>
-                        <p className="text-[10px] text-[#B0ADA6] uppercase tracking-wider font-bold mb-1">{t(isAr, 'common.date')}</p>
+                        <p className="text-xs text-ez-faint uppercase tracking-wider font-bold mb-1">{t(isAr, 'common.date')}</p>
                         <input type="date" className={inputClass} value={payDate} onChange={e => setPayDate(e.target.value)} />
                       </div>
                     </div>
                     <div>
-                      <p className="text-[10px] text-[#B0ADA6] uppercase tracking-wider font-bold mb-1">{t(isAr, 'common.notes')}</p>
+                      <p className="text-xs text-ez-faint uppercase tracking-wider font-bold mb-1">{t(isAr, 'common.notes')}</p>
                       <input type="text" className={inputClass} placeholder="Optionnel..." value={payNotes} onChange={e => setPayNotes(e.target.value)} />
                     </div>
                     <div className="flex gap-2">
@@ -710,11 +710,11 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
             {(selected.telephone || selected.ville || selected.adresse || selected.notes) && (
               <div className="space-y-2">
                 {selected.telephone && (
-                  <div className="flex items-center gap-3 p-3 bg-[#F8F7F4] rounded-xl">
-                    <Phone className="w-4 h-4 text-[#B0ADA6] flex-shrink-0" />
+                  <div className="flex items-center gap-3 p-3 bg-ez-bg rounded-xl">
+                    <Phone className="w-4 h-4 text-ez-faint flex-shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs text-[#B0ADA6]">{t(isAr, 'common.phoneField')}</p>
-                      <p className="text-sm font-medium text-[#1A1A1A]">{selected.telephone}</p>
+                      <p className="text-xs text-ez-faint">{t(isAr, 'common.phoneField')}</p>
+                      <p className="text-sm font-medium text-ez-text">{selected.telephone}</p>
                     </div>
                     <div className="flex gap-2 flex-shrink-0">
                       <a href={`tel:${selected.telephone}`}
@@ -731,11 +731,11 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
                   </div>
                 )}
                 {(selected.ville || selected.adresse) && (
-                  <div className="flex items-center gap-3 p-3 bg-[#F8F7F4] rounded-xl">
-                    <MapPin className="w-4 h-4 text-[#B0ADA6] flex-shrink-0" />
+                  <div className="flex items-center gap-3 p-3 bg-ez-bg rounded-xl">
+                    <MapPin className="w-4 h-4 text-ez-faint flex-shrink-0" />
                     <div>
-                      <p className="text-xs text-[#B0ADA6]">{isAr ? 'الموقع' : 'Adresse'}</p>
-                      <p className="text-sm font-medium text-[#1A1A1A]">
+                      <p className="text-xs text-ez-faint">{isAr ? 'الموقع' : 'Adresse'}</p>
+                      <p className="text-sm font-medium text-ez-text">
                         {[selected.adresse, selected.ville].filter(Boolean).join(', ')}
                       </p>
                     </div>
@@ -751,17 +751,17 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
 
             {/* ── SHARED — Payment history ── */}
             <div>
-              <p className="text-xs font-bold text-[#6B6860] uppercase tracking-widest mb-3">
+              <p className="text-xs font-bold text-ez-subtle uppercase tracking-widest mb-3">
                 {isAr ? 'سجل الدفعات' : 'Historique paiements'}
               </p>
               {paymentsLoading ? (
                 <div className="space-y-2">
                   {[...Array(2)].map((_, i) => (
-                    <div key={i} className="h-12 bg-[#F8F7F4] rounded-xl animate-pulse" />
+                    <div key={i} className="h-12 bg-ez-bg rounded-xl animate-pulse" />
                   ))}
                 </div>
               ) : payments.length === 0 ? (
-                <p className="text-xs text-[#B0ADA6] text-center py-4">
+                <p className="text-xs text-ez-faint text-center py-4">
                   {isAr ? 'لا توجد دفعات' : 'Aucun paiement enregistré'}
                 </p>
               ) : (
@@ -769,14 +769,14 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
                   {payments.map(p => {
                     const count = Array.isArray(p.phone_ids) ? p.phone_ids.length : 0
                     return (
-                      <div key={p.payment_id} className="p-3 bg-[#F8F7F4] rounded-xl">
+                      <div key={p.payment_id} className="p-3 bg-ez-bg rounded-xl">
                       <div className="flex items-center justify-between">
                         <div className="min-w-0">
-                          <p className="text-xs font-bold text-[#1A1A1A]">
+                          <p className="text-xs font-bold text-ez-text">
                             {PAY_LABEL[p.payment_type] ?? p.payment_type}
                             {count > 0 ? ` · ${count} tél.` : ''}
                           </p>
-                          <p className="text-[10px] text-[#B0ADA6]">
+                          <p className="text-xs text-ez-faint">
                             {formatDate(p.date_paiement)}
                             {p.notes ? ` · ${p.notes}` : ''}
                           </p>
@@ -785,20 +785,20 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
                           <p className="text-sm font-bold text-emerald-600">{formatMAD(p.montant)}</p>
                           {isOwner && fixPay?.id !== p.payment_id && (
                             <button onClick={() => setFixPay({ id: p.payment_id, montant: String(Number(p.montant)), motif: '' })}
-                              className="text-[10px] font-bold text-[#A8862E] underline">Corriger</button>
+                              className="text-xs font-bold text-[#A8862E] underline">Corriger</button>
                           )}
                         </div>
                       </div>
                       {fixPay?.id === p.payment_id && (
-                        <div className="mt-2 pt-2 border-t border-[#E8E5DE] space-y-2">
+                        <div className="mt-2 pt-2 border-t border-ez-border space-y-2">
                           <div className="grid grid-cols-2 gap-2">
                             <div>
-                              <p className="text-[10px] text-[#B0ADA6] uppercase tracking-wider font-bold mb-1">Bon montant (DH)</p>
+                              <p className="text-xs text-ez-faint uppercase tracking-wider font-bold mb-1">Bon montant (DH)</p>
                               <input type="number" min={0} step={0.01} className={inputClass}
                                 value={fixPay.montant} onChange={e => setFixPay({ ...fixPay, montant: e.target.value })} />
                             </div>
                             <div>
-                              <p className="text-[10px] text-[#B0ADA6] uppercase tracking-wider font-bold mb-1">Motif (obligatoire)</p>
+                              <p className="text-xs text-ez-faint uppercase tracking-wider font-bold mb-1">Motif (obligatoire)</p>
                               <input type="text" className={inputClass} placeholder="Erreur de saisie…"
                                 value={fixPay.motif} onChange={e => setFixPay({ ...fixPay, motif: e.target.value })} />
                             </div>
@@ -820,7 +820,7 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
             </div>
 
             {/* ── SHARED — Actions ── */}
-            <div className="flex gap-3 pt-2 border-t border-[#E8E5DE]">
+            <div className="flex gap-3 pt-2 border-t border-ez-border">
               <Btn variant="secondary" className="flex-1" onClick={closeDetail}>
                 {t(isAr, 'common.close')}
               </Btn>
@@ -928,7 +928,7 @@ function Kpi({ label, value, tone }: { label: string; value: string; tone?: 'goo
       : { backgroundColor: '#F8F7F4', borderColor: '#E8E5DE', color: '#1A1A1A' }
   return (
     <div className="rounded-xl p-3 text-center border" style={{ backgroundColor: style.backgroundColor, borderColor: style.borderColor }}>
-      <p className="text-[10px] text-[#6B6860] uppercase tracking-wider font-bold mb-1">{label}</p>
+      <p className="text-xs text-ez-subtle uppercase tracking-wider font-bold mb-1">{label}</p>
       <p className="font-bold text-sm" style={{ color: style.color }}>{value}</p>
     </div>
   )

@@ -95,7 +95,7 @@ export default function ComboBox({
           type="text"
           className={[
             'w-full rounded-xl border text-sm px-3 py-2 pr-16',
-            'border-[#E8E5DE] bg-[#F8F7F4]',
+            'border-ez-border bg-ez-bg',
             'focus:outline-none focus:ring-2 focus:ring-offset-0',
             'transition-all placeholder:text-[#B0ACA5]',
             disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-text',
@@ -119,7 +119,7 @@ export default function ComboBox({
             <button
               type="button"
               onClick={clear}
-              className="w-5 h-5 rounded-full flex items-center justify-center text-[#9A9690] hover:text-[#4A4845] hover:bg-[#E8E5DE] transition-all"
+              className="w-5 h-5 rounded-full flex items-center justify-center text-[#9A9690] hover:text-[#4A4845] hover:bg-ez-border transition-all"
             >
               <X className="w-3 h-3" />
             </button>
@@ -139,7 +139,7 @@ export default function ComboBox({
       {open && filtered.length > 0 && (
         <div className={[
           'absolute z-50 mt-1 w-full',
-          'bg-white border border-[#E8E5DE] rounded-xl shadow-lg',
+          'bg-white border border-ez-border rounded-xl shadow-lg',
           'max-h-52 overflow-y-auto',
           'py-1',
         ].join(' ')}>
@@ -150,8 +150,8 @@ export default function ComboBox({
               onMouseDown={e => { e.preventDefault(); select(opt) }}
               className={[
                 'w-full text-left px-3 py-2 text-sm transition-colors',
-                'hover:bg-[#F8F7F4]',
-                opt === value ? 'font-medium text-[#C9A440] bg-[#FAF7EE]' : 'text-[#2A2825]',
+                'hover:bg-ez-bg',
+                opt === value ? 'font-medium text-gold bg-[#FAF7EE]' : 'text-[#2A2825]',
               ].join(' ')}
             >
               {opt}
@@ -162,7 +162,7 @@ export default function ComboBox({
 
       {/* No results hint */}
       {open && filtered.length === 0 && query.trim() !== '' && (
-        <div className="absolute z-50 mt-1 w-full bg-white border border-[#E8E5DE] rounded-xl shadow-lg py-2 px-3">
+        <div className="absolute z-50 mt-1 w-full bg-white border border-ez-border rounded-xl shadow-lg py-2 px-3">
           <p className="text-xs text-[#9A9690]">
             Valeur personnalisée : <span className="font-medium text-[#2A2825]">&ldquo;{query}&rdquo;</span>
           </p>

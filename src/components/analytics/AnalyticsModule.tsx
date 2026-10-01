@@ -88,12 +88,12 @@ export default function AnalyticsModule() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden animate-fade-in" dir={isAr ? 'rtl' : 'ltr'}>
-      <div className="flex-shrink-0 px-4 sm:px-6 pt-4 sm:pt-6 pb-3 space-y-3 border-b border-[#E8E5DE] bg-[#F8F7F4]">
+      <div className="flex-shrink-0 px-4 sm:px-6 pt-4 sm:pt-6 pb-3 space-y-3 border-b border-ez-border bg-ez-bg">
         <PageHeader title="Analyse financière" subtitle={single ? dayLabel(from) : `Du ${dayLabel(from, { day: 'numeric', month: 'short', year: 'numeric' })} au ${dayLabel(to, { day: 'numeric', month: 'short', year: 'numeric' })} · ${a?.days ?? ''} jours`} />
         <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
           {PRESETS.map(([k, label]) => (
             <button key={k} type="button" onClick={() => pick(k)}
-              className={`px-3 py-1.5 rounded-xl border text-sm font-semibold whitespace-nowrap transition-all ${preset === k ? 'bg-[#1A1A1A] border-[#1A1A1A] text-white' : 'bg-white border-[#E8E5DE] text-[#6B6860] hover:border-[#C9A440]'}`}>
+              className={`px-3 py-1.5 rounded-xl border text-sm font-semibold whitespace-nowrap transition-all ${preset === k ? 'bg-ez-dark border-ez-dark text-white' : 'bg-white border-ez-border text-ez-subtle hover:border-gold'}`}>
               {label}
             </button>
           ))}
@@ -101,19 +101,19 @@ export default function AnalyticsModule() {
         <div className="flex flex-wrap items-center gap-2 text-sm">
           {single && (
             <button type="button" onClick={() => setDay(shift(from, -1))} aria-label="Jour précédent"
-              className="p-2 rounded-xl border border-[#E8E5DE] bg-white hover:border-[#C9A440]"><ChevronLeft className="w-4 h-4" /></button>
+              className="p-2 rounded-xl border border-ez-border bg-white hover:border-gold"><ChevronLeft className="w-4 h-4" /></button>
           )}
-          <CalendarDays className="w-4 h-4 text-[#8A877F]" />
+          <CalendarDays className="w-4 h-4 text-ez-faint" />
           <input type="date" value={from} max={today()} onChange={e => setDates(e.target.value, single ? e.target.value : to)}
-            className="border border-[#E8E5DE] rounded-xl px-2 py-1.5 bg-white" />
+            className="border border-ez-border rounded-xl px-2 py-1.5 bg-white" />
           {!single && (<>
-            <span className="text-[#8A877F]">→</span>
+            <span className="text-ez-faint">→</span>
             <input type="date" value={to} max={today()} onChange={e => setDates(from, e.target.value)}
-              className="border border-[#E8E5DE] rounded-xl px-2 py-1.5 bg-white" />
+              className="border border-ez-border rounded-xl px-2 py-1.5 bg-white" />
           </>)}
           {single && (
             <button type="button" onClick={() => setDay(shift(from, 1))} disabled={from >= today()} aria-label="Jour suivant"
-              className="p-2 rounded-xl border border-[#E8E5DE] bg-white hover:border-[#C9A440] disabled:opacity-40"><ChevronRight className="w-4 h-4" /></button>
+              className="p-2 rounded-xl border border-ez-border bg-white hover:border-gold disabled:opacity-40"><ChevronRight className="w-4 h-4" /></button>
           )}
           <button type="button" onClick={() => (single ? setDates(shift(from, -6), from) : setDay(to))}
             className="text-xs font-semibold text-[#A8862E] underline underline-offset-2 ml-1">
@@ -124,7 +124,7 @@ export default function AnalyticsModule() {
 
       <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-5">
         {q.isLoading || !a ? (
-          <div className="bg-white border border-[#E8E5DE] rounded-2xl">{[0, 1, 2, 3].map(i => <SkeletonRow key={i} />)}</div>
+          <div className="bg-white border border-ez-border rounded-2xl">{[0, 1, 2, 3].map(i => <SkeletonRow key={i} />)}</div>
         ) : (
           <>
             {a.missingCosts.length > 0 && <MissingCosts items={a.missingCosts} lines={a.totals.missingCost} onSaved={() => q.refresh()} />}
@@ -153,10 +153,10 @@ export default function AnalyticsModule() {
               <Card title={a.bucket === 'month' ? 'Par mois' : 'Jour par jour'} icon={BarChart3}
                 note="Touchez une barre pour voir ce jour en détail."
                 right={
-                  <div className="flex gap-1 p-0.5 bg-[#F2F0EB] rounded-lg text-xs font-semibold">
+                  <div className="flex gap-1 p-0.5 bg-ez-muted rounded-lg text-xs font-semibold">
                     {([['revenue', 'CA'], ['gross', 'Bénéfice brut'], ['net', 'Bénéfice net']] as const).map(([k, l]) => (
                       <button key={k} type="button" onClick={() => setMeasure(k)}
-                        className={`px-2 py-1 rounded-md ${measure === k ? 'bg-white shadow-sm text-[#1A1A1A]' : 'text-[#6B6860]'}`}>{l}</button>
+                        className={`px-2 py-1 rounded-md ${measure === k ? 'bg-white shadow-sm text-ez-text' : 'text-ez-subtle'}`}>{l}</button>
                     ))}
                   </div>
                 }>
@@ -178,11 +178,11 @@ export default function AnalyticsModule() {
                   <Line label="Payé en téléphones repris (reprises)" value={a.cash.tradeIns} muted />
                   {a.cash.avoirs > 0 && <Line label="Payé avec des avoirs" value={a.cash.avoirs} muted />}
                   <Line label="Reste à encaisser (crédits, avances)" value={a.cash.toCollect} muted />
-                  <div className="border-t border-[#E8E5DE] my-2" />
+                  <div className="border-t border-ez-border my-2" />
                   <Line label="Achats de stock (Marchandises)" value={-a.cash.stockBuys} />
                   <Line label="Dépenses" value={-a.cash.expenses} />
                   {a.cash.refundsPaid > 0 && <Line label="Remboursements de retours" value={-a.cash.refundsPaid} />}
-                  <div className="border-t border-[#E8E5DE] my-2" />
+                  <div className="border-t border-ez-border my-2" />
                   <Line label="Solde de la période" value={a.cash.received + a.cash.repairs - a.cash.stockBuys - a.cash.expenses - a.cash.refundsPaid} bold />
                 </div>
               </Card>
@@ -193,8 +193,8 @@ export default function AnalyticsModule() {
               {a.categories.length === 0 ? <Empty /> : (
                 <Table head={['Catégorie', 'Qté', 'CA', 'Bénéfice', 'Marge', 'Part du bénéfice']}
                   rows={a.categories.map(c => [
-                    <span key="l" className="font-medium text-[#1A1A1A]">{c.label}</span>,
-                    num(c.qty), mad(c.revenue), <b key="p" className={c.profit < 0 ? 'text-red-600' : 'text-[#1A1A1A]'}>{mad(c.profit)}</b>, pctText(c.margin),
+                    <span key="l" className="font-medium text-ez-text">{c.label}</span>,
+                    num(c.qty), mad(c.revenue), <b key="p" className={c.profit < 0 ? 'text-red-600' : 'text-ez-text'}>{mad(c.profit)}</b>, pctText(c.margin),
                     <ShareBar key="s" value={c.profitShare} />,
                   ])} />
               )}
@@ -205,18 +205,18 @@ export default function AnalyticsModule() {
               <Card title="Téléphones les plus vendus" icon={Smartphone}>
                 {a.phones.length === 0 ? <Empty /> : (
                   <Table head={['Modèle', 'Vendus', 'CA', 'Bénéfice', 'Marge']}
-                    rows={a.phones.map(p => [<span key="n" className="font-medium text-[#1A1A1A]">{p.name}</span>, num(p.qty), mad(p.revenue), mad(p.profit), pctText(p.margin)])} />
+                    rows={a.phones.map(p => [<span key="n" className="font-medium text-ez-text">{p.name}</span>, num(p.qty), mad(p.revenue), mad(p.profit), pctText(p.margin)])} />
                 )}
                 {a.phonesByProfit.length > 0 && (
-                  <p className="text-xs text-[#6B6860] mt-3">
-                    <b className="text-[#1A1A1A]">Les plus rentables :</b> {a.phonesByProfit.map(p => `${p.name} (${mad(p.profit)})`).join(' · ')}
+                  <p className="text-xs text-ez-subtle mt-3">
+                    <b className="text-ez-text">Les plus rentables :</b> {a.phonesByProfit.map(p => `${p.name} (${mad(p.profit)})`).join(' · ')}
                   </p>
                 )}
               </Card>
               <Card title="Accessoires les plus vendus" icon={Package}>
                 {a.accessories.length === 0 ? <Empty /> : (
                   <Table head={['Article', 'Qté', 'CA', 'Bénéfice', 'Marge']}
-                    rows={a.accessories.map(p => [<span key="n" className="font-medium text-[#1A1A1A]">{p.name}</span>, num(p.qty), mad(p.revenue), mad(p.profit), pctText(p.margin)])} />
+                    rows={a.accessories.map(p => [<span key="n" className="font-medium text-ez-text">{p.name}</span>, num(p.qty), mad(p.revenue), mad(p.profit), pctText(p.margin)])} />
                 )}
               </Card>
             </div>
@@ -229,8 +229,8 @@ export default function AnalyticsModule() {
                     <RankRow key={e.code} label={e.label} value={mad(e.total)} sub={`${e.n} dépense(s) · ${pctText(e.share)}`} ratio={e.share ?? 0} />
                   ))}
                   {a.expenseCats.filter(e => e.stock).map(e => (
-                    <p key={e.code} className="text-sm text-[#6B6860] pt-2 border-t border-[#E8E5DE] flex justify-between">
-                      <span>{e.label} — achats de stock ({e.n})</span><b className="text-[#1A1A1A]">{mad(e.total)}</b>
+                    <p key={e.code} className="text-sm text-ez-subtle pt-2 border-t border-ez-border flex justify-between">
+                      <span>{e.label} — achats de stock ({e.n})</span><b className="text-ez-text">{mad(e.total)}</b>
                     </p>
                   ))}
                 </div>
@@ -295,21 +295,21 @@ function MissingCosts({ items, lines, onSaved }: { items: Analytics['missingCost
         {open ? <ChevronUp className="w-4 h-4 flex-shrink-0" /> : <ChevronDown className="w-4 h-4 flex-shrink-0" />}
       </button>
       {open && (
-        <div className="border-t border-amber-200 bg-white rounded-b-xl divide-y divide-[#F2F0EB]">
-          <p className="px-3 py-2 text-xs text-[#6B6860]">Entrez ce que l’article vous a coûté (à l’unité). Mettez 0 pour un service sans pièce.</p>
+        <div className="border-t border-amber-200 bg-white rounded-b-xl divide-y divide-ez-muted">
+          <p className="px-3 py-2 text-xs text-ez-subtle">Entrez ce que l’article vous a coûté (à l’unité). Mettez 0 pour un service sans pièce.</p>
           {items.map(it => {
             const key = `${it.device_type}:${it.device_id}`
             return (
               <div key={key} className="flex flex-wrap items-center gap-2 px-3 py-2">
                 <div className="flex-1 min-w-[10rem]">
-                  <p className="font-medium text-[#1A1A1A]">{it.item}{it.deleted && <span className="ml-1 text-xs text-[#8A877F]">(supprimé)</span>}</p>
-                  <p className="text-xs text-[#8A877F]"><span className="font-mono">{it.device_id}</span> · {it.lines} vente(s) · {mad(it.revenue)}</p>
+                  <p className="font-medium text-ez-text">{it.item}{it.deleted && <span className="ml-1 text-xs text-ez-faint">(supprimé)</span>}</p>
+                  <p className="text-xs text-ez-faint"><span className="font-mono">{it.device_id}</span> · {it.lines} vente(s) · {mad(it.revenue)}</p>
                 </div>
                 <input type="number" min={0} step={1} inputMode="decimal" placeholder="Prix d’achat"
                   value={values[key] ?? ''} onChange={e => setValues(v => ({ ...v, [key]: e.target.value }))}
-                  className="w-28 border border-[#E8E5DE] rounded-lg px-2 py-1.5 text-right" />
+                  className="w-28 border border-ez-border rounded-lg px-2 py-1.5 text-right" />
                 <button type="button" onClick={() => save(it)} disabled={saving === key}
-                  className="px-3 py-1.5 rounded-lg bg-[#1A1A1A] text-white text-xs font-bold disabled:opacity-50">
+                  className="px-3 py-1.5 rounded-lg bg-ez-dark text-white text-xs font-bold disabled:opacity-50">
                   {saving === key ? '…' : 'Enregistrer'}
                 </button>
               </div>
@@ -324,11 +324,11 @@ function MissingCosts({ items, lines, onSaved }: { items: Analytics['missingCost
 
 function Card({ title, icon: Icon, note, right, children }: { title: string; icon: typeof TrendingUp; note?: string; right?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <section className="bg-white border border-[#E8E5DE] rounded-2xl p-4 space-y-3 min-w-0">
+    <section className="bg-white border border-ez-border rounded-2xl p-4 space-y-3 min-w-0">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
-          <h2 className="text-sm font-bold text-[#1A1A1A] flex items-center gap-2"><Icon className="w-4 h-4" style={{ color: GOLD }} />{title}</h2>
-          {note && <p className="text-xs text-[#6B6860] mt-0.5">{note}</p>}
+          <h2 className="text-sm font-bold text-ez-text flex items-center gap-2"><Icon className="w-4 h-4" style={{ color: GOLD }} />{title}</h2>
+          {note && <p className="text-xs text-ez-subtle mt-0.5">{note}</p>}
         </div>
         {right}
       </div>
@@ -344,21 +344,21 @@ function Tile({ icon: Icon, label, value, now, before, hint, lowerIsBetter, stro
   const good = change !== null && change !== 0 && (lowerIsBetter ? change < 0 : change > 0)
   const Arrow = change === null || change === 0 ? Minus : change > 0 ? ArrowUpRight : ArrowDownRight
   return (
-    <div className={`rounded-2xl p-4 border ${strong ? 'bg-[#1A1A1A] border-[#1A1A1A] text-white' : 'bg-white border-[#E8E5DE]'}`}>
-      <p className={`text-xs font-semibold flex items-center gap-1.5 ${strong ? 'text-white/70' : 'text-[#6B6860]'}`}><Icon className="w-3.5 h-3.5" />{label}</p>
-      <p className={`text-xl sm:text-2xl font-bold mt-1 tabular-nums ${strong ? (now < 0 ? 'text-red-300' : 'text-[#E8C766]') : now < 0 ? 'text-red-600' : 'text-[#1A1A1A]'}`}>{value}</p>
-      <p className={`text-xs mt-1 flex items-center gap-1 ${change === null || change === 0 ? (strong ? 'text-white/60' : 'text-[#8A877F]') : good ? (strong ? 'text-emerald-300' : 'text-emerald-700') : (strong ? 'text-red-300' : 'text-red-600')}`}>
+    <div className={`rounded-2xl p-4 border ${strong ? 'bg-ez-dark border-ez-dark text-white' : 'bg-white border-ez-border'}`}>
+      <p className={`text-xs font-semibold flex items-center gap-1.5 ${strong ? 'text-white/70' : 'text-ez-subtle'}`}><Icon className="w-3.5 h-3.5" />{label}</p>
+      <p className={`text-xl sm:text-2xl font-bold mt-1 tabular-nums ${strong ? (now < 0 ? 'text-red-300' : 'text-[#E8C766]') : now < 0 ? 'text-red-600' : 'text-ez-text'}`}>{value}</p>
+      <p className={`text-xs mt-1 flex items-center gap-1 ${change === null || change === 0 ? (strong ? 'text-white/60' : 'text-ez-faint') : good ? (strong ? 'text-emerald-300' : 'text-emerald-700') : (strong ? 'text-red-300' : 'text-red-600')}`}>
         <Arrow className="w-3.5 h-3.5 flex-shrink-0" />
         {change === null ? 'pas de comparaison' : `${change > 0 ? '+' : ''}${change} % vs période précédente`}
       </p>
-      {hint && <p className={`text-[11px] mt-1 ${strong ? 'text-white/60' : 'text-[#8A877F]'}`}>{hint}</p>}
+      {hint && <p className={`text-xs mt-1 ${strong ? 'text-white/60' : 'text-ez-faint'}`}>{hint}</p>}
     </div>
   )
 }
 
 function Line({ label, value, muted, bold }: { label: string; value: number; muted?: boolean; bold?: boolean }) {
   return (
-    <div className={`flex items-baseline justify-between gap-3 ${muted ? 'text-[#8A877F]' : 'text-[#1A1A1A]'} ${bold ? 'font-bold text-base' : ''}`}>
+    <div className={`flex items-baseline justify-between gap-3 ${muted ? 'text-ez-faint' : 'text-ez-text'} ${bold ? 'font-bold text-base' : ''}`}>
       <span>{label}</span>
       <span className={`tabular-nums ${value < 0 ? 'text-red-600' : ''}`}>{mad(value)}</span>
     </div>
@@ -383,10 +383,10 @@ function PnL({ a }: { a: Analytics }) {
   return (
     <div className="text-sm">
       {rows.map((r, i) => (
-        <div key={i} className={`flex items-baseline justify-between gap-3 py-1.5 ${r.kind === 'total' ? 'border-t border-[#E8E5DE] font-bold text-[#1A1A1A]' : r.kind === 'minus' ? 'text-[#6B6860] pl-3' : 'text-[#1A1A1A] pl-3'}`}>
+        <div key={i} className={`flex items-baseline justify-between gap-3 py-1.5 ${r.kind === 'total' ? 'border-t border-ez-border font-bold text-ez-text' : r.kind === 'minus' ? 'text-ez-subtle pl-3' : 'text-ez-text pl-3'}`}>
           <span className="min-w-0">{r.label}</span>
           <span className="flex items-baseline gap-3 flex-shrink-0">
-            <span className="text-[11px] text-[#8A877F] w-14 text-right">{pct(Math.abs(r.value))}</span>
+            <span className="text-xs text-ez-faint w-14 text-right">{pct(Math.abs(r.value))}</span>
             <span className={`tabular-nums w-28 text-right ${r.value < 0 && r.kind === 'total' ? 'text-red-600' : ''}`}>{mad(r.value)}</span>
           </span>
         </div>
@@ -429,14 +429,14 @@ function SeriesChart({ series, measure, monthly, onPick }: { series: Analytics['
           })}
         </div>
         {h && (
-          <div className="absolute top-1 left-1/2 -translate-x-1/2 bg-[#1A1A1A] text-white text-xs rounded-lg px-3 py-2 pointer-events-none shadow-lg whitespace-nowrap z-10">
+          <div className="absolute top-1 left-1/2 -translate-x-1/2 bg-ez-dark text-white text-xs rounded-lg px-3 py-2 pointer-events-none shadow-lg whitespace-nowrap z-10">
             <p className="font-semibold capitalize">{fmt(h.key)}</p>
             <p>CA {mad(h.revenue)} · Brut {mad(h.gross)}</p>
             <p>Dépenses {mad(h.opex)} · Net {mad(h.net)} · {h.n} ligne(s)</p>
           </div>
         )}
       </div>
-      <div className="flex justify-between text-[10px] text-[#8A877F] mt-1 capitalize">
+      <div className="flex justify-between text-xs text-ez-faint mt-1 capitalize">
         <span>{series[0] && fmt(series[0].key)}</span>
         {series.length > 2 && <span>{fmt(series[Math.floor(series.length / 2)].key)}</span>}
         <span>{series.length > 1 && fmt(series[series.length - 1].key)}</span>
@@ -451,15 +451,15 @@ function HoursChart({ hours }: { hours: Analytics['hours'] }) {
   const busiest = [...hours].sort((a, b) => b.n - a.n)[0]
   return (
     <div>
-      <div className="flex items-end h-28 gap-[2px] border-b border-[#E8E5DE]">
+      <div className="flex items-end h-28 gap-[2px] border-b border-ez-border">
         {shown.map(h => (
           <div key={h.hour} className="flex-1 h-full flex items-end" title={`${h.hour}h : ${h.n} vente(s), ${mad(h.revenue)}`}>
             <span className="block w-full rounded-t-[3px]" style={{ height: `${(h.n / max) * 100}%`, backgroundColor: GOLD }} />
           </div>
         ))}
       </div>
-      <div className="flex justify-between text-[10px] text-[#8A877F] mt-1"><span>8h</span><span>16h</span><span>23h</span></div>
-      {busiest?.n > 0 && <p className="text-xs text-[#6B6860] mt-2">Heure la plus active : <b className="text-[#1A1A1A]">{busiest.hour}h–{busiest.hour + 1}h</b> ({busiest.n} ventes)</p>}
+      <div className="flex justify-between text-xs text-ez-faint mt-1"><span>8h</span><span>16h</span><span>23h</span></div>
+      {busiest?.n > 0 && <p className="text-xs text-ez-subtle mt-2">Heure la plus active : <b className="text-ez-text">{busiest.hour}h–{busiest.hour + 1}h</b> ({busiest.n} ventes)</p>}
     </div>
   )
 }
@@ -468,13 +468,13 @@ function RankRow({ label, value, sub, ratio }: { label: string; value: string; s
   return (
     <div className="py-1">
       <div className="flex justify-between gap-3 text-sm">
-        <span className="text-[#1A1A1A] font-medium truncate">{label}</span>
-        <b className="tabular-nums text-[#1A1A1A] flex-shrink-0">{value}</b>
+        <span className="text-ez-text font-medium truncate">{label}</span>
+        <b className="tabular-nums text-ez-text flex-shrink-0">{value}</b>
       </div>
-      <div className="h-1.5 mt-1 bg-[#F2F0EB] rounded-full overflow-hidden">
+      <div className="h-1.5 mt-1 bg-ez-muted rounded-full overflow-hidden">
         <div className="h-full rounded-full" style={{ width: `${Math.max(0, Math.min(100, ratio))}%`, backgroundColor: GOLD }} />
       </div>
-      {sub && <p className="text-[11px] text-[#8A877F] mt-0.5">{sub}</p>}
+      {sub && <p className="text-xs text-ez-faint mt-0.5">{sub}</p>}
     </div>
   )
 }
@@ -483,7 +483,7 @@ function ShareBar({ value }: { value: number | null }) {
   if (value === null) return <span>—</span>
   return (
     <span className="inline-flex items-center gap-2 justify-end w-full">
-      <span className="hidden sm:block w-16 h-1.5 bg-[#F2F0EB] rounded-full overflow-hidden">
+      <span className="hidden sm:block w-16 h-1.5 bg-ez-muted rounded-full overflow-hidden">
         <span className="block h-full rounded-full" style={{ width: `${Math.max(0, Math.min(100, value))}%`, backgroundColor: value < 0 ? '#DC2626' : GOLD }} />
       </span>
       <span className="tabular-nums">{pctText(value)}</span>
@@ -496,13 +496,13 @@ function Table({ head, rows }: { head: string[]; rows: React.ReactNode[][] }) {
     <div className="overflow-x-auto -mx-1">
       <table className="w-full text-sm">
         <thead>
-          <tr className="text-[11px] uppercase tracking-wide text-[#8A877F] border-b border-[#E8E5DE]">
+          <tr className="text-xs uppercase tracking-wide text-ez-faint border-b border-ez-border">
             {head.map((h, i) => <th key={h} className={`py-1.5 px-1 font-semibold whitespace-nowrap ${i === 0 ? 'text-left' : 'text-right'}`}>{h}</th>)}
           </tr>
         </thead>
-        <tbody className="divide-y divide-[#F2F0EB]">
+        <tbody className="divide-y divide-ez-muted">
           {rows.map((r, i) => (
-            <tr key={i}>{r.map((c, j) => <td key={j} className={`py-1.5 px-1 ${j === 0 ? 'text-left' : 'text-right tabular-nums text-[#6B6860] whitespace-nowrap'}`}>{c}</td>)}</tr>
+            <tr key={i}>{r.map((c, j) => <td key={j} className={`py-1.5 px-1 ${j === 0 ? 'text-left' : 'text-right tabular-nums text-ez-subtle whitespace-nowrap'}`}>{c}</td>)}</tr>
           ))}
         </tbody>
       </table>
@@ -510,7 +510,7 @@ function Table({ head, rows }: { head: string[]; rows: React.ReactNode[][] }) {
   )
 }
 
-const Empty = ({ text = 'Aucune vente sur la période' }: { text?: string }) => <p className="text-sm text-[#8A877F]">{text}</p>
+const Empty = ({ text = 'Aucune vente sur la période' }: { text?: string }) => <p className="text-sm text-ez-faint">{text}</p>
 
 function Journal({ j, lang }: { j: NonNullable<Analytics['journal']>; lang: 'fr' | 'ar' }) {
   const totalProfit = useMemo(() => j.sales.reduce((s, x) => s + (x.profit ?? 0), 0), [j.sales])
@@ -518,37 +518,37 @@ function Journal({ j, lang }: { j: NonNullable<Analytics['journal']>; lang: 'fr'
     <Card title="Journal de la journée" icon={BookOpen} note="Chaque vente, retour, réparation et dépense du jour.">
       <div className="space-y-5">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-[#8A877F] mb-1.5">Ventes ({j.sales.length}) · bénéfice {mad(totalProfit)}</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-ez-faint mb-1.5">Ventes ({j.sales.length}) · bénéfice {mad(totalProfit)}</p>
           {j.sales.length === 0 ? <Empty text="Aucune vente ce jour" /> : (
             <Table head={['Heure', 'Article', 'Prix', 'Coût', 'Bénéfice', 'Paiement', 'Vendeur']}
               rows={j.sales.map(s => [
-                <span key="t" className="tabular-nums text-[#6B6860]">{s.time}</span>,
-                <span key="i" className="text-[#1A1A1A]">{s.qty > 1 ? `${s.qty} × ` : ''}{s.item}{s.op === 'echange' ? ' · reprise' : ''}</span>,
+                <span key="t" className="tabular-nums text-ez-subtle">{s.time}</span>,
+                <span key="i" className="text-ez-text">{s.qty > 1 ? `${s.qty} × ` : ''}{s.item}{s.op === 'echange' ? ' · reprise' : ''}</span>,
                 mad(s.price), s.cost === null ? <span key="c" className="text-amber-700">?</span> : mad(s.cost),
-                s.profit === null ? '—' : <b key="p" className={s.profit < 0 ? 'text-red-600' : 'text-[#1A1A1A]'}>{mad(s.profit)}</b>,
+                s.profit === null ? '—' : <b key="p" className={s.profit < 0 ? 'text-red-600' : 'text-ez-text'}>{mad(s.profit)}</b>,
                 codeLabel('payment_method', s.payment as Code<'payment_method'>, lang), s.seller,
               ])} />
           )}
         </div>
         {j.returns.length > 0 && (
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-[#8A877F] mb-1.5">Retours ({j.returns.length})</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-ez-faint mb-1.5">Retours ({j.returns.length})</p>
             <Table head={['Réf.', 'Article', 'Remboursé', 'Mode', 'Motif']}
               rows={j.returns.map(r => [<span key="r" className="font-mono text-xs">{r.id}</span>, `${r.qty > 1 ? `${r.qty} × ` : ''}${r.item}`, mad(r.montant), codeLabel('retour_mode', r.mode as Code<'retour_mode'>, lang), r.motif])} />
           </div>
         )}
         {j.repairs.length > 0 && (
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-[#8A877F] mb-1.5">Réparations remises ({j.repairs.length})</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-ez-faint mb-1.5">Réparations remises ({j.repairs.length})</p>
             <Table head={['Ticket', 'Appareil', 'Prix', 'Pièces', 'Bénéfice']}
               rows={j.repairs.map(r => [<span key="r" className="font-mono text-xs">{r.id}</span>, r.item, mad(r.price), mad(r.parts), mad(r.price - r.parts)])} />
           </div>
         )}
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-[#8A877F] mb-1.5">Dépenses ({j.expenses.length})</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-ez-faint mb-1.5">Dépenses ({j.expenses.length})</p>
           {j.expenses.length === 0 ? <Empty text="Aucune dépense ce jour" /> : (
             <Table head={['Catégorie', 'Note', 'Montant']}
-              rows={j.expenses.map(e => [<span key="l" className="text-[#1A1A1A]">{e.label}{e.stock ? ' · stock' : ''}</span>, e.notes ?? '—', mad(e.montant)])} />
+              rows={j.expenses.map(e => [<span key="l" className="text-ez-text">{e.label}{e.stock ? ' · stock' : ''}</span>, e.notes ?? '—', mad(e.montant)])} />
           )}
         </div>
       </div>

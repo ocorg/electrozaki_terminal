@@ -8,7 +8,7 @@ interface BrandLogoProps {
 // sm = cart strip (w-7), md = grid cards (w-10), lg = qty picker (w-12)
 const SIZES = {
   sm: { cls: 'w-7 h-7 rounded-lg',    text: 'text-[8px]',  svg: '52%' },
-  md: { cls: 'w-10 h-10 rounded-xl',  text: 'text-[11px]', svg: '56%' },
+  md: { cls: 'w-10 h-10 rounded-xl',  text: 'text-xs', svg: '56%' },
   lg: { cls: 'w-12 h-12 rounded-2xl', text: 'text-sm',     svg: '58%' },
 }
 

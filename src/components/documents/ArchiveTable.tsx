@@ -102,7 +102,7 @@ export function ArchiveTable() {
             onChange={e => setSearch(e.target.value)}
             className="w-full pl-9 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-lg
                        text-sm text-white placeholder-white/25 focus:outline-none
-                       focus:border-[#C9A440]/50 transition-colors"
+                       focus:border-gold/50 transition-colors"
           />
         </div>
 
@@ -111,7 +111,7 @@ export function ArchiveTable() {
           value={typeFilter}
           onChange={e => setTypeFilter(e.target.value)}
           className="px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-sm text-white
-                     focus:outline-none focus:border-[#C9A440]/50 transition-colors"
+                     focus:outline-none focus:border-gold/50 transition-colors"
         >
           <option value="">Tous les types</option>
           {Object.entries(DOC_TYPES).map(([k, v]) => (
@@ -127,7 +127,7 @@ export function ArchiveTable() {
             value={fromDate}
             onChange={e => setFromDate(e.target.value)}
             className="pl-9 pr-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-sm text-white
-                       focus:outline-none focus:border-[#C9A440]/50 transition-colors"
+                       focus:outline-none focus:border-gold/50 transition-colors"
           />
         </div>
 
@@ -139,7 +139,7 @@ export function ArchiveTable() {
             value={toDate}
             onChange={e => setToDate(e.target.value)}
             className="pl-9 pr-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-sm text-white
-                       focus:outline-none focus:border-[#C9A440]/50 transition-colors"
+                       focus:outline-none focus:border-gold/50 transition-colors"
           />
         </div>
 
@@ -192,7 +192,7 @@ export function ArchiveTable() {
                     {(search || typeFilter || fromDate || toDate) && (
                       <button
                         onClick={() => { setSearch(''); setTypeFilter(''); setFromDate(''); setToDate('') }}
-                        className="mt-2 text-xs text-[#C9A440]/70 hover:text-[#C9A440] transition-colors"
+                        className="mt-2 text-xs text-gold/70 hover:text-gold transition-colors"
                       >
                         Effacer les filtres
                       </button>
@@ -209,7 +209,7 @@ export function ArchiveTable() {
 
                     {/* Réf */}
                     <td className="px-4 py-3">
-                      <span className="font-mono text-xs text-[#C9A440]">{doc.doc_ref}</span>
+                      <span className="font-mono text-xs text-gold">{doc.doc_ref}</span>
                     </td>
 
                     {/* Type */}
@@ -305,7 +305,7 @@ export function ArchiveTable() {
             <div className="flex items-start justify-between p-5 border-b border-white/10">
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="font-mono text-[#C9A440] text-base tracking-wide">
+                  <span className="font-mono text-gold text-base tracking-wide">
                     {preview.doc_ref}
                   </span>
                   {(() => {
@@ -354,7 +354,7 @@ export function ArchiveTable() {
                 ].filter(f => f.value).map(({ label, value, mono }) => (
                   <div key={label} className="bg-white/[0.04] rounded-xl p-3">
                     <p className="text-white/35 text-xs mb-1">{label}</p>
-                    <p className={`text-sm truncate ${mono ? 'font-mono text-xs text-[#C9A440]' : 'text-white'}`}>
+                    <p className={`text-sm truncate ${mono ? 'font-mono text-xs text-gold' : 'text-white'}`}>
                       {value}
                     </p>
                   </div>

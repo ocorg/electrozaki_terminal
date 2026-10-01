@@ -295,8 +295,8 @@ export default function InventoryModule({ role }: { role: string }) {
       {/* Header */}
       <div className="flex items-start justify-between mb-8">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-[#C9A440]/10 border border-[#C9A440]/20">
-            <PackageSearch className="text-[#C9A440]" size={24} />
+          <div className="p-2.5 rounded-xl bg-gold/10 border border-gold/20">
+            <PackageSearch className="text-gold" size={24} />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-white tracking-wide" style={{ fontFamily: 'Barlow Condensed, sans-serif' }}>
@@ -309,7 +309,7 @@ export default function InventoryModule({ role }: { role: string }) {
           <button
             onClick={handleStart}
             disabled={isStarting}
-            className="flex items-center gap-2 px-4 py-2.5 bg-[#C9A440] text-black font-bold rounded-xl text-sm hover:bg-[#b8932f] active:scale-95 transition-all disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2.5 bg-gold text-black font-bold rounded-xl text-sm hover:bg-[#b8932f] active:scale-95 transition-all disabled:opacity-50"
           >
             {isStarting ? <Loader2 size={15} className="animate-spin" /> : <Plus size={15} />}
             Nouvelle vérification
@@ -319,9 +319,9 @@ export default function InventoryModule({ role }: { role: string }) {
 
       {/* Bannière session en cours */}
       {activeSession && (
-        <div className="mb-6 p-4 rounded-2xl border border-[#C9A440]/40 bg-[#C9A440]/8 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="mb-6 p-4 rounded-2xl border border-gold/40 bg-gold/8 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <p className="text-[#C9A440] font-bold text-sm tracking-wide">⚡ VÉRIFICATION EN COURS</p>
+            <p className="text-gold font-bold text-sm tracking-wide">⚡ VÉRIFICATION EN COURS</p>
             <p className="text-zinc-300 text-sm mt-1">
               Démarrée le {formatDate(activeSession.started_at)} · {activeSession.snapshot_count} téléphones en périmètre
             </p>
@@ -334,7 +334,7 @@ export default function InventoryModule({ role }: { role: string }) {
           </div>
           <button
             onClick={() => handleResume(activeSession.session_id)}
-            className="px-5 py-2.5 bg-[#C9A440] text-black font-bold rounded-xl text-sm hover:bg-[#b8932f] transition-colors whitespace-nowrap"
+            className="px-5 py-2.5 bg-gold text-black font-bold rounded-xl text-sm hover:bg-[#b8932f] transition-colors whitespace-nowrap"
           >
             Reprendre →
           </button>
@@ -447,7 +447,7 @@ export default function InventoryModule({ role }: { role: string }) {
         </div>
         <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
           <div
-            className="h-full bg-[#C9A440] rounded-full transition-all duration-700"
+            className="h-full bg-gold rounded-full transition-all duration-700"
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -464,15 +464,15 @@ export default function InventoryModule({ role }: { role: string }) {
             style={{ maxHeight: 200, objectFit: 'cover' }}
           />
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="w-52 h-20 border-2 border-[#C9A440] rounded-lg">
-              <span className="absolute -top-6 left-0 right-0 text-center text-[#C9A440] text-xs font-medium">
+            <div className="w-52 h-20 border-2 border-gold rounded-lg">
+              <span className="absolute -top-6 left-0 right-0 text-center text-gold text-xs font-medium">
                 Pointer l'IMEI ici
               </span>
             </div>
           </div>
           {isProcessing && (
             <div className="absolute top-2 right-2 bg-black/60 rounded-full p-1">
-              <Loader2 size={14} className="animate-spin text-[#C9A440]" />
+              <Loader2 size={14} className="animate-spin text-gold" />
             </div>
           )}
         </div>
@@ -496,12 +496,12 @@ export default function InventoryModule({ role }: { role: string }) {
           value={manualImei}
           onChange={e => setManualImei(e.target.value)}
           placeholder="IMEI ou code-barres…"
-          className="flex-1 bg-zinc-900 border border-zinc-700 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#C9A440] placeholder-zinc-600 transition-colors"
+          className="flex-1 bg-zinc-900 border border-zinc-700 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-gold placeholder-zinc-600 transition-colors"
         />
         <button
           type="submit"
           disabled={!manualImei.trim() || isProcessing}
-          className="px-4 py-2.5 bg-[#C9A440] text-black font-bold rounded-xl text-sm hover:bg-[#b8932f] disabled:opacity-40 transition-colors"
+          className="px-4 py-2.5 bg-gold text-black font-bold rounded-xl text-sm hover:bg-[#b8932f] disabled:opacity-40 transition-colors"
         >
           OK
         </button>
@@ -624,7 +624,7 @@ export default function InventoryModule({ role }: { role: string }) {
               onClick={() => setActiveTab(key)}
               className={`p-4 rounded-2xl border text-center transition-all ${
                 activeTab === key
-                  ? 'border-[#C9A440] bg-[#C9A440]/5'
+                  ? 'border-gold bg-gold/5'
                   : 'border-zinc-800 bg-zinc-900 hover:border-zinc-700'
               }`}
             >
@@ -646,7 +646,7 @@ export default function InventoryModule({ role }: { role: string }) {
                 onClick={() => setActiveTab(key)}
                 className={`flex-1 min-w-[6rem] py-3 text-xs font-semibold transition-colors whitespace-nowrap px-2 ${
                   activeTab === key
-                    ? `${color} border-b-2 border-[#C9A440] bg-zinc-800/40`
+                    ? `${color} border-b-2 border-gold bg-zinc-800/40`
                     : 'text-zinc-500 hover:text-zinc-300'
                 }`}
               >
@@ -685,7 +685,7 @@ export default function InventoryModule({ role }: { role: string }) {
                       {activeTab === 'non_enregistre' && (
                         <a
                           href={`/ez/stock/phones?prefill=${item.imei}`}
-                          className="px-2.5 py-1 text-xs bg-[#C9A440]/15 text-[#C9A440] border border-[#C9A440]/30 rounded-lg hover:bg-[#C9A440]/25 transition-colors"
+                          className="px-2.5 py-1 text-xs bg-gold/15 text-gold border border-gold/30 rounded-lg hover:bg-gold/25 transition-colors"
                         >
                           Ajouter
                         </a>

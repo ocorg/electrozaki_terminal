@@ -108,14 +108,14 @@ export default function BZGReportsPage() {
           actions={
             <div className="flex items-center gap-2">
               <Select
-                className="text-sm border border-[#E8E5DE] rounded-xl px-3 py-2 bg-white text-[#6B6860] focus:outline-none"
+                className="text-sm border border-ez-border rounded-xl px-3 py-2 bg-white text-ez-subtle focus:outline-none"
                 value={period}
                 onChange={e => setPeriod(e.target.value as '7' | '30')}>
                 <option value="7">{isAr ? '7 أيام' : '7 jours'}</option>
                 <option value="30">{isAr ? '30 يوم' : '30 jours'}</option>
               </Select>
               <button onClick={fetchReports} disabled={loading}
-                className="p-2 rounded-xl border border-[#E8E5DE] bg-white text-[#6B6860] hover:bg-[#F5F3FF] transition-all">
+                className="p-2 rounded-xl border border-ez-border bg-white text-ez-subtle hover:bg-[#F5F3FF] transition-all">
                 <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
               </button>
             </div>
@@ -140,13 +140,13 @@ export default function BZGReportsPage() {
         {/* Per-store KPI comparison */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {stats.map(st => (
-            <div key={st.storeId} className="bg-white border-2 border-[#E8E5DE] rounded-2xl overflow-hidden"
+            <div key={st.storeId} className="bg-white border-2 border-ez-border rounded-2xl overflow-hidden"
                  style={{ borderTopColor: st.color, borderTopWidth: '3px' }}>
-              <div className="px-5 py-4 border-b border-[#E8E5DE]">
-                <h3 className="font-display font-bold text-[#1A1A1A] tracking-wide"
+              <div className="px-5 py-4 border-b border-ez-border">
+                <h3 className="font-display font-bold text-ez-text tracking-wide"
                     style={{ color: st.color }}>{st.storeName}</h3>
               </div>
-              <div className="grid grid-cols-2 gap-px bg-[#F2F0EB]">
+              <div className="grid grid-cols-2 gap-px bg-ez-muted">
                 {[
                   { label: isAr ? 'اليوم'        : "Aujourd'hui", value: formatMAD(st.ca_today),   icon: Calendar },
                   { label: isAr ? 'الشهر'         : '30 jours',   value: formatMAD(st.ca_month),   icon: TrendingUp },
@@ -157,12 +157,12 @@ export default function BZGReportsPage() {
                   return (
                     <div key={kpi.label} className="bg-white px-4 py-3">
                       <div className="flex items-center justify-between mb-1">
-                        <p className="text-xs text-[#B0ADA6]">{kpi.label}</p>
-                        <Icon className="w-3.5 h-3.5 text-[#B0ADA6]" />
+                        <p className="text-xs text-ez-faint">{kpi.label}</p>
+                        <Icon className="w-3.5 h-3.5 text-ez-faint" />
                       </div>
                       {loading
-                        ? <div className="h-5 bg-[#F2F0EB] rounded animate-pulse w-2/3" />
-                        : <p className="font-bold text-sm text-[#1A1A1A]">{kpi.value}</p>
+                        ? <div className="h-5 bg-ez-muted rounded animate-pulse w-2/3" />
+                        : <p className="font-bold text-sm text-ez-text">{kpi.value}</p>
                       }
                     </div>
                   )
@@ -173,12 +173,12 @@ export default function BZGReportsPage() {
         </div>
 
         {/* Revenue chart */}
-        <div className="bg-white border border-[#E8E5DE] rounded-2xl p-5">
-          <h3 className="font-display font-bold text-[#1A1A1A] tracking-wide mb-5">
+        <div className="bg-white border border-ez-border rounded-2xl p-5">
+          <h3 className="font-display font-bold text-ez-text tracking-wide mb-5">
             {isAr ? `مقارنة الإيرادات — آخر ${period} يوم` : `Comparaison CA — ${period} derniers jours`}
           </h3>
           {loading ? (
-            <div className="h-48 bg-[#F8F7F4] rounded-xl animate-pulse" />
+            <div className="h-48 bg-ez-bg rounded-xl animate-pulse" />
           ) : (
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>

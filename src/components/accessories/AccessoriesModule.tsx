@@ -254,7 +254,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
           actions={
             <div className="flex items-center gap-2">
               <button onClick={fetchAccessories} disabled={manualRefresh}
-                className="p-2 rounded-xl border border-[#E8E5DE] bg-white text-[#6B6860] hover:bg-[#F8F7F4] transition-all">
+                className="p-2 rounded-xl border border-ez-border bg-white text-ez-subtle hover:bg-ez-bg transition-all">
                 <RefreshCw className={`w-4 h-4 ${manualRefresh ? 'animate-spin' : ''}`} />
               </button>
               {canEdit && (
@@ -270,23 +270,23 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
 
         {/* Summary — on a phone: 2 tiles side by side, the amount full width */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          <div className="bg-white border border-[#E8E5DE] rounded-xl px-4 py-3"
+          <div className="bg-white border border-ez-border rounded-xl px-4 py-3"
                style={{ borderLeftColor: primary, borderLeftWidth: '3px' }}>
-            <p className="text-xs text-[#6B6860]">{isAr ? 'إجمالي المنتجات' : 'Total produits'}</p>
-            <p className="font-display font-bold text-lg text-[#1A1A1A]">{accessories.length}</p>
+            <p className="text-xs text-ez-subtle">{isAr ? 'إجمالي المنتجات' : 'Total produits'}</p>
+            <p className="font-display font-bold text-lg text-ez-text">{accessories.length}</p>
           </div>
-          <div className="bg-white border border-[#E8E5DE] rounded-xl px-4 py-3"
+          <div className="bg-white border border-ez-border rounded-xl px-4 py-3"
                style={{ borderLeftColor: lowStockCount > 0 ? '#EF4444' : '#10B981', borderLeftWidth: '3px' }}>
-            <p className="text-xs text-[#6B6860]">{t(isAr, 'common.stockAlerts')}</p>
-            <p className={`font-display font-bold text-lg ${lowStockCount > 0 ? 'text-red-500' : 'text-[#1A1A1A]'}`}>
+            <p className="text-xs text-ez-subtle">{t(isAr, 'common.stockAlerts')}</p>
+            <p className={`font-display font-bold text-lg ${lowStockCount > 0 ? 'text-red-500' : 'text-ez-text'}`}>
               {lowStockCount}
             </p>
           </div>
           {canFinancials && (
-            <div className="bg-white border border-[#E8E5DE] rounded-xl px-4 py-3 col-span-2 sm:col-span-1 order-last sm:order-none"
+            <div className="bg-white border border-ez-border rounded-xl px-4 py-3 col-span-2 sm:col-span-1 order-last sm:order-none"
                  style={{ borderLeftColor: '#10B981', borderLeftWidth: '3px' }}>
-              <p className="text-xs text-[#6B6860]">{isAr ? 'قيمة المخزون' : 'Valeur stock'}</p>
-              <p className="font-display font-bold text-lg text-[#1A1A1A]">{formatMAD(totalValue)}</p>
+              <p className="text-xs text-ez-subtle">{isAr ? 'قيمة المخزون' : 'Valeur stock'}</p>
+              <p className="font-display font-bold text-lg text-ez-text">{formatMAD(totalValue)}</p>
             </div>
           )}
         </div>
@@ -294,9 +294,9 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
         {/* Filters */}
         <div className="flex gap-2 flex-wrap">
           <div className="relative flex-1 min-w-48">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#B0ADA6]" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ez-faint" />
             <input
-              className="w-full pl-9 pr-4 py-2.5 bg-white border border-[#E8E5DE] rounded-xl text-sm placeholder:text-[#B0ADA6] focus:outline-none transition-all"
+              className="w-full pl-9 pr-4 py-2.5 bg-white border border-ez-border rounded-xl text-sm placeholder:text-ez-placeholder focus:outline-none transition-all"
               placeholder={isAr ? 'بحث بالاسم أو الباركود...' : 'Rechercher nom, marque, code...'}
               value={search}
               onChange={e => setSearch(e.target.value)}
@@ -310,7 +310,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
             color={primary}
           />
           <Select
-            className="text-sm border border-[#E8E5DE] rounded-xl px-3 py-2.5 bg-white text-[#6B6860] focus:outline-none"
+            className="text-sm border border-ez-border rounded-xl px-3 py-2.5 bg-white text-ez-subtle focus:outline-none"
             value={filterCat}
             onChange={e => setFilterCat(e.target.value)}
           >
@@ -336,10 +336,10 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
 
       {/* List */}
       <div className="flex-1 overflow-auto px-4 sm:px-6 pb-6">
-        <div className="bg-white border border-[#E8E5DE] rounded-2xl overflow-hidden">
+        <div className="bg-white border border-ez-border rounded-2xl overflow-hidden">
 
           {/* Table header */}
-          <div className="hidden lg:grid border-b border-[#F2F0EB] px-5 py-3 text-[10px] font-bold text-[#B0ADA6] uppercase tracking-widest"
+          <div className="hidden lg:grid border-b border-ez-muted px-5 py-3 text-xs font-bold text-ez-faint uppercase tracking-wide"
                style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 140px' }}>
             <span>{isAr ? 'المنتج' : 'Produit'}</span>
             <span>{t(isAr, 'common.category')}</span>
@@ -350,7 +350,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
           </div>
 
           {loading ? (
-            <div className="divide-y divide-[#F2F0EB]">
+            <div className="divide-y divide-ez-muted">
               {[...Array(5)].map((_, i) => <SkeletonRow key={i} />)}
             </div>
           ) : accessories.length === 0 ? (
@@ -366,11 +366,11 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
               }
             />
           ) : (
-            <div className="divide-y divide-[#F2F0EB]">
+            <div className="divide-y divide-ez-muted">
               {visibleAccessories.map(acc => (
                 <div
                   key={acc.acc_id}
-                  className={`hidden lg:grid items-center px-5 py-3.5 transition-all ${acc.is_low_stock ? 'bg-red-50/30' : 'hover:bg-[#F8F7F4]'}`}
+                  className={`hidden lg:grid items-center px-5 py-3.5 transition-all ${acc.is_low_stock ? 'bg-red-50/30' : 'hover:bg-ez-bg'}`}
                   style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 140px' }}
                 >
                   {/* Name */}
@@ -380,32 +380,32 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
                       <Package className="w-4 h-4" style={{ color: primary }} />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-[#1A1A1A] truncate">{acc.nom}</p>
-                      <p className="text-xs text-[#B0ADA6]">
+                      <p className="text-sm font-medium text-ez-text truncate">{acc.nom}</p>
+                      <p className="text-xs text-ez-faint">
                         {acc.marque ? `${acc.marque} · ` : ''}{acc.barcode || acc.acc_id}
                       </p>
                     </div>
                   </div>
 
                   {/* Category */}
-                  <p className="text-xs text-[#6B6860]">{getCatLabel(acc.categorie)}</p>
+                  <p className="text-xs text-ez-subtle">{getCatLabel(acc.categorie)}</p>
 
                   {/* Quantity adjuster */}
                   <div className="flex items-center gap-2">
                     {canEdit && <button
                       onClick={() => adjustQty(acc, -1)}
                       disabled={acc.quantite === 0 || adjusting === acc.acc_id}
-                      className="w-6 h-6 rounded-lg border border-[#E8E5DE] flex items-center justify-center text-[#6B6860] hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-all disabled:opacity-30"
+                      className="w-6 h-6 rounded-lg border border-ez-border flex items-center justify-center text-ez-subtle hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-all disabled:opacity-30"
                     >
                       <Minus className="w-3 h-3" />
                     </button>}
-                    <span className={`text-sm font-bold w-6 text-center ${acc.is_low_stock ? 'text-red-500' : 'text-[#1A1A1A]'}`}>
+                    <span className={`text-sm font-bold w-6 text-center ${acc.is_low_stock ? 'text-red-500' : 'text-ez-text'}`}>
                       {acc.quantite}
                     </span>
                     {canEdit && <button
                       onClick={() => adjustQty(acc, 1)}
                       disabled={adjusting === acc.acc_id}
-                      className="w-6 h-6 rounded-lg border border-[#E8E5DE] flex items-center justify-center text-[#6B6860] hover:bg-emerald-50 hover:text-emerald-500 hover:border-emerald-200 transition-all"
+                      className="w-6 h-6 rounded-lg border border-ez-border flex items-center justify-center text-ez-subtle hover:bg-emerald-50 hover:text-emerald-500 hover:border-emerald-200 transition-all"
                     >
                       <Plus className="w-3 h-3" />
                     </button>}
@@ -422,7 +422,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
                   />
 
                   {/* Prix de vente — visible à tous les rôles */}
-                  <p className="text-sm font-bold text-[#1A1A1A]">
+                  <p className="text-sm font-bold text-ez-text">
                     {acc.prix_vente_recommande ? formatMAD(acc.prix_vente_recommande) : '—'}
                   </p>
 
@@ -460,9 +460,9 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
               {/* Mobile cards — name in full, then category / stock, then big +/− for thumbs */}
               {visibleAccessories.map(acc => (
                 <div key={`mob-${acc.acc_id}`}
-                  className={`lg:hidden px-4 py-3.5 space-y-2 transition-all ${acc.is_low_stock ? 'bg-red-50/40' : 'hover:bg-[#F8F7F4]'}`}>
+                  className={`lg:hidden px-4 py-3.5 space-y-2 transition-all ${acc.is_low_stock ? 'bg-red-50/40' : 'hover:bg-ez-bg'}`}>
                   <div className="flex items-start justify-between gap-3">
-                    <p className="text-[15px] font-semibold text-[#1A1A1A] leading-snug line-clamp-2 min-w-0">{acc.nom}</p>
+                    <p className="text-[15px] font-semibold text-ez-text leading-snug line-clamp-2 min-w-0">{acc.nom}</p>
                     {acc.prix_vente_recommande != null && (
                       <p className="text-base font-bold flex-shrink-0 tabular-nums" style={{ color: primary }}>
                         {formatMAD(acc.prix_vente_recommande)}
@@ -470,28 +470,28 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
                     )}
                   </div>
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-[#F2F0EB] text-[#6B6860]">{getCatLabel(acc.categorie)}</span>
-                    {acc.marque && <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-[#F2F0EB] text-[#6B6860]">{acc.marque}</span>}
+                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-ez-muted text-ez-subtle">{getCatLabel(acc.categorie)}</span>
+                    {acc.marque && <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-ez-muted text-ez-subtle">{acc.marque}</span>}
                     <StatusBadge domain="stock_level" code={acc.status_computed ?? 'disponible'} size="sm" />
                   </div>
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
                       {canEdit && (
                         <button onClick={() => adjustQty(acc, -1)} disabled={acc.quantite === 0} aria-label={isAr ? 'إنقاص' : 'Retirer 1'}
-                          className="w-9 h-9 rounded-xl border border-[#E8E5DE] bg-white flex items-center justify-center disabled:opacity-40">
-                          <Minus className="w-4 h-4 text-[#6B6860]" />
+                          className="w-9 h-9 rounded-xl border border-ez-border bg-white flex items-center justify-center disabled:opacity-40">
+                          <Minus className="w-4 h-4 text-ez-subtle" />
                         </button>
                       )}
-                      <span className={`text-base font-bold min-w-[2rem] text-center tabular-nums ${acc.is_low_stock ? 'text-red-500' : 'text-[#1A1A1A]'}`}>
+                      <span className={`text-base font-bold min-w-[2rem] text-center tabular-nums ${acc.is_low_stock ? 'text-red-500' : 'text-ez-text'}`}>
                         {acc.quantite}
                       </span>
                       {canEdit && (
                         <button onClick={() => adjustQty(acc, 1)} aria-label={isAr ? 'إضافة' : 'Ajouter 1'}
-                          className="w-9 h-9 rounded-xl border border-[#E8E5DE] bg-white flex items-center justify-center">
-                          <Plus className="w-4 h-4 text-[#6B6860]" />
+                          className="w-9 h-9 rounded-xl border border-ez-border bg-white flex items-center justify-center">
+                          <Plus className="w-4 h-4 text-ez-subtle" />
                         </button>
                       )}
-                      <span className="text-xs text-[#8A877F]">{isAr ? 'في المخزون' : 'en stock'}</span>
+                      <span className="text-xs text-ez-faint">{isAr ? 'في المخزون' : 'en stock'}</span>
                     </div>
                     {canEdit && (
                       <RowAction title={isAr ? 'تعديل' : 'Modifier'} onClick={() => openEdit(acc)}>
@@ -503,7 +503,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
               ))}
               {accessories.length > shown && (
                 <button onClick={() => setShown(n => n + PAGE)}
-                  className="w-full py-3 text-sm font-medium text-[#6B6860] hover:bg-[#F8F7F4] transition-all">
+                  className="w-full py-3 text-sm font-medium text-ez-subtle hover:bg-ez-bg transition-all">
                   {isAr ? `عرض المزيد (${accessories.length - shown})` : `Afficher plus (${accessories.length - shown})`}
                 </button>
               )}
@@ -520,7 +520,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
         size="sm"
         closeLabel={t(isAr, 'common.close')}
       >
-        <p className="text-sm text-[#6B6860] mb-6">
+        <p className="text-sm text-ez-subtle mb-6">
           {t(isAr, 'common.irreversible')}
         </p>
         <div className="flex gap-3 justify-end">
@@ -609,22 +609,22 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
 
           {/* Prix de vente — lecture seule pour le staff */}
           {!canFinancials && (
-            <div className="border-t border-[#E8E5DE] pt-4">
-              <p className="text-xs font-bold text-[#6B6860] uppercase tracking-widest mb-1">
+            <div className="border-t border-ez-border pt-4">
+              <p className="text-xs font-bold text-ez-subtle uppercase tracking-widest mb-1">
                 {t(isAr, 'common.salePrices')}
               </p>
-              <p className="text-[11px] text-[#8A877F] mb-3">
+              <p className="text-xs text-ez-faint mb-3">
                 {isAr ? 'الأسعار يحددها المسير' : editAcc ? 'Les prix sont modifiés par un gérant.' : 'Les prix seront ajoutés par un gérant.'}
               </p>
               <div className="grid grid-cols-2 gap-4">
                 <Field label={isAr ? 'سعر البيع' : 'Prix recommandé'}>
                   <input type="number" readOnly tabIndex={-1}
-                    className={`${inputClass} bg-[#F8F7F4] cursor-default`}
+                    className={`${inputClass} bg-ez-bg cursor-default`}
                     value={form.prix_vente_recommande} />
                 </Field>
                 <Field label={t(isAr, 'common.minPrice')}>
                   <input type="number" readOnly tabIndex={-1}
-                    className={`${inputClass} bg-[#F8F7F4] cursor-default`}
+                    className={`${inputClass} bg-ez-bg cursor-default`}
                     value={form.prix_vente_minimum} />
                 </Field>
               </div>
@@ -632,8 +632,8 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
           )}
 
           {canFinancials && (
-            <div className="border-t border-[#E8E5DE] pt-4">
-              <p className="text-xs font-bold text-[#6B6860] uppercase tracking-widest mb-4">
+            <div className="border-t border-ez-border pt-4">
+              <p className="text-xs font-bold text-ez-subtle uppercase tracking-widest mb-4">
                 {isAr ? 'الأسعار' : 'Prix & marges (gestion uniquement)'}
               </p>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">

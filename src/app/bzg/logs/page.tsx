@@ -34,8 +34,8 @@ const ACTION_COLORS: Record<string, string> = {
   validation_cloture:   'bg-emerald-50 text-emerald-700 border-emerald-200',
   rejet_cloture:        'bg-red-50 text-red-700 border-red-200',
   derogation:           'bg-violet-50 text-violet-700 border-violet-200',
-  connexion:            'bg-slate-50 text-slate-600 border-slate-200',
-  deconnexion:          'bg-slate-50 text-slate-600 border-slate-200',
+  connexion:            'bg-ez-bg text-ez-subtle border-ez-border',
+  deconnexion:          'bg-ez-bg text-ez-subtle border-ez-border',
   pointage_entree:      'bg-teal-50 text-teal-700 border-teal-200',
   pointage_sortie:      'bg-teal-50 text-teal-700 border-teal-200',
   creation_utilisateur: 'bg-violet-50 text-violet-700 border-violet-200',
@@ -127,7 +127,7 @@ export default function BZGLogsPage() {
               {hasFilters && (
                 <button
                   onClick={clearFilters}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E8E5DE] bg-white text-[#6B6860] text-xs hover:bg-[#F5F3FF] transition-all"
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-ez-border bg-white text-ez-subtle text-xs hover:bg-[#F5F3FF] transition-all"
                 >
                   <X className="w-3.5 h-3.5" />
                   {isAr ? 'مسح الفلاتر' : 'Réinitialiser'}
@@ -136,7 +136,7 @@ export default function BZGLogsPage() {
               <button
                 onClick={fetchLogs}
                 disabled={loading}
-                className="p-2 rounded-xl border border-[#E8E5DE] bg-white text-[#6B6860] hover:bg-[#F5F3FF] transition-all disabled:opacity-50"
+                className="p-2 rounded-xl border border-ez-border bg-white text-ez-subtle hover:bg-[#F5F3FF] transition-all disabled:opacity-50"
               >
                 <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
               </button>
@@ -149,9 +149,9 @@ export default function BZGLogsPage() {
 
           {/* Search */}
           <div className="relative flex-1 min-w-48">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#B0ADA6] pointer-events-none" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ez-faint pointer-events-none" />
             <input
-              className="w-full pl-9 pr-8 py-2 bg-white border border-[#E8E5DE] rounded-xl text-sm placeholder:text-[#B0ADA6] focus:outline-none focus:border-[#6366F1] transition-all"
+              className="w-full pl-9 pr-8 py-2 bg-white border border-ez-border rounded-xl text-sm placeholder:text-ez-placeholder focus:outline-none focus:border-[#6366F1] transition-all"
               placeholder={isAr ? 'بحث في السجل...' : 'Rechercher utilisateur, ID, note...'}
               value={search}
               onChange={e => setSearch(e.target.value)}
@@ -159,7 +159,7 @@ export default function BZGLogsPage() {
             {search && (
               <button
                 onClick={() => setSearch('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#B0ADA6] hover:text-[#1A1A1A]"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ez-faint hover:text-ez-text"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -170,7 +170,7 @@ export default function BZGLogsPage() {
           <Select
             value={filterStore}
             onChange={e => setFilterStore(e.target.value)}
-            className="px-3 py-2 bg-white border border-[#E8E5DE] rounded-xl text-sm text-[#6B6860] focus:outline-none focus:border-[#6366F1] transition-all"
+            className="px-3 py-2 bg-white border border-ez-border rounded-xl text-sm text-ez-subtle focus:outline-none focus:border-[#6366F1] transition-all"
           >
             <option value="">{isAr ? 'كل المتاجر' : 'Tous les magasins'}</option>
             {STORES.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -180,7 +180,7 @@ export default function BZGLogsPage() {
           <Select
             value={filterModule}
             onChange={e => setFilterModule(e.target.value)}
-            className="px-3 py-2 bg-white border border-[#E8E5DE] rounded-xl text-sm text-[#6B6860] focus:outline-none focus:border-[#6366F1] transition-all"
+            className="px-3 py-2 bg-white border border-ez-border rounded-xl text-sm text-ez-subtle focus:outline-none focus:border-[#6366F1] transition-all"
           >
             <option value="">{isAr ? 'كل الوحدات' : 'Tous les modules'}</option>
             {MODULES.map(m => <option key={m} value={m}>{codeLabel('log_module', m, isAr ? 'ar' : 'fr')}</option>)}
@@ -190,31 +190,31 @@ export default function BZGLogsPage() {
           <Select
             value={filterAction}
             onChange={e => setFilterAction(e.target.value)}
-            className="px-3 py-2 bg-white border border-[#E8E5DE] rounded-xl text-sm text-[#6B6860] focus:outline-none focus:border-[#6366F1] transition-all"
+            className="px-3 py-2 bg-white border border-ez-border rounded-xl text-sm text-ez-subtle focus:outline-none focus:border-[#6366F1] transition-all"
           >
             <option value="">{isAr ? 'كل الأنواع' : 'Toutes les actions'}</option>
             {ACTIONS.map(a => <option key={a} value={a}>{codeLabel('log_action', a, isAr ? 'ar' : 'fr')}</option>)}
           </Select>
 
           {/* Date from */}
-          <div className="flex items-center gap-1.5 bg-white border border-[#E8E5DE] rounded-xl px-3 py-2">
-            <Calendar className="w-3.5 h-3.5 text-[#B0ADA6] flex-shrink-0" />
+          <div className="flex items-center gap-1.5 bg-white border border-ez-border rounded-xl px-3 py-2">
+            <Calendar className="w-3.5 h-3.5 text-ez-faint flex-shrink-0" />
             <input
               type="date"
               value={dateFrom}
               onChange={e => setDateFrom(e.target.value)}
-              className="text-sm text-[#6B6860] focus:outline-none bg-transparent w-32"
+              className="text-sm text-ez-subtle focus:outline-none bg-transparent w-32"
             />
           </div>
 
           {/* Date to */}
-          <div className="flex items-center gap-1.5 bg-white border border-[#E8E5DE] rounded-xl px-3 py-2">
-            <Calendar className="w-3.5 h-3.5 text-[#B0ADA6] flex-shrink-0" />
+          <div className="flex items-center gap-1.5 bg-white border border-ez-border rounded-xl px-3 py-2">
+            <Calendar className="w-3.5 h-3.5 text-ez-faint flex-shrink-0" />
             <input
               type="date"
               value={dateTo}
               onChange={e => setDateTo(e.target.value)}
-              className="text-sm text-[#6B6860] focus:outline-none bg-transparent w-32"
+              className="text-sm text-ez-subtle focus:outline-none bg-transparent w-32"
             />
           </div>
         </div>
@@ -223,11 +223,11 @@ export default function BZGLogsPage() {
       {/* ── List ── */}
       <div className="flex-1 overflow-y-auto px-4 sm:px-6 pb-6 space-y-2">
         {loading ? (
-          <div className="bg-white border border-[#E8E5DE] rounded-2xl overflow-hidden">
+          <div className="bg-white border border-ez-border rounded-2xl overflow-hidden">
             {[...Array(8)].map((_, i) => <SkeletonRow key={i} />)}
           </div>
         ) : logs.length === 0 ? (
-          <div className="bg-white border border-[#E8E5DE] rounded-2xl overflow-hidden">
+          <div className="bg-white border border-ez-border rounded-2xl overflow-hidden">
             <EmptyState
               icon={<ScrollText className="w-7 h-7" />}
               title={isAr ? 'لا توجد سجلات' : 'Aucune entrée dans le journal'}
@@ -240,13 +240,13 @@ export default function BZGLogsPage() {
         ) : (
           logs.map(log => {
             const isExp       = expanded === log.log_id
-            const actionStyle = ACTION_COLORS[log.action_type] ?? 'bg-slate-50 text-slate-600 border-slate-200'
+            const actionStyle = ACTION_COLORS[log.action_type] ?? 'bg-ez-bg text-ez-subtle border-ez-border'
             const storeName   = STORE_NAMES[log.store_id ?? ''] ?? log.store_id ?? '—'
 
             return (
               <div
                 key={log.log_id}
-                className="bg-white border border-[#E8E5DE] rounded-xl overflow-hidden hover:shadow-sm transition-all"
+                className="bg-white border border-ez-border rounded-xl overflow-hidden hover:shadow-sm transition-all"
               >
                 {/* Row */}
                 <div
@@ -254,40 +254,40 @@ export default function BZGLogsPage() {
                   onClick={() => setExpanded(isExp ? null : log.log_id)}
                 >
                   {/* Action badge */}
-                  <span className={`flex-shrink-0 text-[10px] font-bold px-2 py-1 rounded-md border font-mono uppercase tracking-wide ${actionStyle}`}>
+                  <span className={`flex-shrink-0 text-xs font-bold px-2 py-1 rounded-md border font-mono uppercase tracking-wide ${actionStyle}`}>
                     {codeLabel('log_action', log.action_type as Code<'log_action'>, isAr ? 'ar' : 'fr')}
                   </span>
 
                   {/* Module badge */}
-                  <span className="flex-shrink-0 text-[10px] font-mono text-[#B0ADA6] bg-[#F8F7F4] border border-[#E8E5DE] px-2 py-0.5 rounded">
+                  <span className="flex-shrink-0 text-xs font-mono text-ez-faint bg-ez-bg border border-ez-border px-2 py-0.5 rounded">
                     {codeLabel('log_module', log.module as Code<'log_module'>, isAr ? 'ar' : 'fr')}
                   </span>
 
                   {/* User */}
-                  <span className="text-sm font-semibold text-[#1A1A1A] flex-shrink-0">
+                  <span className="text-sm font-semibold text-ez-text flex-shrink-0">
                     {log.user_name}
                   </span>
 
                   {/* Record ID */}
                   {log.record_id && (
-                    <span className="text-xs text-[#B0ADA6] font-mono flex-shrink-0">
+                    <span className="text-xs text-ez-faint font-mono flex-shrink-0">
                       {log.record_id}
                     </span>
                   )}
 
                   {/* Notes preview */}
                   {log.notes && (
-                    <span className="text-xs text-[#6B6860] flex-1 truncate hidden sm:block">
+                    <span className="text-xs text-ez-subtle flex-1 truncate hidden sm:block">
                       {log.notes}
                     </span>
                   )}
 
                   {/* Store + Time */}
                   <div className="ml-auto flex items-center gap-3 flex-shrink-0">
-                    <span className="text-[10px] text-[#6366F1] font-medium hidden md:block">
+                    <span className="text-xs text-[#6366F1] font-medium hidden md:block">
                       {storeName}
                     </span>
-                    <span className="text-xs text-[#B0ADA6] tabular-nums">
+                    <span className="text-xs text-ez-faint tabular-nums">
                       {new Date(log.created_at).toLocaleString('fr-FR', { timeZone: STORE_TIME_ZONE,
                         day:    '2-digit',
                         month:  '2-digit',
@@ -296,37 +296,37 @@ export default function BZGLogsPage() {
                       })}
                     </span>
                     {isExp
-                      ? <ChevronUp   className="w-4 h-4 text-[#B0ADA6] flex-shrink-0" />
-                      : <ChevronDown className="w-4 h-4 text-[#B0ADA6] flex-shrink-0" />
+                      ? <ChevronUp   className="w-4 h-4 text-ez-faint flex-shrink-0" />
+                      : <ChevronDown className="w-4 h-4 text-ez-faint flex-shrink-0" />
                     }
                   </div>
                 </div>
 
                 {/* Expanded detail */}
                 {isExp && (
-                  <div className="px-4 pb-4 space-y-3 border-t border-[#F2F0EB] pt-3">
+                  <div className="px-4 pb-4 space-y-3 border-t border-ez-muted pt-3">
 
                     {/* Meta */}
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
                       <div>
-                        <p className="text-[#B0ADA6] font-mono uppercase tracking-widest mb-0.5">Log ID</p>
-                        <p className="text-[#6B6860] font-mono">{log.log_id}</p>
+                        <p className="text-ez-faint font-mono uppercase tracking-widest mb-0.5">Log ID</p>
+                        <p className="text-ez-subtle font-mono">{log.log_id}</p>
                       </div>
                       <div>
-                        <p className="text-[#B0ADA6] font-mono uppercase tracking-widest mb-0.5">
+                        <p className="text-ez-faint font-mono uppercase tracking-widest mb-0.5">
                           {isAr ? 'المتجر' : 'Magasin'}
                         </p>
-                        <p className="text-[#6B6860]">{storeName}</p>
+                        <p className="text-ez-subtle">{storeName}</p>
                       </div>
                       <div>
-                        <p className="text-[#B0ADA6] font-mono uppercase tracking-widest mb-0.5">IP</p>
-                        <p className="text-[#6B6860] font-mono">{log.ip_address ?? '—'}</p>
+                        <p className="text-ez-faint font-mono uppercase tracking-widest mb-0.5">IP</p>
+                        <p className="text-ez-subtle font-mono">{log.ip_address ?? '—'}</p>
                       </div>
                       <div>
-                        <p className="text-[#B0ADA6] font-mono uppercase tracking-widest mb-0.5">
+                        <p className="text-ez-faint font-mono uppercase tracking-widest mb-0.5">
                           {isAr ? 'التاريخ' : 'Date complète'}
                         </p>
-                        <p className="text-[#6B6860]">
+                        <p className="text-ez-subtle">
                           {new Date(log.created_at).toLocaleString('fr-FR', { timeZone: STORE_TIME_ZONE })}
                         </p>
                       </div>
@@ -335,7 +335,7 @@ export default function BZGLogsPage() {
                     {/* Notes */}
                     {log.notes && (
                       <div className="bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
-                        <p className="text-[10px] font-mono text-amber-600 uppercase tracking-widest mb-0.5">
+                        <p className="text-xs font-mono text-amber-600 uppercase tracking-widest mb-0.5">
                           {isAr ? 'ملاحظة' : 'Note'}
                         </p>
                         <p className="text-sm text-amber-800">{log.notes}</p>
@@ -347,20 +347,20 @@ export default function BZGLogsPage() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {log.before_state && (
                           <div>
-                            <p className="text-[10px] font-mono text-[#B0ADA6] uppercase tracking-widest mb-1">
+                            <p className="text-xs font-mono text-ez-faint uppercase tracking-widest mb-1">
                               {isAr ? 'قبل' : 'Avant'}
                             </p>
-                            <pre className="text-[10px] bg-[#F8F7F4] border border-[#E8E5DE] rounded-xl p-3 overflow-auto max-h-48 text-[#6B6860] leading-relaxed">
+                            <pre className="text-xs bg-ez-bg border border-ez-border rounded-xl p-3 overflow-auto max-h-48 text-ez-subtle leading-relaxed">
                               {JSON.stringify(log.before_state, null, 2)}
                             </pre>
                           </div>
                         )}
                         {log.after_state && (
                           <div>
-                            <p className="text-[10px] font-mono text-[#B0ADA6] uppercase tracking-widest mb-1">
+                            <p className="text-xs font-mono text-ez-faint uppercase tracking-widest mb-1">
                               {isAr ? 'بعد' : 'Après'}
                             </p>
-                            <pre className="text-[10px] bg-[#F8F7F4] border border-[#E8E5DE] rounded-xl p-3 overflow-auto max-h-48 text-[#6B6860] leading-relaxed">
+                            <pre className="text-xs bg-ez-bg border border-ez-border rounded-xl p-3 overflow-auto max-h-48 text-ez-subtle leading-relaxed">
                               {JSON.stringify(log.after_state, null, 2)}
                             </pre>
                           </div>

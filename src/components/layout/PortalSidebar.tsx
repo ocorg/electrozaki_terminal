@@ -197,7 +197,7 @@ export default function PortalSidebar({ onClose, collapsed = false, onCollapsedC
               <div key={i} className="border-t my-2" style={{ borderColor: 'rgba(255,255,255,0.08)' }} />
             )
             return (
-              <p key={i} className="text-[10px] font-bold uppercase tracking-widest px-3 pt-4 pb-1"
+              <p key={i} className="text-xs font-bold uppercase tracking-widest px-3 pt-4 pb-1"
                  style={{ color: 'rgba(255,255,255,0.25)' }}>
                 {item.label}
               </p>
@@ -246,7 +246,7 @@ export default function PortalSidebar({ onClose, collapsed = false, onCollapsedC
                 <>
                   <span className="flex-1">{item.label}</span>
                   {item.badge && (siteCounts?.[item.badge] ?? 0) > 0 && (
-                    <span className="min-w-5 h-5 px-1.5 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center"
+                    <span className="min-w-5 h-5 px-1.5 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center"
                           title={item.badge === 'orders' ? 'Nouvelles commandes' : 'Nouvelles demandes'}>
                       {siteCounts![item.badge]}
                     </span>

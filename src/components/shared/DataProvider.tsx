@@ -140,7 +140,7 @@ export default function DataProvider({ children }: { children: React.ReactNode }
       errorRetryCount:       2,
     }}>
       <MutateBridge />
-      {mounted ? children : <div className="min-h-screen bg-[#F8F7F4]" />}
+      {mounted ? children : <div className="min-h-screen bg-ez-bg" />}
     </SWRConfig>
   )
 }
