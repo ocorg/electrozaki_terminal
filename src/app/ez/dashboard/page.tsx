@@ -16,7 +16,6 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import AttendanceWidget from '@/components/attendance/AttendanceWidget'
-import StaffHome from '@/components/dashboard/StaffHome'
 import { STORE_TIME_ZONE } from '@/lib/time'
 
 // ─── Types ────────────────────────────────────────────────────
@@ -348,7 +347,6 @@ export default function EZDashboard() {
   ]
 
   // Employees: clock in/out and shortcuts to their screens — no figures
-  if (user && !canFin) return <StaffHome storeId={STORE_ID} portalBase="/ez" name={user.display_name} isAr={isAr} />
 
   // ─── Render ────────────────────────────────────────────────
   return (

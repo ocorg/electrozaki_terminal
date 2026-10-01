@@ -63,7 +63,7 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
   const { brands, seriesFor, modelsFor, couleursFor, addEntry, loading: catalogLoading } = usePhoneCatalog()
 
   // Same cached list as the phones screen
-  const suppliers = useApi<{ supplier_id: string; nom: string; type_fournisseur: string }[]>('/api/suppliers?mode=dropdown').data ?? []
+  const suppliers = useApi<{ supplier_id: string; nom: string; type_fournisseur: string }[]>(canSeeFinancials ? '/api/suppliers?mode=dropdown' : null).data ?? []
 
   const [form, setForm]           = useState<Partial<Phone>>({ ...EMPTY })
   const [loading, setLoading]     = useState(false)
@@ -166,8 +166,9 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
     >
       <form onSubmit={handleSubmit} className="space-y-5" style={{ touchAction: 'pan-y' }} dir={isAr ? 'rtl' : 'ltr'}>
 
-        {/* Row 1 — Source + Condition */}
-        <div className="grid grid-cols-2 gap-4">
+        {/* Row 1 — Source + Condition (source and supplier are managers') */}
+        <div className={`grid ${canSeeFinancials ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
+          {canSeeFinancials && (
           <Field label={t(isAr, 'common.source')} required>
             <Select className={selectClass} value={form.source || ''} onChange={e => {
               set('source', e.target.value as DeviceSource)
@@ -178,6 +179,7 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
               <option value="echange">Échange</option>
             </Select>
           </Field>
+          )}
           <Field label={t(isAr, 'common.deviceCondition')} required>
             <Select className={selectClass} value={form.condition || ''} onChange={e => set('condition', e.target.value as DeviceCondition)}>
               <option value="neuf">{t(isAr, 'common.new')}</option>
@@ -188,7 +190,7 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
         </div>
 
         {/* Fournisseur — visible uniquement si source = Fournisseur */}
-        {form.source === 'fournisseur' && (
+        {canSeeFinancials && form.source === 'fournisseur' && (
           <Field label={t(isAr, 'common.supplier')}>
             <Select
               className={selectClass}
@@ -337,7 +339,9 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
         {/* Row 6 — Statut + Emplacement */}
         <div className="grid grid-cols-2 gap-4">
           <Field label={t(isAr, 'common.stockStatus')} required>
-            <Select className={selectClass} value={form.status || 'disponible'} onChange={e => set('status', e.target.value)}>
+            {/* Staff never set a status by hand: "vendu" only comes from a POS sale */}
+            <Select className={selectClass} value={form.status || 'disponible'} onChange={e => set('status', e.target.value)}
+              disabled={!canSeeFinancials}>
               <option value="disponible">{t(isAr, 'common.available')}</option>
               <option value="reserve">{isAr ? 'محجوز' : 'Réservé'}</option>
               <option value="vendu">{isAr ? 'مباع' : 'Vendu'}</option>
@@ -470,8 +474,11 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
         {/* Prix de vente — lecture seule pour le staff */}
         {!canSeeFinancials && (
           <div className="border-t border-[#E8E5DE] pt-4">
-            <p className="text-xs font-bold text-[#6B6860] uppercase tracking-widest mb-4">
+            <p className="text-xs font-bold text-[#6B6860] uppercase tracking-widest mb-1">
               {t(isAr, 'common.salePrices')}
+            </p>
+            <p className="text-[11px] text-[#8A877F] mb-3">
+              {isAr ? 'الأسعار يحددها المسير' : isEdit ? 'Les prix sont modifiés par un gérant.' : 'Les prix seront ajoutés par un gérant.'}
             </p>
             <div className="grid grid-cols-2 gap-4">
               <Field label={t(isAr, 'common.recommendedSalePrice')}>

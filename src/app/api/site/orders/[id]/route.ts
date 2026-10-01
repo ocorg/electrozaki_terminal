@@ -60,7 +60,7 @@ const PAYMENTS  = ['VERIFIED', 'REJECTED'] as const
 async function PATCH_(request: NextRequest, { params }: Ctx) {
   try {
     const body: { status?: string; advancePaymentStatus?: string } = await request.json()
-    const user = await requireActiveUser(body.advancePaymentStatus ? MANAGERS : undefined)
+    const user = await requireActiveUser(MANAGERS)
 
     const data: { status?: (typeof STATUSES)[number]; advancePaymentStatus?: (typeof PAYMENTS)[number] } = {}
     if (body.status !== undefined) {

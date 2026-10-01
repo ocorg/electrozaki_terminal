@@ -2,9 +2,11 @@
 // server (default http://localhost:3100, override with E2E_BASE) whose env
 // points at a TEST database branch (DIRECT_URL).
 //
-// Owner's rules (2026-09-25): an employee has POS + caisse, phones and
-// accessories READ-ONLY (never the purchase price), repairs and clients.
-// Everything else is managers' — refused by the APIs, pages redirected.
+// Owner's rules (2026-10-01): an employee has the POS, phones and
+// accessories only. They add phones/accessories and change their details
+// (and accessory quantities) — never prices (purchase price never even
+// shown), status, promo or deleting. Everything else is managers' —
+// refused by the APIs, pages redirected to the POS.
 //
 //   node scripts/e2e-staff.mjs
 import 'dotenv/config'
@@ -75,11 +77,10 @@ try {
   check('staff: accessory list without purchase price', accs.status === 200 && a0 && !('prix_achat' in a0), a0 && Object.keys(a0))
   const laps = await staff(`/api/laptops?store_id=${STORE}`)
   check('staff: laptop list (POS) without purchase price', laps.status === 200 && (laps.data?.data ?? []).every(l => !('prix_achat' in l)), laps.status)
+  // what the POS needs (client search, returns, clock-in)
   for (const path of [
-    `/api/clients?store_id=${STORE}`, `/api/caisse?store_id=${STORE}&date=${new Date().toISOString().slice(0, 10)}`,
-    `/api/repairs?store_id=${STORE}`, '/api/users?mode=names', '/api/site/counts', '/api/categories', '/api/phones/catalog',
+    `/api/clients?store_id=${STORE}`, '/api/users?mode=names', '/api/categories', '/api/phones/catalog',
     `/api/retours?store_id=${STORE}`, `/api/retours/avoirs?store_id=${STORE}`, `/api/attendance?store_id=${STORE}&date=${new Date().toISOString().slice(0, 10)}`,
-    ...(client ? [`/api/transactions?client_id=${client.client_id}&limit=5`] : []),
   ]) {
     const r = await staff(path)
     check(`staff: can read ${path.split('?')[0]}`, r.status === 200, { status: r.status, error: r.data?.error })
@@ -94,18 +95,26 @@ try {
     `/api/dashboard?store_id=${STORE}&start=2026-09-01&end=2026-09-30`, `/api/prospects?store_id=${STORE}`, '/api/warranty',
     '/api/site/orders', '/api/site/requests', '/api/site/catalog', '/api/site/promos', '/api/site/landing', '/api/site/stats',
     '/api/users', `/api/transactions?store_id=${STORE}`, '/api/settings', '/api/log', `/api/inventory?store_id=${STORE}`, '/api/bzg/dashboard',
+    `/api/caisse?store_id=${STORE}&date=${new Date().toISOString().slice(0, 10)}`, `/api/repairs?store_id=${STORE}`, `/api/cash-drops?store_id=${STORE}`,
+    ...(client ? [`/api/transactions?client_id=${client.client_id}&limit=5`] : []),
   ]) {
     const r = await staff(path)
-    check(`staff: refused ${path.split('?')[0]}${path.includes('transactions') ? ' (whole list)' : ''}`, r.status === 403, { status: r.status })
+    check(`staff: refused ${path.split('?')[0]}${path.includes('client_id') ? ' (client history)' : ''}`, r.status === 403, { status: r.status })
   }
 
-  // ── Staff can't change stock or prices ────────────────────────────────
+  // ── Staff can't change prices, status, promo, or delete ───────────────
   const writes = [
-    ['/api/accessories', 'POST', { store_id: STORE, nom: 'X', categorie: 'coque' }],
     ['/api/accessories', 'PATCH', { acc_id: a0?.acc_id, prix_achat: 1 }],
+    ['/api/accessories', 'PATCH', { acc_id: a0?.acc_id, prix_vente_recommande: 1, prix_vente_minimum: 1 }],
     ['/api/phones', 'PATCH', { phone_id: p0?.phone_id, prix_vente_minimum: 1 }],
-    ['/api/phones', 'POST', { store_id: STORE, source: 'fournisseur', condition: 'occasion', marque: 'X', model: 'X', status: 'disponible', prix_achat: 1 }],
+    ['/api/phones', 'PATCH', { phone_id: p0?.phone_id, status: 'vendu' }],
+    ['/api/phones', 'PATCH', { phone_id: p0?.phone_id, promo_type: 'valeur', promo_montant: 100 }],
+    [`/api/phones?phone_id=${p0?.phone_id}`, 'DELETE', undefined],
+    [`/api/accessories?acc_id=${a0?.acc_id}`, 'DELETE', undefined],
     ['/api/laptops', 'POST', { store_id: STORE, marque: 'X', model: 'X' }],
+    ['/api/clients', 'PATCH', { client_id: client?.client_id, nom: 'X' }],
+    ['/api/repairs', 'POST', { store_id: STORE, client_nom: 'X' }],
+    ['/api/caisse', 'POST', { store_id: STORE }],
     ['/api/phones/catalog', 'POST', { marque: 'X', serie: 'X', model: 'X' }],
     ['/api/expenses', 'POST', { store_id: STORE, montant: 1, categorie: 'autre' }],
     ['/api/prospects', 'POST', { store_id: STORE, nom: 'X' }],
@@ -114,8 +123,52 @@ try {
   ]
   for (const [path, method, body] of writes) {
     const r = await staff(path, { method, body })
-    check(`staff: ${method} ${path} refused`, r.status === 403, { status: r.status, error: r.data?.error })
+    const fields = body ? Object.keys(body).filter(k => !['acc_id', 'phone_id', 'store_id', 'client_id'].includes(k)).join('+') : ''
+    check(`staff: ${method} ${path.split('?')[0]} ${fields} refused`, r.status === 403, { status: r.status, error: r.data?.error })
   }
+
+  // ── Staff change details; prices/status sent along are ignored ────────
+  const pCols = 'couleur, status, prix_vente_recommande, prix_vente_minimum, prix_achat'
+  const { rows: [pBefore] } = await db.query(`select ${pCols} from phones where phone_id = $1`, [p0.phone_id])
+  const pEdit = await staff('/api/phones', { method: 'PATCH', body: { phone_id: p0.phone_id, couleur: 'E2E-Couleur', status: 'vendu', prix_vente_recommande: 1, prix_achat: 1 } })
+  const { rows: [pAfter] } = await db.query(`select ${pCols} from phones where phone_id = $1`, [p0.phone_id])
+  cleanups.push(() => db.query(`update phones set couleur = $2 where phone_id = $1`, [p0.phone_id, pBefore.couleur]))
+  check('staff: changes a phone detail (colour)', pEdit.status === 200 && pAfter.couleur === 'E2E-Couleur', { status: pEdit.status, error: pEdit.data?.error })
+  check('staff: phone status and prices untouched by that edit',
+    pAfter.status === pBefore.status && String(pAfter.prix_vente_recommande) === String(pBefore.prix_vente_recommande) && String(pAfter.prix_achat) === String(pBefore.prix_achat),
+    { before: pBefore, after: pAfter })
+  check('staff: edit answer hides the purchase price', pEdit.data?.data && !('prix_achat' in pEdit.data.data), pEdit.data?.data && Object.keys(pEdit.data.data))
+  const { rows: [sold] } = await db.query(`select phone_id from phones where store_id = $1 and status = 'vendu' and not is_deleted limit 1`, [STORE])
+  if (sold) {
+    const r = await staff('/api/phones', { method: 'PATCH', body: { phone_id: sold.phone_id, couleur: 'X' } })
+    check('staff: cannot edit a sold phone', r.status === 403, { status: r.status })
+  }
+
+  const { rows: [aBefore] } = await db.query(`select quantite, prix_vente_recommande, prix_achat from accessories where acc_id = $1`, [a0.acc_id])
+  const aEdit = await staff('/api/accessories', { method: 'PATCH', body: { acc_id: a0.acc_id, quantite: aBefore.quantite + 1, prix_vente_recommande: 1 } })
+  const { rows: [aAfter] } = await db.query(`select quantite, prix_vente_recommande, prix_achat from accessories where acc_id = $1`, [a0.acc_id])
+  cleanups.push(() => db.query(`update accessories set quantite = $2 where acc_id = $1`, [a0.acc_id, aBefore.quantite]))
+  check('staff: changes an accessory quantity, price ignored',
+    aEdit.status === 200 && aAfter.quantite === aBefore.quantite + 1 && String(aAfter.prix_vente_recommande) === String(aBefore.prix_vente_recommande),
+    { status: aEdit.status, before: aBefore, after: aAfter })
+  check('staff: accessory edit answer hides the purchase price', aEdit.data?.data && !('prix_achat' in aEdit.data.data), aEdit.data?.data && Object.keys(aEdit.data.data))
+
+  // ── Staff add stock: details only, no prices, always "disponible" ─────
+  const newAcc = await staff('/api/accessories', { method: 'POST', body: { store_id: STORE, nom: `E2E acc ${crypto.randomBytes(3).toString('hex')}`, categorie: a0.categorie, quantite: 3, prix_achat: 5, prix_vente_recommande: 9 } })
+  const newAccId = newAcc.data?.data?.acc_id
+  if (newAccId) cleanups.push(() => db.query(`delete from activity_log where record_id = $1`, [newAccId]).then(() => db.query(`delete from accessories where acc_id = $1`, [newAccId])))
+  const { rows: [na] } = newAccId ? await db.query(`select quantite, prix_achat, prix_vente_recommande from accessories where acc_id = $1`, [newAccId]) : { rows: [] }
+  check('staff: adds an accessory without prices', newAcc.status === 201 && na?.quantite === 3 && na.prix_achat == null && na.prix_vente_recommande == null, { status: newAcc.status, row: na, error: newAcc.data?.error })
+  const newPh = await staff('/api/phones', { method: 'POST', body: {
+    store_id: STORE, source: 'fournisseur', condition: 'occasion', marque: 'Apple', model: `E2E ajout ${crypto.randomBytes(3).toString('hex')}`,
+    status: 'vendu', prix_achat: 1, prix_vente_recommande: 2, fournisseur_id: 'SUP-0001', promo_type: 'valeur', promo_montant: 1,
+  } })
+  const newPhId = newPh.data?.data?.phone_id
+  if (newPhId) cleanups.push(() => db.query(`delete from activity_log where record_id = $1`, [newPhId]).then(() => db.query(`delete from phones where phone_id = $1`, [newPhId])))
+  const { rows: [np] } = newPhId ? await db.query(`select status, prix_achat, prix_vente_recommande, fournisseur_id, promo_type from phones where phone_id = $1`, [newPhId]) : { rows: [] }
+  check('staff: adds a phone — disponible, no prices, supplier or promo',
+    newPh.status === 201 && np?.status === 'disponible' && np.prix_achat == null && np.prix_vente_recommande == null && np.fournisseur_id == null && np.promo_type == null,
+    { status: newPh.status, row: np, error: newPh.data?.error })
 
   // …except the phone a customer traded in at the POS
   const tradeIn = await staff('/api/phones', { method: 'POST', body: {
@@ -127,11 +180,11 @@ try {
   check('staff: can add the phone traded in at the POS', tradeIn.status === 201 && !!tradeId, tradeIn)
 
   // ── Pages: staff land on their screens, others redirect to the POS ────
-  for (const page of ['/ez/pos', '/ez/caisse', '/ez/stock/phones', '/ez/stock/accessories', '/ez/prix', '/ez/repairs', '/ez/clients', '/ez/dashboard']) {
+  for (const page of ['/ez/pos', '/ez/stock/phones', '/ez/stock/accessories']) {
     const r = await staff(page)
     check(`staff page: ${page} opens`, r.status === 200, { status: r.status, location: r.location })
   }
-  for (const page of ['/ez/suppliers', '/ez/transactions', '/ez/expenses', '/ez/credits', '/ez/site/orders', '/ez/stock/laptops', '/ez/documents', '/ez/prospects', '/ez/inventory', '/ez/analyses']) {
+  for (const page of ['/ez/dashboard', '/ez/caisse', '/ez/repairs', '/ez/clients', '/ez/prix', '/ez/suppliers', '/ez/transactions', '/ez/expenses', '/ez/credits', '/ez/site/orders', '/ez/stock/laptops', '/ez/documents', '/ez/prospects', '/ez/inventory', '/ez/analyses']) {
     const r = await staff(page)
     check(`staff page: ${page} → POS`, [302, 303, 307, 308].includes(r.status) && (r.location ?? '').endsWith('/ez/pos'), { status: r.status, location: r.location })
   }

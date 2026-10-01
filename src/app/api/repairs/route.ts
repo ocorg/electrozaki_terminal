@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import type { Prisma, repair_status } from '@prisma/client'
 import { prisma } from '@/lib/db'
-import { json, handleError, requireUser, requireActiveUser, pickInput, columnsOf, HttpError } from '@/lib/api'
+import { json, handleError, requireUser, requireActiveUser, pickInput, columnsOf, HttpError, MANAGERS } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { codeLabel } from '@/lib/codes'
 import { withNotify } from '@/lib/realtime'
@@ -38,7 +38,7 @@ function checkRepair(body: Record<string, unknown>, kind: RepairKind) {
 
 export async function GET(request: NextRequest) {
   try {
-    await requireUser()
+    await requireUser(MANAGERS)
     const { searchParams } = new URL(request.url)
     const store_id  = searchParams.get('store_id')
     const statut    = searchParams.get('statut') as repair_status | null
@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
 
 async function POST_(request: NextRequest) {
   try {
-    const user = await requireActiveUser()
+    const user = await requireActiveUser(MANAGERS)
     const body = await request.json()
     checkRepair(body, (body.type_reparation as RepairKind) ?? 'materiel')
 
@@ -104,7 +104,7 @@ async function POST_(request: NextRequest) {
 
 async function PATCH_(request: NextRequest) {
   try {
-    const user = await requireActiveUser()
+    const user = await requireActiveUser(MANAGERS)
     const body = await request.json()
     const rep_id = body.rep_id as string | undefined
     if (!rep_id) throw new HttpError(400, 'rep_id requis')

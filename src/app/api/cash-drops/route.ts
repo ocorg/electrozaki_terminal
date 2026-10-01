@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
-import { json, handleError, requireUser, requireActiveUser, dateOnly, todayDate, HttpError } from '@/lib/api'
+import { json, handleError, requireUser, requireActiveUser, dateOnly, todayDate, HttpError, MANAGERS } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { withNotify } from '@/lib/realtime'
 
@@ -41,7 +41,7 @@ async function POST_(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    await requireUser()
+    await requireUser(MANAGERS)
     const { searchParams } = new URL(request.url)
     const store_id = searchParams.get('store_id')
     const date     = searchParams.get('date')

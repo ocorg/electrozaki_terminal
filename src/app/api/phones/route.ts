@@ -22,6 +22,15 @@ const EDITABLE = [
   'promo_type', 'promo_montant',
 ] as const
 
+// What staff may fill or change (owner's rules, 2026-10-01): the phone's
+// details — never its prices, status (only a POS sale makes it "vendu"),
+// promo, supplier or iCloud password.
+const STAFF_EDITABLE = [
+  'imei', 'condition', 'marque', 'serie', 'type', 'couleur', 'model', 'stockage',
+  'battery_level', 'ram', 'description', 'icloud_compte', 'warranty_months',
+  'location', 'image_url', 'replaced_components', 'is_damaged', 'damage_notes',
+] as const
+
 const clean = (v: unknown) => (typeof v === 'string' ? sanitizeText(v) : v)
 
 export async function GET(request: NextRequest) {
@@ -70,15 +79,16 @@ async function POST_(request: NextRequest) {
   try {
     const user = await requireActiveUser()
     const body = await request.json() as Record<string, unknown>
-    // Staff may only add the phone a customer traded in at the POS (its
-    // value was part of the sale they just made); any other stock entry is
-    // a manager's job.
-    if (!isManager(user.role) && body.source !== 'echange') {
-      throw new HttpError(403, "Réservé aux gérants : l'ajout de téléphones au stock")
-    }
+    // Staff: the phone a customer traded in at the POS (its value was part
+    // of the sale they just made) as before; any other phone they add gets
+    // its details only — prices and supplier are completed by a manager.
+    const staffEntry = !isManager(user.role) && body.source !== 'echange'
+    if (staffEntry) body.status = 'disponible'
     validateRequired(body, ['marque', 'model', 'status'])
 
-    const input = pickInput('phones', body, EDITABLE)
+    const input = staffEntry
+      ? { ...pickInput('phones', body, STAFF_EDITABLE), status: 'disponible', source: 'fournisseur' }
+      : pickInput('phones', body, EDITABLE)
     const data = await prisma.phones.create({
       data: {
         ...(input as Prisma.phonesUncheckedCreateInput),
@@ -111,15 +121,23 @@ async function POST_(request: NextRequest) {
 
 async function PATCH_(request: NextRequest) {
   try {
-    const user = await requireActiveUser(MANAGERS)
+    const user = await requireActiveUser()
     const body = await request.json() as Record<string, unknown>
     const phone_id = body.phone_id as string | undefined
     if (!phone_id) throw new HttpError(400, 'phone_id requis')
 
     const before = await prisma.phones.findUniqueOrThrow({ where: { phone_id } })
+    const manager = isManager(user.role)
+    // Staff change details of phones still in stock; other fields are ignored
+    if (!manager && (before.is_deleted || before.status === 'vendu')) {
+      throw new HttpError(403, 'Un téléphone vendu ne peut être modifié que par un gérant')
+    }
+    const input = manager ? pickInput('phones', body, [...EDITABLE, 'store_id']) : pickInput('phones', body, STAFF_EDITABLE)
+    if (!manager && !Object.keys(input).length) throw new HttpError(403, 'Réservé aux gérants : prix, statut et promotions')
     const data = await prisma.phones.update({
       where: { phone_id },
-      data:  { ...pickInput('phones', body, [...EDITABLE, 'store_id']), updated_by: user.id },
+      data:  { ...input, updated_by: user.id },
+      ...(!manager && { omit: STAFF_OMIT }),
     })
 
     await logActivity({

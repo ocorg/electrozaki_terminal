@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
-import { json, handleError, requireActiveUser, HttpError } from '@/lib/api'
+import { json, handleError, requireActiveUser, HttpError, MANAGERS } from '@/lib/api'
 import { withNotify } from '@/lib/realtime'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 
@@ -11,7 +11,7 @@ import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 //   refusé  → prêt (device to hand back; adjust the price to any diagnostic fee)
 async function POST_(request: NextRequest) {
   try {
-    const user = await requireActiveUser()
+    const user = await requireActiveUser(MANAGERS)
     const { rep_id, decision } = await request.json()
     if (decision !== 'accepte' && decision !== 'refuse') throw new HttpError(400, 'Réponse invalide')
 

@@ -6,7 +6,7 @@ import { withNotify } from '@/lib/realtime'
 
 async function POST_(request: NextRequest) {
   try {
-    const user = await requireActiveUser()
+    const user = await requireActiveUser(MANAGERS)
     const { rep_id, nom_piece, fournisseur, cout } = await request.json() as {
       rep_id: string; nom_piece: string; fournisseur?: string; cout: number
     }

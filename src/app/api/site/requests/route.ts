@@ -41,7 +41,7 @@ async function PATCH_(request: NextRequest) {
   try {
     const { id, status, reason } = await request.json()
     const cancelling = status === 'CANCELLED'
-    const user = await requireActiveUser(cancelling ? MANAGERS : undefined)
+    const user = await requireActiveUser(MANAGERS)
     if (!(REPAIR_STATUSES as readonly string[]).includes(status)) throw new HttpError(400, 'Statut invalide')
     const motif = typeof reason === 'string' ? reason.trim() : ''
     if (cancelling && (motif.length < 5 || motif.length > 500)) throw new HttpError(400, "Indiquez le motif de l'annulation (5 caractères minimum)")

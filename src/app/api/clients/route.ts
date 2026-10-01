@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
-import { json, handleError, requireUser, requireActiveUser, pickInput, columnsOf, HttpError } from '@/lib/api'
+import { json, handleError, requireUser, requireActiveUser, pickInput, columnsOf, HttpError, MANAGERS } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { escapeLike } from '@/lib/utils/validation'
 import { withNotify } from '@/lib/realtime'
@@ -69,7 +69,7 @@ async function POST_(request: NextRequest) {
 
 async function PATCH_(request: NextRequest) {
   try {
-    const user = await requireActiveUser()
+    const user = await requireActiveUser(MANAGERS)
     const body = await request.json()
     const client_id = body.client_id as string | undefined
     if (!client_id) throw new HttpError(400, 'client_id requis')

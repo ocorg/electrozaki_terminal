@@ -109,9 +109,12 @@ try {
   const badPhoto = await newTicket({ model: 'X', probleme: 'x', photos_depot: ['https://evil.example/x.jpg'] })
   check('ticket: foreign photo URL refused (400)', badPhoto.status === 400, badPhoto)
 
-  const soft = await newTicket({ model: 'iPhone 12', marque: 'Apple', probleme: 'Données — test', type_reparation: 'logiciel', problemes: ['donnees'], mode_paiement: 'virement' }, employee)
+  // Repairs are managers' since 2026-10-01 (employees: POS, phones, accessories)
+  const empTicket = await newTicket({ model: 'iPhone 12', marque: 'Apple', probleme: 'x' }, employee)
+  check('ticket: employee refused (403)', empTicket.status === 403, empTicket)
+  const soft = await newTicket({ model: 'iPhone 12', marque: 'Apple', probleme: 'Données — test', type_reparation: 'logiciel', problemes: ['donnees'], mode_paiement: 'virement' })
   const softRow = soft.data?.data
-  check('ticket: software ticket created by an employee', soft.status === 201 && softRow?.type_reparation === 'logiciel' && softRow?.problemes?.[0] === 'donnees' && softRow?.mode_paiement === 'virement', soft)
+  check('ticket: software ticket created', soft.status === 201 && softRow?.type_reparation === 'logiciel' && softRow?.problemes?.[0] === 'donnees' && softRow?.mode_paiement === 'virement', soft)
   const consult = await newTicket({ model: 'Consultation', probleme: 'Conseil achat', type_reparation: 'consultation', problemes: ['consultation'] })
   check('ticket: consultation created', consult.status === 201 && consult.data?.data?.type_reparation === 'consultation', consult)
 
@@ -139,12 +142,14 @@ try {
   const { rows: [applied] } = await web.query(`select "decisionApplied" from "RepairTracking" where ref = $1`, [hwId])
   check('online answer: accepted quote moves the ticket to en cours', afterOnline.statut === 'en_cours' && afterOnline.devis_accepte_le && applied.decisionApplied === true, { afterOnline, applied })
 
-  // Staff record a refusal
+  // A refusal recorded in the store (employees no longer reach repairs)
   const hw2 = await newTicket({ model: 'Redmi Note 12', marque: 'Xiaomi', probleme: 'Batterie', problemes: ['batterie'] })
   const hw2Id = hw2.data?.data?.rep_id
   await manager.api('/api/repairs', { method: 'PATCH', body: { rep_id: hw2Id, statut: 'devis_envoye', cout_reparation: 300 } })
-  const refused = await employee.api('/api/repairs/quote', { method: 'POST', body: { rep_id: hw2Id, decision: 'refuse' } })
-  check('quote: refusal recorded by staff → prêt (to hand back)', refused.status === 200 && refused.data?.data?.statut === 'pret' && !!refused.data?.data?.devis_refuse_le, refused)
+  const empRefuse = await employee.api('/api/repairs/quote', { method: 'POST', body: { rep_id: hw2Id, decision: 'refuse' } })
+  check('quote: employee refused (403)', empRefuse.status === 403, empRefuse)
+  const refused = await manager.api('/api/repairs/quote', { method: 'POST', body: { rep_id: hw2Id, decision: 'refuse' } })
+  check('quote: refusal recorded → prêt (to hand back)', refused.status === 200 && refused.data?.data?.statut === 'pret' && !!refused.data?.data?.devis_refuse_le, refused)
 
   // ── 4. Cash-only caisse ────────────────────────────────────────────────
   await erp.query(`delete from caisse where date in ($1, $2)`, [OPEN_DAY, CLOSED_DAY])

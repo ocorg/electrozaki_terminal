@@ -15,6 +15,7 @@ import ScanButton from '@/components/scanner/ScanButton'
 import ComboBox from '@/components/phones/ComboBox'
 import RetourModal, { type AppliedAvoir } from '@/components/pos/RetourModal'
 import CashDropModal        from '@/components/pos/CashDropModal'
+import AttendanceWidget     from '@/components/attendance/AttendanceWidget'
 import QtyPickerModal       from '@/components/pos/QtyPickerModal'
 import OverridePinModal     from '@/components/pos/OverridePinModal'
 import ExchangeIntakePanel, { type ExchangePanelState } from '@/components/pos/ExchangeIntakePanel'
@@ -223,6 +224,11 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
 
   // ── Cart helpers ──────────────────────────────────────────
   function addToCart(device: DeviceResult) {
+    // Staff add stock without prices (a manager sets them): no price, no sale
+    const listed = Number((device as unknown as Record<string, unknown>).prix_vente_recommande ?? 0)
+    if (user?.role === 'employe' && !(listed > 0)) {
+      showError(isAr ? 'السعر غير محدد بعد — اطلب من المسير' : 'Prix pas encore défini — demandez à un gérant'); return
+    }
     if (device._type !== 'accessory') {
       if (cart.find(c => c._id === device._id)) {
         showError(isAr ? 'موجود في السلة' : 'Déjà dans le panier'); return
@@ -528,7 +534,14 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
 
   // ── Main layout ───────────────────────────────────────────
   return (
-    <div className="h-full flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden animate-fade-in relative" dir={isAr ? 'rtl' : 'ltr'}>
+    <div className="h-full flex flex-col" dir={isAr ? 'rtl' : 'ltr'}>
+    {/* Employees clock in/out here — the POS is their home screen */}
+    {user?.role === 'employe' && (
+      <div className="flex-shrink-0 px-3 sm:px-4 pt-2">
+        <AttendanceWidget storeId={storeId} compact />
+      </div>
+    )}
+    <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden animate-fade-in relative">
 
       {/* ── SUCCESS OVERLAY — grid stays mounted, no re-fetch on dismiss ── */}
       {successTxn && (
@@ -1152,6 +1165,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
         isAr={isAr}
       />
 
+    </div>
     </div>
   )
 }

@@ -45,8 +45,12 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
   const isAr         = language === 'ar'
   const primary      = portal.primaryColor
   const canSeeFinancials = user?.role === 'gerant' || user?.role === 'proprietaire'
-  // Staff consult the stock (read-only); adding / editing / credit sales are managers' (APIs enforce it)
+  // Managers: prices, deleting, credit sales, bulk prices (APIs enforce it)
   const canEdit = canSeeFinancials
+  // Staff add phones and change their details (not prices, status or promo —
+  // the API enforces it); a sold phone stays a manager's
+  const canAdd  = !!user
+  const canOpen = (phone: Phone) => canEdit || (!!user && phone.status !== 'vendu')
   const [bulkOpen, setBulkOpen] = useState(false)
 
   const [formOpen, setFormOpen]       = useState(false)
@@ -299,7 +303,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                   {isAr ? 'إدارة الكتالوج' : 'Catalogue'}
                 </Btn>
               )}
-              {canEdit && (
+              {canAdd && (
               <Btn
                 variant="primary"
                 onClick={openAdd}
@@ -470,7 +474,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
               description={hasFilters
                 ? (t(isAr, 'common.noResultsFiltered'))
                 : (isAr ? 'أضف أول هاتف للمخزون' : 'Ajoutez le premier téléphone')}
-              action={!hasFilters && canEdit
+              action={!hasFilters && canAdd
                 ? <Btn variant="primary" onClick={openAdd} style={{ backgroundColor: primary } as React.CSSProperties}>
                     <Plus className="w-4 h-4" />{isAr ? 'إضافة هاتف' : 'Ajouter un téléphone'}
                   </Btn>
@@ -494,8 +498,8 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                 return (
                   <div
                     key={phone.phone_id}
-                    onClick={canEdit ? () => openEdit(phone) : undefined}
-                    className={`hidden lg:grid items-center px-5 py-3.5 hover:bg-[#F8F7F4] transition-all ${canEdit ? 'cursor-pointer' : ''}`}
+                    onClick={canOpen(phone) ? () => openEdit(phone) : undefined}
+                    className={`hidden lg:grid items-center px-5 py-3.5 hover:bg-[#F8F7F4] transition-all ${canOpen(phone) ? 'cursor-pointer' : ''}`}
                     style={{ gridTemplateColumns: '2fr 1fr 0.7fr 0.7fr 0.7fr 0.6fr 1fr 180px' }}
                   >
                     {/* Device name */}
@@ -662,7 +666,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                       >
                         <Tag className="w-4 h-4" />
                       </RowAction>
-                      {canEdit && (
+                      {canOpen(phone) && (
                         <RowAction title={isAr ? 'تعديل' : 'Modifier'} onClick={() => openEdit(phone)}>
                           <Edit2 className="w-4 h-4" />
                         </RowAction>
@@ -699,8 +703,8 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                 // Phone layout: full name + price, then readable chips, then IMEI + actions
                 return (
                   <div key={`mob-${phone.phone_id}`}
-                       onClick={canEdit ? () => openEdit(phone) : undefined}
-                       className={`lg:hidden px-4 py-3.5 space-y-2 transition-all ${canEdit ? 'hover:bg-[#F8F7F4] active:bg-[#F2F0EB] cursor-pointer' : ''}`}>
+                       onClick={canOpen(phone) ? () => openEdit(phone) : undefined}
+                       className={`lg:hidden px-4 py-3.5 space-y-2 transition-all ${canOpen(phone) ? 'hover:bg-[#F8F7F4] active:bg-[#F2F0EB] cursor-pointer' : ''}`}>
                     <div className="flex items-start justify-between gap-3">
                       <p className="text-[15px] font-semibold text-[#1A1A1A] leading-snug line-clamp-2">{deviceName}</p>
                       {phone.prix_vente_recommande != null && (
@@ -760,7 +764,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                             <CreditCard className="w-4 h-4" />
                           </RowAction>
                         )}
-                        {canEdit && (
+                        {canOpen(phone) && (
                           <RowAction title={isAr ? 'تعديل' : 'Modifier'} onClick={(e) => { e.stopPropagation(); openEdit(phone) }}>
                             <Edit2 className="w-4 h-4" />
                           </RowAction>

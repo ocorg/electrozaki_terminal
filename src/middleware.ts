@@ -18,7 +18,8 @@ const SESSION_COOKIES = ['authjs.session-token', '__Secure-authjs.session-token'
 
 // Screens an employee may open inside a store portal (owner's decision,
 // 2026-09-25). Everything else is for managers — the APIs refuse it too.
-const STAFF_PAGES = ['/dashboard', '/pos', '/caisse', '/stock/phones', '/stock/accessories', '/prix', '/repairs', '/clients']
+// Employees (owner's rules, 2026-10-01): POS, phones and accessories only
+const STAFF_PAGES = ['/pos', '/stock/phones', '/stock/accessories']
 
 // Auth.js's own endpoints must work while signed out. verify-override lives
 // under the same prefix but has no session check of its own, so it stays gated.
@@ -71,7 +72,7 @@ export default auth(async (request) => {
         return signOutAndRedirect(new URL('/login?reason=store_not_found', request.url))
       }
       if (!pathname.startsWith(storePortal)) {
-        return NextResponse.redirect(new URL(`${storePortal}/dashboard`, request.url))
+        return NextResponse.redirect(new URL(`${storePortal}/${['gerant', 'proprietaire'].includes(user.role) ? 'dashboard' : 'pos'}`, request.url))
       }
     }
 

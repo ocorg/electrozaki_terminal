@@ -6,6 +6,9 @@ import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { withNotify } from '@/lib/realtime'
 
 const EDITABLE = columnsOf('accessories', ['acc_id'])
+// What staff may fill or change (owner's rules, 2026-10-01): details and
+// quantity — never prices or supplier
+const STAFF_EDITABLE = ['barcode', 'nom', 'categorie', 'marque', 'compatible_with', 'quantite', 'seuil_alerte', 'location', 'image_url']
 
 // Same rule as the accessories_with_status view
 const stockLevel = (a: { quantite: number; seuil_alerte: number }) =>
@@ -44,17 +47,19 @@ export async function GET(request: NextRequest) {
 
 async function POST_(request: NextRequest) {
   try {
-    const user = await requireActiveUser(MANAGERS)
+    const user = await requireActiveUser()
     const body = await request.json()
     requireFields(body, ['nom', 'categorie'])
+    const manager = isManager(user.role)
 
     const data = await prisma.accessories.create({
       data: {
-        ...(pickInput('accessories', body, EDITABLE) as Prisma.accessoriesUncheckedCreateInput),
+        ...(pickInput('accessories', body, manager ? EDITABLE : STAFF_EDITABLE) as Prisma.accessoriesUncheckedCreateInput),
         store_id:   body.store_id ?? user.store_id ?? null,
         created_by: user.id,
         updated_by: user.id,
       },
+      ...(!manager && { omit: { prix_achat: true } }),
     })
 
     await logActivity({
@@ -76,15 +81,21 @@ async function POST_(request: NextRequest) {
 
 async function PATCH_(request: NextRequest) {
   try {
-    const user = await requireActiveUser(MANAGERS)
+    const user = await requireActiveUser()
     const body = await request.json()
     const acc_id = body.acc_id as string | undefined
     if (!acc_id) throw new HttpError(400, 'acc_id requis')
+    const manager = isManager(user.role)
 
     const before = await prisma.accessories.findUniqueOrThrow({ where: { acc_id } })
+    if (!manager && before.is_deleted) throw new HttpError(404, 'Accessoire introuvable')
+    // Staff: prices and supplier are ignored
+    const input = pickInput('accessories', body, manager ? EDITABLE : STAFF_EDITABLE)
+    if (!manager && !Object.keys(input).length) throw new HttpError(403, 'Réservé aux gérants : les prix')
     const data = await prisma.accessories.update({
       where: { acc_id },
-      data:  { ...pickInput('accessories', body, EDITABLE), updated_by: user.id },
+      data:  { ...input, updated_by: user.id },
+      ...(!manager && { omit: { prix_achat: true } }),
     })
 
     await logActivity({

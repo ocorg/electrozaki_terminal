@@ -17,9 +17,11 @@ interface Punch {
 
 interface AttendanceWidgetProps {
   storeId: string
+  /** One slim row (top of the POS) instead of the card */
+  compact?: boolean
 }
 
-export default function AttendanceWidget({ storeId }: AttendanceWidgetProps) {
+export default function AttendanceWidget({ storeId, compact }: AttendanceWidgetProps) {
   const { user }     = useUser()
   const { language } = useLanguageStore()
   const portal       = usePortal()
@@ -64,6 +66,38 @@ export default function AttendanceWidget({ storeId }: AttendanceWidgetProps) {
   }
 
   if (loading) return null
+
+  const time = (iso: string) => new Date(iso).toLocaleTimeString('fr-FR', { timeZone: STORE_TIME_ZONE, hour: '2-digit', minute: '2-digit' })
+
+  if (compact) {
+    return (
+      <div className="flex items-center gap-3 bg-white border border-[#E8E5DE] rounded-xl px-3 py-2"
+           style={{ borderLeftColor: isCurrentlyIn ? '#10B981' : '#EF4444', borderLeftWidth: '3px' }}>
+        <div className={`w-2 h-2 rounded-full flex-shrink-0 ${isCurrentlyIn ? 'bg-emerald-500' : 'bg-red-400'}`} />
+        <p className="flex-1 min-w-0 text-xs text-[#1A1A1A] truncate">
+          <b>{isCurrentlyIn ? (isAr ? 'حاضر' : 'En service') : (isAr ? 'خارج الخدمة' : 'Hors service')}</b>
+          {lastPunch && (
+            <span className="text-[#6B6860]">
+              {' · '}{lastPunch.punch_type === 'entree' ? (isAr ? 'دخل في' : 'entrée à') : (isAr ? 'خرج في' : 'sortie à')} {time(lastPunch.punched_at)}
+            </span>
+          )}
+        </p>
+        <button
+          onClick={handlePunch}
+          disabled={punching}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-xs transition-all active:scale-[0.97] disabled:opacity-50 flex-shrink-0"
+          style={{
+            backgroundColor: nextAction === 'entree' ? primary : '#FEF2F2',
+            color:           nextAction === 'entree' ? 'white' : '#EF4444',
+            border:          `1px solid ${nextAction === 'entree' ? primary : '#FECACA'}`,
+          }}
+        >
+          {punching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : nextAction === 'entree' ? <LogIn className="w-3.5 h-3.5" /> : <LogOut className="w-3.5 h-3.5" />}
+          {nextAction === 'entree' ? (isAr ? 'تسجيل الحضور' : 'Pointer entrée') : (isAr ? 'تسجيل الخروج' : 'Pointer sortie')}
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div className="bg-white border border-[#E8E5DE] rounded-2xl p-5"

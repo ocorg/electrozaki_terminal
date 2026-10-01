@@ -75,8 +75,9 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
   const isAr         = language === 'ar'
   const primary      = portal.primaryColor
   const canFinancials = user?.role === 'gerant' || user?.role === 'proprietaire'
-  // Staff consult the stock (read-only): adding, editing and stock changes are managers' (APIs enforce it)
-  const canEdit = canFinancials
+  // Staff add accessories and change details and quantity — never prices
+  // (the API ignores them); deleting stays a manager's
+  const canEdit = !!user
 
   const [search, setSearch]           = useState('')
   const [filterCat, setFilterCat]     = useState('')
@@ -609,8 +610,11 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
           {/* Prix de vente — lecture seule pour le staff */}
           {!canFinancials && (
             <div className="border-t border-[#E8E5DE] pt-4">
-              <p className="text-xs font-bold text-[#6B6860] uppercase tracking-widest mb-4">
+              <p className="text-xs font-bold text-[#6B6860] uppercase tracking-widest mb-1">
                 {t(isAr, 'common.salePrices')}
+              </p>
+              <p className="text-[11px] text-[#8A877F] mb-3">
+                {isAr ? 'الأسعار يحددها المسير' : editAcc ? 'Les prix sont modifiés par un gérant.' : 'Les prix seront ajoutés par un gérant.'}
               </p>
               <div className="grid grid-cols-2 gap-4">
                 <Field label={isAr ? 'سعر البيع' : 'Prix recommandé'}>

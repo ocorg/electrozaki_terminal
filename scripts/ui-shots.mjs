@@ -1,7 +1,7 @@
 // Phone-size (390×844) screenshots of ERP screens, for UI checks — TEST branch only.
 // Needs a dev server on :3100 pointed at the test branch (see memory: test branches).
 //   MSYS_NO_PATHCONV=1 DIRECT_URL=<test> SHOTS=<dir> PAGES=/ez/pos,/ez/stock/phones node scripts/ui-shots.mjs
-// Options: WAIT=ms (default 2500), FULL=1, FILL=<css selector> + TEXT=<typed before the shot>, CLICK=<css selector> (extra shot -2), SCROLL=px (extra shot -3).
+// Options: ROLE=employe|gerant (default proprietaire), WAIT=ms (default 2500), FULL=1, FILL=<css selector> + TEXT=<typed before the shot>, CLICK=<css selector> (extra shot -2), SCROLL=px (extra shot -3).
 // Creates a temporary owner account and deletes it at the end.
 import 'dotenv/config'
 import pg from 'pg'
@@ -28,7 +28,7 @@ const cleanup = async () => {
 }
 await cleanup()
 await db.query(`insert into user_profiles (email, password_hash, display_name, role, store_id, store_locked, is_active)
-                values ($1, $2, 'Audit UI', 'proprietaire', 'EZ-001', true, true)`, [email, await bcrypt.hash(password, 10)])
+                values ($1, $2, 'Audit UI', $3, 'EZ-001', true, true)`, [email, await bcrypt.hash(password, 10), process.env.ROLE ?? 'proprietaire'])
 
 const jar = new Map()
 const absorb = res => { for (const c of res.headers.getSetCookie()) { const [p] = c.split(';'); const i = p.indexOf('='); jar.set(p.slice(0, i), p.slice(i + 1)) } }
