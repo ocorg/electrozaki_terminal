@@ -570,6 +570,11 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                             )}
                           </div>
                         )}
+                        {phone.is_damaged && phone.damage_notes && (
+                          <p className="text-[11px] text-[#991B1B] mt-1 line-clamp-2" title={phone.damage_notes}>
+                            ⚠ {phone.damage_notes}
+                          </p>
+                        )}
                       </div>
                     </div>
 
@@ -753,6 +758,18 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                         </span>
                       )}
                     </div>
+                    {(nComp > 0 || (phone.is_damaged && phone.damage_notes)) && (
+                      <div className="space-y-1">
+                        {phone.is_damaged && phone.damage_notes && (
+                          <p className="text-xs text-[#991B1B] bg-[#FFF1F2] rounded-lg px-2 py-1 line-clamp-3">⚠ {phone.damage_notes}</p>
+                        )}
+                        {nComp > 0 && (
+                          <p className="text-xs text-[#92400E]">
+                            🔧 {(phone.replaced_components || []).map(c => `${c.name} (${c.condition === 'original' ? 'original' : 'standard'})`).join(', ')}
+                          </p>
+                        )}
+                      </div>
+                    )}
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-xs font-mono text-[#8A877F] truncate">
                         {phone.imei ? `IMEI ${phone.imei}` : phone.phone_id}
