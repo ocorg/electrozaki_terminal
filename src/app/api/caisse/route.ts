@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
-import { json, handleError, requireUser, requireActiveUser, dateOnly, HttpError, MANAGERS } from '@/lib/api'
+import { json, handleError, requireUser, requireActiveUser, dateOnly, HttpError } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { withNotify } from '@/lib/realtime'
 
@@ -165,7 +165,7 @@ const soldeTheorique = (ouverture: Prisma.Decimal | number, t: CaisseTotals) =>
 
 export async function GET(request: NextRequest) {
   try {
-    await requireUser(MANAGERS)
+    await requireUser()
     const { searchParams } = new URL(request.url)
     const store_id = searchParams.get('store_id')
     const date     = dateOnly(searchParams.get('date') || new Date().toISOString().slice(0, 10))!
@@ -208,7 +208,7 @@ export async function GET(request: NextRequest) {
 // BOD — open the drawer for today
 async function POST_(request: NextRequest) {
   try {
-    const user     = await requireActiveUser(MANAGERS)
+    const user     = await requireActiveUser()
     const body     = await request.json()
     const store_id = body.store_id ?? user.store_id
     const date     = dateOnly(new Date().toISOString().slice(0, 10))!
@@ -243,7 +243,7 @@ async function POST_(request: NextRequest) {
 // EOD — submit closure for approval
 async function PATCH_(request: NextRequest) {
   try {
-    const user = await requireActiveUser(MANAGERS)
+    const user = await requireActiveUser()
     const { caisse_id, solde_reel, notes } = await request.json()
     if (!caisse_id) throw new HttpError(400, 'caisse_id requis')
     if (solde_reel == null) throw new HttpError(400, 'solde_reel requis')

@@ -9,13 +9,14 @@ import { useUser } from '@/lib/hooks/useUser'
 export default function PortalPrefetch({ storeId }: { storeId: string }) {
   const { user } = useUser()
   const manager = user?.role === 'gerant' || user?.role === 'proprietaire'
-  // Staff only prefetch what they may read (caisse, suppliers, prospects are managers')
+  // Staff only prefetch what they may read (suppliers, prospects are managers')
   usePrefetch(!user ? [] : [
     '/api/categories',
     `/api/phones?status=disponible&store_id=${storeId}&limit=500`,
     `/api/accessories?store_id=${storeId}`,
     `/api/clients?store_id=${storeId}`,
-    ...(manager ? [`/api/caisse?store_id=${storeId}&date=${getBusinessDate()}`, '/api/suppliers?mode=dropdown', `/api/prospects?store_id=${storeId}&open=1`] : []),
+    `/api/caisse?store_id=${storeId}&date=${getBusinessDate()}`,
+    ...(manager ? ['/api/suppliers?mode=dropdown', `/api/prospects?store_id=${storeId}&open=1`] : []),
     '/api/phones/catalog',
     `/api/phones?store_id=${storeId}&limit=5000`,
   ])

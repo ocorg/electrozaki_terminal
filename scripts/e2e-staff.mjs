@@ -2,8 +2,8 @@
 // server (default http://localhost:3100, override with E2E_BASE) whose env
 // points at a TEST database branch (DIRECT_URL).
 //
-// Owner's rules (2026-10-01): an employee has the POS, phones and
-// accessories only. They add phones/accessories and change their details
+// Owner's rules (2026-10-01): an employee has the POS, the caisse (open,
+// submit the closure), phones and accessories only. They add phones/accessories and change their details
 // (and accessory quantities) — never prices (purchase price never even
 // shown), status, promo or deleting. Everything else is managers' —
 // refused by the APIs, pages redirected to the POS.
@@ -77,8 +77,9 @@ try {
   check('staff: accessory list without purchase price', accs.status === 200 && a0 && !('prix_achat' in a0), a0 && Object.keys(a0))
   const laps = await staff(`/api/laptops?store_id=${STORE}`)
   check('staff: laptop list (POS) without purchase price', laps.status === 200 && (laps.data?.data ?? []).every(l => !('prix_achat' in l)), laps.status)
-  // what the POS needs (client search, returns, clock-in)
+  // what the POS and the caisse need (client search, returns, clock-in)
   for (const path of [
+    `/api/caisse?store_id=${STORE}&date=${new Date().toISOString().slice(0, 10)}`,
     `/api/clients?store_id=${STORE}`, '/api/users?mode=names', '/api/categories', '/api/phones/catalog',
     `/api/retours?store_id=${STORE}`, `/api/retours/avoirs?store_id=${STORE}`, `/api/attendance?store_id=${STORE}&date=${new Date().toISOString().slice(0, 10)}`,
   ]) {
@@ -95,7 +96,7 @@ try {
     `/api/dashboard?store_id=${STORE}&start=2026-09-01&end=2026-09-30`, `/api/prospects?store_id=${STORE}`, '/api/warranty',
     '/api/site/orders', '/api/site/requests', '/api/site/catalog', '/api/site/promos', '/api/site/landing', '/api/site/stats',
     '/api/users', `/api/transactions?store_id=${STORE}`, '/api/settings', '/api/log', `/api/inventory?store_id=${STORE}`, '/api/bzg/dashboard',
-    `/api/caisse?store_id=${STORE}&date=${new Date().toISOString().slice(0, 10)}`, `/api/repairs?store_id=${STORE}`, `/api/cash-drops?store_id=${STORE}`,
+    `/api/repairs?store_id=${STORE}`, `/api/cash-drops?store_id=${STORE}`,
     ...(client ? [`/api/transactions?client_id=${client.client_id}&limit=5`] : []),
   ]) {
     const r = await staff(path)
@@ -114,7 +115,6 @@ try {
     ['/api/laptops', 'POST', { store_id: STORE, marque: 'X', model: 'X' }],
     ['/api/clients', 'PATCH', { client_id: client?.client_id, nom: 'X' }],
     ['/api/repairs', 'POST', { store_id: STORE, client_nom: 'X' }],
-    ['/api/caisse', 'POST', { store_id: STORE }],
     ['/api/phones/catalog', 'POST', { marque: 'X', serie: 'X', model: 'X' }],
     ['/api/expenses', 'POST', { store_id: STORE, montant: 1, categorie: 'autre' }],
     ['/api/prospects', 'POST', { store_id: STORE, nom: 'X' }],
@@ -126,6 +126,14 @@ try {
     const fields = body ? Object.keys(body).filter(k => !['acc_id', 'phone_id', 'store_id', 'client_id'].includes(k)).join('+') : ''
     check(`staff: ${method} ${path.split('?')[0]} ${fields} refused`, r.status === 403, { status: r.status, error: r.data?.error })
   }
+
+  // ── Caisse: staff open the drawer (201, or 409 if today's is already open)
+  const { rows: [todayCaisse] } = await db.query(`select caisse_id from caisse where store_id = $1 and date = current_date`, [STORE])
+  const open = await staff('/api/caisse', { method: 'POST', body: { store_id: STORE, ouverture: 0 } })
+  if (!todayCaisse && open.data?.data?.caisse_id) {
+    cleanups.push(() => db.query(`delete from activity_log where record_id = $1`, [open.data.data.caisse_id]).then(() => db.query(`delete from caisse where caisse_id = $1`, [open.data.data.caisse_id])))
+  }
+  check('staff: can open the caisse', open.status === 201 || open.status === 409, { status: open.status, error: open.data?.error })
 
   // ── Staff change details; prices/status sent along are ignored ────────
   const pCols = 'couleur, status, prix_vente_recommande, prix_vente_minimum, prix_achat'
@@ -180,11 +188,11 @@ try {
   check('staff: can add the phone traded in at the POS', tradeIn.status === 201 && !!tradeId, tradeIn)
 
   // ── Pages: staff land on their screens, others redirect to the POS ────
-  for (const page of ['/ez/pos', '/ez/stock/phones', '/ez/stock/accessories']) {
+  for (const page of ['/ez/pos', '/ez/caisse', '/ez/stock/phones', '/ez/stock/accessories']) {
     const r = await staff(page)
     check(`staff page: ${page} opens`, r.status === 200, { status: r.status, location: r.location })
   }
-  for (const page of ['/ez/dashboard', '/ez/caisse', '/ez/repairs', '/ez/clients', '/ez/prix', '/ez/suppliers', '/ez/transactions', '/ez/expenses', '/ez/credits', '/ez/site/orders', '/ez/stock/laptops', '/ez/documents', '/ez/prospects', '/ez/inventory', '/ez/analyses']) {
+  for (const page of ['/ez/dashboard', '/ez/repairs', '/ez/clients', '/ez/prix', '/ez/suppliers', '/ez/transactions', '/ez/expenses', '/ez/credits', '/ez/site/orders', '/ez/stock/laptops', '/ez/documents', '/ez/prospects', '/ez/inventory', '/ez/analyses']) {
     const r = await staff(page)
     check(`staff page: ${page} → POS`, [302, 303, 307, 308].includes(r.status) && (r.location ?? '').endsWith('/ez/pos'), { status: r.status, location: r.location })
   }
