@@ -135,6 +135,9 @@ try {
   }
   check('staff: can open the caisse', open.status === 201 || open.status === 409, { status: open.status, error: open.data?.error })
 
+  const hist = await staff(`/api/phones/${p0.phone_id}/history`)
+  check('staff: refused /api/phones/[id]/history (prices, suppliers)', hist.status === 403, { status: hist.status })
+
   // ── Staff change details; prices/status sent along are ignored ────────
   const pCols = 'couleur, status, prix_vente_recommande, prix_vente_minimum, prix_achat'
   const { rows: [pBefore] } = await db.query(`select ${pCols} from phones where phone_id = $1`, [p0.phone_id])

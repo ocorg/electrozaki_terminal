@@ -20,6 +20,7 @@ interface PhoneFormProps {
   phone?:   Phone | null
   role?:    string
   storeId:  string
+  onShowHistory?: () => void   // managers: open the phone's history
 }
 
 const STOCKAGES = ['16GB', '32GB', '64GB', '128GB', '256GB', '512GB', '1TB']
@@ -52,7 +53,7 @@ const EMPTY: Partial<Phone> = {
   fournisseur_id:       null,
 }
 
-export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId }: PhoneFormProps) {
+export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId, onShowHistory }: PhoneFormProps) {
   const portal   = usePortal()
   const { language } = useLanguageStore()
   const isAr     = language === 'ar'
@@ -165,6 +166,14 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
       size="lg"
     >
       <form onSubmit={handleSubmit} className="space-y-5" style={{ touchAction: 'pan-y' }} dir={isAr ? 'rtl' : 'ltr'}>
+        {isEdit && onShowHistory && (
+          <div className="flex justify-end -mt-2">
+            <button type="button" onClick={onShowHistory}
+              className="text-xs font-bold underline" style={{ color: primary }}>
+              {isAr ? 'سجل الهاتف' : 'Historique du téléphone'}
+            </button>
+          </div>
+        )}
 
         {/* Row 1 — Source + Condition (source and supplier are managers') */}
         <div className={`grid ${canSeeFinancials ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>

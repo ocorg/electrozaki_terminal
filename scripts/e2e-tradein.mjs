@@ -123,6 +123,11 @@ try {
   const { rows: [sum] } = await db.query(`select solde_du::float du, total_achats::float achats, nb_a_regler from suppliers_summary where supplier_id = $1`, [sup.supplier_id])
   check('supplier summary: owes 3100, purchases 3100 (trade-ins not counted as purchases)', sum.du === 3100 && sum.achats === 3100, sum)
 
+  const histA = await manager(`/api/phones/${A}/history`)
+  const histB = await manager(`/api/phones/${B}/history`)
+  const titles = [...(histA.data?.data?.events ?? []), ...(histB.data?.data?.events ?? [])].map(e => e.title).join(' | ')
+  check('history shows the sale and the trade-in chain', histA.status === 200 && /Vendu avec échange/.test(titles) && /A reçu en reprise/.test(titles) && /Repris en échange de/.test(titles), titles.slice(0, 250))
+
   // ── Trade-in worth more than what is owed ─────────────────────────
   const D = await newPhone(5500, sup.supplier_id)
   const s3 = await sellWithTradeIn(manager, D, 6500, 6000)

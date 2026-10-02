@@ -9,6 +9,7 @@ import { usePortal } from '@/lib/context/portal'
 import { formatMAD, formatDate, getWarrantyFlag, computePromoPrice } from '@/lib/utils'
 import { StatusBadge, BatteryBar, EmptyState, SkeletonRow, PageHeader, Btn, Modal, Field, inputClass, selectClass, RowAction, RowMenu, Select } from '@/components/shared'
 import PhoneForm from '@/components/phones/PhoneForm'
+import PhoneHistoryPanel from '@/components/phones/PhoneHistoryPanel'
 import PhoneCreditPanel from '@/components/phones/PhoneCreditPanel'
 import type { Phone, Prospect } from '@/types/database'
 import BulkPriceModal from '@/components/phones/BulkPriceModal'
@@ -19,7 +20,7 @@ import LabelGenerator, { type LabelProduct } from '@/components/print/LabelGener
 import {
   Plus, Search, Filter, RefreshCw,
   Smartphone, Edit2, MapPin, Shield,
-  ChevronDown, X, Eye, EyeOff, Trash2, Loader2, BookOpen, Check, CreditCard, Tag, BatteryMedium, AlertTriangle, Wrench
+  ChevronDown, X, Eye, EyeOff, Trash2, Loader2, BookOpen, Check, CreditCard, Tag, BatteryMedium, AlertTriangle, Wrench, History
 } from 'lucide-react'
 import { codeLabel } from '@/lib/codes'
 import type { DeviceStatus } from '@/types/database'
@@ -52,6 +53,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
   const canAdd  = !!user
   const canOpen = (phone: Phone) => canEdit || (!!user && phone.status !== 'vendu')
   const [bulkOpen, setBulkOpen] = useState(false)
+  const [historyPhone, setHistoryPhone] = useState<Phone | null>(null)
 
   const [formOpen, setFormOpen]       = useState(false)
   const [editPhone, setEditPhone]     = useState<Phone | null>(null)
@@ -678,7 +680,10 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                         </RowAction>
                       )}
                       {canSeeFinancials && (
-                        <RowMenu items={[{ label: isAr ? 'حذف' : 'Supprimer', icon: <Trash2 className="w-4 h-4" />, danger: true, onClick: () => setConfirmDelete(phone.phone_id) }]} />
+                        <RowMenu items={[
+                          { label: isAr ? 'السجل' : 'Historique', icon: <History className="w-4 h-4" />, onClick: () => setHistoryPhone(phone) },
+                          { label: isAr ? 'حذف' : 'Supprimer', icon: <Trash2 className="w-4 h-4" />, danger: true, onClick: () => setConfirmDelete(phone.phone_id) },
+                        ]} />
                       )}
                     </div>
                   </div>
@@ -836,7 +841,13 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
         phone={editPhone}
         role={user?.role}
         storeId={storeId}
+        onShowHistory={canSeeFinancials && editPhone ? () => setHistoryPhone(editPhone) : undefined}
       />
+
+      {/* Full history of a phone (managers) */}
+      {historyPhone && (
+        <PhoneHistoryPanel phoneId={historyPhone.phone_id} label={`${historyPhone.marque} ${historyPhone.model}`} onClose={() => setHistoryPhone(null)} />
+      )}
 
       {/* Modal crédit / avance */}
       {creditPhone && (
