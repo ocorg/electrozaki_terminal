@@ -171,6 +171,14 @@ try {
   const d3 = await manager(`/api/phone-credits/${cid3}/discharge`, { method: 'POST', body: {} })
   const { rows: [ph3] } = await db.query(`select status from phones where phone_id = $1`, [ph.phone_id])
   check('handed-over phone set back to réservé ends up vendu at discharge', remis.status === 201 && d3.status === 200 && ph3.status === 'vendu', { remis: remis.status, d3, ph3 })
+
+  // Already discharged, phone put back to "réservé" since: the button fixes it once
+  await db.query(`update phones set status = 'reserve' where phone_id = $1`, [ph.phone_id])
+  const fixSold = await manager(`/api/phone-credits/${cid3}/discharge`, { method: 'POST', body: {} })
+  const { rows: [ph4] } = await db.query(`select status from phones where phone_id = $1`, [ph.phone_id])
+  const twice = await manager(`/api/phone-credits/${cid3}/discharge`, { method: 'POST', body: {} })
+  check('discharged credit with a reserved phone: "Marquer vendu" fixes it, only once',
+    fixSold.status === 200 && fixSold.data?.data?.status_fixed === true && ph4.status === 'vendu' && twice.status === 400, { fixSold, ph4, twice: twice.status })
 } catch (err) {
   check('script ran to the end', false, String(err?.stack ?? err))
 } finally {

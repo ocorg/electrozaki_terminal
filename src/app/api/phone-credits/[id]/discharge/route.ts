@@ -28,8 +28,14 @@ async function POST_(req: NextRequest, { params }: { params: { id: string } }) {
       if (Number(credit.montant_restant) > 0.01) {
         throw new HttpError(400, `Décharge impossible — reste ${Number(credit.montant_restant).toFixed(2)} DH à payer`)
       }
-      if (credit.discharged_at) throw new HttpError(400, 'Ce crédit a déjà été déchargé')
       if (credit.statut === 'annule') throw new HttpError(400, 'Ce dossier est annulé')
+      if (credit.discharged_at) {
+        // Already discharged but the phone isn't "vendu" (status changed by
+        // hand, or discharged before that fix): just put it right
+        if (credit.phone_status === 'vendu') throw new HttpError(400, 'Ce crédit a déjà été déchargé')
+        await tx.phones.update({ where: { phone_id: credit.phone_id as string }, data: { status: 'vendu', updated_by: user.id } })
+        return { credit, hasReprise: false, reprisePhoneId: null, repriseWarning: null, phone: null, statusFixed: true }
+      }
 
       const hasReprise     = Boolean(credit.has_reprise)
       const repriseWarning = hasReprise && !credit.reprise_remise ? 'reprise_not_previously_confirmed' as const : null
@@ -73,10 +79,18 @@ async function POST_(req: NextRequest, { params }: { params: { id: string } }) {
       }
 
       const phone = await tx.phones.findUnique({ where: { phone_id: credit.phone_id as string }, select: { imei: true, serie: true } })
-      return { credit, hasReprise, reprisePhoneId, repriseWarning, phone }
+      return { credit, hasReprise, reprisePhoneId, repriseWarning, phone, statusFixed: false }
     })
 
-    const { credit, hasReprise, reprisePhoneId, repriseWarning, phone } = result
+    const { credit, hasReprise, reprisePhoneId, repriseWarning, phone, statusFixed } = result
+    if (statusFixed) {
+      await logActivity({
+        user_id: user.id, store_id: storeId, user_name: user.display_name, module: 'telephones',
+        action_type: 'modification', record_id: creditId, ip_address: getIpFromRequest(req),
+        after_state: { credit_id: creditId, phone_id: credit.phone_id, action: 'statut_vendu_apres_decharge' },
+      })
+      return json({ data: { discharged: true, credit_id: creditId, status_fixed: true } })
+    }
     await logActivity({
       user_id:     user.id,
       store_id:    storeId,

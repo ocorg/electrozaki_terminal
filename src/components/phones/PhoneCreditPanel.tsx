@@ -46,6 +46,7 @@ interface CreditSale {
   reprise_remise:   boolean
   reprise_remise_at: string | null
   reprise_phone_id: string | null
+  phone_status?:    string
   notes?:           string | null
   marque?:          string | null
   model?:           string | null
@@ -269,8 +270,14 @@ export default function PhoneCreditPanel({
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ store_id: storeId }),
       })
-      const json = await res.json() as { data?: { fac_prefill: Record<string, unknown>; warning?: string }; error?: string }
+      const json = await res.json() as { data?: { fac_prefill: Record<string, unknown>; warning?: string; status_fixed?: boolean }; error?: string }
       if (!res.ok) throw new Error(json.error)
+      if (json.data?.status_fixed) {
+        toast.success('Téléphone marqué vendu')
+        onCreditCreated()
+        await fetchCredit()
+        return
+      }
       setDischargeData(json.data?.fac_prefill ?? null)
       setDischargeWarning(json.data?.warning ?? null)
       setShowDischargeResult(true)
@@ -322,7 +329,9 @@ export default function PhoneCreditPanel({
   // payment already marks the credit "soldé"; it still has to be discharged
   // for the phone to leave "réservé" — so a soldé credit can be discharged.
   const isFullyPaid  = hasCredit && Number(credit.montant_restant) <= 0.01
-  const canDischarge = isFullyPaid && !credit.discharged_at && credit.statut !== 'annule'
+  // Discharged earlier but the phone is still not "vendu": the button fixes it
+  const needsSoldFix = hasCredit && !!credit.discharged_at && credit.statut !== 'annule' && !!credit.phone_status && credit.phone_status !== 'vendu'
+  const canDischarge = (isFullyPaid && !credit.discharged_at && credit.statut !== 'annule') || needsSoldFix
 
   // ── Phone disponible sans crédit → proposer ──────────────────────
   if (!hasCredit && isAvailable) {
@@ -533,7 +542,7 @@ export default function PhoneCreditPanel({
                 ? <Loader2 className="w-4 h-4 animate-spin" />
                 : <CheckCircle className="w-4 h-4" />
               }
-              Décharger & FAC
+              {needsSoldFix ? 'Marquer vendu' : 'Décharger & FAC'}
             </button>
           </div>
         )}

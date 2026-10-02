@@ -1,6 +1,7 @@
 'use client'
 import { useCallback, useMemo } from 'react'
 import { useApi, apiWrite } from '@/lib/data/api'
+import { stripBrandPrefix, norm, serieKey, uniqueLabels } from '@/lib/phoneCatalog'
 
 export interface CatalogEntry {
   catalog_id: string
@@ -20,20 +21,6 @@ interface CatalogState {
   loading:     boolean
 }
 
-// Strip the brand family word(s) from the beginning of a model name.
-// "iPhone 13 Pro"  with serie "iPhone 13"  → "13 Pro"
-// "Galaxy S24 Ultra" with serie "Galaxy S24" → "S24 Ultra"
-// If no prefix is found, returns the model unchanged.
-function stripBrandPrefix(serie: string, model: string): string {
-  // Capture the leading all-letter word(s) up to the first digit in the serie
-  const match  = serie.match(/^([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ\s]*?)(?=\s*\d|\s*$)/i)
-  const prefix = match?.[1]?.trim()
-  if (!prefix || prefix.length < 2) return model
-  const escaped = prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  const stripped = model.replace(new RegExp(`^${escaped}\\s+`, 'i'), '').trim()
-  return stripped || model
-}
-
 export function usePhoneCatalog(): CatalogState {
   // Shared cache: loaded once for every screen that offers catalog suggestions
   const { data, isLoading: loading } = useApi<CatalogEntry[]>('/api/phones/catalog')
@@ -42,34 +29,37 @@ export function usePhoneCatalog(): CatalogState {
   const brands = useMemo(() => Array.from(new Set(catalog.map(e => e.marque))).sort(), [catalog])
 
   const seriesFor = useCallback((brand: string) =>
-    Array.from(new Set(catalog.filter(e => e.marque === brand).map(e => e.serie))).sort()
+    uniqueLabels(catalog.filter(e => e.marque === brand).map(e => ({ key: serieKey(brand, e.serie), label: e.serie })))
   , [catalog])
 
   const modelsFor = useCallback((brand: string, serie?: string) => {
     let entries = catalog.filter(e => e.marque === brand)
-    if (serie) entries = entries.filter(e => e.serie === serie)
-    const unique = Array.from(new Set(entries.map(e => e.model))).sort()
-    // Return stripped versions — "iPhone 13 Pro" → "13 Pro" when serie = "iPhone 13"
-    return serie
-      ? unique.map(m => stripBrandPrefix(serie, m))
-      : unique
+    if (serie) {
+      const key = serieKey(brand, serie)
+      entries = entries.filter(e => serieKey(brand, e.serie) === key)
+    }
+    // Short names ("iPhone 13 Pro" → "13 Pro" in the "iPhone 13" series),
+    // deduplicated AFTER shortening so old and new spellings merge
+    return uniqueLabels(entries.map(e => {
+      const label = stripBrandPrefix(e.serie, e.model)
+      return { key: norm(label), label }
+    }))
   }, [catalog])
 
-  const couleursFor = useCallback((model: string) =>
+  const couleursFor = useCallback((model: string) => {
     // Match against both full catalog model (legacy) and stripped model (new entries)
-    Array.from(new Set(
-      catalog.filter(e =>
-        e.model === model ||
-        stripBrandPrefix(e.serie, e.model) === model
-      ).map(e => e.couleur)
-    )).sort()
-  , [catalog])
+    const m = norm(model)
+    return uniqueLabels(catalog
+      .filter(e => norm(e.model) === m || norm(stripBrandPrefix(e.serie, e.model)) === m)
+      .map(e => ({ key: norm(e.couleur), label: e.couleur })))
+  }, [catalog])
 
   // Called when staff types a model/color not in the catalog
   const addEntry = useCallback(async (entry: Omit<CatalogEntry, 'catalog_id'>) => {
     // Only insert if it doesn't already exist
-    const exists = catalog.some(
-      e => e.model === entry.model && e.couleur === entry.couleur
+    const exists = catalog.some(e =>
+      (norm(e.model) === norm(entry.model) || norm(stripBrandPrefix(e.serie, e.model)) === norm(entry.model)) &&
+      norm(e.couleur) === norm(entry.couleur)
     )
     if (exists) return
 
