@@ -495,6 +495,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
           prix_vente_echange:      saleForm.prix_vente_echange,
           prix_min_echange:        saleForm.prix_min_echange,
           echange_vers_reparation: saleForm.echange_vers_reparation ?? false,
+          sold_phone_ids:          cart.filter(i => i._type === 'phone').map(i => i._id),
         })
       }
       setCart([]); setPriceInputs({}); setSaleForm({ ...EMPTY_SALE }); setOverrideAuthorizedBy(null); setOverrideReason(''); setSelectedClientId(null); setClientSuggestions([]); setAvoir(null)

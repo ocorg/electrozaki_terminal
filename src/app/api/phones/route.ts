@@ -5,11 +5,12 @@ import { json, handleError, requireUser, requireActiveUser, pickInput, todayDate
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { validateRequired, sanitizeText } from '@/lib/utils/validation'
 import { withNotify } from '@/lib/realtime'
+import { attachTradeIn, phonesSoldWithTradeIn } from '@/lib/tradeinChain'
 
 // Hidden from staff: purchase price, iCloud password, settlement and audit fields
 const STAFF_OMIT = {
   icloud_mdp: true, prix_achat: true, created_by: true, updated_by: true,
-  is_deleted: true, settled_at: true, settled_by: true,
+  is_deleted: true, settled_at: true, settled_by: true, du_fournisseur: true,
 } as const
 
 const EDITABLE = [
@@ -89,17 +90,28 @@ async function POST_(request: NextRequest) {
     const input = staffEntry
       ? { ...pickInput('phones', body, STAFF_EDITABLE), status: 'disponible', source: 'fournisseur' }
       : pickInput('phones', body, EDITABLE)
-    const data = await prisma.phones.create({
-      data: {
-        ...(input as Prisma.phonesUncheckedCreateInput),
-        marque:      clean(input.marque) as string,
-        model:       clean(input.model) as string,
-        description: clean(input.description) as string | null | undefined,
-        date_entree: (input.date_entree as Date | null | undefined) ?? todayDate(),
-        store_id:    (body.store_id as string | undefined) ?? user.store_id ?? null,
-        created_by:  user.id,
-        updated_by:  user.id,
-      },
+    // A phone traded in at a POS sale joins the supplier of the phone it paid
+    // for (lib/tradeinChain) — its supplier is never typed by hand
+    const tradeInOf = body.source === 'echange' && typeof body.txn_ref_id === 'string' ? body.txn_ref_id : null
+    if (tradeInOf) delete (input as Record<string, unknown>).fournisseur_id
+    const { data, chain } = await prisma.$transaction(async (tx) => {
+      const created = await tx.phones.create({
+        data: {
+          ...(input as Prisma.phonesUncheckedCreateInput),
+          marque:      clean(input.marque) as string,
+          model:       clean(input.model) as string,
+          description: clean(input.description) as string | null | undefined,
+          date_entree: (input.date_entree as Date | null | undefined) ?? todayDate(),
+          store_id:    (body.store_id as string | undefined) ?? user.store_id ?? null,
+          created_by:  user.id,
+          updated_by:  user.id,
+        },
+      })
+      if (!tradeInOf) return { data: created, chain: null }
+      const soldIds = Array.isArray(body.tradein_for) ? (body.tradein_for as unknown[]).map(String) : undefined
+      const sale = await phonesSoldWithTradeIn(tx, tradeInOf, soldIds)
+      const chain = await attachTradeIn(tx, { tradeInId: created.phone_id, soldPhoneIds: sale.phoneIds, value: sale.value, userId: user.id })
+      return { data: chain ? await tx.phones.findUniqueOrThrow({ where: { phone_id: created.phone_id } }) : created, chain }
     })
 
     await logActivity({
@@ -111,9 +123,12 @@ async function POST_(request: NextRequest) {
       record_id:   data.phone_id,
       after_state: data,
       ip_address:  getIpFromRequest(request),
+      ...(chain && { notes: `Reprise rattachée au fournisseur ${chain.supplier} (échange de ${chain.from}, ${chain.moved} DH)` }),
     })
 
-    return json({ data }, { status: 201 })
+    // Staff never get purchase price / supplier amounts back
+    const out = isManager(user.role) ? data : Object.fromEntries(Object.entries(data).filter(([k]) => !(k in STAFF_OMIT)))
+    return json({ data: out }, { status: 201 })
   } catch (err) {
     return handleError(err, 'POST /api/phones')
   }

@@ -16,6 +16,7 @@ export interface ExchangePanelState {
   prix_vente_echange?:     number
   prix_min_echange?:       number
   echange_vers_reparation: boolean
+  sold_phone_ids?:         string[]   // phones of the checkout the trade-in paid for
 }
 
 interface Props {
@@ -75,6 +76,7 @@ export default function ExchangeIntakePanel({ exchangePanel, storeId, isAr, onSu
           status:                form.reparation ? 'en_reparation' : 'disponible',
           location:              'magasin_principal',
           txn_ref_id:            exchangePanel.txn_id,
+          tradein_for:           exchangePanel.sold_phone_ids ?? [],
         }),
       })
       const json = await res.json()
@@ -88,8 +90,13 @@ export default function ExchangeIntakePanel({ exchangePanel, storeId, isAr, onSu
 
   return (
     <div className="mt-4 border border-amber-200 bg-amber-50 rounded-xl p-4 animate-fade-in">
-      <p className="text-sm font-bold text-amber-800 mb-3">
-        {isAr ? 'إضافة الجهاز المستلم إلى المخزون؟' : "Ajouter l'appareil repris à l'inventaire ?"}
+      <p className="text-sm font-bold text-amber-800">
+        {isAr ? 'سجّل الجهاز المستلم في المخزون' : "Enregistrez l'appareil repris en stock"}
+      </p>
+      {/* Mandatory (owner, 2026-10-02): the trade-in joins the supplier of
+          the phone sold, so the supplier is paid as the cash comes in */}
+      <p className="text-xs text-amber-700 mb-3">
+        {isAr ? 'إجباري: الجهاز المستلم يُنسب إلى مورد الهاتف المباع.' : "Obligatoire : l'appareil repris est rattaché au fournisseur du téléphone vendu."}
       </p>
       <div className="grid grid-cols-2 gap-3 mb-3">
         <div>
@@ -151,10 +158,6 @@ export default function ExchangeIntakePanel({ exchangePanel, storeId, isAr, onSu
         <button onClick={handleAddToStock} disabled={loading}
           className="px-4 py-2 rounded-xl bg-amber-600 text-white text-sm font-medium hover:bg-amber-700 transition-all disabled:opacity-50">
           {loading ? (isAr ? 'جارٍ...' : 'En cours...') : (isAr ? 'إضافة إلى المخزون' : 'Ajouter au stock')}
-        </button>
-        <button onClick={onClose}
-          className="px-4 py-2 rounded-xl border border-amber-200 text-amber-700 text-sm font-medium hover:bg-amber-100 transition-all">
-          {isAr ? 'تجاهل' : 'Ignorer'}
         </button>
       </div>
     </div>

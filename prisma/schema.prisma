@@ -724,6 +724,8 @@ model phones {
   promo_montant                  Decimal?             @db.Decimal
   settled_at                     DateTime?            @db.Timestamptz(6)
   settled_by                     String?              @db.Uuid
+  du_fournisseur                 Decimal?             @db.Decimal(10, 2)
+  origine_phone_id               String?
   ez_documents                   ez_documents[]
   phone_credit_sales             phone_credit_sales[]
   suppliers                      suppliers?           @relation(fields: [fournisseur_id], references: [supplier_id], map: "fk_phones_supplier")

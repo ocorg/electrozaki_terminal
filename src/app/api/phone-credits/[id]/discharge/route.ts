@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db'
 import { json, handleError, requireActiveUser, HttpError, MANAGERS } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { withNotify } from '@/lib/realtime'
+import { attachTradeIn } from '@/lib/tradeinChain'
 
 // Trade-in state → condition of the phone entering stock
 const CONDITION_FOR_ETAT: Record<string, device_condition> = { bon: 'occasion', moyen: 'occasion', mauvais: 'defectueux' }
@@ -66,6 +67,8 @@ async function POST_(req: NextRequest, { params }: { params: { id: string } }) {
           select: { phone_id: true },
         })
         reprisePhoneId = phone.phone_id
+        // The trade-in joins the supplier of the phone sold (lib/tradeinChain)
+        await attachTradeIn(tx, { tradeInId: phone.phone_id, soldPhoneIds: [credit.phone_id as string], value: Number(credit.reprise_valeur), userId: user.id })
         await tx.phone_credit_sales.update({
           where: { credit_id: creditId },
           data:  { reprise_phone_id: reprisePhoneId, reprise_remise: true, reprise_remise_at: new Date() },

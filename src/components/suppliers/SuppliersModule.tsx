@@ -49,8 +49,10 @@ interface PhoneRow {
   imei?:     string | null
   couleur?:  string | null
   stockage?: string | null
-  cash_recu: number   // what the supplier is owed for it: invoice − trade-in, else purchase price
+  cash_recu: number   // what the supplier is owed for it now (trade-ins moved to the phone taken in)
   fac_ref?:  string | null
+  prix_achat?: number | null
+  origine_phone_id?: string | null   // a trade-in: taken in exchange for this phone of his
 }
 
 interface Payment {
@@ -187,6 +189,8 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
         stockage:  p.stockage ?? null,
         cash_recu: Number(p.cash_recu ?? 0),
         fac_ref:   p.fac_ref  ?? null,
+        prix_achat: p.prix_achat != null ? Number(p.prix_achat) : null,
+        origine_phone_id: p.origine_phone_id ?? null,
       }))
       setPhoneRows(rows)
       setSelectedPhoneIds(new Set(rows.map(r => r.phone_id)))
@@ -638,8 +642,14 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
                               {phone.fac_ref ? ` · ${phone.fac_ref}` : ''}
                             </p>
                           )}
+                          {phone.origine_phone_id && (
+                            <p className="text-xs text-blue-600">Repris (échange de {phone.origine_phone_id})</p>
+                          )}
+                          {!phone.fac_ref && !phone.origine_phone_id && phone.prix_achat != null && phone.cash_recu < phone.prix_achat - 0.01 && (
+                            <p className="text-xs text-blue-600">Reprise reportée : −{formatMAD(phone.prix_achat - phone.cash_recu)}</p>
+                          )}
                         </div>
-                        {phone.cash_recu > 0 && (
+                        {phone.cash_recu >= 0 && (
                           <p className="text-sm font-bold flex-shrink-0"
                              style={{ color: '#C9A440' }}>
                             {formatMAD(phone.cash_recu)}

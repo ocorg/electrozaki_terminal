@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     // Sold phones not yet settled, for every supplier (phones_unsettled_a is a view)
     if (searchParams.get('mode') === 'unsettled_phones' && supplier_id) {
       const data = await prisma.$queryRaw`
-        SELECT phone_id, fournisseur_id, marque, model, imei, couleur, stockage, prix_achat, cash_recu, fac_ref, sold_at
+        SELECT phone_id, fournisseur_id, marque, model, imei, couleur, stockage, prix_achat, cash_recu, fac_ref, sold_at, origine_phone_id
         FROM phones_unsettled_a WHERE fournisseur_id = ${supplier_id} ORDER BY sold_at DESC`
       return json({ data })
     }
