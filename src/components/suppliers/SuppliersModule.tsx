@@ -12,8 +12,9 @@ import { showSuccess, showError } from '@/lib/utils/toasts'
 import {
   Truck, Plus, Search, X, RefreshCw,
   Edit2, Phone, MapPin, MessageCircle,
-  ChevronRight, Check, Loader2, Package,
+  ChevronRight, Check, Loader2, Package, FileText,
 } from 'lucide-react'
+import SupplierStatement from '@/components/suppliers/SupplierStatement'
 import { confirmDialog } from '@/components/shared/ConfirmHost'
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
@@ -136,6 +137,8 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
   // Owner-only correction of a payment typed wrong
   const [fixPay, setFixPay] = useState<{ id: string; montant: string; motif: string } | null>(null)
   const isOwner = user?.role === 'proprietaire'
+  // How we got to what a supplier is owed (ledger + trade-in chains + PDF)
+  const [statementOf, setStatementOf] = useState<string | null>(null)
   const [payMontant,  setPayMontant]  = useState('')
   const [payDate,     setPayDate]     = useState(getBusinessDate())
   const [payNotes,    setPayNotes]    = useState('')
@@ -579,6 +582,10 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
                 tone={(selected.solde_du ?? 0) > 0 ? 'bad' : 'good'} />
               <Kpi label={`En stock (${selected.nb_en_stock ?? 0} tél.)`} value={formatMAD(selected.a_montant_en_stock ?? 0)} />
             </div>
+            <button onClick={() => setStatementOf(selected.supplier_id)}
+              className="w-full flex items-center justify-center gap-2 py-2 rounded-xl border border-ez-border text-sm font-bold text-ez-subtle hover:bg-ez-bg transition-all">
+              <FileText className="w-4 h-4" />Relevé / détail du calcul
+            </button>
 
             {/* ── UNIFIED Phone list section ── */}
             <div>
@@ -927,6 +934,7 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
         </div>
       </Modal>
 
+      {statementOf && <SupplierStatement supplierId={statementOf} onClose={() => setStatementOf(null)} />}
     </div>
   )
 }

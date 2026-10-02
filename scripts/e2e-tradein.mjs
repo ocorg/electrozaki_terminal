@@ -128,6 +128,15 @@ try {
   const titles = [...(histA.data?.data?.events ?? []), ...(histB.data?.data?.events ?? [])].map(e => e.title).join(' | ')
   check('history shows the sale and the trade-in chain', histA.status === 200 && /Vendu avec échange/.test(titles) && /A reçu en reprise/.test(titles) && /Repris en échange de/.test(titles), titles.slice(0, 250))
 
+  const stmt = await manager(`/api/suppliers/${sup.supplier_id}/statement`)
+  const sd = stmt.data?.data
+  const chainTotal = n => n.owed_on_sale + n.children.reduce((t, c) => t + chainTotal(c), 0)
+  check('statement: ledger of 3 sales adds up to 3100, closing = à payer', stmt.status === 200 && sd.ledger.filter(l => l.kind === 'vente').length === 3 && sd.closing === 3100 && sd.summary.a_payer === 3100, sd && { closing: sd.closing, a_payer: sd.summary.a_payer, n: sd.ledger.length })
+  check('statement: one chain A → B → C totalling 3100, phones described with IMEI', sd?.chains?.length === 1 && chainTotal(sd.chains[0]) === 3100 && sd.chains[0].children[0]?.children[0]?.phone?.phone_id === C && !!sd.ledger.find(l => l.phone?.imei), sd?.chains?.[0] && { total: chainTotal(sd.chains[0]) })
+  check('statement: the sale of A explains the trade-in carried over to B', /reprise 600 DH reportée sur/.test(sd?.ledger?.find(l => l.label.startsWith(`Vente ${A}`))?.detail ?? ''), sd?.ledger?.[0]?.detail)
+  const stmtStaff = await staff(`/api/suppliers/${sup.supplier_id}/statement`)
+  check('statement refused to staff', stmtStaff.status === 403, stmtStaff.status)
+
   // ── Trade-in worth more than what is owed ─────────────────────────
   const D = await newPhone(5500, sup.supplier_id)
   const s3 = await sellWithTradeIn(manager, D, 6500, 6000)
