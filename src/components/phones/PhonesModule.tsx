@@ -843,7 +843,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
         <div role="dialog" aria-modal="true" aria-label="Crédit / avance"
              className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
              onClick={() => setCreditPhone(null)}>
-          <div className="w-full max-w-md bg-[#0F0F0F] border border-white/10 rounded-2xl overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
+          <div className="w-full max-w-md max-h-[90vh] flex flex-col bg-[#0F0F0F] border border-white/10 rounded-2xl overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
             {/* En-tête */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
               <div className="flex items-center gap-3">
@@ -866,7 +866,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
               </button>
             </div>
             {/* Panel crédit */}
-            <div className="p-4">
+            <div className="p-4 overflow-y-auto">
               <PhoneCreditPanel
                 phoneId={creditPhone.phone_id}
                 phoneStatus={creditPhone.status as string}

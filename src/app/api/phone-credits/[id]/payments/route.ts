@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db'
 import { json, handleError, requireActiveUser, dateOnly, todayDate, HttpError, MANAGERS } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { withNotify } from '@/lib/realtime'
+import { assertCaisseOpen } from '@/lib/phoneCredits'
 
 // POST /api/phone-credits/[id]/payments
 async function POST_(req: NextRequest, { params }: { params: { id: string } }) {
@@ -31,13 +32,16 @@ async function POST_(req: NextRequest, { params }: { params: { id: string } }) {
       const cashObligation = Number(credit.montant_total) - (credit.has_reprise ? Number(credit.reprise_valeur ?? 0) : 0)
       const montantRestant = cashObligation - Number(credit.montant_paye)
       if (montant > montantRestant + 0.01) throw new HttpError(400, `Versement trop élevé — reste dû : ${montantRestant.toFixed(2)} DH`)
+      // A closed caisse day's figures are final: no payment dated on it
+      const datePaiement = dateOnly(body.date_paiement) ?? todayDate()
+      await assertCaisseOpen(tx, storeId, datePaiement)
 
       const payment = await tx.phone_credit_payments.create({
         data: {
           credit_id:     creditId,
           montant,
           payment_method: method,
-          date_paiement: dateOnly(body.date_paiement) ?? todayDate(),
+          date_paiement: datePaiement,
           notes:         (body.notes as string | undefined) ?? null,
           store_id:      storeId,
           created_by:    user.id,

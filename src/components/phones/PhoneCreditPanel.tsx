@@ -6,8 +6,11 @@ import { useRouter } from 'next/navigation'
 import {
   CreditCard, Plus, CheckCircle, Loader2,
   X, ArrowUpRight, Banknote, Landmark,
-  RefreshCw, AlertTriangle,
+  RefreshCw, AlertTriangle, Pencil, Ban,
 } from 'lucide-react'
+import { useUser } from '@/lib/hooks/useUser'
+import type { Echeance } from '@/lib/creditSchedule'
+import { EditCreditModal, PaymentFixModal, CancelCreditModal, ScheduleModal, ScheduleBlock } from '@/components/phones/PhoneCreditEdit'
 import ComboBox from '@/components/phones/ComboBox'
 import { usePhoneCatalog } from '@/lib/hooks/usePhoneCatalog'
 import { useEscapeKey } from '@/lib/hooks/useEscapeKey'
@@ -42,6 +45,10 @@ interface CreditSale {
   reprise_remise:   boolean
   reprise_remise_at: string | null
   reprise_phone_id: string | null
+  notes?:           string | null
+  marque?:          string | null
+  model?:           string | null
+  echeancier_base?: number
 }
 
 interface CreditPayment {
@@ -99,6 +106,15 @@ export default function PhoneCreditPanel({
 
   const [credit,   setCredit]   = useState<CreditSale | null>(null)
   const [payments, setPayments] = useState<CreditPayment[]>([])
+  const [echeances, setEcheances] = useState<Echeance[]>([])
+  // Editing (owner's request, 2026-10-02): managers fix details, payments
+  // and the schedule; only the owner cancels a credit
+  const { user } = useUser()
+  const isOwner = user?.role === 'proprietaire'
+  const [editOpen,     setEditOpen]     = useState(false)
+  const [fixPayment,   setFixPayment]   = useState<CreditPayment | null>(null)
+  const [cancelOpen,   setCancelOpen]   = useState(false)
+  const [scheduleOpen, setScheduleOpen] = useState(false)
   const [loading,  setLoading]  = useState(true)
   const [submitting, setSubmitting] = useState(false)
 
@@ -130,10 +146,11 @@ export default function PhoneCreditPanel({
     setLoading(true)
     try {
       const res  = await fetch(`/api/phone-credits?phone_id=${phoneId}`)
-      const json = await res.json() as { data?: { credit: CreditSale | null; payments: CreditPayment[] }; error?: string }
+      const json = await res.json() as { data?: { credit: CreditSale | null; payments: CreditPayment[]; echeances?: Echeance[] }; error?: string }
       if (!res.ok) throw new Error(json.error)
       setCredit(json.data?.credit   ?? null)
       setPayments(json.data?.payments ?? [])
+      setEcheances(json.data?.echeances ?? [])
     } catch (err) {
       console.error('[PhoneCreditPanel fetch]', err)
     } finally {
@@ -294,7 +311,10 @@ export default function PhoneCreditPanel({
   }
 
   const isAvailable  = phoneStatus === 'disponible'
-  const hasCredit    = !!credit
+  const hasCredit    = !!credit && !(credit.statut === 'annule' && isAvailable)
+  const editable     = !!credit && credit.statut !== 'annule'
+  const moneyOpen    = editable && !credit?.discharged_at
+  const refresh      = () => { void fetchCredit(); onCreditCreated() }
   // Paid in full = nothing left (a trade-in counts towards it). The last
   // payment already marks the credit "soldé"; it still has to be discharged
   // for the phone to leave "réservé" — so a soldé credit can be discharged.
@@ -349,7 +369,15 @@ export default function PhoneCreditPanel({
               {credit.statut === 'solde' ? '✓ Soldé' : credit.statut === 'annule' ? 'Annulé' : 'En cours'}
             </span>
           </div>
-          <span className="text-xs text-white/30 font-mono">{credit.credit_id}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-white/30 font-mono">{credit.credit_id}</span>
+            {editable && (
+              <button onClick={() => setEditOpen(true)} title="Modifier le dossier" aria-label="Modifier le dossier"
+                className="p-1 rounded-md text-white/40 hover:text-white hover:bg-white/10 transition-all">
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Infos client */}
@@ -362,6 +390,7 @@ export default function PhoneCreditPanel({
               {credit.phone_remis ? 'Téléphone remis' : 'Téléphone réservé'}
             </span>
           </div>
+          {credit.notes && <p className="text-xs text-white/40 mt-1 italic">{credit.notes}</p>}
         </div>
 
         {/* KPIs */}
@@ -407,7 +436,7 @@ export default function PhoneCreditPanel({
                   ? `Reçu le ${new Date(credit.reprise_remise_at! + '').toLocaleDateString('fr-MA', { timeZone: STORE_TIME_ZONE, day: '2-digit', month: 'short' })}`
                   : 'À recevoir'}
               </span>
-              {!credit.reprise_remise && credit.statut === 'en_cours' && (
+              {!credit.reprise_remise && editable && !credit.discharged_at && (
                 <button
                   onClick={handleReceiveReprise}
                   disabled={submitting}
@@ -434,6 +463,9 @@ export default function PhoneCreditPanel({
           </div>
         </div>
 
+        {/* Échéancier + rappel WhatsApp */}
+        <ScheduleBlock credit={credit} echeances={echeances} canEdit={editable} onEdit={() => setScheduleOpen(true)} />
+
         {/* Historique paiements */}
         {payments.length > 0 && (
           <div className="border-t border-white/10">
@@ -455,8 +487,16 @@ export default function PhoneCreditPanel({
                     </span>
                     <span className="text-xs text-white/30">{codeLabel('payment_method', p.payment_method as Code<'payment_method'>, 'fr')}</span>
                   </div>
-                  <span className="text-sm font-semibold text-white">
-                    +{Number(p.montant).toLocaleString('fr-MA')} DH
+                  <span className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-white">
+                      +{Number(p.montant).toLocaleString('fr-MA')} DH
+                    </span>
+                    {moneyOpen && (
+                      <button onClick={() => setFixPayment(p)} title="Corriger ce versement" aria-label="Corriger ce versement"
+                        className="p-1 rounded-md text-white/30 hover:text-white hover:bg-white/10 transition-all">
+                        <Pencil className="w-3 h-3" />
+                      </button>
+                    )}
                   </span>
                 </div>
               ))}
@@ -494,7 +534,20 @@ export default function PhoneCreditPanel({
             </button>
           </div>
         )}
+
+        {/* Owner: the client gives up */}
+        {isOwner && moneyOpen && (
+          <button onClick={() => setCancelOpen(true)}
+            className="w-full flex items-center justify-center gap-1.5 py-2 border-t border-white/10 text-xs text-red-400/70 hover:text-red-400 hover:bg-red-500/5 transition-all">
+            <Ban className="w-3.5 h-3.5" />Annuler le dossier
+          </button>
+        )}
       </div>
+
+      {editOpen && <EditCreditModal credit={credit} onClose={() => setEditOpen(false)} onSaved={refresh} />}
+      {fixPayment && <PaymentFixModal credit={credit} payment={fixPayment} onClose={() => setFixPayment(null)} onSaved={refresh} />}
+      {cancelOpen && <CancelCreditModal credit={credit} onClose={() => setCancelOpen(false)} onDone={refresh} />}
+      {scheduleOpen && <ScheduleModal credit={credit} echeances={echeances} onClose={() => setScheduleOpen(false)} onSaved={refresh} />}
 
       {/* Modal — Ajouter versement */}
       {showPaymentModal && credit && (

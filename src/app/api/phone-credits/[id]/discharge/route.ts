@@ -29,6 +29,7 @@ async function POST_(req: NextRequest, { params }: { params: { id: string } }) {
         throw new HttpError(400, `Décharge impossible — reste ${Number(credit.montant_restant).toFixed(2)} DH à payer`)
       }
       if (credit.discharged_at) throw new HttpError(400, 'Ce crédit a déjà été déchargé')
+      if (credit.statut === 'annule') throw new HttpError(400, 'Ce dossier est annulé')
 
       const hasReprise     = Boolean(credit.has_reprise)
       const repriseWarning = hasReprise && !credit.reprise_remise ? 'reprise_not_previously_confirmed' as const : null

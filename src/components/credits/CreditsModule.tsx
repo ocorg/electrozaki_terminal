@@ -12,6 +12,7 @@ import {
   Calendar, Search, X, DollarSign, User, AlertCircle
 } from 'lucide-react'
 import { confirmDialog } from '@/components/shared/ConfirmHost'
+import PhoneCreditsTab from '@/components/credits/PhoneCreditsTab'
 
 interface ClientWithCredit {
   client_id:    string
@@ -68,7 +69,7 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
   const { language } = useLanguageStore()
   const isAr         = language === 'ar'
 
-  const [tab, setTab]           = useState<'credits' | 'imports'>('credits')
+  const [tab, setTab]           = useState<'credits' | 'phones' | 'imports'>('credits')
   // Same cached client list as the Clients and POS screens
   const clientsQ = useApi<ClientWithCredit[]>(`/api/clients?store_id=${storeId}`)
   const importsQ = useApi<CreditImport[]>(`/api/credit-imports?store_id=${storeId}`)
@@ -324,9 +325,10 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
         <div className="flex gap-1 p-1 bg-ez-muted rounded-2xl w-fit">
           {[
             { key: 'credits', label: isAr ? 'الذمم الحالية' : 'Crédits en cours' },
+            { key: 'phones',  label: isAr ? 'البيع بالتقسيط' : 'Ventes à crédit' },
             { key: 'imports', label: isAr ? 'استيراد تاريخي' : 'Import historique' },
           ].map(t => (
-            <button key={t.key} onClick={() => setTab(t.key as 'credits' | 'imports')}
+            <button key={t.key} onClick={() => setTab(t.key as 'credits' | 'phones' | 'imports')}
               className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
                 tab === t.key
                   ? 'bg-white text-ez-text shadow-sm'
@@ -389,6 +391,9 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
             )}
           </div>
         )}
+
+        {/* ── Ventes à crédit (téléphones) : échéances et rappels ── */}
+        {tab === 'phones' && <PhoneCreditsTab storeId={storeId} />}
 
         {/* ── TAB 2 — Import historique ─────────────────────── */}
         {tab === 'imports' && (

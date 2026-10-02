@@ -29,11 +29,27 @@ export async function GET(req: NextRequest) {
       SELECT * FROM phone_credits_summary WHERE ${Prisma.join(conds, ' AND ')} ORDER BY created_at DESC`
 
     if (phoneId && credits.length > 0) {
-      const payments = await prisma.phone_credit_payments.findMany({
-        where:   { credit_id: credits[0].credit_id as string },
-        orderBy: { created_at: 'asc' },
-      })
-      return json({ data: { credit: credits[0], payments } })
+      const creditId = credits[0].credit_id as string
+      const [payments, echeances, plan] = await Promise.all([
+        prisma.phone_credit_payments.findMany({ where: { credit_id: creditId }, orderBy: { created_at: 'asc' } }),
+        prisma.phone_credit_echeances.findMany({ where: { credit_id: creditId }, orderBy: { date_echeance: 'asc' } }),
+        prisma.phone_credit_sales.findUnique({ where: { credit_id: creditId }, select: { echeancier_base: true } }),
+      ])
+      return json({ data: { credit: { ...credits[0], echeancier_base: plan?.echeancier_base ?? 0 }, payments, echeances } })
+    }
+    // Reminders list: each credit with its schedule
+    if (searchParams.get('with') === 'echeances' && credits.length) {
+      const ids = credits.map(c => c.credit_id as string)
+      const [echeances, plans] = await Promise.all([
+        prisma.phone_credit_echeances.findMany({ where: { credit_id: { in: ids } }, orderBy: { date_echeance: 'asc' } }),
+        prisma.phone_credit_sales.findMany({ where: { credit_id: { in: ids } }, select: { credit_id: true, echeancier_base: true } }),
+      ])
+      const base = new Map(plans.map(p => [p.credit_id, p.echeancier_base]))
+      return json({ data: credits.map(c => ({
+        ...c,
+        echeancier_base: base.get(c.credit_id as string) ?? 0,
+        echeances: echeances.filter(e => e.credit_id === c.credit_id),
+      })) })
     }
     return json({ data: credits })
   } catch (err) {

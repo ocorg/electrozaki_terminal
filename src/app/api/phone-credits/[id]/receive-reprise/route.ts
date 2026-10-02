@@ -15,12 +15,13 @@ async function POST_(req: NextRequest, { params }: { params: { id: string } }) {
 
     const credit = await prisma.phone_credit_sales.findFirst({
       where:  { credit_id: creditId, is_deleted: false },
-      select: { has_reprise: true, reprise_remise: true, reprise_model: true, statut: true },
+      select: { has_reprise: true, reprise_remise: true, reprise_model: true, statut: true, discharged_at: true },
     })
     if (!credit) throw new HttpError(404, 'Crédit introuvable')
     if (!credit.has_reprise) throw new HttpError(400, 'Ce crédit ne contient pas de reprise')
     if (credit.reprise_remise) throw new HttpError(400, 'La reprise a déjà été marquée comme reçue')
-    if (credit.statut !== 'en_cours') throw new HttpError(400, 'Le crédit n\'est plus en cours')
+    // A paid-up (soldé) credit can still receive its trade-in before discharge
+    if (credit.statut === 'annule' || credit.discharged_at) throw new HttpError(400, 'Le crédit n\'est plus actif')
 
     const now = new Date()
     await prisma.phone_credit_sales.update({
