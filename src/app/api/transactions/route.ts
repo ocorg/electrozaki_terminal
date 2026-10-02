@@ -112,7 +112,7 @@ async function POST_(request: NextRequest) {
           txn_original_id:       str(body.txn_original_id),
           qty:                   soldQty,
           prix_vente:            Number(body.prix_vente),
-          date_vente:            dateOnly(body.date_vente),
+          date_vente:            dateOnly(body.date_vente) ?? todayDate(),
           avance:                nums(body.avance),
           date_avance:           dateOnly(body.date_avance),
           payment_method:        body.payment_method,

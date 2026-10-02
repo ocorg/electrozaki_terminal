@@ -5,6 +5,7 @@ import { t } from '@/lib/i18n/t'
 import { PageHeader, SkeletonRow, EmptyState } from '@/components/shared'
 import { Users, RefreshCw, LogIn, LogOut, Calendar } from 'lucide-react'
 import { STORE_TIME_ZONE } from '@/lib/time'
+import { getBusinessDate } from '@/lib/utils'
 
 interface Punch {
   attendance_id: string
@@ -26,7 +27,7 @@ export default function BZGStaffPage() {
 
   const [punches, setPunches]       = useState<Punch[]>([])
   const [loading, setLoading]       = useState(true)
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
+  const [selectedDate, setSelectedDate] = useState(getBusinessDate())
 
   async function fetchAll() {
     setLoading(true)

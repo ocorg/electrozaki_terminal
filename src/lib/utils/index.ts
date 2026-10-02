@@ -1,7 +1,7 @@
 import { type ClassValue, clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 import { STORE_TIME_ZONE } from '@/lib/time'
-import { storeParts, storeDate } from '@/lib/time'
+import { businessDate } from '@/lib/time'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -84,8 +84,7 @@ export function isBelowMinimum(price: number, minimum: number | null | undefined
  */
 export function getBusinessDate(): string {
   // Read on the store's clock (src/lib/time.ts), not the device's time zone.
-  const now = Date.now()
-  return storeParts(now).hours < 4 ? storeDate(now - 86_400_000) : storeDate(now)
+  return businessDate()
 }
 
 /** Moroccan phone number validation */

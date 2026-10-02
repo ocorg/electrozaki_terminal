@@ -5,7 +5,7 @@ import { useUser } from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
 import { t } from '@/lib/i18n/t'
 import { usePortal } from '@/lib/context/portal'
-import { formatMAD, formatDate } from '@/lib/utils'
+import { formatMAD, formatDate, getBusinessDate } from '@/lib/utils'
 import { Modal, Field, inputClass, selectClass, Btn, PageHeader, EmptyState, SkeletonRow, Select } from '@/components/shared'
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import {
@@ -45,7 +45,7 @@ interface Expense {
 const EMPTY_FORM = {
   categorie:   '',
   montant:     '',
-  date:        new Date().toISOString().split('T')[0],
+  date:        getBusinessDate(),
   facture_ref: '',
   notes:       '',
   receipt_photo_url: '' as string,
@@ -71,7 +71,7 @@ export default function ExpensesModule({ storeId }: ExpensesModuleProps) {
   
 
   // Filters
-  const today = new Date().toISOString().split('T')[0]
+  const today = getBusinessDate()
   const [dateFrom, setDateFrom] = useState(today.slice(0, 7) + '-01')
   const [dateTo, setDateTo]     = useState(today)
   const [filterCat, setFilterCat] = useState('')

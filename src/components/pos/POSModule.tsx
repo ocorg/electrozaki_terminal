@@ -6,7 +6,7 @@ import { useCategories } from '@/lib/hooks/useCategories'
 import { useLanguageStore } from '@/lib/stores/language'
 import { t } from '@/lib/i18n/t'
 import { usePortal } from '@/lib/context/portal'
-import { formatMAD, computeFariq, computeStatutPaiement, isBelowMinimum, computePromoPrice, round2 } from '@/lib/utils'
+import { formatMAD, computeFariq, computeStatutPaiement, isBelowMinimum, computePromoPrice, round2, getBusinessDate } from '@/lib/utils'
 import { Modal, Field, inputClass, selectClass, Btn, PageHeader } from '@/components/shared'
 import { StatusBadge } from '@/components/shared'
 import { showSuccess, showError } from '@/lib/utils/toasts'
@@ -420,7 +420,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
             ram_echange:           saleForm.type_operation === 'echange' ? saleForm.ram_echange      || undefined : undefined,
             etat_batterie_echange: saleForm.type_operation === 'echange' ? saleForm.battery_echange          : undefined,
             description_echange: saleForm.description_echange || undefined,
-            warranty_start:  new Date().toISOString().split('T')[0],
+            warranty_start:  getBusinessDate(),
             notes:           saleForm.notes           || undefined,
             montant_rendu:   montantRendu > 0 ? montantRendu : 0,
             avoir_montant:   itemAvoir > 0 ? itemAvoir : undefined,
@@ -470,7 +470,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
             store_id:     storeId,
             montant_du:   debtAmount,
             description:  cart.map(i => i._displayName).join(' + ').slice(0, 200),
-            date_origine: new Date().toISOString().split('T')[0],
+            date_origine: getBusinessDate(),
             notes:        `POS — ${saleForm.payment_method === 'credit' ? 'Vente à crédit' : 'Avance partielle'} — Réf: ${lastTxnId}`,
           }),
         }).catch(() => { /* non-blocking — sale already recorded */ })

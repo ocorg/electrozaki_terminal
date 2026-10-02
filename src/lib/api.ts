@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client'
 import { auth, getActiveUser } from '@/auth'
 import type { AuthClaims } from '@/types/auth'
 import type { UserRole } from '@/types/database'
+import { businessDate } from '@/lib/time'
 
 export class HttpError extends Error {
   constructor(public status: number, message: string) {
@@ -83,7 +84,8 @@ export function dateOnly(value: unknown): Date | undefined {
 }
 
 export function todayDate(): Date {
-  return dateOnly(new Date().toISOString().slice(0, 10))!
+  // Business day (rolls at 4 AM) — what the caisse counts
+  return dateOnly(businessDate())!
 }
 
 // Supabase coerced text into numbers/dates itself; Prisma rejects "85" for an Int.

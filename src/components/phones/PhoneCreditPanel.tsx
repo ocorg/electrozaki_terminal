@@ -17,6 +17,7 @@ import { useEscapeKey } from '@/lib/hooks/useEscapeKey'
 import { codeLabel, type Code } from '@/lib/codes'
 import { STORE_TIME_ZONE } from '@/lib/time'
 import { Select } from '@/components/shared'
+import { getBusinessDate } from '@/lib/utils'
 
 // ── Types ───────────────────────────────────────────────────────────
 interface CreditSale {
@@ -65,6 +66,7 @@ interface CreditForm {
   client_cin:        string
   montant_total:     string
   avance_initiale:   string
+  date_avance:       string
   payment_method:    string
   phone_remis:       boolean
   notes:             string
@@ -125,7 +127,7 @@ export default function PhoneCreditPanel({
 
   const CREDIT_FORM_EMPTY: CreditForm = {
     client_name: '', client_tel: '', client_cin: '',
-    montant_total: '', avance_initiale: '0',
+    montant_total: '', avance_initiale: '0', date_avance: getBusinessDate(),
     payment_method: 'especes', phone_remis: false, notes: '',
     has_reprise: false,
     reprise_marque: '', reprise_serie: '', reprise_model: '',
@@ -138,7 +140,7 @@ export default function PhoneCreditPanel({
 
   const [paymentForm, setPaymentForm] = useState<PaymentForm>({
     montant: '', payment_method: 'especes',
-    date_paiement: new Date().toISOString().split('T')[0], notes: '',
+    date_paiement: getBusinessDate(), notes: '',
   })
 
   // ── Fetch ────────────────────────────────────────────────────────
@@ -196,6 +198,7 @@ export default function PhoneCreditPanel({
           client_cin:        creditForm.client_cin.trim()  || null,
           montant_total:     montantTotal,
           avance_initiale:   avanceInitiale,
+          date_avance:       creditForm.date_avance,
           payment_method:    creditForm.payment_method,
           phone_remis:       creditForm.phone_remis,
           notes:             creditForm.notes.trim() || null,
@@ -248,7 +251,7 @@ export default function PhoneCreditPanel({
       if (!res.ok) throw new Error(json.error)
       toast.success(`+${montant.toLocaleString('fr-MA')} DH enregistré`)
       setShowPaymentModal(false)
-      setPaymentForm({ montant: '', payment_method: 'especes', date_paiement: new Date().toISOString().split('T')[0], notes: '' })
+      setPaymentForm({ montant: '', payment_method: 'especes', date_paiement: getBusinessDate(), notes: '' })
       await fetchCredit()
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Erreur')
@@ -686,6 +689,14 @@ function NewCreditModal({
                   <option value="virement">تحويل — Virement</option>
                 </Select>
               </div>
+              {(parseFloat(form.avance_initiale) || 0) > 0 && (
+                <label className="flex items-center gap-2 text-xs text-white/50">
+                  Date de l&apos;avance
+                  <input type="date" value={form.date_avance}
+                    onChange={(e) => setForm((f) => ({ ...f, date_avance: e.target.value }))}
+                    className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-gold/50" />
+                </label>
+              )}
             </div>
           </div>
 

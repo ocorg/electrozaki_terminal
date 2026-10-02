@@ -9,6 +9,7 @@ import { useApi, apiWrite } from '@/lib/data/api'
 import { PageHeader, SkeletonRow } from '@/components/shared'
 import { useLanguageStore } from '@/lib/stores/language'
 import { codeLabel, type Code } from '@/lib/codes'
+import { getBusinessDate } from '@/lib/utils'
 
 // EZ → Analyse: sales, margins, categories, best sellers, expenses, cash and
 // ratios over any period — down to a single day with its full journal.
@@ -42,7 +43,7 @@ interface Analytics {
 
 const STORE = 'EZ-001'
 const GOLD = '#C9A440'
-const today = () => new Date().toISOString().slice(0, 10)
+const today = () => getBusinessDate()
 const shift = (d: string, days: number) => { const x = new Date(`${d}T00:00:00Z`); x.setUTCDate(x.getUTCDate() + days); return x.toISOString().slice(0, 10) }
 const mad = (v: number | null | undefined) => (v === null || v === undefined ? '—' : `${new Intl.NumberFormat('fr-MA', { maximumFractionDigits: 0 }).format(v)} DH`)
 const pctText = (v: number | null | undefined) => (v === null || v === undefined ? '—' : `${v.toFixed(1).replace('.', ',')} %`)

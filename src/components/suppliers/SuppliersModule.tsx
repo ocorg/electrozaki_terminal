@@ -6,7 +6,7 @@ import { useUser } from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
 import { t } from '@/lib/i18n/t'
 import { usePortal } from '@/lib/context/portal'
-import { formatMAD, formatDate, fetchWithRetry } from '@/lib/utils'
+import { formatMAD, formatDate, fetchWithRetry, getBusinessDate } from '@/lib/utils'
 import { Modal, Field, inputClass, selectClass, Btn, PageHeader, EmptyState, SkeletonRow, Select } from '@/components/shared'
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import {
@@ -135,7 +135,7 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
   const [fixPay, setFixPay] = useState<{ id: string; montant: string; motif: string } | null>(null)
   const isOwner = user?.role === 'proprietaire'
   const [payMontant,  setPayMontant]  = useState('')
-  const [payDate,     setPayDate]     = useState(new Date().toISOString().split('T')[0])
+  const [payDate,     setPayDate]     = useState(getBusinessDate())
   const [payNotes,    setPayNotes]    = useState('')
 
   // ── Derived ──────────────────────────────────────────────────────────────────
@@ -206,7 +206,7 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
     setPayments([])
     setShowPayForm(false)
     setPayMontant('')
-    setPayDate(new Date().toISOString().split('T')[0])
+    setPayDate(getBusinessDate())
     setPayNotes('')
   }
 
@@ -310,7 +310,7 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
           payment_type:  'reglement_a',
           montant:       toPayNow,
           phone_ids:     Array.from(selectedPhoneIds),
-          date_paiement: new Date().toISOString().split('T')[0],
+          date_paiement: getBusinessDate(),
           notes:         creditUsed > 0 ? `Crédit utilisé : ${formatMAD(creditUsed)}` : null,
         }),
       })

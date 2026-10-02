@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useApi } from '@/lib/data/api'
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import { useLanguageStore } from '@/lib/stores/language'
-import { formatMAD, formatDate } from '@/lib/utils'
+import { formatMAD, formatDate, getBusinessDate } from '@/lib/utils'
 import { t } from '@/lib/i18n/t'
 import { PageHeader, SkeletonRow, EmptyState, StatusBadge, Modal, Field, Btn, Select } from '@/components/shared'
 import { useUser } from '@/lib/hooks/useUser'
@@ -52,7 +52,7 @@ export default function TransactionsListPage({ scope, storeId, title }: Transact
   const isAr          = language === 'ar'
   const { user }       = useUser()
 
-  const today      = new Date().toISOString().split('T')[0]
+  const today      = getBusinessDate()
   const monthStart = today.slice(0, 7) + '-01'
 
   const [expanded, setExpanded]         = useState<string | null>(null)

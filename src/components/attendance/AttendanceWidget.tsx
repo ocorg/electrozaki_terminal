@@ -7,6 +7,7 @@ import { usePortal } from '@/lib/context/portal'
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import { Clock, LogIn, LogOut, Loader2 } from 'lucide-react'
 import { STORE_TIME_ZONE } from '@/lib/time'
+import { getBusinessDate } from '@/lib/utils'
 
 interface Punch {
   attendance_id: string
@@ -30,7 +31,7 @@ export default function AttendanceWidget({ storeId, compact }: AttendanceWidgetP
 
   const [punching, setPunching] = useState(false)
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = getBusinessDate()
 
   const punchesQ = useApi<Punch[]>(user ? `/api/attendance?store_id=${storeId}&date=${today}` : null)
   // Only show current user's punches

@@ -4,7 +4,7 @@ import { useApi } from '@/lib/data/api'
 import { useUser } from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
 import { t } from '@/lib/i18n/t'
-import { formatMAD, formatDate } from '@/lib/utils'
+import { formatMAD, formatDate, getBusinessDate } from '@/lib/utils'
 import { StatusBadge, SkeletonRow, EmptyState } from '@/components/shared'
 import {
   ComposedChart, Bar, Line, XAxis, YAxis,
@@ -79,7 +79,7 @@ function collected(t: TxnRow): number {
 
 // ─── Period helpers ────────────────────────────────────────────
 function periodDates(p: Period): { start: string; end: string } {
-  const today = new Date().toISOString().split('T')[0]
+  const today = getBusinessDate()
   if (p === 'day')  return { start: today, end: today }
   if (p === 'week') {
     const d = new Date(); d.setDate(d.getDate() - 6)

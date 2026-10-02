@@ -24,7 +24,8 @@ await erp.connect()
 const results = []
 const check = (name, ok, detail = '') => results.push({ name, ok: !!ok, detail: typeof detail === 'string' ? detail : JSON.stringify(detail)?.slice(0, 400) })
 const cleanups = []
-const TODAY = new Date().toISOString().slice(0, 10)
+// The ERP's business day rolls at 4 AM (store clock = UTC)
+const TODAY = new Date(Date.now() - (new Date().getUTCHours() < 4 ? 86_400_000 : 0)).toISOString().slice(0, 10)
 const TAG = crypto.randomBytes(3).toString('hex').toUpperCase()
 
 async function login(email, password) {

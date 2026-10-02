@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { CheckCircle2, X, Banknote, ArrowRightLeft, AlertCircle } from 'lucide-react'
 import { toast } from 'sonner'
+import { getBusinessDate } from '@/lib/utils'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -74,7 +75,7 @@ export function ConfirmSaleModal({
           facture_ref:     doc_ref,
           prix_vente:      amount,
           payment_method:  paymentMethod,
-          date_vente:      new Date().toISOString().split('T')[0],
+          date_vente:      getBusinessDate(),
           warranty_start:  warranty_start  || null,
           warranty_expiry: warranty_expiry || null,
           client_id:       client_id       || null,

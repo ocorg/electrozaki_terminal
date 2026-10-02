@@ -24,7 +24,8 @@ const results = []
 const check = (name, ok, detail = '') => results.push({ name, ok: !!ok, detail: typeof detail === 'string' ? detail : JSON.stringify(detail)?.slice(0, 300) })
 const cleanups = []
 const n = v => Number(v ?? 0)
-const today = new Date().toISOString().slice(0, 10)
+// The ERP's business day rolls at 4 AM (store clock = UTC)
+const today = new Date(Date.now() - (new Date().getUTCHours() < 4 ? 86_400_000 : 0)).toISOString().slice(0, 10)
 
 async function login(email, password) {
   const jar = new Map()

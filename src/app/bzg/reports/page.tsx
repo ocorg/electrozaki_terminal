@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useLanguageStore } from '@/lib/stores/language'
-import { formatMAD } from '@/lib/utils'
+import { formatMAD, getBusinessDate } from '@/lib/utils'
 import { PageHeader, Select } from '@/components/shared'
 import { BarChart3, RefreshCw, TrendingUp, ShoppingCart, Wrench, Package, Calendar } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, CartesianGrid } from 'recharts'
@@ -39,7 +39,7 @@ export default function BZGReportsPage() {
   async function fetchReports() {
     setLoading(true)
     try {
-      const today      = new Date().toISOString().split('T')[0]
+      const today      = getBusinessDate()
       const weekStart  = new Date(Date.now() - 7  * 86400000).toISOString().split('T')[0]
       const monthStart = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]
 

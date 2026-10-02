@@ -1,9 +1,10 @@
 import { NextRequest } from 'next/server'
 import { Prisma, type credit_status, type payment_method, type reprise_etat } from '@prisma/client'
 import { prisma } from '@/lib/db'
-import { json, handleError, requireUser, requireActiveUser, todayDate, HttpError, MANAGERS } from '@/lib/api'
+import { json, handleError, requireUser, requireActiveUser, dateOnly, todayDate, HttpError, MANAGERS } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { withNotify } from '@/lib/realtime'
+import { assertCaisseOpen } from '@/lib/phoneCredits'
 
 // ─────────────────────────────────────────────
 // GET /api/phone-credits
@@ -71,6 +72,7 @@ async function POST_(req: NextRequest) {
     const avance_initiale = body.avance_initiale ? Number(body.avance_initiale) : 0
     const method          = (body.payment_method as payment_method | undefined) ?? 'especes'
     const phone_remis     = Boolean(body.phone_remis)
+    const date_avance     = dateOnly(body.date_avance) ?? todayDate()
 
     const has_reprise       = body.has_reprise === true
     const reprise_valeur    = has_reprise && body.reprise_valeur ? Number(body.reprise_valeur) : 0
@@ -122,8 +124,9 @@ async function POST_(req: NextRequest) {
 
       let firstPayment = null
       if (avance_initiale > 0) {
+        await assertCaisseOpen(tx, storeId, date_avance)
         firstPayment = await tx.phone_credit_payments.create({
-          data: { credit_id: credit.credit_id, montant: avance_initiale, payment_method: method, date_paiement: todayDate(), store_id: storeId, created_by: user.id },
+          data: { credit_id: credit.credit_id, montant: avance_initiale, payment_method: method, date_paiement: date_avance, store_id: storeId, created_by: user.id },
         })
         const cashObligation = montant_total - (has_reprise ? reprise_valeur : 0)
         credit = await tx.phone_credit_sales.update({

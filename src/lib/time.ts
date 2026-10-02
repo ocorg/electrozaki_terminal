@@ -37,6 +37,14 @@ export function storeDate(date: Date | string | number = new Date()): string {
   return `${p.year}-${pad(p.month)}-${pad(p.day)}`
 }
 
+/** 'YYYY-MM-DD' of the store's BUSINESS day: it rolls at 4 AM, so a sale,
+ *  payment or return made after midnight belongs to the evening's caisse.
+ *  Use this (or todayDate() on the server) for anything a caisse counts. */
+export function businessDate(now: Date | string | number = new Date()): string {
+  const t = new Date(now).getTime()
+  return storeParts(t).hours < 4 ? storeDate(t - 86_400_000) : storeDate(t)
+}
+
 /** 'HH:MM' on the store's wall clock. */
 export function storeTime(date: Date | string | number = new Date()): string {
   const p = storeParts(date)
