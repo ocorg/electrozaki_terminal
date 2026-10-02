@@ -158,6 +158,18 @@ try {
   const d2 = await manager(`/api/phone-credits/${cid2}/discharge`, { method: 'POST', body: {} })
   const { rows: [ph2] } = await db.query(`select status from phones where phone_id = $1`, [ph.phone_id])
   check('paid-up credit (soldé at once) can be discharged → vendu', again.status === 201 && d2.status === 200 && ph2.status === 'vendu', { again: again.status, d2 })
+
+  // ── Handed over at creation, set back to "réservé" by hand, then
+  //    discharged: the phone must end up "vendu" (CRD-0005 case) ─────
+  await db.query(`update phones set status = 'disponible' where phone_id = $1`, [ph.phone_id])
+  const remis = await manager('/api/phone-credits', { method: 'POST', body: { phone_id: ph.phone_id, client_name: 'E2E Client 3', montant_total: 1000, avance_initiale: 400, payment_method: 'especes', phone_remis: true } })
+  const cid3 = remis.data?.data?.credit?.credit_id
+  if (cid3) creditIds.push(cid3)
+  await db.query(`update phones set status = 'reserve' where phone_id = $1`, [ph.phone_id])
+  await manager(`/api/phone-credits/${cid3}/payments`, { method: 'POST', body: { montant: 600, payment_method: 'especes' } })
+  const d3 = await manager(`/api/phone-credits/${cid3}/discharge`, { method: 'POST', body: {} })
+  const { rows: [ph3] } = await db.query(`select status from phones where phone_id = $1`, [ph.phone_id])
+  check('handed-over phone set back to réservé ends up vendu at discharge', remis.status === 201 && d3.status === 200 && ph3.status === 'vendu', { remis: remis.status, d3, ph3 })
 } catch (err) {
   check('script ran to the end', false, String(err?.stack ?? err))
 } finally {

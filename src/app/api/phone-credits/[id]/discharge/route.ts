@@ -66,8 +66,9 @@ async function POST_(req: NextRequest, { params }: { params: { id: string } }) {
         })
       }
 
-      // A reserved phone leaves the shop now
-      if (!credit.phone_remis) {
+      // Discharged = sold, whatever happened before (a phone handed over at
+      // creation may have been set back to "réservé" by hand since)
+      if (credit.phone_status !== 'vendu') {
         await tx.phones.update({ where: { phone_id: credit.phone_id as string }, data: { status: 'vendu', updated_by: user.id } })
       }
 
