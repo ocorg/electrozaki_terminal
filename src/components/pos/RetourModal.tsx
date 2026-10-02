@@ -226,6 +226,7 @@ export default function RetourModal({ open, onClose, storeId, primary, onRetourD
               <span>{L('et le', 'و')}</span>
               <input type="date" value={to} onChange={e => setTo(e.target.value)} className="border border-ez-border rounded-lg px-2 py-1" />
               {(from || to) && <button type="button" onClick={() => { setFrom(''); setTo('') }} className="text-red-500">{L('Effacer', 'مسح')}</button>}
+              {!q && !from && !to && <span className="text-ez-faint">· {L('sans recherche : toutes les ventes des 7 derniers jours', 'بدون بحث: كل مبيعات آخر 7 أيام')}</span>}
             </div>
           )}
         </div>
@@ -236,7 +237,7 @@ export default function RetourModal({ open, onClose, storeId, primary, onRetourD
             <div className="flex items-center justify-center py-10"><Loader2 className="w-5 h-5 text-ez-faint animate-spin" /></div>
           ) : tab === 'sale' ? (
             sales.length === 0 ? (
-              <p className="text-center text-sm text-ez-faint py-10">{q || from || to ? L('Aucune vente trouvée', 'لا توجد نتائج') : L('Aucune vente', 'لا توجد مبيعات')}</p>
+              <p className="text-center text-sm text-ez-faint py-10">{q || from || to ? L('Aucune vente trouvée', 'لا توجد نتائج') : L('Aucune vente ces 7 derniers jours', 'لا توجد مبيعات في آخر 7 أيام')}</p>
             ) : sales.map(s => {
               const done = leftQty(s) <= 0
               const w    = warranty(s)

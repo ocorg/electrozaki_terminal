@@ -12,7 +12,8 @@ const num = (v: Prisma.Decimal | number | null | undefined) => (v == null ? 0 : 
 
 // GET ?store_id=&q=&from=&to= — sales that can be returned, from the whole
 // history: by sale number, client name or phone, product (name, model, IMEI)
-// and/or date range. Without a search: the latest sales.
+// and/or date range. Without a search: every sale of the last 7 days
+// (owner, 2026-10-02 — "une semaine et pas moins"), however many there are.
 export async function GET(request: NextRequest) {
   try {
     await requireUser()
@@ -47,17 +48,20 @@ export async function GET(request: NextRequest) {
       if (deviceIds.length) or.push({ device_id: { in: deviceIds } })
     }
 
+    const browsing = !q && !from && !to
+    const weekAgo  = todayDate()
+    weekAgo.setUTCDate(weekAgo.getUTCDate() - 6)
     const rows = await prisma.transactions.findMany({
       where: {
         store_id,
         voided: false,
         NOT: { type_operation: 'retour' },
-        ...((from || to) && { date_vente: { gte: from, lte: to } }),
+        ...(browsing ? { date_vente: { gte: weekAgo } } : (from || to) ? { date_vente: { gte: from, lte: to } } : {}),
         ...(or.length && { OR: or }),
       },
       include: { clients: { select: { nom: true, telephone: true } } },
       orderBy: { created_at: 'desc' },
-      take: 40,
+      take: browsing ? 1000 : 200,
     })
 
     const [labels, returned] = await Promise.all([
