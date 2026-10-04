@@ -9,10 +9,12 @@ import { Modal, Field, inputClass, selectClass, PageHeader, EmptyState, Skeleton
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import {
   CreditCard, Plus, RefreshCw, Trash2, Link2,
-  Calendar, Search, X, DollarSign, User, AlertCircle
+  Calendar, Search, X, DollarSign, User, AlertCircle, MessageCircle
 } from 'lucide-react'
 import { confirmDialog } from '@/components/shared/ConfirmHost'
 import PhoneCreditsTab from '@/components/credits/PhoneCreditsTab'
+import ClientAccountPanel, { accountReminder } from '@/components/credits/ClientAccountPanel'
+import { whatsappLink } from '@/components/site/common'
 
 interface ClientWithCredit {
   client_id:    string
@@ -82,6 +84,8 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
   useEffect(() => { if (clientsQ.error) showError('Erreur chargement crédits') }, [clientsQ.error])
   useEffect(() => { if (importsQ.error) showError('Erreur chargement imports') }, [importsQ.error])
   const [submitting, setSubmitting] = useState(false)
+  // What a client's balance is made of (side panel)
+  const [accountOf, setAccountOf] = useState<string | null>(null)
 
   // Payment modal
   const [payTarget, setPayTarget]   = useState<ClientWithCredit | null>(null)
@@ -369,8 +373,8 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
                   ))}
                 </div>
                 {credits.map(c => (
-                  <div key={c.client_id}
-                    className="grid grid-cols-1 sm:grid-cols-4 gap-2 sm:gap-4 items-center px-5 py-4 hover:bg-ez-bg transition-all">
+                  <div key={c.client_id} onClick={() => setAccountOf(c.client_id)}
+                    className="grid grid-cols-1 sm:grid-cols-4 gap-2 sm:gap-4 items-center px-5 py-4 hover:bg-ez-bg transition-all cursor-pointer">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-xl bg-red-50 flex items-center justify-center flex-shrink-0">
                         <User className="w-4 h-4 text-red-500" />
@@ -379,18 +383,32 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
                     </div>
                     <p className="text-sm text-ez-subtle font-mono">{c.telephone}</p>
                     <p className="text-sm font-bold text-red-500">{formatMAD(c.solde_impaye)}</p>
-                    <button
-                      onClick={() => { setPayTarget(c); setPayForm(f => ({ ...f, montant: String(c.solde_impaye) })) }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-all w-fit">
-                      <DollarSign className="w-3 h-3" />
-                      {isAr ? 'تسجيل دفع' : 'Enregistrer un paiement'}
-                    </button>
+                    <div className="flex flex-wrap items-center gap-2" onClick={e => e.stopPropagation()}>
+                      <button
+                        onClick={() => { setPayTarget(c); setPayForm(f => ({ ...f, montant: String(c.solde_impaye) })) }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-all w-fit">
+                        <DollarSign className="w-3 h-3" />
+                        {isAr ? 'تسجيل دفع' : 'Paiement'}
+                      </button>
+                      <button onClick={() => setAccountOf(c.client_id)}
+                        className="px-3 py-1.5 rounded-xl text-xs font-bold border border-ez-border text-ez-subtle hover:bg-white transition-all">
+                        {isAr ? 'التفاصيل' : 'Détail'}
+                      </button>
+                      {c.telephone && (
+                        <a href={`${whatsappLink(c.telephone)}?text=${encodeURIComponent(accountReminder(c.nom, c.solde_impaye))}`} target="_blank" rel="noopener noreferrer"
+                          className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-white text-emerald-700 border border-emerald-200 hover:bg-emerald-50 transition-all">
+                          <MessageCircle className="w-3 h-3" />{isAr ? 'تذكير' : 'Rappel'}
+                        </a>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
             )}
           </div>
         )}
+
+        {accountOf && <ClientAccountPanel clientId={accountOf} onClose={() => setAccountOf(null)} />}
 
         {/* ── Ventes à crédit (téléphones) : échéances et rappels ── */}
         {tab === 'phones' && <PhoneCreditsTab storeId={storeId} />}

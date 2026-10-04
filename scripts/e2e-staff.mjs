@@ -137,6 +137,10 @@ try {
 
   const hist = await staff(`/api/phones/${p0.phone_id}/history`)
   check('staff: refused /api/phones/[id]/history (prices, suppliers)', hist.status === 403, { status: hist.status })
+  if (client) {
+    const account = await staff(`/api/clients/${client.client_id}/account`)
+    check('staff: refused /api/clients/[id]/account (debts)', account.status === 403, { status: account.status })
+  }
 
   // ── Staff change details; prices/status sent along are ignored ────────
   const pCols = 'couleur, status, prix_vente_recommande, prix_vente_minimum, prix_achat'
