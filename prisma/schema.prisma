@@ -70,6 +70,7 @@ enum retour_mode {
   especes
   virement
   avoir
+  hors_caisse
 }
 
 enum retour_destination {

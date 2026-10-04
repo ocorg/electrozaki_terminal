@@ -100,7 +100,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
       if (t.voided) add({ at: (t.voided_at ?? t.updated_at ?? new Date()).toISOString(), kind: 'return', title: `Vente annulée — ${t.txn_id}`, detail: t.voided_reason ?? undefined, by: userName(t.voided_by) })
     }
     for (const r of retours) {
-      add({ at: (r.created_at ?? new Date()).toISOString(), kind: 'return', title: `Retour — ${r.retour_id}`, detail: [dh(r.montant), r.mode === 'avoir' ? 'avoir' : 'remboursé', r.motif].filter(Boolean).join(' · '), by: userName(r.created_by) })
+      add({ at: (r.created_at ?? new Date()).toISOString(), kind: 'return', title: `Retour — ${r.retour_id}`, detail: [dh(r.montant), r.mode === 'avoir' ? 'avoir' : r.mode === 'hors_caisse' ? 'remboursé hors caisse' : 'remboursé', r.motif].filter(Boolean).join(' · '), by: userName(r.created_by) })
     }
 
     // ── Credit / down-payment files ───────────────────────────────────

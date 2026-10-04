@@ -161,6 +161,7 @@ export const CODES = {
     especes:  { fr: 'Espèces',  ar: 'نقدًا' },
     virement: { fr: 'Virement', ar: 'تحويل' },
     avoir:    { fr: 'Avoir',    ar: 'رصيد' },
+    hors_caisse: { fr: 'Hors caisse', ar: 'خارج الصندوق' },
   },
   retour_destination: {
     stock:      { fr: 'Remis en vente',     ar: 'إرجاع للبيع' },

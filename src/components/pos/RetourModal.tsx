@@ -43,7 +43,7 @@ interface Avoir {
 /** A store credit handed to the POS cart. */
 export interface AppliedAvoir { retour_id: string; solde: number; label: string }
 
-type Mode = 'especes' | 'virement' | 'avoir'
+type Mode = 'especes' | 'virement' | 'avoir' | 'hors_caisse'
 type Destination = 'stock' | 'reparation' | 'defectueux'
 type Tab = 'sale' | 'avoirs'
 
@@ -331,14 +331,20 @@ export default function RetourModal({ open, onClose, storeId, primary, onRetourD
 
             <div>
               <p className="text-xs font-bold text-ez-subtle mb-1">{L('Rendre au client', 'الإرجاع للعميل')}</p>
-              <div className="grid grid-cols-3 gap-2">
-                {(['especes', 'virement', 'avoir'] as Mode[]).map(m => (
+              <div className="grid grid-cols-2 gap-2">
+                {(['especes', 'virement', 'avoir', 'hors_caisse'] as Mode[]).map(m => (
                   <button key={m} type="button" onClick={() => setMode(m)} style={choice(mode === m)}
                     className="py-2 rounded-xl text-xs font-bold border transition-all">
                     {m === 'avoir' ? L('Avoir (échange)', 'رصيد (استبدال)') : codeLabel('retour_mode', m, lang)}
                   </button>
                 ))}
               </div>
+              {mode === 'hors_caisse' && (
+                <p className="text-xs text-ez-subtle mt-1">
+                  {L("Le client est remboursé avec de l'argent qui ne vient pas du tiroir (argent personnel). Le retour est compté, la caisse du jour ne bouge pas.",
+                    'يُرجَع المال من خارج الصندوق (مال شخصي). الصندوق لا يتغير')}
+                </p>
+              )}
               {mode === 'avoir' && (
                 <p className="text-xs text-ez-subtle mt-1">
                   {L("Aucun argent ne sort : l'avoir est ajouté à la vente en cours, le client paie la différence. Un solde restant reste utilisable plus tard.",

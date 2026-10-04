@@ -96,7 +96,8 @@ export async function GET(request: NextRequest) {
   }
 }
 
-const MODES: retour_mode[]               = ['especes', 'virement', 'avoir']
+// hors_caisse: paid back with money that is not the drawer's (the owner's own) — the caisse ignores it
+const MODES: retour_mode[]               = ['especes', 'virement', 'avoir', 'hors_caisse']
 const DESTINATIONS: retour_destination[] = ['stock', 'reparation', 'defectueux']
 
 // POST — record a return: { txn_id, qty, montant, mode, destination, motif }.

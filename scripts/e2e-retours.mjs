@@ -215,6 +215,15 @@ try {
   check('return: transfer refund still possible, phone sent to repair', closedTransfer.status === 201 && ph2.status === 'en_reparation', { closedTransfer, ph2 })
   await erp.query(`update caisse set status = 'ouverte' where caisse_id = $1`, [cz.caisse_id])
 
+  // ── 6b. Refund paid outside the drawer (the owner's own money) ────────
+  const out = await sell({ device_type: 'accessoire', device_id: acc.acc_id, qty: 1, prix_vente: 100 })
+  const cashA = await cash(manager.api)
+  const outRet = await giveBack({ txn_id: out.data?.data?.txn_id, qty: 1, montant: 100, mode: 'hors_caisse', destination: 'stock' })
+  const cashB = await cash(manager.api)
+  check('return "hors caisse": recorded, the drawer does not move', outRet.status === 201 && cashA != null && cashB === cashA, { s: outRet.status, cashA, cashB })
+  const finOut = await manager.api(`/api/analytics?store_id=${STORE}&from=${TODAY}&to=${TODAY}`)
+  check('…and it still counts as a return in the figures', (finOut.data?.data?.journal?.returns ?? []).some(r => r.id === outRet.data?.data?.retour_id && r.mode === 'hors_caisse'), finOut.status)
+
   // ── 7. Credit sale, dashboard ─────────────────────────────────────────
   const credit = await sell({ device_type: 'accessoire', device_id: acc.acc_id, qty: 1, prix_vente: 100, payment_method: 'credit', avance: 0 })
   const creditRet = await giveBack({ txn_id: credit.data?.data?.txn_id, qty: 1, montant: 100, mode: 'especes', destination: 'stock' })
@@ -222,7 +231,7 @@ try {
 
   const dash = await manager.api(`/api/dashboard?store_id=${STORE}&start=${TODAY}&end=${TODAY}`)
   const mine = (dash.data?.returns ?? []).filter(r => r.device_id === acc.acc_id || r.device_id === phone.phone_id)
-  check('dashboard: returns of the period listed (to subtract)', mine.length === 4 && mine.every(r => typeof r.montant === 'number'), dash.data?.returns?.slice?.(0, 3))
+  check('dashboard: returns of the period listed (to subtract)', mine.length === 5 && mine.every(r => typeof r.montant === 'number'), dash.data?.returns?.slice?.(0, 3))
 } catch (err) {
   check('script ran to the end', false, String(err?.stack ?? err))
 } finally {
