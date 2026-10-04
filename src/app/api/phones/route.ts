@@ -7,6 +7,7 @@ import { validateRequired, sanitizeText } from '@/lib/utils/validation'
 import { withNotify } from '@/lib/realtime'
 import { attachTradeIn, phonesSoldWithTradeIn } from '@/lib/tradeinChain'
 import { payFromDrawer } from '@/lib/stockPurchase'
+import { assertManualStatus } from '@/lib/phoneExit'
 
 // Hidden from staff: purchase price, iCloud password, settlement and audit fields
 const STAFF_OMIT = {
@@ -87,6 +88,8 @@ async function POST_(request: NextRequest) {
     const staffEntry = !isManager(user.role) && body.source !== 'echange'
     if (staffEntry) body.status = 'disponible'
     validateRequired(body, ['marque', 'model', 'status'])
+    // A phone enters the stock; it leaves it through a sale, a credit file or The Void
+    if (['vendu', 'reserve', 'void'].includes(String(body.status))) throw new HttpError(400, 'Un téléphone s’ajoute « disponible » (ou en réparation) : la vente se fait ensuite')
 
     const input = staffEntry
       ? { ...pickInput('phones', body, STAFF_EDITABLE), status: 'disponible', source: 'fournisseur' }
@@ -158,6 +161,8 @@ async function PATCH_(request: NextRequest) {
       throw new HttpError(403, 'Un téléphone vendu ne peut être modifié que par un gérant')
     }
     const input = manager ? pickInput('phones', body, [...EDITABLE, 'store_id']) : pickInput('phones', body, STAFF_EDITABLE)
+    // "Vendu", "Réservé" and "The Void" come from a real operation, never from a list
+    if (manager && typeof input.status === 'string') await assertManualStatus(prisma, before, input.status)
     if (!manager && !Object.keys(input).length) throw new HttpError(403, 'Réservé aux gérants : prix, statut et promotions')
     const data = await prisma.phones.update({
       where: { phone_id },

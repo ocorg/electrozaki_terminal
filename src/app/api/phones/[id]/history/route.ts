@@ -18,10 +18,10 @@ const FIELD: Record<string, string> = {
   battery_level: 'Batterie', imei: 'IMEI', marque: 'Marque', model: 'Modèle', serie: 'Série', ram: 'RAM',
   promo_type: 'Promo', promo_montant: 'Montant promo', is_damaged: 'Endommagé', damage_notes: 'Note dommage',
   replaced_components: 'Pièces changées', warranty_months: 'Garantie (mois)', description: 'Description',
-  icloud_compte: 'Compte iCloud', source: 'Source', du_fournisseur: 'Dû au fournisseur', settled_at: 'Réglé au fournisseur',
+  icloud_compte: 'Compte iCloud', void_motif: 'Motif', source: 'Source', du_fournisseur: 'Dû au fournisseur', settled_at: 'Réglé au fournisseur',
 }
 // Noise in diffs (audit fields) and secrets
-const SKIP = new Set(['updated_at', 'updated_by', 'created_at', 'created_by', 'icloud_mdp', 'image_url', 'txn_ref_id', 'settled_by', 'is_deleted', 'date_entree', 'store_id', 'type', 'origine_phone_id'])
+const SKIP = new Set(['updated_at', 'updated_by', 'created_at', 'created_by', 'icloud_mdp', 'image_url', 'txn_ref_id', 'settled_by', 'is_deleted', 'date_entree', 'store_id', 'type', 'origine_phone_id', 'void_at', 'void_by'])
 const dh = (v: unknown) => `${Number(v).toLocaleString('fr-MA')} DH`
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {

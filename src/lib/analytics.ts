@@ -75,6 +75,14 @@ const EXPENSES = (store: string, from: Date, to: Date) => Prisma.sql`
   FROM expenses e JOIN categories c ON c.code = e.categorie
   WHERE e.store_id = ${store} AND NOT e.is_deleted AND e.date >= ${from} AND e.date <= ${to}`
 
+/** Phones sent to "The Void" in the range: their purchase price is a loss. */
+const LOSSES = (store: string, from: Date, to: Date) => Prisma.sql`
+  SELECT p.phone_id, (p.void_at AT TIME ZONE 'UTC')::date AS d, COALESCE(p.prix_achat, 0) AS cost,
+         p.marque || ' ' || p.model AS item, p.void_motif AS motif
+  FROM phones p
+  WHERE p.store_id = ${store} AND NOT p.is_deleted AND p.status = 'void' AND p.void_at IS NOT NULL
+    AND (p.void_at AT TIME ZONE 'UTC')::date >= ${from} AND (p.void_at AT TIME ZONE 'UTC')::date <= ${to}`
+
 type Sale = ReturnType<typeof toSale>
 const toSale = (r: Row) => ({
   txn_id: String(r.txn_id), d: iso(r.d), at: r.created_at as Date, device_type: String(r.device_type), qty: num(r.qty),
@@ -108,11 +116,12 @@ function collected(s: Sale) {
 }
 
 async function load(store: string, from: Date, to: Date) {
-  const [sales, returns, repairs, expenses] = await Promise.all([
+  const [sales, returns, repairs, expenses, losses] = await Promise.all([
     prisma.$queryRaw<Row[]>(SALES(store, from, to)),
     prisma.$queryRaw<Row[]>(RETURNS(store, from, to)),
     prisma.$queryRaw<Row[]>(REPAIRS(store, from, to)),
     prisma.$queryRaw<Row[]>(EXPENSES(store, from, to)),
+    prisma.$queryRaw<Row[]>(LOSSES(store, from, to)),
   ])
   return {
     sales: sales.map(toSale),
@@ -120,11 +129,12 @@ async function load(store: string, from: Date, to: Date) {
       destination: r.destination as string | null, motif: String(r.motif), txn_id: String(r.txn_id), cat: String(r.cat), costBack: num(r.cost_back), item: String(r.item) })),
     repairs: repairs.map(r => ({ id: String(r.rep_id), d: iso(r.d), price: num(r.price), parts: num(r.parts), kind: String(r.kind), item: String(r.item) })),
     expenses: expenses.map(e => ({ id: String(e.exp_id), d: iso(e.d), cat: String(e.categorie), label: String(e.label_fr), montant: num(e.montant), notes: e.notes as string | null })),
+    losses: losses.map(l => ({ id: String(l.phone_id), d: iso(l.d), cost: num(l.cost), item: String(l.item), motif: l.motif as string | null })),
   }
 }
 type Data = Awaited<ReturnType<typeof load>>
 
-function totals({ sales, returns, repairs, expenses }: Data, days: number) {
+function totals({ sales, returns, repairs, expenses, losses }: Data, days: number) {
   const salesRevenue = sales.reduce((s, x) => s + x.pv, 0)
   const refunds      = returns.reduce((s, x) => s + x.montant, 0)
   const cogs         = sales.reduce((s, x) => s + x.cost, 0) - returns.reduce((s, x) => s + x.costBack, 0)
@@ -133,11 +143,12 @@ function totals({ sales, returns, repairs, expenses }: Data, days: number) {
   const revenue      = salesRevenue - refunds + repairRev
   const gross        = revenue - cogs - repairParts
   const opex         = expenses.filter(e => e.cat !== STOCK_PURCHASE_CATEGORY).reduce((s, x) => s + x.montant, 0)
-  const net          = gross - opex
+  const lost         = losses.reduce((s, x) => s + x.cost, 0)   // phones sent to The Void
+  const net          = gross - opex - lost
   const nbSales      = new Set(sales.map(s => s.at.toISOString().slice(0, 16) + (s.client ?? '') + (s.seller ?? ''))).size
   return {
     revenue: round(revenue), salesRevenue: round(salesRevenue), refunds: round(refunds), repairRevenue: round(repairRev),
-    cogs: round(cogs), repairParts: round(repairParts), gross: round(gross), opex: round(opex), net: round(net),
+    cogs: round(cogs), repairParts: round(repairParts), gross: round(gross), opex: round(opex), losses: round(lost), net: round(net),
     grossMargin: revenue ? round((gross / revenue) * 100) : null, netMargin: revenue ? round((net / revenue) * 100) : null,
     itemsSold: sales.reduce((s, x) => s + x.qty, 0), lines: sales.length, tickets: nbSales,
     basket: nbSales ? round(salesRevenue / nbSales) : null, perDay: days ? round(revenue / days) : null,

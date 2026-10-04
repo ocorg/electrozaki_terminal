@@ -41,7 +41,7 @@ async function POST_(req: NextRequest) {
 
       // Snapshot of the phones expected in the shop
       const phones = (await tx.phones.findMany({
-        where:  { store_id: storeId, is_deleted: false, status: { notIn: ['vendu', 'en_livraison'] } },
+        where:  { store_id: storeId, is_deleted: false, status: { notIn: ['vendu', 'void', 'en_livraison'] } },
         select: { phone_id: true, imei: true, marque: true, model: true, status: true },
       })).filter(p => p.imei)
 

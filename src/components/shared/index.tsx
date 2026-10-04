@@ -15,7 +15,7 @@ const AMBER  = 'bg-amber-50 text-amber-700 border-amber-200'
 const RED    = 'bg-red-50 text-red-700 border-red-200'
 
 const STATUS_STYLES: Partial<Record<CodeDomain, Record<string, string>>> = {
-  device_status:  { disponible: GREEN, vendu: SLATE, echange: BLUE, en_reparation: ORANGE, reserve: AMBER, en_livraison: BLUE, en_transfert: BLUE },
+  device_status:  { disponible: GREEN, vendu: SLATE, echange: BLUE, en_reparation: ORANGE, reserve: AMBER, en_livraison: BLUE, en_transfert: BLUE, void: 'bg-[#1A1A1A] text-white border-[#1A1A1A]' },
   repair_status:  { en_attente: AMBER, en_cours: BLUE, pret: GREEN, recupere: SLATE },
   stock_level:    { disponible: GREEN, alerte: AMBER, epuise: RED },
   payment_status: { solde: GREEN, reste: BLUE, trop_percu: ORANGE },

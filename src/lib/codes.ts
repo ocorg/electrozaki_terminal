@@ -17,6 +17,7 @@ export const CODES = {
     en_livraison:  { fr: 'En livraison',   ar: 'قيد التوصيل' },
     en_transfert:  { fr: 'En transfert',   ar: 'قيد النقل' },
     reserve:       { fr: 'Réservé',        ar: 'محجوز' },
+    void:          { fr: 'The Void',       ar: 'The Void' },
   },
   device_condition: {
     neuf:       { fr: 'Neuf',       ar: 'جديد' },

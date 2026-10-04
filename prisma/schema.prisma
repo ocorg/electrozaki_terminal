@@ -23,6 +23,7 @@ enum device_status {
   en_livraison
   en_transfert
   reserve
+  void
 }
 
 enum device_condition {
@@ -730,6 +731,9 @@ model phones {
   settled_by                     String?              @db.Uuid
   du_fournisseur                 Decimal?             @db.Decimal(10, 2)
   origine_phone_id               String?
+  void_at                        DateTime?            @db.Timestamptz(6)
+  void_by                        String?              @db.Uuid
+  void_motif                     String?
   ez_documents                   ez_documents[]
   phone_credit_sales             phone_credit_sales[]
   suppliers                      suppliers?           @relation(fields: [fournisseur_id], references: [supplier_id], map: "fk_phones_supplier")

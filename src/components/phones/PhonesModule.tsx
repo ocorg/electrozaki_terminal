@@ -10,6 +10,8 @@ import { formatMAD, formatDate, getWarrantyFlag, computePromoPrice } from '@/lib
 import { StatusBadge, BatteryBar, EmptyState, SkeletonRow, PageHeader, Btn, Modal, Field, inputClass, selectClass, RowAction, RowMenu, Select } from '@/components/shared'
 import PhoneForm from '@/components/phones/PhoneForm'
 import PhoneHistoryPanel from '@/components/phones/PhoneHistoryPanel'
+import { VoidModal, PastSaleModal, leaveVoid } from '@/components/phones/PhoneExitModals'
+import { confirmDialog } from '@/components/shared/ConfirmHost'
 import PhoneCreditPanel from '@/components/phones/PhoneCreditPanel'
 import type { Phone, Prospect } from '@/types/database'
 import BulkPriceModal from '@/components/phones/BulkPriceModal'
@@ -20,12 +22,12 @@ import LabelGenerator, { type LabelProduct } from '@/components/print/LabelGener
 import {
   Plus, Search, Filter, RefreshCw,
   Smartphone, Edit2, MapPin, Shield,
-  ChevronDown, X, Eye, EyeOff, Trash2, Loader2, BookOpen, Check, CreditCard, Tag, BatteryMedium, AlertTriangle, Wrench, History
+  ChevronDown, X, Eye, EyeOff, Trash2, Loader2, BookOpen, Check, CreditCard, Tag, BatteryMedium, AlertTriangle, Wrench, History, CalendarClock, Undo2, Ban
 } from 'lucide-react'
 import { codeLabel } from '@/lib/codes'
 import type { DeviceStatus } from '@/types/database'
 
-const STATUSES = ['disponible', 'reserve', 'vendu', 'echange', 'en_reparation', 'en_livraison', 'en_transfert'] as const
+const STATUSES = ['disponible', 'reserve', 'vendu', 'echange', 'en_reparation', 'en_livraison', 'en_transfert', 'void'] as const
 const MARQUES  = ['Apple', 'Samsung', 'Xiaomi', 'Redmi', 'Huawei', 'Oppo', 'Realme']
 const LOCATIONS = ['magasin_principal', 'magasin_secondaire', 'externe']
 const EMPTY: never[] = []
@@ -54,6 +56,22 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
   const canOpen = (phone: Phone) => canEdit || (!!user && phone.status !== 'vendu')
   const [bulkOpen, setBulkOpen] = useState(false)
   const [historyPhone, setHistoryPhone] = useState<Phone | null>(null)
+  // A phone that left without a POS sale: remembered sale (true date) or The Void
+  const [voidPhone, setVoidPhone]         = useState<Phone | null>(null)
+  const [pastSalePhone, setPastSalePhone] = useState<Phone | null>(null)
+  async function handleLeaveVoid(phone: Phone) {
+    if (!(await confirmDialog(`Sortir ${phone.marque} ${phone.model} du Void et le remettre disponible ?`, { danger: false }))) return
+    try { await leaveVoid(phone.phone_id); showSuccess('Téléphone remis disponible'); await fetchPhones() }
+    catch (err) { showError((err as Error).message) }
+  }
+  // Menu entries offered for a phone (the server checks again)
+  const exitActions = (phone: Phone) => phone.status === 'void'
+    ? [{ label: 'Vente passée (vraie date)', icon: <CalendarClock className="w-4 h-4" />, onClick: () => setPastSalePhone(phone) },
+       { label: 'Sortir du Void', icon: <Undo2 className="w-4 h-4" />, onClick: () => void handleLeaveVoid(phone) }]
+    : ['disponible', 'vendu', 'en_reparation'].includes(phone.status)
+      ? [{ label: 'Vente passée (vraie date)', icon: <CalendarClock className="w-4 h-4" />, onClick: () => setPastSalePhone(phone) },
+         { label: 'Envoyer dans The Void', icon: <Ban className="w-4 h-4" />, onClick: () => setVoidPhone(phone) }]
+      : []
 
   const [formOpen, setFormOpen]       = useState(false)
   const [editPhone, setEditPhone]     = useState<Phone | null>(null)
@@ -254,6 +272,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
     'en_reparation': '#F59E0B',
     'en_livraison': '#8B5CF6',   // violet — en cours de livraison client
     'en_transfert': '#F97316',   // orange — sorti du magasin temporairement
+    'void':         '#1A1A1A',   // left the stock with no sale (no trace / taken apart)
   }
 
   return (
@@ -683,6 +702,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                       {canSeeFinancials && (
                         <RowMenu items={[
                           { label: isAr ? 'السجل' : 'Historique', icon: <History className="w-4 h-4" />, onClick: () => setHistoryPhone(phone) },
+                          ...exitActions(phone),
                           { label: isAr ? 'حذف' : 'Supprimer', icon: <Trash2 className="w-4 h-4" />, danger: true, onClick: () => setConfirmDelete(phone.phone_id) },
                         ]} />
                       )}
@@ -843,7 +863,11 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
         role={user?.role}
         storeId={storeId}
         onShowHistory={canSeeFinancials && editPhone ? () => setHistoryPhone(editPhone) : undefined}
+        exitActions={canSeeFinancials && editPhone ? exitActions(editPhone).map(a => ({ label: a.label, onClick: () => { setFormOpen(false); a.onClick() } })) : undefined}
       />
+
+      {voidPhone && <VoidModal phone={voidPhone} onClose={() => setVoidPhone(null)} onDone={() => void fetchPhones()} />}
+      {pastSalePhone && <PastSaleModal phone={pastSalePhone} onClose={() => setPastSalePhone(null)} onDone={() => void fetchPhones()} />}
 
       {/* Full history of a phone (managers) */}
       {historyPhone && (

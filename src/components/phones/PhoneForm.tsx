@@ -21,6 +21,7 @@ interface PhoneFormProps {
   role?:    string
   storeId:  string
   onShowHistory?: () => void   // managers: open the phone's history
+  exitActions?: { label: string; onClick: () => void }[]   // managers: Vente passée / The Void
 }
 
 const STOCKAGES = ['16GB', '32GB', '64GB', '128GB', '256GB', '512GB', '1TB']
@@ -53,7 +54,7 @@ const EMPTY: Partial<Phone> = {
   fournisseur_id:       null,
 }
 
-export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId, onShowHistory }: PhoneFormProps) {
+export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId, onShowHistory, exitActions }: PhoneFormProps) {
   const portal   = usePortal()
   const { language } = useLanguageStore()
   const isAr     = language === 'ar'
@@ -168,12 +169,17 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
       size="lg"
     >
       <form onSubmit={handleSubmit} className="space-y-5" style={{ touchAction: 'pan-y' }} dir={isAr ? 'rtl' : 'ltr'}>
-        {isEdit && onShowHistory && (
-          <div className="flex justify-end -mt-2">
-            <button type="button" onClick={onShowHistory}
-              className="text-xs font-bold underline" style={{ color: primary }}>
-              {isAr ? 'سجل الهاتف' : 'Historique du téléphone'}
-            </button>
+        {isEdit && (onShowHistory || exitActions?.length) && (
+          <div className="flex flex-wrap justify-end gap-x-4 gap-y-1 -mt-2">
+            {exitActions?.map(a => (
+              <button key={a.label} type="button" onClick={a.onClick} className="text-xs font-bold underline text-ez-subtle">{a.label}</button>
+            ))}
+            {onShowHistory && (
+              <button type="button" onClick={onShowHistory}
+                className="text-xs font-bold underline" style={{ color: primary }}>
+                {isAr ? 'سجل الهاتف' : 'Historique du téléphone'}
+              </button>
+            )}
           </div>
         )}
 
@@ -353,12 +359,15 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
             {/* Staff never set a status by hand: "vendu" only comes from a POS sale */}
             <Select className={selectClass} value={form.status || 'disponible'} onChange={e => set('status', e.target.value)}
               disabled={!canSeeFinancials}>
+              {/* "Vendu", "Réservé" and "The Void" come from a real operation (sale, credit file, menu) */}
               <option value="disponible">{t(isAr, 'common.available')}</option>
-              <option value="reserve">{isAr ? 'محجوز' : 'Réservé'}</option>
-              <option value="vendu">{isAr ? 'مباع' : 'Vendu'}</option>
-              <option value="echange">{isAr ? 'مستبدل' : 'Échangé'}</option>
               <option value="en_reparation">{isAr ? 'في الإصلاح' : 'En réparation'}</option>
               <option value="en_transfert">{isAr ? 'في النقل' : 'En transfert'}</option>
+              <option value="echange">{isAr ? 'مستبدل' : 'Échangé'}</option>
+              {form.status === 'vendu' && <option value="vendu">{isAr ? 'مباع' : 'Vendu'}</option>}
+              {form.status === 'reserve' && <option value="reserve">{isAr ? 'محجوز' : 'Réservé'}</option>}
+              {form.status === 'void' && <option value="void">The Void</option>}
+              {form.status === 'en_livraison' && <option value="en_livraison">En livraison</option>}
             </Select>
           </Field>
           <Field label={t(isAr, 'common.location')}>

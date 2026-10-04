@@ -40,7 +40,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     const owedNow = new Map(unsettled.map(u => [u.phone_id, Number(u.cash_recu)]))
 
     // Sale date: its last non-voided sale (else when it was marked sold)
-    const sold = phones.filter(p => p.status === 'vendu')
+    const sold = phones.filter(p => p.status === 'vendu' || p.status === 'void')
     const sales = sold.length ? await prisma.transactions.findMany({
       where: { device_id: { in: sold.map(p => p.phone_id) }, voided: false, NOT: { type_operation: 'retour' } },
       orderBy: { created_at: 'desc' }, select: { device_id: true, created_at: true, txn_id: true },
@@ -61,7 +61,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       const sale = saleOf.get(p.phone_id)
       lines.push({
         at: (sale?.at ?? p.updated_at ?? new Date()).toISOString(), kind: 'vente',
-        label: `Vente ${p.phone_id}${sale ? ` (${sale.txn})` : ''}`,
+        label: p.status === 'void' ? `The Void ${p.phone_id}` : `Vente ${p.phone_id}${sale ? ` (${sale.txn})` : ''}`,
         phone: describePhone(p),
         detail: [
           p.origine_phone_id ? `repris en échange de ${p.origine_phone_id} : ${base} DH reportés sur lui` : `prix d'achat ${base} DH`,
@@ -90,7 +90,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     type Node = { phone: ReturnType<typeof describePhone>; carried: number; owed_on_sale: number; state: 'regle' | 'a_regler' | 'en_stock' | 'autre'; status: string; payment?: string | null; children: Node[] }
     const node = (p: PhoneRow): Node => ({
       phone: describePhone(p), carried: carried(p), owed_on_sale: owedOnSale(p), status: codeLabel('device_status', p.status as never, 'fr'),
-      state: p.status === 'vendu' ? (p.settled_at ? 'regle' : 'a_regler') : p.status === 'disponible' ? 'en_stock' : 'autre',
+      state: p.status === 'vendu' || p.status === 'void' ? (p.settled_at ? 'regle' : 'a_regler') : p.status === 'disponible' ? 'en_stock' : 'autre',
       payment: paidBy.get(p.phone_id) ?? null,
       children: (children.get(p.phone_id) ?? []).map(node),
     })

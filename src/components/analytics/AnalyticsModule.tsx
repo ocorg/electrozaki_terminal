@@ -17,7 +17,7 @@ import { getBusinessDate } from '@/lib/utils'
 
 type Totals = {
   revenue: number; salesRevenue: number; refunds: number; repairRevenue: number; cogs: number; repairParts: number
-  gross: number; opex: number; net: number; grossMargin: number | null; netMargin: number | null
+  gross: number; opex: number; losses?: number; net: number; grossMargin: number | null; netMargin: number | null
   itemsSold: number; lines: number; tickets: number; basket: number | null; perDay: number | null; collected: number; missingCost: number
 }
 type Item = { name: string; qty: number; revenue: number; profit: number; margin: number | null }
@@ -379,6 +379,7 @@ function PnL({ a }: { a: Analytics }) {
     { label: 'Coût d’achat des articles vendus', value: -(t.cogs + t.repairParts), kind: 'minus' },
     { label: 'Bénéfice brut', value: t.gross, kind: 'total' },
     ...a.expenseCats.filter(e => !e.stock).map(e => ({ label: e.label, value: -e.total, kind: 'minus' as const })),
+    ...(t.losses ? [{ label: 'Pertes — téléphones dans The Void', value: -t.losses, kind: 'minus' as const }] : []),
     { label: 'Bénéfice net', value: t.net, kind: 'total' },
   ]
   return (
