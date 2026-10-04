@@ -14,7 +14,7 @@ import type { Phone, Laptop, PaymentMethod, OperationType } from '@/types/databa
 import ScanButton from '@/components/scanner/ScanButton'
 import ComboBox from '@/components/phones/ComboBox'
 import RetourModal, { type AppliedAvoir } from '@/components/pos/RetourModal'
-import CashDropModal        from '@/components/pos/CashDropModal'
+import MoneyInModal         from '@/components/pos/MoneyInModal'
 import AttendanceWidget     from '@/components/attendance/AttendanceWidget'
 import QtyPickerModal       from '@/components/pos/QtyPickerModal'
 import OverridePinModal     from '@/components/pos/OverridePinModal'
@@ -1132,15 +1132,19 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
           <button type="button" onClick={() => setCashDropOpen(true)}
             className="w-full py-2.5 rounded-2xl text-xs font-bold border border-ez-border text-ez-subtle hover:border-emerald-400 hover:text-emerald-600 transition-all flex items-center justify-center gap-1.5">
             <span>＋</span>
-            {t(isAr, 'common.manualCashDeposit')}
+            {isAr ? 'دخول أموال' : "Entrée d'argent"}
           </button>
 
-          <CashDropModal
+          <MoneyInModal
             open={cashDropOpen}
             onClose={() => setCashDropOpen(false)}
             storeId={storeId}
-            isAr={isAr}
             primary={primary}
+            isManager={canCredit}
+            services={(accQ.data ?? []).filter(a => a.categorie === 'service').map(a => ({ acc_id: String(a.acc_id), nom: String(a.nom), prix: a.prix_vente_recommande != null ? Number(a.prix_vente_recommande) : null }))}
+            clients={clientsQ.data ?? []}
+            onSeveralTimes={() => setSale('payment_method', 'credit')}
+            onDone={() => { void accQ.refresh(); void clientsQ.refresh() }}
           />
         </div>
       </div>

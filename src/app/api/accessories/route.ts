@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db'
 import { json, handleError, requireUser, requireActiveUser, requireFields, pickInput, columnsOf, HttpError, MANAGERS, isManager } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { withNotify } from '@/lib/realtime'
+import { payFromDrawer } from '@/lib/stockPurchase'
 
 const EDITABLE = columnsOf('accessories', ['acc_id'])
 // What staff may fill or change (owner's rules, 2026-10-01): details and
@@ -52,14 +53,19 @@ async function POST_(request: NextRequest) {
     requireFields(body, ['nom', 'categorie'])
     const manager = isManager(user.role)
 
-    const data = await prisma.accessories.create({
-      data: {
-        ...(pickInput('accessories', body, manager ? EDITABLE : STAFF_EDITABLE) as Prisma.accessoriesUncheckedCreateInput),
-        store_id:   body.store_id ?? user.store_id ?? null,
-        created_by: user.id,
-        updated_by: user.id,
-      },
-      ...(!manager && { omit: { prix_achat: true } }),
+    const data = await prisma.$transaction(async (tx) => {
+      const created = await tx.accessories.create({
+        data: {
+          ...(pickInput('accessories', body, manager ? EDITABLE : STAFF_EDITABLE) as Prisma.accessoriesUncheckedCreateInput),
+          store_id:   body.store_id ?? user.store_id ?? null,
+          created_by: user.id,
+          updated_by: user.id,
+        },
+        ...(!manager && { omit: { prix_achat: true } }),
+      })
+      // Bought with the drawer's cash (managers): leaves the day's caisse
+      if (manager) await payFromDrawer(tx, { amount: body.paye_caisse, label: `Achat ${created.acc_id} — ${created.nom}`, storeId: created.store_id, userId: user.id })
+      return created
     })
 
     await logActivity({
@@ -92,10 +98,15 @@ async function PATCH_(request: NextRequest) {
     // Staff: prices and supplier are ignored
     const input = pickInput('accessories', body, manager ? EDITABLE : STAFF_EDITABLE)
     if (!manager && !Object.keys(input).length) throw new HttpError(403, 'Réservé aux gérants : les prix')
-    const data = await prisma.accessories.update({
-      where: { acc_id },
-      data:  { ...input, updated_by: user.id },
-      ...(!manager && { omit: { prix_achat: true } }),
+    const data = await prisma.$transaction(async (tx) => {
+      const updated = await tx.accessories.update({
+        where: { acc_id },
+        data:  { ...input, updated_by: user.id },
+        ...(!manager && { omit: { prix_achat: true } }),
+      })
+      // A restock paid with the drawer's cash
+      if (manager) await payFromDrawer(tx, { amount: body.paye_caisse, label: `Réappro ${updated.acc_id} — ${updated.nom}`, storeId: updated.store_id, userId: user.id })
+      return updated
     })
 
     await logActivity({

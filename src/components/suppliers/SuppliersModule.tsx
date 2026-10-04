@@ -141,6 +141,8 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
   const [statementOf, setStatementOf] = useState<string | null>(null)
   const [payMontant,  setPayMontant]  = useState('')
   const [payDate,     setPayDate]     = useState(getBusinessDate())
+  // Where the money comes from: the day's drawer leaves the caisse
+  const [paySource,   setPaySource]   = useState<'caisse' | 'hors_caisse' | 'virement'>('caisse')
   const [payNotes,    setPayNotes]    = useState('')
 
   // ── Derived ──────────────────────────────────────────────────────────────────
@@ -315,6 +317,7 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
           supplier_id:   selected.supplier_id,
           store_id:      storeId,
           payment_type:  'reglement_a',
+          source:        paySource,
           montant:       toPayNow,
           phone_ids:     Array.from(selectedPhoneIds),
           date_paiement: getBusinessDate(),
@@ -381,6 +384,7 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
           supplier_id:   selected.supplier_id,
           store_id:      storeId,
           payment_type:  'avance_a',
+          source:        paySource,
           montant:       parseFloat(payMontant),
           phone_ids:     [],
           date_paiement: payDate,
@@ -676,6 +680,15 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
                     {creditUsed > 0 && <div className="flex justify-between text-emerald-700"><span>Crédit du fournisseur utilisé</span><b>− {formatMAD(creditUsed)}</b></div>}
                     <div className="flex justify-between font-bold" style={{ color: '#A8862E' }}><span>À payer maintenant</span><span>{formatMAD(toPayNow)}</span></div>
                   </div>
+                  {toPayNow > 0 && (
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {([['caisse', 'Espèces de la caisse'], ['hors_caisse', 'Espèces hors caisse'], ['virement', 'Virement']] as const).map(([v, l]) => (
+                      <button key={v} type="button" onClick={() => setPaySource(v)}
+                        className="py-1.5 px-1 rounded-lg text-xs font-bold border transition-all"
+                        style={{ backgroundColor: paySource === v ? primary : 'white', borderColor: paySource === v ? primary : '#E8E5DE', color: paySource === v ? 'white' : '#6B6860' }}>{l}</button>
+                    ))}
+                  </div>
+                  )}
                   <button
                     onClick={handleReglement}
                     disabled={submitting || selectedPhoneIds.size === 0}
@@ -699,6 +712,13 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
                 ) : (
                   <div className="p-3 bg-ez-bg border border-ez-border rounded-xl space-y-3">
                     <p className="text-xs font-bold text-ez-subtle uppercase tracking-wider">Avance — ajoutée au crédit du fournisseur</p>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {([['caisse', 'Espèces de la caisse'], ['hors_caisse', 'Espèces hors caisse'], ['virement', 'Virement']] as const).map(([v, l]) => (
+                        <button key={v} type="button" onClick={() => setPaySource(v)}
+                          className="py-1.5 px-1 rounded-lg text-xs font-bold border transition-all"
+                          style={{ backgroundColor: paySource === v ? primary : 'white', borderColor: paySource === v ? primary : '#E8E5DE', color: paySource === v ? 'white' : '#6B6860' }}>{l}</button>
+                      ))}
+                    </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
                         <p className="text-xs text-ez-faint uppercase tracking-wider font-bold mb-1">{t(isAr, 'common.amountMad')}</p>

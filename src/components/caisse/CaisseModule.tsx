@@ -24,6 +24,7 @@ interface CaisseData {
   total_reparations:       number
   total_depenses:          number
   total_cash_drops:        number
+  total_fournisseurs?:     number
   solde_theorique:         number
   solde_reel:              number | null
   ecart:                   number | null
@@ -271,6 +272,9 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
             <SummaryRow label={t(isAr, 'common.manualCashDeposits')} value={formatMAD(caisse.total_cash_drops)} color="text-emerald-600" />
           )}
           <SummaryRow label={t(isAr, 'common.totalExpenses')}        value={formatMAD(caisse.total_depenses)}    color="text-red-500" />
+          {Number(caisse.total_fournisseurs ?? 0) > 0 && (
+            <SummaryRow label={isAr ? 'دفعات الموردين (من الصندوق)' : 'Payé aux fournisseurs (de la caisse)'} value={formatMAD(Number(caisse.total_fournisseurs))} color="text-red-500" />
+          )}
           {caisse.payment_breakdown && <PaymentBreakdownMini isAr={isAr} breakdown={caisse.payment_breakdown} />}
           <div className="border-t border-ez-border pt-3">
             <SummaryRow label={t(isAr, 'common.theoreticalBalance')} value={formatMAD(caisse.solde_theorique)} bold />
@@ -326,6 +330,9 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
             <SummaryRow label={t(isAr, 'common.manualCashDeposits')} value={formatMAD(caisse.total_cash_drops)} color="text-emerald-600" />
           )}
           <SummaryRow label={t(isAr, 'common.totalExpenses')}        value={formatMAD(caisse.total_depenses)}    color="text-red-500" />
+          {Number(caisse.total_fournisseurs ?? 0) > 0 && (
+            <SummaryRow label={isAr ? 'دفعات الموردين (من الصندوق)' : 'Payé aux fournisseurs (de la caisse)'} value={formatMAD(Number(caisse.total_fournisseurs))} color="text-red-500" />
+          )}
           {caisse.payment_breakdown && <PaymentBreakdownMini isAr={isAr} breakdown={caisse.payment_breakdown} />}
           <div className="border-t border-ez-border pt-3">
             <SummaryRow label={t(isAr, 'common.theoreticalBalance')}   value={formatMAD(caisse.solde_theorique)} bold />
@@ -506,7 +513,7 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
             <p className="text-xs text-ez-faint mt-1">
               {isAr
                 ? `${formatMAD(caisse.ouverture)} + ${formatMAD(caisse.payment_breakdown?.cash ?? 0)} (نقد فقط) + ${formatMAD(caisse.total_reparations)} - ${formatMAD(caisse.total_depenses)}`
-                : `${formatMAD(caisse.ouverture)} + ${formatMAD(caisse.payment_breakdown?.cash ?? 0)} (espèces) + rép. - dépenses`}
+                : `${formatMAD(caisse.ouverture)} + ${formatMAD(caisse.payment_breakdown?.cash ?? 0)} (espèces) + rép. - dépenses${Number(caisse.total_fournisseurs ?? 0) > 0 ? ' - fournisseurs' : ''}`}
             </p>
           </div>
           <ArrowUp className="w-8 h-8 opacity-20" style={{ color: primary }} />

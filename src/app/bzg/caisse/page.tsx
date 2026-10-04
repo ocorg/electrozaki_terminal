@@ -22,6 +22,7 @@ interface CaisseRecord {
   total_reparations: number
   total_depenses:    number
   total_cash_drops:  number
+  total_fournisseurs?: number
   solde_theorique:   number
   solde_reel?:       number | null
   ecart?:            number | null
@@ -280,6 +281,7 @@ export default function BZGCaissePage() {
                             { label: t(isAr, 'common.repairs'),        value: formatMAD(rec.total_reparations), negative: false },
                             ...(rec.total_cash_drops > 0 ? [{ label: isAr ? 'إيداعات نقدية' : 'Encaissements', value: formatMAD(rec.total_cash_drops), negative: false }] : []),
                             { label: t(isAr, 'common.expenses'),            value: formatMAD(rec.total_depenses),     negative: true },
+                            ...(Number(rec.total_fournisseurs ?? 0) > 0 ? [{ label: isAr ? 'دفعات الموردين' : 'Payé aux fournisseurs (caisse)', value: formatMAD(Number(rec.total_fournisseurs)), negative: true }] : []),
                           ].map(item => (
                             <div key={item.label} className="text-center">
                               <p className="text-xs text-ez-faint mb-1">{item.label}</p>

@@ -339,6 +339,7 @@ model caisse {
   approved_at                     DateTime?      @db.Timestamptz(6)
   rejection_note                  String?
   total_cash_drops                Decimal?       @default(0) @db.Decimal
+  total_fournisseurs              Decimal?       @default(0) @db.Decimal(10, 2)
   users_caisse_approved_byTousers user_profiles? @relation("caisse_approved_byTousers", fields: [approved_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
   users_caisse_closed_byTousers   user_profiles? @relation("caisse_closed_byTousers", fields: [closed_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
   users_caisse_created_byTousers  user_profiles? @relation("caisse_created_byTousers", fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -953,6 +954,7 @@ model supplier_payments {
   payment_type                              supplier_payment_type @default(paiement_b)
   is_deleted                                Boolean               @default(false)
   phone_ids                                 String[]              @default([])
+  source                                    String                @default("hors_caisse")
   users_supplier_payments_created_byTousers user_profiles?        @relation("supplier_payments_created_byTousers", fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
   stores                                    stores?               @relation(fields: [store_id], references: [store_id], onDelete: NoAction, onUpdate: NoAction)
   suppliers                                 suppliers             @relation(fields: [supplier_id], references: [supplier_id], onDelete: NoAction, onUpdate: NoAction)

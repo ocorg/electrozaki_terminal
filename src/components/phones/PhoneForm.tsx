@@ -68,6 +68,7 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
 
   const [form, setForm]           = useState<Partial<Phone>>({ ...EMPTY })
   const [loading, setLoading]     = useState(false)
+  const [payeCaisse, setPayeCaisse]             = useState('')   // bought with the day's drawer cash
   const [newCompName, setNewCompName]           = useState('')
   const [newCompCondition, setNewCompCondition] = useState<'original' | 'standard'>('original')
 
@@ -83,6 +84,7 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
   // ── Init ─────────────────────────────────────────────────
   useEffect(() => {
     setForm(phone ? { ...phone } : { ...EMPTY })
+    setPayeCaisse('')
   }, [phone, open])
 
   // ── Auto-set battery 100 when Neuf + Apple ───────────────
@@ -136,7 +138,7 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
         })
       }
 
-      const payload = { ...form, store_id: storeId }
+      const payload = { ...form, store_id: storeId, ...(!isEdit && payeCaisse ? { paye_caisse: Number(payeCaisse) } : {}) }
       const res = await fetch('/api/phones', {
         method:  isEdit ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -534,6 +536,14 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
                 </Field>
               </div>
             </div>
+
+            {!isEdit && (
+              <Field label="Payé en espèces de la caisse (DH) — laisser vide si non">
+                <input type="number" min={0} step={0.01} className={inputClass} placeholder="0"
+                  value={payeCaisse} onChange={e => setPayeCaisse(e.target.value)} />
+                <p className="text-xs text-ez-faint mt-1">Achat à un particulier payé avec la caisse du jour : la sortie de caisse se fait toute seule.</p>
+              </Field>
+            )}
 
             {/* Promo */}
             <div className="grid grid-cols-2 gap-4 pt-3 border-t border-ez-border">

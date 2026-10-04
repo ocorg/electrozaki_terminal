@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db'
 import { json, handleError, requireUser, requireActiveUser, dateOnly, todayDate, HttpError, MANAGERS } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { withNotify } from '@/lib/realtime'
+import { assertCaisseOpen } from '@/lib/phoneCredits'
 
 // One logic for every supplier (2026-09-28): a "règlement" settles chosen
 // SOLD phones (it may use the supplier's credit, so the cash paid can be less
@@ -49,9 +50,13 @@ async function POST_(request: NextRequest) {
     if (!Number.isFinite(montant) || montant < 0) throw new HttpError(400, 'Montant invalide')
     if (body.payment_type === 'avance_a' && (montant <= 0 || phoneIds.length)) throw new HttpError(400, 'Une avance est un montant positif, sans téléphones')
     if (body.payment_type === 'reglement_a' && !phoneIds.length) throw new HttpError(400, 'Choisissez les téléphones vendus à régler')
+    // Where the money comes from: the day's drawer leaves the caisse
+    const source = ['caisse', 'hors_caisse', 'virement'].includes(body.source) ? body.source as string : 'hors_caisse'
+    const datePaiement = dateOnly(body.date_paiement) ?? todayDate()
 
     // Payment and (for a règlement) settling the phones commit together
     const data = await prisma.$transaction(async (tx) => {
+      if (source === 'caisse' && montant > 0) await assertCaisseOpen(tx, store_id, datePaiement)
       if (body.payment_type === 'reglement_a') {
         // Only this supplier's sold phones still waiting, and enough paid:
         // cash now + the supplier's credit must cover them.
@@ -74,7 +79,9 @@ async function POST_(request: NextRequest) {
           payment_type:  body.payment_type,
           montant,
           phone_ids:     phoneIds,
-          date_paiement: dateOnly(body.date_paiement) ?? todayDate(),
+          date_paiement: datePaiement,
+          source,
+          payment_method: source === 'virement' ? 'virement' : 'especes',
           notes:         body.notes ?? null,
           store_id,
           created_by:    user.id,

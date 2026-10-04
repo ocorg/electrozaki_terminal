@@ -18,6 +18,7 @@ type CaisseTotals = {
   total_reparations:       number   // cash repairs only (mode_paiement NULL/especes), cancelled tickets excluded
   total_depenses:          number   // expenses have no payment_method column — assumed cash
   total_cash_drops:        number
+  total_fournisseurs:      number   // supplier payments taken from the day's drawer (source 'caisse')
   total_credit_versements: number   // gross credit repayments (phone-credit + ad-hoc + imported), all payment methods — display only
   total_reprises:          number   // trade-in devices discharged — non-cash, informational
   total_retours:           number   // refunds paid back today (returns + store-credit payouts), cash + transfer
@@ -45,7 +46,7 @@ async function computeCaisseTotals(store_id: string, date: Date): Promise<Caisse
 
   const [
     txns, repsDelivered, repsDepot, exps, drops,
-    phoneCreditPmts, manualCreditPmts, importCreditPmts, reprises, retours,
+    phoneCreditPmts, manualCreditPmts, importCreditPmts, reprises, retours, supplierPays,
   ] = await Promise.all([
     prisma.transactions.findMany({
       where:  { store_id, date_vente: date, voided: false },
@@ -77,6 +78,7 @@ async function computeCaisseTotals(store_id: string, date: Date): Promise<Caisse
     // Returns paid back today (the sale itself stays in its own day). A store
     // credit (avoir) moves no money now: it is spent on a later sale.
     prisma.retours.findMany({ where: { store_id, date, mode: { in: ['especes', 'virement'] } }, select: { montant: true, mode: true } }),
+    prisma.supplier_payments.findMany({ where: { store_id, date_paiement: date, source: 'caisse', is_deleted: false }, select: { montant: true } }),
   ])
 
   // Combine all three client-repayment streams — each is a real cash/transfer event
@@ -125,6 +127,7 @@ async function computeCaisseTotals(store_id: string, date: Date): Promise<Caisse
 
   const total_depenses   = sum(exps,  e => num(e.montant))
   const total_cash_drops = sum(drops, d => num(d.amount))
+  const total_fournisseurs = sum(supplierPays, p => num(p.montant))
 
   const total_credit_versements = sum(creditPmts, p => num(p.montant))
   const credit_cash     = sum(creditPmts.filter(p => p.payment_method === 'especes'),  p => num(p.montant))
@@ -140,6 +143,7 @@ async function computeCaisseTotals(store_id: string, date: Date): Promise<Caisse
     total_reparations,
     total_depenses,
     total_cash_drops,
+    total_fournisseurs,
     total_credit_versements,
     total_reprises,
     total_retours:        retours_cash + retours_transfer,
@@ -162,7 +166,7 @@ async function computeCaisseTotals(store_id: string, date: Date): Promise<Caisse
 
 // solde_theorique is driven ONLY by payment_breakdown.cash (physical cash in) — see note above
 const soldeTheorique = (ouverture: Prisma.Decimal | number, t: CaisseTotals) =>
-  num(ouverture) + t.payment_breakdown.cash + t.total_reparations - t.total_depenses
+  num(ouverture) + t.payment_breakdown.cash + t.total_reparations - t.total_depenses - t.total_fournisseurs
 
 export async function GET(request: NextRequest) {
   try {
@@ -189,6 +193,7 @@ export async function GET(request: NextRequest) {
         total_reparations:       totals.total_reparations,
         total_depenses:          totals.total_depenses,
         total_cash_drops:        totals.total_cash_drops,
+        total_fournisseurs:      totals.total_fournisseurs,
         solde_theorique:         soldeTheorique(caisse.ouverture, totals),
         payment_breakdown:       totals.payment_breakdown,
         total_credit_versements: totals.total_credit_versements,
@@ -269,6 +274,7 @@ async function PATCH_(request: NextRequest) {
         total_reparations: totals.total_reparations,
         total_depenses:    totals.total_depenses,
         total_cash_drops:  totals.total_cash_drops,
+        total_fournisseurs: totals.total_fournisseurs,
         solde_theorique,
         payment_breakdown: totals.payment_breakdown,
         status:            'en_attente_cloture',

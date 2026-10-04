@@ -6,6 +6,7 @@ import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { validateRequired, sanitizeText } from '@/lib/utils/validation'
 import { withNotify } from '@/lib/realtime'
 import { attachTradeIn, phonesSoldWithTradeIn } from '@/lib/tradeinChain'
+import { payFromDrawer } from '@/lib/stockPurchase'
 
 // Hidden from staff: purchase price, iCloud password, settlement and audit fields
 const STAFF_OMIT = {
@@ -107,6 +108,10 @@ async function POST_(request: NextRequest) {
           updated_by:  user.id,
         },
       })
+      // Bought with the drawer's cash (managers): leaves the day's caisse
+      if (isManager(user.role) && !tradeInOf) {
+        await payFromDrawer(tx, { amount: body.paye_caisse, label: `Achat ${created.phone_id} — ${created.marque} ${created.model}`, storeId: created.store_id, userId: user.id })
+      }
       if (!tradeInOf) return { data: created, chain: null }
       const soldIds = Array.isArray(body.tradein_for) ? (body.tradein_for as unknown[]).map(String) : undefined
       const sale = await phonesSoldWithTradeIn(tx, tradeInOf, soldIds)

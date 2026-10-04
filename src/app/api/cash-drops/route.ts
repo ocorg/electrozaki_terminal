@@ -6,7 +6,8 @@ import { withNotify } from '@/lib/realtime'
 
 async function POST_(request: NextRequest) {
   try {
-    const user = await requireActiveUser()
+    // Free-text money in ("Autre"): managers only since 2026-10-04 — employees use the guided entries
+    const user = await requireActiveUser(MANAGERS)
     const body = await request.json() as { amount: number; reason: string; store_id: string }
     const amount = Number(body.amount)
     if (!(amount > 0)) throw new HttpError(400, 'Montant invalide')

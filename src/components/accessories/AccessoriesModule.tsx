@@ -49,6 +49,7 @@ interface AccessoryForm {
   prix_achat:            string
   prix_vente_recommande: string
   prix_vente_minimum:    string
+  paye_caisse:           string   // purchase / restock paid with the day's drawer cash
 }
 
 const EMPTY_FORM: AccessoryForm = {
@@ -62,6 +63,7 @@ const EMPTY_FORM: AccessoryForm = {
   prix_achat:             '',
   prix_vente_recommande:  '',
   prix_vente_minimum:     '',
+  paye_caisse:            '',
 }
 
 interface AccessoriesModuleProps {
@@ -161,6 +163,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
       prix_achat:            acc.prix_achat != null ? String(acc.prix_achat) : '',
       prix_vente_recommande: acc.prix_vente_recommande != null ? String(acc.prix_vente_recommande) : '',
       prix_vente_minimum:    acc.prix_vente_minimum != null ? String(acc.prix_vente_minimum) : '',
+      paye_caisse:           '',
     })
     setFormOpen(true)
   }
@@ -185,6 +188,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
         prix_achat:            form.prix_achat            ? parseFloat(form.prix_achat)            : null,
         prix_vente_recommande: form.prix_vente_recommande ? parseFloat(form.prix_vente_recommande) : null,
         prix_vente_minimum:    form.prix_vente_minimum    ? parseFloat(form.prix_vente_minimum)    : null,
+        ...(canFinancials && form.paye_caisse ? { paye_caisse: parseFloat(form.paye_caisse) } : {}),
       }
 
       const res = await fetch('/api/accessories', {
@@ -644,6 +648,13 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
                       onChange={e => setF(f.key as keyof typeof EMPTY_FORM, e.target.value)} />
                   </Field>
                 ))}
+              </div>
+              <div className="mt-4">
+                <Field label={editAcc ? 'Réappro payé en espèces de la caisse (DH) — laisser vide si non' : 'Achat payé en espèces de la caisse (DH) — laisser vide si non'}>
+                  <input type="number" min={0} step={0.01} className={inputClass} placeholder="0"
+                    value={form.paye_caisse} onChange={e => setF('paye_caisse', e.target.value)} />
+                </Field>
+                <p className="text-xs text-ez-faint mt-1">La sortie de caisse se fait toute seule (plus besoin de la saisir dans Dépenses).</p>
               </div>
             </div>
           )}

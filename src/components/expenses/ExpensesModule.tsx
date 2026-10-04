@@ -290,7 +290,8 @@ export default function ExpensesModule({ storeId }: ExpensesModuleProps) {
         <div className="space-y-4">
           <Field label={t(isAr, 'common.category')} required>
             <div className="grid grid-cols-4 gap-2">
-              {dynamicCategories.map(cat => {
+              {/* stock purchases are entered on the phone / accessory itself */}
+              {dynamicCategories.filter(cat => cat.code !== 'marchandises').map(cat => {
               const active = form.categorie === cat.code
               const Icon   = getCatIcon(cat.code)
               return (
