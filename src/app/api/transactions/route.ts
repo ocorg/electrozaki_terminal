@@ -69,6 +69,18 @@ async function POST_(request: NextRequest) {
     const deviceType = body.device_type as 'telephone' | 'laptop' | 'accessoire'
     const soldQty    = Number(body.qty) || 1
 
+    // Selling on credit / with a down payment is a manager's decision
+    // (owner, 2026-10-04) — employees sell paid in full only
+    const onCredit = body.payment_method === 'credit' || Number(body.avance) > 0
+    if (onCredit && !isManager(user.role)) throw new HttpError(403, 'Vente à crédit ou avec avance : réservée aux gérants')
+    // A phone paid in several times: the sale + its credit file (dossier)
+    const dossier = body.dossier && typeof body.dossier === 'object' ? body.dossier as { phone_remis?: boolean } : null
+    if (dossier) {
+      if (!isManager(user.role)) throw new HttpError(403, 'Paiement en plusieurs fois : réservé aux gérants')
+      if (deviceType !== 'telephone') throw new HttpError(400, 'Un dossier se crée pour un téléphone')
+      if (!body.client_id) throw new HttpError(400, 'Client obligatoire pour un paiement en plusieurs fois')
+    }
+
     // Warranty: device's own warranty_months, 6 by default
     let warrantyMonths = 6
     if (deviceType === 'telephone') {
@@ -144,7 +156,33 @@ async function POST_(request: NextRequest) {
       })
 
       if (deviceType === 'telephone') {
-        await tx.phones.update({ where: { phone_id: txn.device_id }, data: { status: 'vendu', updated_by: user.id } })
+        // With a file, a phone the client doesn't take yet stays reserved until discharge
+        const reserved = !!dossier && dossier.phone_remis === false
+        await tx.phones.update({ where: { phone_id: txn.device_id }, data: { status: reserved ? 'reserve' : 'vendu', updated_by: user.id } })
+        if (dossier) {
+          const open = await tx.phone_credit_sales.findFirst({ where: { phone_id: txn.device_id, statut: 'en_cours', is_deleted: false } })
+          if (open) throw new HttpError(400, 'Ce téléphone a déjà un dossier en cours')
+          const client  = await tx.clients.findUnique({ where: { client_id: txn.client_id! }, select: { nom: true, telephone: true } })
+          const total   = Number(txn.prix_vente)
+          const avance  = Number(txn.avance ?? 0)
+          const reprise = Number(txn.valeur_echange ?? 0)
+          if (total - reprise - avance <= 0.01) throw new HttpError(400, 'Rien à payer plus tard : faites une vente normale')
+          await tx.phone_credit_sales.create({
+            data: {
+              phone_id: txn.device_id, txn_id: txn.txn_id, client_id: txn.client_id,
+              client_name: client?.nom ?? 'Client', client_tel: client?.telephone ?? null,
+              montant_total: total, avance_vente: avance, montant_paye: avance, statut: 'en_cours',
+              phone_remis: !reserved, notes: txn.notes, store_id: txn.store_id, created_by: user.id,
+              has_reprise: reprise > 0,
+              ...(reprise > 0 && {
+                reprise_marque: txn.marque_echange ?? 'Reprise', reprise_model: txn.model_echange ?? 'Reprise',
+                reprise_valeur: reprise, reprise_imei: txn.imei_echange,
+                // handed over at the POS: it is recorded in stock right after the sale
+                reprise_remise: true, reprise_remise_at: new Date(),
+              }),
+            },
+          })
+        }
       } else if (deviceType === 'laptop') {
         await tx.laptops.update({ where: { laptop_id: txn.device_id }, data: { status: 'vendu', updated_by: user.id } })
       } else if (deviceType === 'accessoire') {

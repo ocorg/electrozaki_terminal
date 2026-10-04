@@ -675,6 +675,9 @@ model phone_credit_sales {
   reprise_phone_id                              String?
   phone_credit_payments                         phone_credit_payments[]
   echeancier_base                               Decimal                 @default(0) @db.Decimal(10, 2)
+  txn_id                                        String?
+  client_id                                     String?
+  avance_vente                                  Decimal                 @default(0) @db.Decimal(10, 2)
   phone_credit_echeances                        phone_credit_echeances[]
   users_phone_credit_sales_created_byTousers    user_profiles?          @relation("phone_credit_sales_created_byTousers", fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
   users_phone_credit_sales_discharged_byTousers user_profiles?          @relation("phone_credit_sales_discharged_byTousers", fields: [discharged_by], references: [id], onDelete: NoAction, onUpdate: NoAction)

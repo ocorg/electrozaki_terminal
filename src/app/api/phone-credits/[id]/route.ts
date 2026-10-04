@@ -79,6 +79,10 @@ async function PATCH_(req: NextRequest, { params }: { params: { id: string } }) 
 
       if (!Object.keys(update).length) throw new HttpError(400, 'Aucune modification')
       await tx.phone_credit_sales.update({ where: { credit_id: creditId }, data: update })
+      // The file follows a POS sale: the agreed total is that sale's price
+      if (before.txn_id && update.montant_total !== undefined) {
+        await tx.transactions.update({ where: { txn_id: before.txn_id }, data: { prix_vente: total, updated_by: user.id } })
+      }
       const data = await recomputeCredit(tx, creditId)
       return { before, data: { ...data, motif } }
     })

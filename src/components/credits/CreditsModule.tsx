@@ -69,7 +69,7 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
   const { language } = useLanguageStore()
   const isAr         = language === 'ar'
 
-  const [tab, setTab]           = useState<'credits' | 'phones' | 'imports'>('credits')
+  const [tab, setTab]           = useState<'credits' | 'phones' | 'imports'>('phones')
   // Same cached client list as the Clients and POS screens
   const clientsQ = useApi<ClientWithCredit[]>(`/api/clients?store_id=${storeId}`)
   const importsQ = useApi<CreditImport[]>(`/api/credit-imports?store_id=${storeId}`)
@@ -324,8 +324,8 @@ export default function CreditsModule({ storeId }: CreditsModuleProps) {
         {/* Tabs */}
         <div className="flex gap-1 p-1 bg-ez-muted rounded-2xl w-fit">
           {[
-            { key: 'credits', label: isAr ? 'الذمم الحالية' : 'Crédits en cours' },
-            { key: 'phones',  label: isAr ? 'البيع بالتقسيط' : 'Ventes à crédit' },
+            { key: 'phones',  label: isAr ? 'ملفات الهواتف' : 'Dossiers téléphones' },
+            { key: 'credits', label: isAr ? 'حسابات الزبناء' : 'Comptes clients' },
             { key: 'imports', label: isAr ? 'استيراد تاريخي' : 'Import historique' },
           ].map(t => (
             <button key={t.key} onClick={() => setTab(t.key as 'credits' | 'phones' | 'imports')}

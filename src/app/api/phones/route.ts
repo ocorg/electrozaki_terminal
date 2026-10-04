@@ -111,6 +111,11 @@ async function POST_(request: NextRequest) {
       const soldIds = Array.isArray(body.tradein_for) ? (body.tradein_for as unknown[]).map(String) : undefined
       const sale = await phonesSoldWithTradeIn(tx, tradeInOf, soldIds)
       const chain = await attachTradeIn(tx, { tradeInId: created.phone_id, soldPhoneIds: sale.phoneIds, value: sale.value, userId: user.id })
+      // The sale has a credit file: this is its trade-in (not created again at discharge)
+      await tx.phone_credit_sales.updateMany({
+        where: { txn_id: tradeInOf, has_reprise: true, reprise_phone_id: null, is_deleted: false },
+        data:  { reprise_phone_id: created.phone_id, reprise_remise: true },
+      })
       return { data: chain ? await tx.phones.findUniqueOrThrow({ where: { phone_id: created.phone_id } }) : created, chain }
     })
 

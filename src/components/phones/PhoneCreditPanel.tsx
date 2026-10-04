@@ -333,28 +333,13 @@ export default function PhoneCreditPanel({
   const needsSoldFix = hasCredit && !!credit.discharged_at && credit.statut !== 'annule' && !!credit.phone_status && credit.phone_status !== 'vendu'
   const canDischarge = (isFullyPaid && !credit.discharged_at && credit.statut !== 'annule') || needsSoldFix
 
-  // ── Phone disponible sans crédit → proposer ──────────────────────
+  // A credit sale starts at the POS ("Plusieurs fois", managers) since
+  // 2026-10-04 — here the file is only consulted and followed.
   if (!hasCredit && isAvailable) {
     return (
-      <>
-        <button
-          onClick={() => setShowNewCreditModal(true)}
-          className="mt-3 w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-gold/30 text-gold text-sm font-medium hover:bg-gold/10 transition-all duration-200"
-        >
-          <CreditCard className="w-4 h-4" />
-          Vendre à crédit / Avance
-        </button>
-
-        {showNewCreditModal && (
-          <NewCreditModal
-            form={creditForm}
-            setForm={setCreditForm}
-            onConfirm={handleCreateCredit}
-            onClose={() => setShowNewCreditModal(false)}
-            submitting={submitting}
-          />
-        )}
-      </>
+      <p className="mt-3 text-xs text-white/50 text-center px-3 py-4">
+        Pas de dossier pour ce téléphone. Pour le vendre en plusieurs fois : <b className="text-white/80">Point de vente → Plusieurs fois</b>.
+      </p>
     )
   }
 

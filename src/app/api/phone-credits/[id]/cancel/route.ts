@@ -30,6 +30,13 @@ async function POST_(req: NextRequest, { params }: { params: { id: string } }) {
       const phone = await tx.phones.findUnique({ where: { phone_id: before.phone_id }, select: { status: true } })
       const phoneBack = !!phone && ['reserve', 'vendu'].includes(phone.status)
       if (phoneBack) await tx.phones.update({ where: { phone_id: before.phone_id }, data: { status: 'disponible', updated_by: user.id } })
+      // The file follows a POS sale: the sale is cancelled with it
+      if (before.txn_id) {
+        await tx.transactions.updateMany({
+          where: { txn_id: before.txn_id, voided: false },
+          data:  { voided: true, voided_at: new Date(), voided_by: user.id, voided_reason: `Dossier ${params.id} annulé : ${motif}` },
+        })
+      }
       // The schedule has no meaning any more
       await tx.phone_credit_echeances.deleteMany({ where: { credit_id: params.id } })
       return { before, after, phoneBack }

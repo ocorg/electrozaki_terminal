@@ -70,7 +70,8 @@ async function computeCaisseTotals(store_id: string, date: Date): Promise<Caisse
     // Repayments on imported legacy credit balances (Crédits > Imports tab)
     prisma.credit_import_payments.findMany({ where: { store_id, date_paiement: date }, select: byMethod }),
     prisma.phone_credit_sales.findMany({
-      where:  { store_id, has_reprise: true, reprise_phone_id: { not: null }, discharged_at: { gte: date, lt: nextDay } },
+      // files born from a POS sale carry their trade-in on the sale itself
+      where:  { store_id, txn_id: null, has_reprise: true, reprise_phone_id: { not: null }, discharged_at: { gte: date, lt: nextDay } },
       select: { reprise_valeur: true },
     }),
     // Returns paid back today (the sale itself stays in its own day). A store

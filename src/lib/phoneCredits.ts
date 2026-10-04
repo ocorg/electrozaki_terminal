@@ -8,7 +8,8 @@ type Tx = Prisma.TransactionClient
 export async function recomputeCredit(tx: Tx, creditId: string) {
   const credit = await tx.phone_credit_sales.findUniqueOrThrow({ where: { credit_id: creditId } })
   const agg = await tx.phone_credit_payments.aggregate({ where: { credit_id: creditId }, _sum: { montant: true } })
-  const paid = Number(agg._sum.montant ?? 0)
+  // the down payment taken on the sale itself + the payments made since
+  const paid = Number(credit.avance_vente ?? 0) + Number(agg._sum.montant ?? 0)
   const owed = Number(credit.montant_total) - Number(credit.reprise_valeur ?? 0)
   return tx.phone_credit_sales.update({
     where: { credit_id: creditId },

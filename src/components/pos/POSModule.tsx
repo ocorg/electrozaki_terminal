@@ -65,6 +65,7 @@ interface SaleForm {
   prix_vente_echange?:      number
   prix_min_echange?:        number
   echange_vers_reparation?: boolean
+  phone_remis?:             boolean   // paid in several times: the client takes the phone now
 }
 
 const EMPTY_SALE: SaleForm = {
@@ -80,6 +81,7 @@ const EMPTY_SALE: SaleForm = {
   battery_echange: undefined, ram_echange: '',
   prix_vente_echange: undefined, prix_min_echange: undefined,
   echange_vers_reparation: false,
+  phone_remis: true,
 }
 
 interface POSModuleProps {
@@ -328,7 +330,13 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
 
   const totalVente     = cart.reduce((s, c) => s + c.prix_vente_saisi * (c.qty ?? 1), 0)
   const fariq          = computeFariq(totalVente, saleForm.avance, saleForm.type_operation === 'echange' ? saleForm.valeur_echange : 0)
-  const displayFariq   = (saleForm.payment_method === 'avance' || saleForm.payment_method === 'credit') ? fariq : 0
+  // One way to pay later (owner, 2026-10-04): "Plusieurs fois" = optional
+  // down payment now, the rest later. Managers only. A phone gets a credit
+  // file (dossier); accessories go on the client's account.
+  const canCredit      = user?.role === 'gerant' || user?.role === 'proprietaire'
+  const severalTimes   = saleForm.payment_method === 'credit'
+  const cartPhones     = cart.filter(i => i._type === 'phone')
+  const displayFariq   = severalTimes ? fariq : 0
   const statutPaiement = computeStatutPaiement(displayFariq)
   // What the client hands over: the cart minus the trade-in value (a 5 000 phone
   // with a 2 000 trade-in = 3 000 to pay); negative when the trade-in is worth more
@@ -337,8 +345,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
   const avoirUsed      = avoir ? Math.min(avoir.solde, Math.max(totalVente - valeurEchange, 0)) : 0
   const netAPayer      = totalVente - valeurEchange - avoirUsed
   const aEncaisser     =
-    saleForm.payment_method === 'credit' ? 0
-    : saleForm.payment_method === 'avance' ? saleForm.avance
+    severalTimes ? (saleForm.avance || 0)
     : Math.max(netAPayer, 0)
   const montantRendu   =
     saleForm.payment_method === 'especes' && saleForm.montant_especes > 0 && saleForm.montant_especes > netAPayer
@@ -353,14 +360,23 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
     if (saleForm.payment_method === 'virement' && !saleForm.payment_ref) {
       showError(isAr ? 'مرجع التحويل مطلوب' : 'Référence virement obligatoire'); return
     }
-    if (saleForm.payment_method === 'avance' && saleForm.avance > 0 && !saleForm.avance_sub_method) {
-      showError(isAr ? 'يرجى تحديد طريقة دفع التسبيق' : "Précisez le mode de paiement de l'avance"); return
-    }
-    if (avoir && (saleForm.payment_method === 'credit' || saleForm.payment_method === 'avance')) {
-      showError(isAr ? 'لا يمكن استعمال الرصيد مع البيع بالدين أو التسبيق' : "Un avoir s'utilise avec un paiement comptant (espèces, virement ou mixte)"); return
-    }
-    if (saleForm.payment_method === 'credit' && !saleForm.client_nom.trim()) {
-      showError(isAr ? 'اسم العميل مطلوب للبيع الآجل' : 'Nom du client obligatoire pour une vente à crédit'); return
+    if (severalTimes) {
+      if (!canCredit) { showError('Paiement en plusieurs fois : réservé aux gérants'); return }
+      if (saleForm.avance > 0 && !saleForm.avance_sub_method) {
+        showError(isAr ? 'يرجى تحديد طريقة دفع التسبيق' : "Précisez le mode de paiement de l'avance"); return
+      }
+      if (avoir) {
+        showError(isAr ? 'لا يمكن استعمال الرصيد مع البيع بالدين أو التسبيق' : "Un avoir s'utilise avec un paiement comptant (espèces, virement ou mixte)"); return
+      }
+      if (!saleForm.client_nom.trim() || saleForm.client_tel.length < 10) {
+        showError(isAr ? 'اسم العميل ورقم هاتفه مطلوبان' : 'Nom et téléphone du client obligatoires pour un paiement en plusieurs fois'); return
+      }
+      if (cartPhones.length > 1) {
+        showError('Un seul téléphone par paiement en plusieurs fois (un dossier par téléphone)'); return
+      }
+      if (fariq <= 0) {
+        showError("Rien ne reste à payer : choisissez Espèces ou Virement"); return
+      }
     }
 
     setSubmitting(true)
@@ -380,16 +396,25 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
       // PRORATED across rows by each item's share of the cart — stamping the full amount on
       // every row would make caisse count the same cash multiple times for one payment.
       let allocAvance = 0, allocEspeces = 0, allocCarte = 0, allocEchange = 0, allocAvoir = 0
-      for (let i = 0; i < cart.length; i++) {
-        const item   = cart[i]
-        const isLast = i === cart.length - 1
+      // Paid in several times: the phone first, so it takes the trade-in and the down payment
+      const items = severalTimes ? [...cart].sort((x, y) => Number(y._type === 'phone') - Number(x._type === 'phone')) : cart
+      const echangeTotal = saleForm.type_operation === 'echange' ? saleForm.valeur_echange : 0
+      for (let i = 0; i < items.length; i++) {
+        const item   = items[i]
+        const isLast = i === items.length - 1
         const itemPv = item.prix_vente_saisi * (item.qty ?? 1)
         const share  = totalVente > 0 ? itemPv / totalVente : 0
 
-        const itemAvance  = isLast ? round2(saleForm.avance          - allocAvance ) : round2(saleForm.avance          * share)
+        let itemAvance    = isLast ? round2(saleForm.avance          - allocAvance ) : round2(saleForm.avance          * share)
         const itemEspeces = isLast ? round2(saleForm.montant_especes - allocEspeces) : round2(saleForm.montant_especes * share)
         const itemCarte   = isLast ? round2(saleForm.montant_carte   - allocCarte  ) : round2(saleForm.montant_carte   * share)
-        const itemEchange = isLast ? round2(saleForm.valeur_echange  - allocEchange) : round2(saleForm.valeur_echange  * share)
+        let itemEchange   = isLast ? round2(saleForm.valeur_echange  - allocEchange) : round2(saleForm.valeur_echange  * share)
+        if (severalTimes) {
+          // phone first (the cart is ordered so below), then the other items
+          itemEchange = round2(Math.min(Math.max(echangeTotal - allocEchange, 0), itemPv))
+          itemAvance  = round2(Math.min(Math.max(saleForm.avance - allocAvance, 0), itemPv - itemEchange))
+        }
+        const itemReste = round2(itemPv - itemAvance - itemEchange)
         const itemAvoir   = isLast ? round2(avoirUsed                - allocAvoir  ) : round2(avoirUsed                * share)
         allocAvoir   += itemAvoir
         allocAvance  += itemAvance
@@ -407,7 +432,9 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
             type_operation:  saleForm.type_operation,
             qty:             item.qty ?? 1,
             prix_vente:      itemPv,
-            payment_method:  saleForm.payment_method === 'avance' ? (saleForm.avance_sub_method as PaymentMethod) : saleForm.payment_method,
+            payment_method:  severalTimes && itemAvance > 0 ? (saleForm.avance_sub_method as PaymentMethod) : saleForm.payment_method,
+            // a phone with something left to pay gets its credit file with the sale
+            dossier:         severalTimes && item._type === 'phone' && itemReste > 0.01 ? { phone_remis: saleForm.phone_remis !== false } : undefined,
             avance:          itemAvance  || 0,
             payment_ref:     saleForm.payment_ref     || undefined,
             montant_especes: itemEspeces || 0,
@@ -454,27 +481,6 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
         montant_rendu:   montantRendu > 0 ? montantRendu : undefined,
       })
       showSuccess(isAr ? 'تمت عملية البيع ✓' : 'Vente enregistrée ✓')
-
-      // Register debt in Credits module for آجل and تسبيق sales with remaining balance
-      const debtAmount = Math.max(0, totalVente - (saleForm.avance || 0))
-      if (
-        clientId &&
-        debtAmount > 0 &&
-        (saleForm.payment_method === 'credit' || saleForm.payment_method === 'avance')
-      ) {
-        fetch('/api/credit-imports', {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            client_id:    clientId,
-            store_id:     storeId,
-            montant_du:   debtAmount,
-            description:  cart.map(i => i._displayName).join(' + ').slice(0, 200),
-            date_origine: getBusinessDate(),
-            notes:        `POS — ${saleForm.payment_method === 'credit' ? 'Vente à crédit' : 'Avance partielle'} — Réf: ${lastTxnId}`,
-          }),
-        }).catch(() => { /* non-blocking — sale already recorded */ })
-      }
 
       // Remove sold phones/laptops from grid instantly — no re-fetch needed
       const sold = new Set(cart.filter(i => i._type !== 'accessory').map(i => i._id))
@@ -907,9 +913,8 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
               {([
                 { v: 'especes',    fr: 'Espèces',  ar: 'نقداً'       },
                 { v: 'virement', fr: 'Virement',  ar: 'تحويل بنكي' },
-                { v: 'avance', fr: 'Avance',    ar: 'تسبيق'      },
                 { v: 'mixte', fr: 'Mixte',     ar: 'مختلط'      },
-                { v: 'credit',   fr: 'À crédit',  ar: 'آجل'        },
+                ...(canCredit ? [{ v: 'credit', fr: 'Plusieurs fois', ar: 'بالتقسيط' }] : []),
               ] as { v: PaymentMethod; fr: string; ar: string }[]).map(({ v, fr, ar }) => (
                 <button key={v} type="button" onClick={() => setSale('payment_method', v)}
                   className="py-2 rounded-xl text-xs font-bold border transition-all"
@@ -923,23 +928,38 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
               ))}
             </div>
 
-            {saleForm.payment_method === 'credit' && (
-              <div className="mt-2 p-3 bg-purple-50 border border-purple-200 rounded-xl">
+            {severalTimes && (
+              <div className="mt-2 p-3 bg-purple-50 border border-purple-200 rounded-xl space-y-2">
                 <p className="text-xs font-medium text-purple-700">
-                  {isAr ? 'سيُسجَّل المبلغ كاملاً كذمة على العميل — لا شيء يُحصَّل الآن' : "La totalité sera enregistrée comme créance client — rien n'est encaissé maintenant"}
+                  {cartPhones.length
+                    ? 'Le téléphone aura un dossier (versements, échéancier, rappels). Les accessoires vont sur le compte du client.'
+                    : 'Le reste à payer va sur le compte du client.'}
                 </p>
+                {cartPhones.length > 0 && (
+                  <div className="grid grid-cols-2 gap-2">
+                    {[{ v: true, l: 'Le client le prend' }, { v: false, l: 'On le garde (réservé)' }].map(o => (
+                      <button key={String(o.v)} type="button" onClick={() => setSale('phone_remis', o.v)}
+                        className="py-2 rounded-xl text-xs font-bold border transition-all"
+                        style={{
+                          backgroundColor: (saleForm.phone_remis !== false) === o.v ? primary : 'white',
+                          borderColor:     (saleForm.phone_remis !== false) === o.v ? primary : '#E8E5DE',
+                          color:           (saleForm.phone_remis !== false) === o.v ? 'white' : '#6B6860',
+                        }}>{o.l}</button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
             {saleForm.payment_method === 'virement' && (
               <input className={`${inputClass} mt-2`} placeholder={t(isAr, 'common.transferReference')}
                 value={saleForm.payment_ref} onChange={e => setSale('payment_ref', e.target.value)} />
             )}
-            {saleForm.payment_method === 'avance' && (
+            {severalTimes && (
               <div className="mt-2 space-y-2">
                 <input type="number" min={0} step={0.01} inputMode="decimal" className={inputClass}
-                  placeholder={isAr ? 'مبلغ التسبيق (درهم)' : 'Montant avance (MAD)'}
+                  placeholder={isAr ? 'مبلغ التسبيق (درهم)' : "Avance versée aujourd'hui (MAD) — 0 si rien"}
                   value={saleForm.avance || ''} onChange={e => setSale('avance', Number(e.target.value))} />
-                <div>
+                <div className={saleForm.avance > 0 ? '' : 'hidden'}>
                   <p className="text-xs font-bold text-ez-subtle uppercase tracking-widest mb-1.5">
                     {isAr ? 'طريقة دفع التسبيق *' : "Paiement de l'avance *"}
                   </p>
@@ -976,12 +996,12 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
             )}
 
             {/* Inline client — آجل or تسبيق only */}
-            {(saleForm.payment_method === 'credit' || saleForm.payment_method === 'avance') && (
+            {severalTimes && (
               <div className="mt-3 p-3 bg-white border border-ez-border rounded-xl space-y-2 animate-fade-in">
                 <p className="text-xs font-bold text-ez-subtle uppercase tracking-widest flex items-center gap-1.5">
                   <User className="w-3 h-3" />
                   {t(isAr, 'common.client')}
-                  {saleForm.payment_method === 'credit' && (
+                  {severalTimes && (
                     <span className="text-purple-600 font-bold normal-case tracking-normal">
                       {'— '}{isAr ? 'مطلوب' : 'requis'}
                     </span>
@@ -995,7 +1015,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                 {/* Name with live autocomplete */}
                 <div className="relative">
                   <input className={inputClass}
-                    placeholder={saleForm.payment_method === 'credit' ? (t(isAr, 'common.nameRequired')) : (isAr ? 'الاسم (اختياري)' : 'Nom (optionnel)')}
+                    placeholder={t(isAr, 'common.nameRequired')}
                     value={saleForm.client_nom}
                     onChange={e => handleClientNameChange(e.target.value)}
                     onBlur={() => setTimeout(() => setShowClientDrop(false), 150)}
