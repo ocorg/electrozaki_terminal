@@ -409,14 +409,9 @@ const MODULES = {
 
     await api('/api/transactions', { method: 'POST', body: sale })
     const eod = await api('/api/caisse', { method: 'PATCH', body: { caisse_id: open.data?.data?.caisse_id, solde_reel: 280 } })
-    check('EOD submit: écart −7.50, en_attente_cloture', eod.status === 200 && eod.data?.data?.ecart === -7.5 && eod.data?.data?.status === 'en_attente_cloture', eod.data?.data && { e: eod.data.data.ecart, s: eod.data.data.status })
-
-    const hist = await api(`/api/bzg/caisse?status=en_attente_cloture&date=${today}`)
-    check('BZG history lists the pending caisse', hist.data?.data?.some(r => r.caisse_id === open.data?.data?.caisse_id), hist.status)
-
-    const appr = await api('/api/bzg/caisse/eod', { method: 'PATCH', body: { caisse_id: open.data?.data?.caisse_id, action: 'approve' } })
+    check('EOD: écart −7.50, closed in one step', eod.status === 200 && eod.data?.data?.ecart === -7.5 && eod.data?.data?.status === 'cloturee', eod.data?.data && { e: eod.data.data.ecart, s: eod.data.data.status })
     const after = await api(`/api/caisse?store_id=${STORE}&date=${today}`)
-    check('approve → cloturee, frozen totals returned', appr.status === 200 && after.data?.data?.status === 'cloturee' && after.data?.data?.solde_theorique === 287.5, after.data?.data && { s: after.data.data.status, t: after.data.data.solde_theorique })
+    check('closed caisse returns its frozen totals', after.data?.data?.status === 'cloturee' && after.data?.data?.solde_theorique === 287.5, after.data?.data && { s: after.data.data.status, t: after.data.data.solde_theorique })
   },
 }
 

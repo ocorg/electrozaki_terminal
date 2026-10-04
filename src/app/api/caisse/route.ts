@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
-import { json, handleError, requireUser, requireActiveUser, dateOnly, HttpError } from '@/lib/api'
+import { json, handleError, requireUser, requireActiveUser, dateOnly, todayDate, HttpError } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { withNotify } from '@/lib/realtime'
 
@@ -173,7 +173,7 @@ export async function GET(request: NextRequest) {
     await requireUser()
     const { searchParams } = new URL(request.url)
     const store_id = searchParams.get('store_id')
-    const date     = dateOnly(searchParams.get('date') || new Date().toISOString().slice(0, 10))!
+    const date     = dateOnly(searchParams.get('date')) ?? todayDate()
     if (!store_id) throw new HttpError(400, 'store_id requis')
 
     const caisse = await prisma.caisse.findFirst({ where: { store_id, date } })
@@ -217,7 +217,7 @@ async function POST_(request: NextRequest) {
     const user     = await requireActiveUser()
     const body     = await request.json()
     const store_id = body.store_id ?? user.store_id
-    const date     = dateOnly(new Date().toISOString().slice(0, 10))!
+    const date     = todayDate()   // business day (rolls at 4 AM), like the screen that reads it
     if (!store_id) throw new HttpError(400, 'store_id manquant')
 
     const existing = await prisma.caisse.findFirst({ where: { store_id, date }, select: { caisse_id: true, status: true } })
@@ -246,7 +246,7 @@ async function POST_(request: NextRequest) {
   }
 }
 
-// EOD — submit closure for approval
+// EOD — closing is one step (owner, 2026-10-04): the count closes the day, no approval after it
 async function PATCH_(request: NextRequest) {
   try {
     const user = await requireActiveUser()
@@ -277,9 +277,11 @@ async function PATCH_(request: NextRequest) {
         total_fournisseurs: totals.total_fournisseurs,
         solde_theorique,
         payment_breakdown: totals.payment_breakdown,
-        status:            'en_attente_cloture',
+        status:            'cloturee',
         eod_submitted_at:  new Date(),
         closed_by:         user.id,
+        approved_by:       user.id,
+        approved_at:       new Date(),
         notes:             notes || null,
       },
     })
@@ -288,13 +290,13 @@ async function PATCH_(request: NextRequest) {
       store_id:     current.store_id,
       user_id:      user.id,
       user_name:    user.display_name,
-      action_type:  'soumission_cloture',
+      action_type:  'validation_cloture',
       module:       'caisse',
       record_id:    caisse_id,
       before_state: current,
       after_state:  data,
       ip_address:   getIpFromRequest(request),
-      notes:        `Clôture soumise — Réel : ${solde_reel} MAD | Écart : ${ecart} MAD`,
+      notes:        `Caisse clôturée — Réel : ${solde_reel} MAD | Écart : ${ecart} MAD`,
     })
 
     return json({ data })
@@ -303,8 +305,8 @@ async function PATCH_(request: NextRequest) {
   }
 }
 
-// EOD approval/rejection lives solely in /api/bzg/caisse/eod (PATCH) — it's the only path that
-// role-checks AND writes an activity_log entry, and it supports both approve and reject.
+// /api/bzg/caisse/eod (PATCH) only serves the closings submitted before the one-step rule
+// (status en_attente_cloture): a manager approves or rejects them there.
 
 export const POST = withNotify(POST_)
 export const PATCH = withNotify(PATCH_)

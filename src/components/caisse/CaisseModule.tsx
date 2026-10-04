@@ -134,7 +134,7 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
-      showSuccess(isAr ? 'تم إرسال طلب الإغلاق ✓' : 'Clôture soumise pour approbation ✓')
+      showSuccess(isAr ? 'تم إغلاق الصندوق ✓' : 'Caisse clôturée ✓')
       setEodOpen(false)
       setEodAmount('')
       setEodNotes('')
@@ -318,7 +318,7 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
             {isAr ? 'صندوق الدفع مغلق' : 'Caisse clôturée'}
           </h2>
           <p className="text-ez-subtle text-sm">
-            {isAr ? 'تمت الموافقة على إغلاق اليوم' : 'La clôture du jour a été approuvée'}
+            {isAr ? 'تم إغلاق صندوق اليوم' : 'La caisse du jour est clôturée'}
           </p>
         </div>
 
@@ -609,7 +609,7 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
               loading={submitting}
               disabled={!eodAmount}
             >
-              {isAr ? 'إرسال للموافقة' : 'Soumettre pour approbation'}
+              {isAr ? 'إغلاق الصندوق' : 'Clôturer la caisse'}
             </Btn>
           </div>
         </div>

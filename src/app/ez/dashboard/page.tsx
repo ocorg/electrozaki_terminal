@@ -82,7 +82,7 @@ function periodDates(p: Period): { start: string; end: string } {
   const today = getBusinessDate()
   if (p === 'day')  return { start: today, end: today }
   if (p === 'week') {
-    const d = new Date(); d.setDate(d.getDate() - 6)
+    const d = new Date(today + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() - 6)
     return { start: d.toISOString().split('T')[0], end: today }
   }
   return { start: today.slice(0, 7) + '-01', end: today }
@@ -181,6 +181,13 @@ export default function EZDashboard() {
     user && canFin ? `/api/dashboard?store_id=${STORE_ID}&start=${pStart}&end=${pEnd}` : null,
     { select: json => json },
   )
+  // The money figures come from the Analyse financière calculation — one source
+  // for both screens (owner, 2026-10-04): repairs, returns and The Void included.
+  type Fin = {
+    totals: { revenue: number; gross: number; net: number; tickets: number; basket: number | null }
+    series: { key: string; revenue: number; gross: number; net: number; n: number }[]
+  }
+  const finQ = useApi<Fin>(user && canFin ? `/api/analytics?store_id=${STORE_ID}&from=${pStart}&to=${pEnd}` : null)
   const loading = !dashQ.data && !dashQ.error
   const [manualRefresh, setManualRefresh] = useState(false)
   const [lastSync, setLastSync] = useState<Date | null>(null)
@@ -259,17 +266,21 @@ export default function EZDashboard() {
 
     // ── Chart ────────────────────────────────────────────────
     const { start: s, end: e } = periodDates(period)
-    const chart_data = buildChart(periodTxns, exps, costMap, s, e, returns)
+    const own = buildChart(periodTxns, exps, costMap, s, e, returns)
+    const fin = finQ.data
+    const chart_data = fin && fin.series.length === own.length
+      ? own.map((pt, i) => ({ ...pt, revenue: fin.series[i].revenue, profit: fin.series[i].gross, net: fin.series[i].net }))
+      : own
 
     return {
-      ca_period: ca, benefice_brut: bBrut, benefice_net: bNet,
-      nb_ventes: nb, panier_moyen: moy,
+      ca_period: fin ? fin.totals.revenue : ca, benefice_brut: fin ? fin.totals.gross : bBrut, benefice_net: fin ? fin.totals.net : bNet,
+      nb_ventes: fin ? fin.totals.tickets : nb, panier_moyen: fin ? fin.totals.basket ?? 0 : moy,
       active_repairs: repairs.length, repair_counts,
       low_stock_count: lowItems.length, low_stock_items: lowItems,
       pending_credits, recent_txns, chart_data,
       payment_breakdown: breakdown,
     }
-  }, [dashQ.data, period, canFin])
+  }, [dashQ.data, finQ.data, period, canFin])
 
   const periodLabel = {
     day:   isAr ? 'اليوم'        : "Aujourd'hui",

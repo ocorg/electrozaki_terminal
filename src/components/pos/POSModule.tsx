@@ -155,6 +155,8 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
   const [clientSuggestions,  setClientSuggestions]  = useState<{ client_id: string; nom: string; telephone: string }[]>([])
   const [showClientDrop,     setShowClientDrop]      = useState(false)
   const [selectedClientId,   setSelectedClientId]    = useState<string | null>(null)
+  // Cash sales: the client is never asked ("client de passage"); it can be added on demand
+  const [showClient,         setShowClient]          = useState(false)
   // All the store's clients (small list): name suggestions appear as you type
   const clientsQ = useApi<{ client_id: string; nom: string; telephone: string; telephone_2?: string | null }[]>(`/api/clients?store_id=${storeId}`)
 
@@ -379,6 +381,11 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
       }
     }
 
+    // An optional client is a real one: a name and a full number, or nothing at all
+    if (!severalTimes && !selectedClientId && (saleForm.client_nom.trim() || saleForm.client_tel) && (!saleForm.client_nom.trim() || saleForm.client_tel.length < 10)) {
+      showError('Client : nom et numéro complets, ou cliquez « Client de passage »'); return
+    }
+
     setSubmitting(true)
     try {
       let clientId: string | undefined = selectedClientId ?? undefined
@@ -504,7 +511,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
           sold_phone_ids:          cart.filter(i => i._type === 'phone').map(i => i._id),
         })
       }
-      setCart([]); setPriceInputs({}); setSaleForm({ ...EMPTY_SALE }); setOverrideAuthorizedBy(null); setOverrideReason(''); setSelectedClientId(null); setClientSuggestions([]); setAvoir(null)
+      setCart([]); setPriceInputs({}); setSaleForm({ ...EMPTY_SALE }); setOverrideAuthorizedBy(null); setOverrideReason(''); setSelectedClientId(null); setShowClient(false); setClientSuggestions([]); setAvoir(null)
     } catch (err: unknown) {
       showError((err as Error).message)
     } finally { setSubmitting(false) }
@@ -995,8 +1002,15 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
               </div>
             )}
 
-            {/* Inline client — آجل or تسبيق only */}
-            {severalTimes && (
+            {/* Client: required when paying in several times, optional otherwise */}
+            {!severalTimes && !showClient && (
+              <button type="button" onClick={() => setShowClient(true)}
+                className="mt-3 w-full flex items-center justify-between gap-2 px-3 py-2 bg-white border border-ez-border rounded-xl text-xs text-ez-subtle">
+                <span className="flex items-center gap-1.5 font-bold"><User className="w-3 h-3" /> Client de passage</span>
+                <span className="underline">Ajouter un client</span>
+              </button>
+            )}
+            {(severalTimes || showClient) && (
               <div className="mt-3 p-3 bg-white border border-ez-border rounded-xl space-y-2 animate-fade-in">
                 <p className="text-xs font-bold text-ez-subtle uppercase tracking-widest flex items-center gap-1.5">
                   <User className="w-3 h-3" />
@@ -1006,8 +1020,14 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                       {'— '}{isAr ? 'مطلوب' : 'requis'}
                     </span>
                   )}
+                  {!severalTimes && (
+                    <button type="button" className="ml-auto text-[10px] font-bold underline normal-case tracking-normal text-ez-subtle"
+                      onClick={() => { setShowClient(false); setSaleForm(prev => ({ ...prev, client_nom: '', client_tel: '' })); setSelectedClientId(null); setClientSuggestions([]) }}>
+                      Client de passage
+                    </button>
+                  )}
                   {selectedClientId && (
-                    <span className="ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 normal-case tracking-normal">
+                    <span className={`${severalTimes ? 'ml-auto ' : ''}text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 normal-case tracking-normal`}>
                       ✓ {t(isAr, 'common.existing')}
                     </span>
                   )}
@@ -1123,7 +1143,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
 
           {/* Reset */}
           <button type="button"
-            onClick={() => { setCart([]); setPriceInputs({}); setSaleForm({ ...EMPTY_SALE }); setOverrideAuthorizedBy(null); setOverrideReason(''); setSelectedClientId(null); setClientSuggestions([]); setAvoir(null) }}
+            onClick={() => { setCart([]); setPriceInputs({}); setSaleForm({ ...EMPTY_SALE }); setOverrideAuthorizedBy(null); setOverrideReason(''); setSelectedClientId(null); setShowClient(false); setClientSuggestions([]); setAvoir(null) }}
             className="w-full py-2.5 rounded-2xl text-xs font-bold border border-ez-border text-ez-faint hover:border-red-300 hover:text-red-400 transition-all">
             {isAr ? '× مسح الكل' : '× Réinitialiser'}
           </button>

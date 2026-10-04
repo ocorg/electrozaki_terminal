@@ -10,7 +10,7 @@ import {
   Wrench, Users, Truck, Receipt, Vault, ArrowLeftRight,
   Settings, LogOut, Globe, ChevronRight,
   PanelLeftClose, PanelLeftOpen, Store, FileText, Clock,
-  BarChart3, UserCheck, ScrollText, Shield, PackageCheck, CreditCard, List, PackageSearch,
+  UserCheck, ScrollText, Shield, PackageCheck, CreditCard, List, PackageSearch,
   ShoppingBag, Tag, Inbox, Megaphone, Activity, PieChart, ListOrdered
 } from 'lucide-react'
 import type { UserRole } from '@/types/database'
@@ -34,12 +34,10 @@ interface NavItem {
 function getNavItems(portalBase: string, portalType: string): NavItem[] {
   if (portalType === 'bzg') {
     return [
-      { href: `${portalBase}/dashboard`,    icon: LayoutDashboard, label: 'Tableau de bord',    roles: ['gerant','proprietaire'] as UserRole[] },
       { divider: true, label: 'OPÉRATIONS',                                                      roles: ['gerant','proprietaire'] as UserRole[] },
       { href: `${portalBase}/transactions`, icon: ShoppingCart,    label: 'Transactions',        roles: ['gerant','proprietaire'] as UserRole[] },
-      { href: `${portalBase}/caisse`,       icon: Vault,           label: 'Caisse — Validation', roles: ['gerant','proprietaire'] as UserRole[] },
+      { href: `${portalBase}/caisse`,       icon: Vault,           label: 'Historique des caisses', roles: ['gerant','proprietaire'] as UserRole[] },
       { divider: true, label: 'ANALYSE',                                                          roles: ['gerant','proprietaire'] as UserRole[] },
-      { href: `${portalBase}/reports`,      icon: BarChart3,       label: 'Rapports',            roles: ['gerant','proprietaire'] as UserRole[] },
       { href: `${portalBase}/staff`,        icon: UserCheck,       label: 'Présence équipe',     roles: ['gerant','proprietaire'] as UserRole[] },
       { divider: true, label: 'ADMIN',                                                            roles: ['gerant','proprietaire'] as UserRole[] },
       { href: `${portalBase}/logs`,         icon: ScrollText,      label: "Journal d'activité",  roles: ['gerant','proprietaire'] as UserRole[] },

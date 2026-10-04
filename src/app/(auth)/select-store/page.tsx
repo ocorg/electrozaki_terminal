@@ -18,9 +18,9 @@ const PORTALS = [
     abbr:     'EZ',
   },
   {
-    path:     '/bzg/dashboard',
+    path:     '/bzg/caisse',
     name:     'BZG Group',
-    subtitle: 'Vue globale · Rapports · Caisse · Logs',
+    subtitle: 'Caisses · Équipe · Journal · Utilisateurs',
     color:    '#6366F1',
     bg:       '#F5F3FF',
     border:   '#C4B5FD',
