@@ -1,18 +1,17 @@
 'use client'
 // "Entrée d'argent" at the POS (owner, 2026-10-04) — guided choices instead
 // of a free-text cash deposit, so the money lands where it belongs:
-//   • Service / réparation  → a real sale (figures + caisse)        everyone
+//   (a service is sold from the POS grid, category "Service" — not here)
 //   • Versement d'un client → his phone file or his account         managers
 //   • Avance sur téléphone  → that is a sale: "Plusieurs fois"      managers
 //   • Autre                 → free text, as before                  managers
 import { useEffect, useMemo, useState } from 'react'
-import { Wrench, User, Smartphone, MoreHorizontal, Loader2 } from 'lucide-react'
+import { User, Smartphone, MoreHorizontal, Loader2 } from 'lucide-react'
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import { Modal, Field, Btn, inputClass } from '@/components/shared'
-import { formatMAD, getBusinessDate } from '@/lib/utils'
+import { formatMAD } from '@/lib/utils'
 
-type Mode = 'service' | 'client' | 'avance' | 'autre'
-interface ServiceItem { acc_id: string; nom: string; prix: number | null }
+type Mode = 'client' | 'avance' | 'autre'
 interface ClientRow { client_id: string; nom: string; telephone: string }
 interface Account { solde: number; dossiers: { credit_id: string; reste: number }[] }
 
@@ -21,8 +20,6 @@ interface Props {
   onClose:   () => void
   storeId:   string
   primary:   string
-  isManager: boolean
-  services:  ServiceItem[]
   clients:   ClientRow[]
   onSeveralTimes: () => void   // switch the POS to "Plusieurs fois"
   onDone:    () => void        // refresh the POS data
@@ -35,14 +32,11 @@ async function post(url: string, body: unknown) {
   return json.data
 }
 
-export default function MoneyInModal({ open, onClose, storeId, primary, isManager, services, clients, onSeveralTimes, onDone }: Props) {
-  const [mode, setMode]       = useState<Mode>('service')
+export default function MoneyInModal({ open, onClose, storeId, primary, clients, onSeveralTimes, onDone }: Props) {
+  const [mode, setMode]       = useState<Mode>('client')
   const [amount, setAmount]   = useState('')
   const [method, setMethod]   = useState<'especes' | 'virement'>('especes')
   const [busy, setBusy]       = useState(false)
-  // service
-  const [serviceId, setServiceId] = useState('')
-  const [label, setLabel]         = useState('')
   // client payment
   const [search, setSearch]     = useState('')
   const [client, setClient]     = useState<ClientRow | null>(null)
@@ -53,9 +47,8 @@ export default function MoneyInModal({ open, onClose, storeId, primary, isManage
 
   useEffect(() => {
     if (!open) return
-    setMode('service'); setAmount(''); setMethod('especes'); setLabel(''); setSearch(''); setClient(null); setAccount(null); setTarget(''); setReason('')
-    setServiceId(services.find(s => s.nom === 'Service divers')?.acc_id ?? services[0]?.acc_id ?? '')
-  }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
+    setMode('client'); setAmount(''); setMethod('especes'); setSearch(''); setClient(null); setAccount(null); setTarget(''); setReason('')
+  }, [open])
 
   useEffect(() => {
     if (!client) { setAccount(null); setTarget(''); return }
@@ -77,21 +70,12 @@ export default function MoneyInModal({ open, onClose, storeId, primary, isManage
     return clients.filter(c => c.nom.toLowerCase().includes(q) || (c.telephone ?? '').includes(q)).slice(0, 6)
   }, [search, clients])
 
-  const service = services.find(s => s.acc_id === serviceId)
   const value = Number(amount)
 
   async function submit() {
     setBusy(true)
     try {
-      if (mode === 'service') {
-        if (!service) throw new Error('Choisissez un service')
-        await post('/api/transactions', {
-          store_id: storeId, device_type: 'accessoire', device_id: service.acc_id, type_operation: 'vente', qty: 1,
-          prix_vente: value, payment_method: method, warranty_start: getBusinessDate(),
-          notes: label.trim() ? `Service : ${label.trim()}` : `Service : ${service.nom}`,
-        })
-        showSuccess(`Service enregistré — ${formatMAD(value)}`)
-      } else if (mode === 'client') {
+      if (mode === 'client') {
         if (!client || !target) throw new Error('Choisissez le client et ce qu’il règle')
         if (target === 'compte') await post('/api/credits', { client_id: client.client_id, montant: value, payment_method: method, store_id: storeId })
         else await post(`/api/phone-credits/${target}/payments`, { montant: value, payment_method: method, store_id: storeId })
@@ -104,15 +88,13 @@ export default function MoneyInModal({ open, onClose, storeId, primary, isManage
     } catch (e) { showError((e as Error).message) } finally { setBusy(false) }
   }
 
-  const tabs: { v: Mode; l: string; icon: React.ElementType; show: boolean }[] = [
-    { v: 'service', l: 'Service / réparation', icon: Wrench,         show: true },
-    { v: 'client',  l: 'Versement d’un client', icon: User,           show: isManager },
-    { v: 'avance',  l: 'Avance sur téléphone',  icon: Smartphone,     show: isManager },
-    { v: 'autre',   l: 'Autre',                 icon: MoreHorizontal, show: isManager },
+  const tabs: { v: Mode; l: string; icon: React.ElementType }[] = [
+    { v: 'client',  l: 'Versement d’un client', icon: User },
+    { v: 'avance',  l: 'Avance sur téléphone',  icon: Smartphone },
+    { v: 'autre',   l: 'Autre',                 icon: MoreHorizontal },
   ]
   const ready = value > 0 && (
-    mode === 'service' ? !!service
-    : mode === 'client' ? !!client && !!target
+    mode === 'client' ? !!client && !!target
     : mode === 'autre' ? reason.trim().length >= 3 : false)
 
   const methodButtons = (
@@ -130,7 +112,7 @@ export default function MoneyInModal({ open, onClose, storeId, primary, isManage
     <Modal open={open} onClose={onClose} title="Entrée d'argent" size="sm">
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-2">
-          {tabs.filter(t => t.show).map(({ v, l, icon: Icon }) => (
+          {tabs.map(({ v, l, icon: Icon }) => (
             <button key={v} type="button" onClick={() => setMode(v)}
               className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold border text-left transition-all"
               style={{ backgroundColor: mode === v ? `${primary}15` : 'white', borderColor: mode === v ? primary : '#E8E5DE', color: mode === v ? primary : '#6B6860' }}>
@@ -139,20 +121,7 @@ export default function MoneyInModal({ open, onClose, storeId, primary, isManage
           ))}
         </div>
 
-        {mode === 'service' && (
-          <>
-            <Field label="Service">
-              <select className={inputClass} value={serviceId}
-                onChange={e => { setServiceId(e.target.value); const s = services.find(x => x.acc_id === e.target.value); if (s?.prix && !amount) setAmount(String(s.prix)) }}>
-                {services.map(s => <option key={s.acc_id} value={s.acc_id}>{s.nom}</option>)}
-              </select>
-            </Field>
-            <Field label="Détail (optionnel)">
-              <input className={inputClass} placeholder="Ex : changement écran A12" value={label} onChange={e => setLabel(e.target.value)} />
-            </Field>
-            <p className="text-xs text-ez-faint -mt-2">Compté comme une vente (chiffres et caisse).</p>
-          </>
-        )}
+        <p className="text-xs text-ez-faint">Un service payé par un client se vend depuis la catégorie « Service » du point de vente.</p>
 
         {mode === 'client' && (
           <>

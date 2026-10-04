@@ -228,9 +228,11 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
 
   // ── Cart helpers ──────────────────────────────────────────
   function addToCart(device: DeviceResult) {
-    // Staff add stock without prices (a manager sets them): no price, no sale
+    // Staff add stock without prices (a manager sets them): no price, no sale.
+    // A service has no fixed price: its amount is typed in the cart.
     const listed = Number((device as unknown as Record<string, unknown>).prix_vente_recommande ?? 0)
-    if (user?.role === 'employe' && !(listed > 0)) {
+    const isService = (device as unknown as Record<string, unknown>).categorie === 'service'
+    if (user?.role === 'employe' && !(listed > 0) && !isService) {
       showError(isAr ? 'السعر غير محدد بعد — اطلب من المسير' : 'Prix pas encore défini — demandez à un gérant'); return
     }
     if (device._type !== 'accessory') {
@@ -359,6 +361,9 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
   // ── Submit ────────────────────────────────────────────────
   async function handleSubmit() {
     if (cart.length === 0) { showError(isAr ? 'السلة فارغة' : 'Panier vide'); return }
+    if (cart.some(c => (c as unknown as Record<string, unknown>).categorie === 'service' && !(Number(c.prix_vente_saisi) > 0))) {
+      showError(isAr ? 'اكتب ثمن الخدمة في السلة' : 'Tapez le prix du service dans le panier'); return
+    }
     if (saleForm.payment_method === 'virement' && !saleForm.payment_ref) {
       showError(isAr ? 'مرجع التحويل مطلوب' : 'Référence virement obligatoire'); return
     }
@@ -1148,7 +1153,8 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
             {isAr ? '× مسح الكل' : '× Réinitialiser'}
           </button>
 
-          {/* Cash Drop */}
+          {/* Money in (client payment, advance, other): managers only — a service is sold from the grid */}
+          {canCredit && (<>
           <button type="button" onClick={() => setCashDropOpen(true)}
             className="w-full py-2.5 rounded-2xl text-xs font-bold border border-ez-border text-ez-subtle hover:border-emerald-400 hover:text-emerald-600 transition-all flex items-center justify-center gap-1.5">
             <span>＋</span>
@@ -1160,12 +1166,11 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
             onClose={() => setCashDropOpen(false)}
             storeId={storeId}
             primary={primary}
-            isManager={canCredit}
-            services={(accQ.data ?? []).filter(a => a.categorie === 'service').map(a => ({ acc_id: String(a.acc_id), nom: String(a.nom), prix: a.prix_vente_recommande != null ? Number(a.prix_vente_recommande) : null }))}
             clients={clientsQ.data ?? []}
             onSeveralTimes={() => setSale('payment_method', 'credit')}
             onDone={() => { void accQ.refresh(); void clientsQ.refresh() }}
           />
+          </>)}
         </div>
       </div>
 
