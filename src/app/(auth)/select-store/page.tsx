@@ -11,7 +11,7 @@ const PORTALS = [
   {
     path:     '/ez/dashboard',
     name:     'Electro Zaki',
-    subtitle: 'Téléphones · Laptops · Accessoires · Réparations',
+    subtitle: 'Téléphones · Accessoires · Réparations',
     color:    '#C9A440',
     bg:       '#FAF5E8',
     border:   '#E8D494',

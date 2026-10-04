@@ -6,7 +6,7 @@ import { signOut } from 'next-auth/react'
 import { useUser } from '@/lib/hooks/useUser'
 import { usePortal } from '@/lib/context/portal'
 import {
-  LayoutDashboard, ShoppingCart, Smartphone, ClipboardList, Laptop, Package,
+  LayoutDashboard, ShoppingCart, Smartphone, ClipboardList, Package,
   Wrench, Users, Truck, Receipt, Vault, ArrowLeftRight,
   Settings, LogOut, Globe, ChevronRight,
   PanelLeftClose, PanelLeftOpen, Store, FileText, Clock,
@@ -44,7 +44,6 @@ function getNavItems(portalBase: string, portalType: string): NavItem[] {
       { divider: true, label: 'ADMIN',                                                            roles: ['gerant','proprietaire'] as UserRole[] },
       { href: `${portalBase}/logs`,         icon: ScrollText,      label: "Journal d'activité",  roles: ['gerant','proprietaire'] as UserRole[] },
       { href: `${portalBase}/users`,        icon: Shield,          label: 'Utilisateurs',        roles: ['gerant','proprietaire'] as UserRole[] },
-      { href: `${portalBase}/changelog`,    icon: FileText,        label: 'Changelog plateforme',roles: ['gerant','proprietaire'] as UserRole[] },
       { href: `${portalBase}/settings`,     icon: Settings,        label: 'Paramètres',          roles: ['proprietaire'] as UserRole[] },
     ]
   }
@@ -57,7 +56,6 @@ function getNavItems(portalBase: string, portalType: string): NavItem[] {
     { href: `${portalBase}/documents`,        icon: FileText,        label: 'Documents',          roles: ['gerant','proprietaire'] },
     { divider: true, label: 'STOCK',                                                              roles: ['employe','gerant','proprietaire'] },
     { href: `${portalBase}/stock/phones`,     icon: Smartphone,      label: 'Téléphones',         roles: ['employe','gerant','proprietaire'] },
-    { href: `${portalBase}/stock/laptops`,    icon: Laptop,          label: 'Laptops',            roles: ['gerant','proprietaire'] },
     { href: `${portalBase}/stock/accessories`,icon: Package,         label: 'Accessoires',        roles: ['employe','gerant','proprietaire'] },
     { href: `${portalBase}/prix`,             icon: ListOrdered,     label: 'Liste des prix',     roles: ['gerant','proprietaire'] },
     { divider: true, label: 'OPÉRATIONS',                                                         roles: ['employe','gerant','proprietaire'] },

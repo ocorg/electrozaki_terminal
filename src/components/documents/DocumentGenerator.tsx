@@ -413,7 +413,6 @@ export function DocumentGenerator({ userProfile }: DocumentGeneratorProps) {
   const tabs: { id: ActiveTab; label: string }[] = [
     { id: 'fac',     label: 'Facture de Vente' },
     { id: 'acq',     label: 'Bon de Reprise / Acquisition' },
-    { id: 'sav',     label: 'SAV — Prise en Charge & Restitution' },
     { id: 'archive', label: 'Archives' },
   ]
 
