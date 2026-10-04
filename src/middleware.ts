@@ -6,7 +6,8 @@ import { authConfig } from '@/auth.config'
 const { auth } = NextAuth(authConfig)
 
 // Paths that never need auth. /api/cron/* checks CRON_SECRET itself.
-const PUBLIC_PATHS = ['/login', '/select-store', '/api/cron/']
+// /api/site/notify is called by the website and checks the shared secret itself.
+const PUBLIC_PATHS = ['/login', '/select-store', '/api/cron/', '/api/site/notify']
 
 // Paths that are portal roots — require auth + correct store access
 const PORTAL_PATHS = ['/ez', '/bzg']
@@ -114,6 +115,6 @@ export default auth(async (request) => {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|icons|vendor|manifest.json|sw.js|workbox.*).*)',
+    '/((?!_next/static|_next/image|favicon.ico|icons|vendor|manifest.json|sw.js|push-sw.js|workbox.*).*)',
   ],
 }

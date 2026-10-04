@@ -18,6 +18,7 @@ import { useLanguageStore } from '@/lib/stores/language'
 import { codeLabel } from '@/lib/codes'
 import { clearDataCache } from '@/lib/data/cache'
 import { useApi } from '@/lib/data/api'
+import { PushToggle } from '@/components/layout/SiteAlerts'
 
 // ─── Nav item definition ──────────────────────────────────────
 interface NavItem {
@@ -257,6 +258,9 @@ export default function PortalSidebar({ onClose, collapsed = false, onCollapsedC
 
       {/* ── Footer ─────────────────────────────────────────── */}
       <div className="border-t p-2 space-y-0.5" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+
+        {/* Website orders: notifications on this device (managers) */}
+        {portal.type === 'ez' && <PushToggle collapsed={collapsed} />}
 
         {/* Language toggle */}
         <button

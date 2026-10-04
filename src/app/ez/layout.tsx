@@ -4,6 +4,7 @@ import { Menu } from 'lucide-react'
 import { PortalProvider } from '@/lib/context/portal'
 import PortalSidebar from '@/components/layout/PortalSidebar'
 import PortalPrefetch from '@/components/layout/PortalPrefetch'
+import { SiteAlerts } from '@/components/layout/SiteAlerts'
 
 export default function EZLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -12,6 +13,7 @@ export default function EZLayout({ children }: { children: React.ReactNode }) {
   return (
     <PortalProvider type="ez">
       <PortalPrefetch storeId="EZ-001" />
+      <SiteAlerts />
       <div className="flex h-screen overflow-hidden print:h-auto print:overflow-visible print:!bg-white" style={{ backgroundColor: '#F8F7F4' }}>
 
         {/* Desktop sidebar */}

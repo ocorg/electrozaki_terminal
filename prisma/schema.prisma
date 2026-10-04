@@ -1182,3 +1182,25 @@ model phone_credit_echeances {
 
   @@index([credit_id, date_echeance], map: "idx_pce_credit_date")
 }
+
+/// A device (browser) that asked to receive push notifications
+model push_subscriptions {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String   @db.Uuid
+  endpoint   String   @unique
+  p256dh     String
+  auth       String
+  user_agent String?
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([user_id])
+}
+
+/// Website orders / requests already announced (one notification each)
+model site_notified {
+  kind       String
+  ref_id     String
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+
+  @@id([kind, ref_id])
+}

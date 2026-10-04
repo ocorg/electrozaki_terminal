@@ -3,6 +3,7 @@ import { storefrontConfigured } from '@/lib/storefront/db'
 import { site } from '@/lib/storefront/access'
 import { pullQuoteDecisions } from '@/lib/storefront/tracking'
 import { notifyChange } from '@/lib/realtime'
+import { announceNewSiteItems } from '@/lib/siteNotify'
 
 // GET — what's waiting on the website side, for the sidebar badges:
 // web orders nobody has handled yet and new repair requests.
@@ -19,6 +20,9 @@ export async function GET() {
     } catch (err) {
       console.error('[counts] quote answers:', err)
     }
+    // Safety net for the website's own call (/api/site/notify): anything it
+    // missed is announced by the first open screen that checks.
+    try { await announceNewSiteItems() } catch (err) { console.error('[counts] announce:', err) }
     const [orders, repairs] = await Promise.all([
       site().orderRequest.count({ where: { status: 'NEW' } }),
       site().repairRequest.count({ where: { status: 'NEW' } }),
