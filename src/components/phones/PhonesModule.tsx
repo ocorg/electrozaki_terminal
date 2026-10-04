@@ -410,8 +410,9 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
               onChange={e => setFilterStorage(e.target.value)}
             >
               <option value="">{isAr ? 'كل السعات' : 'Tous stockages'}</option>
-              {Array.from(new Set(phones.map(p => p.stockage).filter((s): s is string => !!s)))
-                .sort((a, b) => parseInt(a) - parseInt(b))
+              {/* every storage in stock — not only those left by the current filters */}
+              {Array.from(new Set((phonesQ.data ?? []).map(p => p.stockage).filter((s): s is string => !!s)))
+                .sort((a, b) => (/tb/i.test(a) ? 1024 : 1) * parseInt(a) - (/tb/i.test(b) ? 1024 : 1) * parseInt(b))
                 .map(s => <option key={s} value={s}>{s}</option>)}
             </Select>
 
