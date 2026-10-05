@@ -29,6 +29,7 @@ import {
   Printer, RotateCcw
 } from 'lucide-react'
 import { STORE_TIME_ZONE } from '@/lib/time'
+import { phoneMatches } from '@/lib/phoneSearch'
 
 // ─── Types ────────────────────────────────────────────────────
 type DeviceResult = (Phone | Laptop) & {
@@ -205,7 +206,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
     }
     const raw = (d: DeviceResult) => d as unknown as Record<string, unknown>
     return [
-      ...stock.phones.filter(d => hit([raw(d).marque, raw(d).model, raw(d).stockage, raw(d).couleur, raw(d).imei, raw(d).imei_2])),
+      ...stock.phones.filter(d => phoneMatches(raw(d), q)),
       ...stock.accessories.filter(d => hit([raw(d).nom, raw(d).marque, raw(d).barcode])),
       ...stock.laptops.filter(d => hit([raw(d).marque, raw(d).model, raw(d).stockage, raw(d).serial])),
     ].filter(d => !soldIds.has(d._id))

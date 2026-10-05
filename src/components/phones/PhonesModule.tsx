@@ -26,6 +26,7 @@ import {
 } from 'lucide-react'
 import { codeLabel } from '@/lib/codes'
 import type { DeviceStatus } from '@/types/database'
+import { phoneMatches } from '@/lib/phoneSearch'
 
 const STATUSES = ['disponible', 'reserve', 'vendu', 'echange', 'en_reparation', 'en_livraison', 'en_transfert', 'void'] as const
 const MARQUES  = ['Apple', 'Samsung', 'Xiaomi', 'Redmi', 'Huawei', 'Oppo', 'Realme']
@@ -36,10 +37,6 @@ const PAGE = 60
 interface PhonesModuleProps {
   storeId: string
 }
-
-// What a text search looks in; Apple phones also answer to "iphone"
-const searchText = (p: Phone) =>
-  `${p.marque} ${p.marque === 'Apple' ? 'iphone' : ''} ${p.model} ${p.stockage ?? ''} ${p.couleur ?? ''}`.toLowerCase()
 
 export default function PhonesModule({ storeId }: PhonesModuleProps) {
   const { user }     = useUser()
@@ -190,7 +187,6 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
 
   const phones = useMemo(() => {
     const q = search.trim().toLowerCase()
-    const byImei = /^\d{6,}$/.test(q)
     return (phonesQ.data ?? []).filter(p =>
       !deletedIds.has(p.phone_id) &&
       (!filterStatus   || p.status   === filterStatus) &&
@@ -198,9 +194,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
       (!filterLocation || p.location === filterLocation) &&
       (!filterStorage  || p.stockage === filterStorage) &&
       (filterPromo !== '1' || p.promo_type != null) &&
-      (q.length < 2 || (byImei
-        ? [p.imei, (p as Phone & { imei_2?: string | null }).imei_2].some(v => v?.includes(q))
-        : q.split(/\s+/).every(tok => searchText(p).includes(tok))))
+      (q.length < 2 || phoneMatches(p, q))
     )
   }, [phonesQ.data, deletedIds, filterStatus, filterMarque, filterLocation, filterStorage, filterPromo, search])
 
@@ -208,12 +202,9 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
   const hiddenByAuto = useMemo(() => {
     if (!statusAuto) return 0
     const q = search.trim().toLowerCase()
-    const byImei = /^\d{6,}$/.test(q)
     return (phonesQ.data ?? []).filter(p =>
       !deletedIds.has(p.phone_id) && p.status !== 'disponible' &&
-      (byImei
-        ? [p.imei, (p as Phone & { imei_2?: string | null }).imei_2].some(v => v?.includes(q))
-        : q.split(/\s+/).every(tok => searchText(p).includes(tok)))
+      phoneMatches(p, q)
     ).length
   }, [statusAuto, search, phonesQ.data, deletedIds])
 
