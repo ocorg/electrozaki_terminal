@@ -127,6 +127,8 @@ async function PATCH_(request: NextRequest) {
     if (!['montant', 'annuler'].includes(body.action)) throw new HttpError(400, 'Action invalide')
     const montant = Math.round(Number(body.montant) * 100) / 100
     if (body.action === 'montant' && (!Number.isFinite(montant) || montant < 0)) throw new HttpError(400, 'Montant invalide')
+    // Where the money came from can be corrected too (caisse chosen by mistake, …)
+    const source = ['caisse', 'hors_caisse', 'virement'].includes(body.source) ? body.source as string : null
 
     const { before, data } = await prisma.$transaction(async (tx) => {
       const before = await tx.supplier_payments.findUnique({ where: { payment_id: body.payment_id } })
@@ -135,11 +137,23 @@ async function PATCH_(request: NextRequest) {
       if (body.action === 'montant' && before.payment_type === 'avance_a' && montant <= 0) {
         throw new HttpError(400, 'Une avance doit rester positive — annulez-la plutôt')
       }
-      const note = `${body.action === 'annuler' ? 'Annulé' : `Corrigé (était ${Number(before.montant)} DH)`} : ${motif}`
+      const newSource   = body.action === 'montant' && source && source !== before.source ? source : null
+      const amountMoved = body.action === 'montant' && montant !== Number(before.montant)
+      // A closed caisse does not move: the drawer of the payment's day is only
+      // touched (money taken from it, put back, or its amount changed) while open
+      if ((newSource && (before.source === 'caisse' || newSource === 'caisse')) || (amountMoved && before.source === 'caisse')) {
+        await assertCaisseOpen(tx, before.store_id, before.date_paiement)
+      }
+      const SRC: Record<string, string> = { caisse: 'caisse', hors_caisse: 'hors caisse', virement: 'virement' }
+      const changes = [
+        amountMoved ? `était ${Number(before.montant)} DH` : null,
+        newSource ? `payé « ${SRC[before.source] ?? before.source} » → « ${SRC[newSource]} »` : null,
+      ].filter(Boolean).join(', ')
+      const note = `${body.action === 'annuler' ? 'Annulé' : `Corrigé (${changes || 'sans changement'})`} : ${motif}`
       const data = await tx.supplier_payments.update({
         where: { payment_id: before.payment_id },
         data: {
-          ...(body.action === 'annuler' ? { is_deleted: true } : { montant }),
+          ...(body.action === 'annuler' ? { is_deleted: true } : { montant, ...(newSource && { source: newSource, payment_method: newSource === 'virement' ? 'virement' : 'especes' }) }),
           notes:      before.notes ? `${before.notes} · ${note}` : note,
           updated_at: new Date(),
           updated_by: user.id,

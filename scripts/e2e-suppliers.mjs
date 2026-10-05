@@ -124,6 +124,9 @@ try {
   const fixed = await owner('/api/supplier-payments', { method: 'PATCH', body: { payment_id: advId, action: 'montant', montant: 150, motif: 'erreur de saisie' } })
   const afterFix = await summary()
   check('owner corrects the advance 100 → 150 (credit +50)', fixed.status === 200 && Math.abs(n(afterFix.credit_total) - n(afterReg.credit_total) - 50) < 0.01 && /Corrigé/.test(fixed.data?.data?.notes ?? ''), { status: fixed.status, credit: afterFix.credit_total })
+  // Where the money came from can be corrected too
+  const src = await owner('/api/supplier-payments', { method: 'PATCH', body: { payment_id: advId, action: 'montant', montant: 150, motif: 'payé par virement en fait', source: 'virement' } })
+  check('owner corrects where the payment came from (amount untouched)', src.status === 200 && src.data?.data?.source === 'virement' && Number(src.data?.data?.montant) === 150 && /virement/.test(src.data?.data?.notes ?? ''), src.data?.data && { s: src.data.data.source, n: src.data.data.notes })
   const cancel = await owner('/api/supplier-payments', { method: 'PATCH', body: { payment_id: regId, action: 'annuler', motif: 'test annulation' } })
   const list3 = (await api(`/api/supplier-payments?mode=unsettled_phones&supplier_id=${sup.supplier_id}`)).data?.data ?? []
   check('cancelling a règlement puts its phones back to settle', cancel.status === 200 && list3.length === rows.length, { status: cancel.status, left: list3.length })

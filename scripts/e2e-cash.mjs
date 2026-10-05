@@ -114,6 +114,15 @@ try {
   const closed = await manager('/api/supplier-payments', { method: 'POST', body: { supplier_id: sup.supplier_id, store_id: STORE, payment_type: 'avance_a', montant: 100, phone_ids: [], source: 'caisse', date_paiement: '2020-03-03' } })
   check('drawer payment dated on a closed caisse day refused (409)', closed.status === 409, closed)
 
+  // ── Owner corrects where a payment came from ──────────────────────
+  const owner = await makeUser('proprietaire')
+  const fixSrc = await owner('/api/supplier-payments', { method: 'PATCH', body: { payment_id: drawer.data?.data?.payment_id, action: 'montant', montant: 250, motif: 'payé de ma poche', source: 'hors_caisse' } })
+  const c4b = await caisse()
+  check('"caisse" chosen by mistake → "hors caisse": the 250 are back in the expected cash', fixSrc.status === 200 && n(c4b.solde_theorique) - n(c4.solde_theorique) === 250 && n(c4.total_fournisseurs) - n(c4b.total_fournisseurs) === 250, { s: fixSrc.status, a: c4?.solde_theorique, b: c4b?.solde_theorique })
+  const old = await manager('/api/supplier-payments', { method: 'POST', body: { supplier_id: sup.supplier_id, store_id: STORE, payment_type: 'avance_a', montant: 100, phone_ids: [], source: 'hors_caisse', date_paiement: '2020-03-03' } })
+  const toClosed = await owner('/api/supplier-payments', { method: 'PATCH', body: { payment_id: old.data?.data?.payment_id, action: 'montant', montant: 100, motif: 'test caisse close', source: 'caisse' } })
+  check('…but a payment cannot be moved onto a closed caisse (409)', old.status === 201 && toClosed.status === 409, { o: old.status, t: toClosed.status })
+
   // ── Stock bought with the drawer's cash ───────────────────────────
   const c5 = await caisse()
   const ph = await manager('/api/phones', { method: 'POST', body: { store_id: STORE, source: 'reprise', condition: 'occasion', marque: 'Apple', model: `E2E cash ${tag}`, status: 'disponible', prix_achat: 1200, paye_caisse: 1200 } })

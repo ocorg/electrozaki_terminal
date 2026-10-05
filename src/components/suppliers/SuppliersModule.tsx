@@ -85,6 +85,8 @@ const TYPE_CFG: Record<string, { bg: string; color: string; border: string; desc
 }
 const OWN_STOCK = 'D'
 
+// Where a supplier payment's money came from
+const SOURCE_LABEL: Record<string, string> = { caisse: 'Espèces de la caisse', hors_caisse: 'Espèces hors caisse', virement: 'Virement' }
 const PAY_LABEL: Record<string, string> = {
   reglement_a: 'Règlement de ventes',
   avance_a:    'Avance (crédit)',
@@ -135,7 +137,7 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
   // ── Advance form ───────────────────────────────────────────────────────────────
   const [showPayForm, setShowPayForm] = useState(false)
   // Owner-only correction of a payment typed wrong
-  const [fixPay, setFixPay] = useState<{ id: string; montant: string; motif: string } | null>(null)
+  const [fixPay, setFixPay] = useState<{ id: string; montant: string; motif: string; source: string } | null>(null)
   const isOwner = user?.role === 'proprietaire'
   // How we got to what a supplier is owed (ledger + trade-in chains + PDF)
   const [statementOf, setStatementOf] = useState<string | null>(null)
@@ -355,11 +357,11 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
       const res = await fetch('/api/supplier-payments', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ payment_id: fixPay.id, action, montant: parseFloat(fixPay.montant), motif: fixPay.motif }),
+        body: JSON.stringify({ payment_id: fixPay.id, action, montant: parseFloat(fixPay.montant), motif: fixPay.motif, source: fixPay.source }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
-      showSuccess(action === 'annuler' ? 'Paiement annulé ✓' : 'Montant corrigé ✓')
+      showSuccess(action === 'annuler' ? 'Paiement annulé ✓' : 'Paiement corrigé ✓')
       setFixPay(null)
       await refreshSelected()
     } catch (err: any) {
@@ -816,13 +818,14 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
                           </p>
                           <p className="text-xs text-ez-faint">
                             {formatDate(p.date_paiement)}
+                            {` · ${SOURCE_LABEL[(p as { source?: string }).source ?? ''] ?? 'Hors caisse'}`}
                             {p.notes ? ` · ${p.notes}` : ''}
                           </p>
                         </div>
                         <div className="flex-shrink-0 ml-3 text-right">
                           <p className="text-sm font-bold text-emerald-600">{formatMAD(p.montant)}</p>
                           {isOwner && fixPay?.id !== p.payment_id && (
-                            <button onClick={() => setFixPay({ id: p.payment_id, montant: String(Number(p.montant)), motif: '' })}
+                            <button onClick={() => setFixPay({ id: p.payment_id, montant: String(Number(p.montant)), motif: '', source: (p as { source?: string }).source ?? 'hors_caisse' })}
                               className="text-xs font-bold text-[#A8862E] underline">Corriger</button>
                           )}
                         </div>
@@ -839,6 +842,16 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
                               <p className="text-xs text-ez-faint uppercase tracking-wider font-bold mb-1">Motif (obligatoire)</p>
                               <input type="text" className={inputClass} placeholder="Erreur de saisie…"
                                 value={fixPay.motif} onChange={e => setFixPay({ ...fixPay, motif: e.target.value })} />
+                            </div>
+                          </div>
+                          <div>
+                            <p className="text-xs text-ez-faint uppercase tracking-wider font-bold mb-1">Payé avec</p>
+                            <div className="grid grid-cols-3 gap-2">
+                              {Object.entries(SOURCE_LABEL).map(([v, l]) => (
+                                <button key={v} type="button" onClick={() => setFixPay({ ...fixPay, source: v })}
+                                  className="py-2 rounded-xl text-xs font-bold border transition-all"
+                                  style={{ backgroundColor: fixPay.source === v ? primary : 'white', borderColor: fixPay.source === v ? primary : '#E8E5DE', color: fixPay.source === v ? 'white' : '#6B6860' }}>{l}</button>
+                              ))}
                             </div>
                           </div>
                           <div className="flex flex-wrap gap-2">
