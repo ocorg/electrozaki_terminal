@@ -52,9 +52,27 @@ async function POST_(request: NextRequest) {
       // Accessories are the only type that can move a PARTIAL quantity (phones/laptops are
       // unique serialized items). Validate before writing anything.
       let movedQty = 1
+      // What people have in hand is the IMEI (or the barcode), not our internal
+      // number: accept either, and work with the internal one from here on.
+      const typed = String(body.device_id).trim()
+      let deviceId = typed
+      if (deviceType === 'telephone') {
+        const found = await tx.phones.findMany({
+          where:  { is_deleted: false, OR: [{ phone_id: typed.toUpperCase() }, { imei: typed }] },
+          select: { phone_id: true, status: true }, take: 2,
+        })
+        if (!found.length) throw new HttpError(404, `Aucun téléphone avec cet IMEI ou ce numéro : ${typed}`)
+        if (found.length > 1) throw new HttpError(400, 'Plusieurs téléphones correspondent : utilisez le numéro interne (PHO-…)')
+        // A phone that left through a sale, a credit file or The Void is not in the shop to be moved
+        if (['vendu', 'reserve', 'void'].includes(found[0].status)) {
+          throw new HttpError(400, `Ce téléphone est « ${codeLabel('device_status', found[0].status, 'fr')} » : il ne peut pas être transféré`)
+        }
+        deviceId = found[0].phone_id
+      }
       const srcAcc = deviceType === 'accessoire'
-        ? await tx.accessories.findUnique({ where: { acc_id: body.device_id } })
+        ? await tx.accessories.findFirst({ where: { is_deleted: false, OR: [{ acc_id: typed.toUpperCase() }, { barcode: typed }] } })
         : null
+      if (srcAcc) deviceId = srcAcc.acc_id
       if (deviceType === 'accessoire') {
         if (!srcAcc) throw new HttpError(404, 'Accessoire introuvable')
         movedQty = Math.max(1, Math.floor(Number(body.quantity) || 1))
@@ -64,7 +82,7 @@ async function POST_(request: NextRequest) {
       const movement = await tx.stock_movements.create({
         data: {
           device_type:   deviceType,
-          device_id:     String(body.device_id),
+          device_id:     deviceId,
           quantity:      movedQty,
           from_location: from,
           to_location:   to,

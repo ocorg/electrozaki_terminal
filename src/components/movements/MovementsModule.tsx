@@ -317,15 +317,15 @@ export default function MovementsModule({ storeId }: MovementsModuleProps) {
             </Select>
           </Field>
 
-          <Field label={isAr ? 'معرف الجهاز' : 'ID de l\'appareil'} required>
+          <Field label={isAr ? 'IMEI أو معرف الجهاز' : form.device_type === 'telephone' ? 'IMEI du téléphone' : form.device_type === 'accessoire' ? 'Code-barres ou numéro de l\'article' : 'ID de l\'appareil'} required>
             <div className="flex gap-2">
               <input type="text" className={inputClass}
-                placeholder="PHO-0001, LAP-0001, EZ-ACC-000001..."
+                placeholder={form.device_type === 'telephone' ? 'IMEI complet (ou PHO-0001)' : form.device_type === 'accessoire' ? 'Code-barres (ou EZ-ACC-000001)' : 'LAP-0001'}
                 value={form.device_id}
                 onChange={e => setF('device_id', e.target.value)} />
               <ScanButton
                 onScan={v => setF('device_id', v)}
-                hint="Scannez l'ID"
+                hint={form.device_type === 'telephone' ? "Scannez l'IMEI" : 'Scannez le code'}
                 color={primary}
                 size="sm"
               />
