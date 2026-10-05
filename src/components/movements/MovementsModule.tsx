@@ -16,6 +16,7 @@ import {
   ArrowRight, Search, X, RotateCcw
 } from 'lucide-react'
 import { codeLabel } from '@/lib/codes'
+import { STORE_TIME_ZONE } from '@/lib/time'
 
 interface Movement {
   movement_id:   string
@@ -30,6 +31,9 @@ interface Movement {
   notes?:        string | null
   moved_at:      string
   created_at:    string
+  by?:           string | null
+  // The phone or article in plain words (code = IMEI or barcode)
+  device?:       { name: string; details: string; code: string | null; status: string | null } | null
 }
 
 const LOCATIONS: LocationType[] = ['magasin_principal', 'magasin_secondaire', 'externe']
@@ -132,7 +136,7 @@ export default function MovementsModule({ storeId }: MovementsModuleProps) {
   }
 
   const filtered = movements.filter(m =>
-    !search || m.device_id.toLowerCase().includes(search.toLowerCase())
+    !search || [m.device?.name, m.device?.code, m.device?.details, m.device_id].some(v => v?.toLowerCase().includes(search.trim().toLowerCase()))
   )
 
   function locLabel(loc: string) {
@@ -175,7 +179,7 @@ export default function MovementsModule({ storeId }: MovementsModuleProps) {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ez-faint" />
             <input
               className="w-full pl-9 pr-4 py-2.5 bg-white border border-ez-border rounded-xl text-sm placeholder:text-ez-placeholder focus:outline-none transition-all"
-              placeholder={isAr ? 'بحث بمعرف الجهاز...' : 'Rechercher par ID appareil...'}
+              placeholder={isAr ? 'بحث بالموديل أو IMEI...' : 'Rechercher par modèle ou IMEI...'}
               value={search}
               onChange={e => setSearch(e.target.value)}
               onFocus={e => { e.target.style.borderColor = primary; e.target.style.boxShadow = `0 0 0 3px ${primary}20` }}
@@ -190,7 +194,7 @@ export default function MovementsModule({ storeId }: MovementsModuleProps) {
           </div>
           <ScanButton
             onScan={v => setSearch(v)}
-            hint="Scannez l'ID de l'appareil"
+            hint="Scannez l'IMEI"
             color={primary}
           />
         </div>
@@ -233,10 +237,16 @@ export default function MovementsModule({ storeId }: MovementsModuleProps) {
                     {/* Main info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-sm font-bold text-ez-text">{mov.device_id}</p>
+                        <p className="text-sm font-bold text-ez-text">{mov.device?.name ?? mov.device_id}</p>
                         <span className="text-xs text-ez-faint">·</span>
                         <span className="text-xs text-ez-subtle">{reasonLabel(mov.reason)}</span>
                       </div>
+                      {mov.device && (mov.device.code || mov.device.details) && (
+                        <p className="text-xs text-ez-subtle mt-0.5">
+                          {mov.device.code && <span className="font-mono">{mov.device_type === 'telephone' ? 'IMEI ' : ''}{mov.device.code}</span>}
+                          {mov.device.code && mov.device.details ? ' · ' : ''}{mov.device.details}
+                        </p>
+                      )}
 
                       {/* Route */}
                       <div className="flex items-center gap-1.5 mt-1">
@@ -259,8 +269,9 @@ export default function MovementsModule({ storeId }: MovementsModuleProps) {
                       <div className="text-right">
                         <div className="flex items-center gap-1 text-xs text-ez-faint">
                           <Clock className="w-3 h-3" />
-                          {formatDate(mov.moved_at)}
+                          {formatDate(mov.moved_at)} {new Date(mov.moved_at).toLocaleTimeString('fr-FR', { timeZone: STORE_TIME_ZONE, hour: '2-digit', minute: '2-digit' })}
                         </div>
+                        {mov.by && <p className="text-xs text-ez-faint mt-0.5">{mov.by}</p>}
                         {mov.quantity > 1 && (
                           <p className="text-xs font-bold mt-0.5" style={{ color: primary }}>
                             ×{mov.quantity}
@@ -275,7 +286,7 @@ export default function MovementsModule({ storeId }: MovementsModuleProps) {
                             setForm({
                               ...EMPTY_FORM,
                               device_type:   mov.device_type,
-                              device_id:     mov.device_id,
+                              device_id:     mov.device?.code ?? mov.device_id,
                               quantity:      String(mov.quantity ?? 1),
                               from_location: mov.to_location,
                               to_location:   mov.from_location,

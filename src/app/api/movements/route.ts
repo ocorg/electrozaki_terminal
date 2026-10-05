@@ -19,7 +19,32 @@ export async function GET(request: NextRequest) {
       orderBy: { created_at: 'desc' },
       take:    limit,
     })
-    return json({ data })
+
+    // What each line is about, in words people use: the phone (model, storage,
+    // colour, IMEI) or the article, and who recorded the transfer.
+    const ids = (type: device_type) => Array.from(new Set(data.filter(m => m.device_type === type).map(m => m.device_id)))
+    const [phones, accs, users] = await Promise.all([
+      // older transfers were recorded under the IMEI itself
+      prisma.phones.findMany({ where: { OR: [{ phone_id: { in: ids('telephone') } }, { imei: { in: ids('telephone') } }] }, select: { phone_id: true, marque: true, model: true, stockage: true, couleur: true, imei: true, status: true } }),
+      prisma.accessories.findMany({ where: { acc_id: { in: ids('accessoire') } }, select: { acc_id: true, nom: true, marque: true, barcode: true } }),
+      prisma.user_profiles.findMany({ where: { id: { in: Array.from(new Set(data.map(m => m.moved_by).filter((v): v is string => !!v))) } }, select: { id: true, display_name: true } }),
+    ])
+    const phone = new Map(phones.flatMap(p => [[p.phone_id, p] as const, ...(p.imei ? [[p.imei, p] as const] : [])]))
+    const acc   = new Map(accs.map(a => [a.acc_id, a]))
+    const who   = new Map(users.map(u => [u.id, u.display_name]))
+    return json({
+      data: data.map(m => {
+        const p = m.device_type === 'telephone' ? phone.get(m.device_id) : undefined
+        const a = m.device_type === 'accessoire' ? acc.get(m.device_id) : undefined
+        return {
+          ...m,
+          by: m.moved_by ? who.get(m.moved_by) ?? null : null,
+          device: p ? { name: p.model.toLowerCase().startsWith(p.marque.toLowerCase()) ? p.model : `${p.marque} ${p.model}`, details: [p.stockage, p.couleur].filter(Boolean).join(' · '), code: p.imei, status: p.status }
+            : a ? { name: a.nom, details: a.marque ?? '', code: a.barcode, status: null }
+            : null,
+        }
+      }),
+    })
   } catch (err) {
     return handleError(err, 'GET /api/movements')
   }
