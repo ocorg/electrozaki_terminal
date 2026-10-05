@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { json, handleError, requireUser, requireActiveUser, HttpError, MANAGERS } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
-import { phoneLabel, countByResult } from '@/lib/inventory'
+import { phoneLabel, countByResult, EXPECTED_PHONES } from '@/lib/inventory'
 import { withNotify } from '@/lib/realtime'
 
 // ── GET /api/inventory — liste des sessions avec compteurs ──
@@ -41,7 +41,7 @@ async function POST_(req: NextRequest) {
 
       // Snapshot of the phones expected in the shop
       const phones = (await tx.phones.findMany({
-        where:  { store_id: storeId, is_deleted: false, status: { notIn: ['vendu', 'void', 'en_livraison'] } },
+        where:  EXPECTED_PHONES(storeId),
         select: { phone_id: true, imei: true, marque: true, model: true, status: true },
       })).filter(p => p.imei)
 

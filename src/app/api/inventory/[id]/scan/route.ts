@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { json, handleError, requireActiveUser, HttpError, MANAGERS } from '@/lib/api'
-import { phoneLabel } from '@/lib/inventory'
+import { phoneLabel, syncInventoryWithStock } from '@/lib/inventory'
 import { withNotify } from '@/lib/realtime'
 
 // Response `type`: trouve | hors_perimetre | non_enregistre | deja_scanne
@@ -14,10 +14,14 @@ async function POST_(req: NextRequest, { params }: { params: { id: string } }) {
     const user = await requireActiveUser(MANAGERS)
     const session = await prisma.inventory_sessions.findFirst({
       where:  { session_id: params.id, ...(user.store_id && { store_id: user.store_id }) },
-      select: { statut: true },
+      select: { statut: true, store_id: true },
     })
     if (!session) throw new HttpError(404, 'Session introuvable')
     if (session.statut !== 'en_cours') throw new HttpError(409, 'Session déjà terminée')
+
+    // The list first catches up with the stock, so a phone added or corrected
+    // a moment ago on another device is recognised
+    await syncInventoryWithStock(params.id, session.store_id)
 
     // A PHO-XXX reference code resolves to the phone's real IMEI
     let imei = rawImei

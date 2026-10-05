@@ -132,6 +132,26 @@ export default function InventoryModule({ role }: { role: string }) {
 
   useEffect(() => { fetchSessions() }, [fetchSessions])
 
+  // While counting, the list follows the live stock: a phone sold, added or
+  // corrected on another device shows here without starting again.
+  const openSessionId = viewMode === 'scan' && currentSession?.statut === 'en_cours' ? currentSession.session_id : null
+  useEffect(() => {
+    if (!openSessionId) return
+    const refresh = async () => {
+      if (isProcessingRef.current || document.hidden) return
+      try {
+        const res = await fetch(`/api/inventory/${openSessionId}`)
+        if (!res.ok) return
+        const data = await res.json()
+        if (isProcessingRef.current) return   // a scan landed meanwhile: its answer is newer
+        setCurrentSession(data.session)
+        setItems(data.items ?? [])
+      } catch { /* next round */ }
+    }
+    const timer = setInterval(refresh, 8000)
+    return () => clearInterval(timer)
+  }, [openSessionId])
+
   // ── Scanner ────────────────────────────────────────────
   const stopCamera = useCallback(() => {
     if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current)

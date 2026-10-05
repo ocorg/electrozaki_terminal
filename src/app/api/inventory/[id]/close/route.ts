@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { json, handleError, requireActiveUser, HttpError, MANAGERS } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
-import { countByResult } from '@/lib/inventory'
+import { countByResult, syncInventoryWithStock } from '@/lib/inventory'
 import { withNotify } from '@/lib/realtime'
 
 async function PATCH_(req: NextRequest, { params }: { params: { id: string } }) {
@@ -13,6 +13,9 @@ async function PATCH_(req: NextRequest, { params }: { params: { id: string } }) 
     })
     if (!session) throw new HttpError(404, 'Session introuvable')
     if (session.statut !== 'en_cours') throw new HttpError(409, 'Session déjà terminée')
+
+    // Last look at the stock: what left or came in during the count is settled first
+    await syncInventoryWithStock(session.session_id, session.store_id)
 
     const { closedSession, counts } = await prisma.$transaction(async (tx) => {
       // Everything never scanned is missing
