@@ -29,7 +29,6 @@ import type { DeviceStatus } from '@/types/database'
 import { phoneMatches } from '@/lib/phoneSearch'
 
 const STATUSES = ['disponible', 'reserve', 'vendu', 'echange', 'en_reparation', 'en_livraison', 'en_transfert', 'void'] as const
-const MARQUES  = ['Apple', 'Samsung', 'Xiaomi', 'Redmi', 'Huawei', 'Oppo', 'Realme']
 const LOCATIONS = ['magasin_principal', 'magasin_secondaire', 'externe']
 const EMPTY: never[] = []
 const PAGE = 60
@@ -185,18 +184,38 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
   const [deletedIds, setDeletedIds] = useState<Set<string>>(() => new Set())
   useEffect(() => { if (phonesQ.error) showError(phonesQ.error.message) }, [phonesQ.error])
 
-  const phones = useMemo(() => {
+  // Everything the filters keep, the brand aside: the brand list is counted on it
+  const beforeBrand = useMemo(() => {
     const q = search.trim().toLowerCase()
     return (phonesQ.data ?? []).filter(p =>
       !deletedIds.has(p.phone_id) &&
       (!filterStatus   || p.status   === filterStatus) &&
-      (!filterMarque   || p.marque?.toLowerCase().includes(filterMarque.toLowerCase())) &&
       (!filterLocation || p.location === filterLocation) &&
       (!filterStorage  || p.stockage === filterStorage) &&
       (filterPromo !== '1' || p.promo_type != null) &&
       (q.length < 2 || phoneMatches(p, q))
     )
-  }, [phonesQ.data, deletedIds, filterStatus, filterMarque, filterLocation, filterStorage, filterPromo, search])
+  }, [phonesQ.data, deletedIds, filterStatus, filterLocation, filterStorage, filterPromo, search])
+  const sameBrand = (a?: string | null, b?: string | null) => (a ?? '').trim().toLowerCase() === (b ?? '').trim().toLowerCase()
+  const phones = useMemo(
+    () => (filterMarque ? beforeBrand.filter(p => sameBrand(p.marque, filterMarque)) : beforeBrand),
+    [beforeBrand, filterMarque],
+  )
+  // The brands the store really holds (owner, 2026-10-06) — not a fixed list:
+  // biggest first, each with how many phones the other filters leave it.
+  const brandOptions = useMemo(() => {
+    const total = new Map<string, { name: string; all: number; shown: number }>()
+    for (const p of phonesQ.data ?? []) {
+      const name = (p.marque ?? '').trim()
+      if (!name || deletedIds.has(p.phone_id)) continue
+      const key = name.toLowerCase()
+      const row = total.get(key) ?? { name, all: 0, shown: 0 }
+      row.all += 1
+      total.set(key, row)
+    }
+    for (const p of beforeBrand) { const row = total.get((p.marque ?? '').trim().toLowerCase()); if (row) row.shown += 1 }
+    return Array.from(total.values()).sort((a, b) => b.all - a.all || a.name.localeCompare(b.name))
+  }, [phonesQ.data, deletedIds, beforeBrand])
 
   // Search hits hidden by the automatic "Disponible" (e.g. a sold phone's IMEI)
   const hiddenByAuto = useMemo(() => {
@@ -402,7 +421,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
               onChange={e => setFilterMarque(e.target.value)}
             >
               <option value="">{isAr ? 'كل الماركات' : 'Toutes marques'}</option>
-              {MARQUES.map(m => <option key={m} value={m}>{m}</option>)}
+              {brandOptions.map(b => <option key={b.name} value={b.name}>{b.name} ({b.shown})</option>)}
             </Select>
 
             <Select
