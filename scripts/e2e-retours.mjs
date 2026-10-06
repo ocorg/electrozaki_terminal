@@ -169,8 +169,7 @@ try {
   check('caisse: only the money actually paid counts (+2900)', (await cash(manager.api)) - cash3 === 2900)
   const reuse = await sell({ device_type: 'accessoire', device_id: acc.acc_id, qty: 1, prix_vente: 100, avoir_montant: 100, avoir_retour_id: avoirId })
   check('avoir: can’t be spent twice (409)', reuse.status === 409, reuse)
-  const onCredit = await sell({ device_type: 'accessoire', device_id: acc.acc_id, qty: 1, prix_vente: 100, payment_method: 'credit', avoir_montant: 50, avoir_retour_id: avoirId })
-  check('avoir: refused on a credit sale (400)', onCredit.status === 400, onCredit)
+  // An avoir may now pay part of a sale in several times (owner, 2026-10-06): see e2e-pos-credit
 
   // Cancelling a same-day sale paid with an avoir gives the credit back
   const cancel = await manager.api('/api/transactions/void', { method: 'PATCH', body: { txn_id: phoneSale, voided_reason: `Erreur de saisie E2E ${TAG}` } })

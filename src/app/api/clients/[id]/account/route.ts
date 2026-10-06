@@ -52,12 +52,13 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
       })
     }
     for (const t of sales.filter(t => !covered.has(t.txn_id))) {
-      const pv = Number(t.prix_vente), av = Number(t.avance ?? 0), ech = Number(t.valeur_echange ?? 0)
-      const du = t.payment_method === 'echange' ? 0 : t.payment_method === 'credit' ? Math.max(pv - ech, 0) : av > 0 ? Math.max(pv - av - ech, 0) : 0
+      const pv = Number(t.prix_vente), av = Number(t.avance ?? 0), ech = Number(t.valeur_echange ?? 0), ao = Number(t.avoir_montant ?? 0)
+      // a store credit (avoir) spent on the sale is paid, like the down payment
+      const du = t.payment_method === 'echange' ? 0 : t.payment_method === 'credit' ? Math.max(pv - ech - ao, 0) : av > 0 ? Math.max(pv - av - ech - ao, 0) : 0
       if (du <= 0) continue
       lines.push({
         at: t.created_at.toISOString(), kind: 'vente', ref: t.txn_id, label: name(t),
-        detail: [`total ${pv} DH`, av > 0 ? `avance ${av} DH` : null, ech > 0 ? `reprise ${ech} DH` : null].filter(Boolean).join(' · '),
+        detail: [`total ${pv} DH`, av > 0 ? `avance ${av} DH` : null, ech > 0 ? `reprise ${ech} DH` : null, ao > 0 ? `avoir ${ao} DH` : null].filter(Boolean).join(' · '),
         du, paye: 0,
       })
     }

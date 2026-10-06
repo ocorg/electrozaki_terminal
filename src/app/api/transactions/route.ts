@@ -100,7 +100,6 @@ async function POST_(request: NextRequest) {
     if (avoirMontant < 0) throw new HttpError(400, 'Avoir invalide')
     if (avoirMontant > 0) {
       if (!avoirId) throw new HttpError(400, 'Avoir manquant')
-      if (body.payment_method === 'credit') throw new HttpError(400, 'Un avoir ne peut pas servir pour une vente à crédit')
       if (avoirMontant > Number(body.prix_vente)) throw new HttpError(400, "L'avoir dépasse le prix de l'article")
     }
 
@@ -166,12 +165,14 @@ async function POST_(request: NextRequest) {
           const total   = Number(txn.prix_vente)
           const avance  = Number(txn.avance ?? 0)
           const reprise = Number(txn.valeur_echange ?? 0)
-          if (total - reprise - avance <= 0.01) throw new HttpError(400, 'Rien à payer plus tard : faites une vente normale')
+          // a store credit (avoir) spent on the sale is paid on the sale, like the down payment
+          const avoir   = Number(txn.avoir_montant ?? 0)
+          if (total - reprise - avance - avoir <= 0.01) throw new HttpError(400, 'Rien à payer plus tard : faites une vente normale')
           await tx.phone_credit_sales.create({
             data: {
               phone_id: txn.device_id, txn_id: txn.txn_id, client_id: txn.client_id,
               client_name: client?.nom ?? 'Client', client_tel: client?.telephone ?? null,
-              montant_total: total, avance_vente: avance, montant_paye: avance, statut: 'en_cours',
+              montant_total: total, avance_vente: avance + avoir, montant_paye: avance + avoir, statut: 'en_cours',
               phone_remis: !reserved, notes: txn.notes, store_id: txn.store_id, created_by: user.id,
               has_reprise: reprise > 0,
               ...(reprise > 0 && {

@@ -341,13 +341,14 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
   const canCredit      = user?.role === 'gerant' || user?.role === 'proprietaire'
   const severalTimes   = saleForm.payment_method === 'credit'
   const cartPhones     = cart.filter(i => i._type === 'phone')
-  const displayFariq   = severalTimes ? fariq : 0
-  const statutPaiement = computeStatutPaiement(displayFariq)
   // What the client hands over: the cart minus the trade-in value (a 5 000 phone
   // with a 2 000 trade-in = 3 000 to pay); negative when the trade-in is worth more
   const valeurEchange  = saleForm.type_operation === 'echange' ? saleForm.valeur_echange : 0
-  // A store credit covers the cart up to its balance; any rest stays on the avoir
-  const avoirUsed      = avoir ? Math.min(avoir.solde, Math.max(totalVente - valeurEchange, 0)) : 0
+  // A store credit covers the cart up to its balance; any rest stays on the avoir.
+  // Paid in several times: what the down payment leaves, the rest going on credit.
+  const avoirUsed      = avoir ? Math.min(avoir.solde, Math.max(totalVente - valeurEchange - (severalTimes ? saleForm.avance || 0 : 0), 0)) : 0
+  const displayFariq   = severalTimes ? Math.max(fariq - avoirUsed, 0) : 0
+  const statutPaiement = computeStatutPaiement(displayFariq)
   const netAPayer      = totalVente - valeurEchange - avoirUsed
   const aEncaisser     =
     severalTimes ? (saleForm.avance || 0)
@@ -373,16 +374,13 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
       if (saleForm.avance > 0 && !saleForm.avance_sub_method) {
         showError(isAr ? 'يرجى تحديد طريقة دفع التسبيق' : "Précisez le mode de paiement de l'avance"); return
       }
-      if (avoir) {
-        showError(isAr ? 'لا يمكن استعمال الرصيد مع البيع بالدين أو التسبيق' : "Un avoir s'utilise avec un paiement comptant (espèces, virement ou mixte)"); return
-      }
       if (!saleForm.client_nom.trim() || saleForm.client_tel.length < 10) {
         showError(isAr ? 'اسم العميل ورقم هاتفه مطلوبان' : 'Nom et téléphone du client obligatoires pour un paiement en plusieurs fois'); return
       }
       if (cartPhones.length > 1) {
         showError('Un seul téléphone par paiement en plusieurs fois (un dossier par téléphone)'); return
       }
-      if (fariq <= 0) {
+      if (displayFariq <= 0) {
         showError("Rien ne reste à payer : choisissez Espèces ou Virement"); return
       }
     }
@@ -427,8 +425,11 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
           itemEchange = round2(Math.min(Math.max(echangeTotal - allocEchange, 0), itemPv))
           itemAvance  = round2(Math.min(Math.max(saleForm.avance - allocAvance, 0), itemPv - itemEchange))
         }
-        const itemReste = round2(itemPv - itemAvance - itemEchange)
-        const itemAvoir   = isLast ? round2(avoirUsed                - allocAvoir  ) : round2(avoirUsed                * share)
+        // the avoir too goes to the phone first when paying in several times
+        const itemAvoir = severalTimes
+          ? round2(Math.min(Math.max(avoirUsed - allocAvoir, 0), itemPv - itemEchange - itemAvance))
+          : isLast ? round2(avoirUsed - allocAvoir) : round2(avoirUsed * share)
+        const itemReste = round2(itemPv - itemAvance - itemEchange - (severalTimes ? itemAvoir : 0))
         allocAvoir   += itemAvoir
         allocAvance  += itemAvance
         allocEspeces += itemEspeces
@@ -488,7 +489,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
         avance:         saleForm.avance        > 0 ? saleForm.avance        : undefined,
         valeur_echange: saleForm.valeur_echange > 0 ? saleForm.valeur_echange : undefined,
         avoir:          avoirUsed > 0 ? avoirUsed : undefined,
-        fariq, payment_method: saleForm.payment_method,
+        fariq: severalTimes ? displayFariq : fariq, payment_method: saleForm.payment_method,
         montant_especes: saleForm.montant_especes || undefined,
         montant_carte:   saleForm.montant_carte   || undefined,
         montant_rendu:   montantRendu > 0 ? montantRendu : undefined,

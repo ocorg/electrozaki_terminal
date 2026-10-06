@@ -162,6 +162,27 @@ try {
   const P3 = await newPhone(2000)
   const m4 = await sell(manager, { device_type: 'telephone', device_id: P3, client_id: client.client_id, prix_vente: 2000, payment_method: 'especes', avance: 2000, dossier: { phone_remis: true } })
   check('down payment covers everything: refused, sell it normally', m4.status === 400 && await phoneStatus(P3) === 'disponible', m4)
+
+  // ── Several times with a store credit (avoir): avoir + cash now + rest on credit ──
+  const { rows: [av] } = await db.query(
+    `insert into retours (type, txn_id, store_id, date, qty, montant, mode, destination, motif, avoir_solde)
+     values ('retour', $1, $2, current_date, 1, 1400, 'avoir', 'stock', 'E2E avoir', 1400) returning retour_id`, [a1.data?.data?.txn_id, STORE])
+  // runs before the main clean-up (reverse order): free the sales that spent it first
+  cleanups.push(async () => {
+    await db.query(`update transactions set avoir_retour_id = null where avoir_retour_id = $1`, [av.retour_id])
+    await db.query(`delete from retours where retour_id = $1`, [av.retour_id])
+  })
+  const P9 = await newPhone(3300)
+  const w1 = await sell(manager, { device_type: 'telephone', device_id: P9, client_id: client.client_id, prix_vente: 3300, payment_method: 'especes', avance: 500, avoir_montant: 1200, avoir_retour_id: av.retour_id, dossier: { phone_remis: true } })
+  const d9 = await dossierOf(P9)
+  const { rows: [avLeft] } = await db.query(`select avoir_solde from retours where retour_id = $1`, [av.retour_id])
+  check('several times with an avoir: sale accepted, avoir spent', w1.status === 201 && n(avLeft.avoir_solde) === 200, { s: w1.status, e: w1.data?.error, left: avLeft?.avoir_solde })
+  check('…the file counts the avoir as paid: 3300 − 500 − 1200 = 1600 left', d9 && n(d9.avance_vente) === 1700 && n(d9.montant_paye) === 1700 && n(d9.montant_restant) === 1600, d9 && { av: d9.avance_vente, left: d9.montant_restant })
+  const before9 = await solde()
+  const w2 = await sell(manager, { device_type: 'accessoire', device_id: acc.acc_id, client_id: client.client_id, prix_vente: 150, payment_method: 'credit', avoir_montant: 100, avoir_retour_id: av.retour_id })
+  check('accessory on credit with an avoir: only the rest goes on the account (+50)', w2.status === 201 && await solde() - before9 === 50, { s: w2.status, e: w2.data?.error, d: await solde() - before9 })
+  const w3 = await sell(manager, { device_type: 'telephone', device_id: await newPhone(100), client_id: client.client_id, prix_vente: 100, payment_method: 'credit', avoir_montant: 100, avoir_retour_id: av.retour_id, dossier: { phone_remis: true } })
+  check('an avoir that already pays everything is not a credit (400)', w3.status === 400, w3)
 } catch (err) {
   check('script ran to the end', false, String(err?.stack ?? err))
 } finally {
