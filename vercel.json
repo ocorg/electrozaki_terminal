@@ -1,6 +1,15 @@
 {
-  "regions": ["fra1"],
+  "regions": [
+    "fra1"
+  ],
   "crons": [
-    { "path": "/api/cron/site-sync", "schedule": "30 5 * * *" }
+    {
+      "path": "/api/cron/site-sync",
+      "schedule": "30 5 * * *"
+    },
+    {
+      "path": "/api/cron/caisse-reminder",
+      "schedule": "30 0 * * *"
+    }
   ]
 }
