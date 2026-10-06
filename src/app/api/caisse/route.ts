@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db'
 import { json, handleError, requireUser, requireActiveUser, dateOnly, todayDate, HttpError } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { withNotify } from '@/lib/realtime'
+import { alertLater, closingReport } from '@/lib/reports'
 
 // ─── Shared aggregation — single source of truth for GET (live view) and PATCH (EOD submit) ───
 //
@@ -299,6 +300,8 @@ async function PATCH_(request: NextRequest) {
       ip_address:   getIpFromRequest(request),
       notes:        `Caisse clôturée — Réel : ${solde_reel} MAD | Écart : ${ecart} MAD`,
     })
+    // The day in a few lines, to the store's Telegram group
+    alertLater(() => closingReport(current.store_id!, data, user.display_name))
 
     return json({ data })
   } catch (err) {

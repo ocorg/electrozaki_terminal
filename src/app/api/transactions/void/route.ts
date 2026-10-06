@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db'
 import { json, handleError, requireActiveUser, HttpError, MANAGERS } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { withNotify } from '@/lib/realtime'
+import { alertLater, deviceName, money } from '@/lib/reports'
 
 async function PATCH_(request: NextRequest) {
   try {
@@ -55,6 +56,8 @@ async function PATCH_(request: NextRequest) {
       const after = await tx.transactions.findUniqueOrThrow({ where: { txn_id } })
       return { before, after }
     })
+
+    alertLater(async () => `❌ Vente annulée — ${await deviceName(before.device_type, before.device_id)} ${money(before.prix_vente)} (${txn_id}) · motif : ${voided_reason} · par ${user.display_name}`)
 
     // Caisse totals aggregate live from transactions WHERE voided = false — the day is still open, so no caisse mutation needed.
     await logActivity({

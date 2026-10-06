@@ -5,6 +5,7 @@ import { json, handleError, requireUser, requireActiveUser, dateOnly, todayDate,
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { withNotify } from '@/lib/realtime'
 import { assertCaisseOpen } from '@/lib/phoneCredits'
+import { alertLater, money } from '@/lib/reports'
 
 // One logic for every supplier (2026-09-28): a "règlement" settles chosen
 // SOLD phones (it may use the supplier's credit, so the cash paid can be less
@@ -105,6 +106,11 @@ async function POST_(request: NextRequest) {
       record_id:   data.payment_id,
       after_state: data,
       ip_address:  getIpFromRequest(request),
+    })
+    alertLater(async () => {
+      const supplier = await prisma.suppliers.findUnique({ where: { supplier_id: data.supplier_id }, select: { nom: true } })
+      const SRC: Record<string, string> = { caisse: 'espèces de la caisse', hors_caisse: 'espèces hors caisse', virement: 'virement' }
+      return `💸 Paiement fournisseur — ${supplier?.nom ?? data.supplier_id} : ${money(data.montant)} (${data.payment_type === 'avance_a' ? 'avance' : `règlement de ${data.phone_ids.length} tél.`}), ${SRC[data.source] ?? data.source} · par ${user.display_name}`
     })
 
     return json({ data }, { status: 201 })

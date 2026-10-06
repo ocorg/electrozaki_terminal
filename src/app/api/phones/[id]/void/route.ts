@@ -4,6 +4,7 @@ import { json, handleError, requireActiveUser, HttpError, MANAGERS } from '@/lib
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { withNotify } from '@/lib/realtime'
 import { liveSale } from '@/lib/phoneExit'
+import { alertTelegram, money } from '@/lib/reports'
 
 // "The Void" (owner, 2026-10-04): a phone that left the stock with no sale to
 // record — sold but nobody remembers to whom or when, or taken apart for
@@ -34,6 +35,7 @@ async function POST_(req: NextRequest, { params }: { params: { id: string } }) {
       store_id: data.store_id, user_id: user.id, user_name: user.display_name, action_type: 'modification', module: 'telephones',
       record_id: data.phone_id, before_state: before, after_state: data, notes: `Envoyé dans The Void : ${motif}`, ip_address: getIpFromRequest(req),
     })
+    alertTelegram(`🕳 The Void — ${before.marque} ${before.model}${before.stockage ? ` ${before.stockage}` : ''}${before.imei ? ` (IMEI ${before.imei})` : ''} : perte ${money(before.prix_achat)} · motif : ${motif} · par ${user.display_name}`)
     return json({ data: { phone_id: data.phone_id, status: data.status } })
   } catch (err) {
     return handleError(err, 'POST /api/phones/[id]/void')

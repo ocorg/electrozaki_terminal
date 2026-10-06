@@ -7,6 +7,7 @@ import { withNotify } from '@/lib/realtime'
 import { codeLabel } from '@/lib/codes'
 import { deviceLabels } from '@/lib/device-labels'
 import { saleBalance, unpaidSale, assertDrawerOpen, lockSale } from '@/lib/retours'
+import { alertLater, deviceName, money } from '@/lib/reports'
 
 const num = (v: Prisma.Decimal | number | null | undefined) => (v == null ? 0 : Number(v))
 
@@ -194,6 +195,8 @@ async function POST_(request: NextRequest) {
       notes: `Retour de ${retour.sale.txn_id} — ${qty} article(s), ${montant} DH en ${codeLabel('retour_mode', mode, 'fr')}, `
            + `${codeLabel('retour_destination', destination, 'fr')} — Motif : ${motif}`,
     })
+    alertLater(async () => `↩️ Retour — ${await deviceName(retour.sale.device_type, retour.sale.device_id)} (${retour.sale.txn_id}) : ${money(montant)} en ${codeLabel('retour_mode', mode, 'fr').toLowerCase()}, `
+      + `${codeLabel('retour_destination', destination, 'fr').toLowerCase()} · motif : ${motif} · par ${user.display_name}`)
 
     return json({ data: retour.created }, { status: 201 })
   } catch (err) {

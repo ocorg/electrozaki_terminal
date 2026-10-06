@@ -7,6 +7,7 @@ import { codeLabel } from '@/lib/codes'
 import { computeStatutPaiement } from '@/lib/utils'
 import { withNotify } from '@/lib/realtime'
 import { deviceLabels } from '@/lib/device-labels'
+import { alertLater, deviceName, money } from '@/lib/reports'
 
 export async function GET(request: NextRequest) {
   try {
@@ -206,6 +207,20 @@ async function POST_(request: NextRequest) {
       ip_address:  getIpFromRequest(request),
       notes:       `${codeLabel('operation_type', data.type_operation, 'fr')} — ${codeLabel('device_type', data.device_type, 'fr')} ${data.device_id}`,
     })
+
+    // Telegram: a price under the minimum, and anything sold on credit
+    const rest = Number(data.prix_vente) - Number(data.avance ?? 0) - Number(data.valeur_echange ?? 0) - Number(data.avoir_montant ?? 0)
+    const onCreditSale = !!dossier || data.payment_method === 'credit' || (Number(data.avance ?? 0) > 0 && rest > 0.01)
+    if (data.override_required || onCreditSale) {
+      alertLater(async () => {
+        const item = await deviceName(data.device_type, data.device_id)
+        const client = data.client_id ? await prisma.clients.findUnique({ where: { client_id: data.client_id }, select: { nom: true } }) : null
+        return [
+          data.override_required ? `⚠️ Vendu sous le prix minimum — ${item} à ${money(data.prix_vente)} (${data.txn_id}), par ${user.display_name}${data.override_reason ? ` · motif : ${data.override_reason}` : ''}` : null,
+          onCreditSale ? `🧾 Vente à crédit — ${item} ${money(data.prix_vente)} (${data.txn_id})${client ? `, ${client.nom}` : ''} : reçu ${money(Number(data.prix_vente) - rest)}, reste ${money(rest)} · par ${user.display_name}` : null,
+        ].filter(Boolean).join('\n')
+      })
+    }
 
     return json({ data }, { status: 201 })
   } catch (err) {

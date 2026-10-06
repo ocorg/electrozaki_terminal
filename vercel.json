@@ -4,12 +4,12 @@
   ],
   "crons": [
     {
-      "path": "/api/cron/site-sync",
-      "schedule": "30 5 * * *"
-    },
-    {
       "path": "/api/cron/caisse-reminder",
       "schedule": "30 0 * * *"
+    },
+    {
+      "path": "/api/cron/morning",
+      "schedule": "30 9 * * *"
     }
   ]
 }
