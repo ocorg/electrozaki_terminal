@@ -258,7 +258,7 @@ export async function financials(store: string, from: Date, to: Date) {
     received:     round(sales.reduce((s, x) => s + collected(x), 0)),
     tradeIns:     round(sales.reduce((s, x) => s + x.ve, 0)),
     avoirs:       round(sales.reduce((s, x) => s + x.ao, 0)),
-    toCollect:    round(sales.reduce((s, x) => s + (x.payment === 'credit' ? Math.max(x.pv - x.avance - x.ve, 0) : x.avance > 0 ? Math.max(x.pv - x.avance - x.ve, 0) : 0), 0)),
+    toCollect:    round(sales.reduce((s, x) => s + (x.payment === 'credit' ? Math.max(x.pv - x.avance - x.ve - x.ao, 0) : x.avance > 0 ? Math.max(x.pv - x.avance - x.ve, 0) : 0), 0)),
     repairs:      round(repairs.reduce((s, x) => s + x.price, 0)),
     stockBuys:    round(expenses.filter(e => e.cat === STOCK_PURCHASE_CATEGORY).reduce((s, x) => s + x.montant, 0)),
     refundsPaid:  round(returns.filter(r => r.mode !== 'avoir' && r.mode !== 'hors_caisse').reduce((s, x) => s + x.montant, 0)),

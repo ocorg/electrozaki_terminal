@@ -119,7 +119,8 @@ async function computeCaisseTotals(store_id: string, date: Date): Promise<Caisse
   })
 
   const ventes_credit_due = sum(txns, t =>
-    t.payment_method === 'credit' ? Math.max(num(t.prix_vente) - num(t.avance) - num(t.valeur_echange), 0) : 0)
+    // a store credit (avoir) spent on the sale is paid too
+    t.payment_method === 'credit' ? Math.max(num(t.prix_vente) - num(t.avance) - num(t.valeur_echange) - num(t.avoir_montant), 0) : 0)
 
   const total_reparations =
     sum(repsDelivered, r => Math.max(num(r.cout_reparation) - num(r.avance_rep), 0))
