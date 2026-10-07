@@ -141,6 +141,33 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
 
   const [submitting,  setSubmitting]  = useState(false)
   const [retourOpen,  setRetourOpen]  = useState(false)
+  // Trade-in of a phone the shop already sold: its description is filled in
+  // from the old record (owner, 2026-10-08), to be corrected where it changed
+  const [knownTradeIn, setKnownTradeIn] = useState<{ imei: string; in_shop: boolean; sold_on: string | null } | null>(null)
+  const tradeInImei = saleForm.type_operation === 'echange' ? saleForm.imei_echange : ''
+  useEffect(() => {
+    if (tradeInImei.length < 14) { setKnownTradeIn(null); return }
+    let alive = true
+    const timer = setTimeout(() => {
+      fetch(`/api/phones/lookup?imei=${tradeInImei}`).then(r => r.json()).then(j => {
+        const d = j?.data
+        if (!alive || !d?.known) { if (alive) setKnownTradeIn(null); return }
+        setKnownTradeIn({ imei: tradeInImei, in_shop: !!d.in_shop, sold_on: d.sold_on ?? null })
+        if (d.in_shop) return
+        // only what is still empty: what was already typed wins
+        setSaleForm(prev => ({
+          ...prev,
+          marque_echange:   prev.marque_echange   || d.marque   || '',
+          model_echange:    prev.model_echange    || d.model    || '',
+          couleur_echange:  prev.couleur_echange  || d.couleur  || '',
+          stockage_echange: prev.stockage_echange || d.stockage || '',
+          ram_echange:      prev.ram_echange      || d.ram      || '',
+        }))
+      }).catch(() => {})
+    }, 400)
+    return () => { alive = false; clearTimeout(timer) }
+  }, [tradeInImei])
+
   // Store credit (avoir) from a return, spent on this sale
   const [avoir,       setAvoir]       = useState<AppliedAvoir | null>(null)
   const [receiptOpen, setReceiptOpen] = useState(false)
@@ -881,6 +908,13 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                     onChange={e => setSale('imei_echange', e.target.value.replace(/\D/g, '').slice(0, 15))} />
                   <ScanButton onScan={v => setSale('imei_echange', v)} hint="Scannez l'IMEI de l'appareil repris" color={primary} mode="barcode" />
                 </div>
+                {knownTradeIn && knownTradeIn.imei === saleForm.imei_echange && (
+                  knownTradeIn.in_shop
+                    ? <p className="text-xs font-bold text-red-600 mt-1">Ce téléphone est déjà au magasin : vérifiez l&apos;IMEI.</p>
+                    : <p className="text-xs text-blue-700 mt-1">
+                        <b>Téléphone déjà connu du magasin</b>{knownTradeIn.sold_on ? ` (vendu le ${knownTradeIn.sold_on.split('-').reverse().join('/')})` : ''} : sa fiche est reprise. Corrigez ce qui a changé (batterie, état, couleur).
+                      </p>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>

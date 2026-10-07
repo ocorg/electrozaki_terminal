@@ -30,6 +30,8 @@ const when = (iso: string) => new Date(iso).toLocaleString('fr-FR', {
 
 export default function PhoneHistoryPanel({ phoneId, label, onClose }: { phoneId: string; label?: string; onClose: () => void }) {
   const [events, setEvents] = useState<Event[] | null>(null)
+  // A phone that came back: one block per stay in the shop
+  const [stays, setStays] = useState<{ n: number; from: string | null; current: boolean }[]>([])
   const [error, setError] = useState<string | null>(null)
   useEscapeKey(onClose, true)
 
@@ -37,7 +39,7 @@ export default function PhoneHistoryPanel({ phoneId, label, onClose }: { phoneId
     let alive = true
     fetch(`/api/phones/${phoneId}/history`)
       .then(r => r.json().then(j => ({ ok: r.ok, j })))
-      .then(({ ok, j }) => { if (!alive) return; if (!ok) setError(j.error ?? 'Erreur'); else setEvents(j.data.events) })
+      .then(({ ok, j }) => { if (!alive) return; if (!ok) setError(j.error ?? 'Erreur'); else { setEvents(j.data.events); setStays(j.data.stays ?? []) } })
       .catch(() => alive && setError('Connexion impossible'))
     return () => { alive = false }
   }, [phoneId])
@@ -61,8 +63,17 @@ export default function PhoneHistoryPanel({ phoneId, label, onClose }: { phoneId
               <ol className="relative border-l border-ez-border ml-3 space-y-4">
                 {events.map((e, i) => {
                   const { icon: Icon, cls } = ICON[e.kind] ?? ICON.edit
+                  const stay = (e as Event & { stay?: number }).stay
+                  const opens = stays.length > 1 && stay !== (events[i - 1] as (Event & { stay?: number }) | undefined)?.stay
+                  const info = stays.find(s => s.n === stay)
                   return (
                     <li key={i} className="ml-5">
+                      {opens && (
+                        <div className="-ml-8 mb-3 mt-1 px-3 py-1.5 rounded-lg bg-ez-bg border border-ez-border text-xs font-bold text-ez-text">
+                          {info?.current ? 'Depuis son retour au magasin' : stay === 1 ? 'Premier passage au magasin' : `Passage n° ${stay} au magasin`}
+                          {info?.from ? <span className="font-normal text-ez-subtle"> · entré le {info.from.split('-').reverse().join('/')}</span> : null}
+                        </div>
+                      )}
                       <span className={`absolute -left-3 flex items-center justify-center w-6 h-6 rounded-full ring-4 ring-white ${cls}`}>
                         <Icon className="w-3.5 h-3.5" />
                       </span>

@@ -62,6 +62,13 @@ export async function GET(request: NextRequest) {
       ...(fournisseur_id && { fournisseur_id }),
       ...(promo === '1'  && { promo_type: { not: null } }),
     }
+    // A phone that came back has a record per stay; the list shows the current
+    // one only (owner, 2026-10-08) — the earlier stays are in its history. A
+    // supplier's own list keeps them: that is where an old sale is settled.
+    if (!fournisseur_id) {
+      const later = await prisma.phones.findMany({ where: { vie_precedente_id: { not: null }, is_deleted: false }, select: { vie_precedente_id: true } })
+      if (later.length) where.phone_id = { notIn: later.map(p => p.vie_precedente_id!) }
+    }
     if (search) {
       where.OR = /^\d{6,}$/.test(search)
         ? [{ imei: { contains: search } }]

@@ -103,8 +103,14 @@ try {
 
   // ── Everything that looks a phone up by IMEI finds the one in the shop ──
   const hist = await manager(`/api/phones/${B}/history`)
-  const titles = (hist.data?.data?.events ?? []).map(e => e.title).join(' | ')
-  check('history tells both lives', hist.data?.data?.lives === 2 && /Vie 1 · Vendu/.test(titles) && /Vie 2 · Revenu au magasin/.test(titles), titles.slice(0, 250))
+  const ev = hist.data?.data?.events ?? []
+  const titles = ev.map(e => `${e.stay}:${e.title}`).join(' | ')
+  check('history tells both stays, the current one first', hist.data?.data?.lives === 2 && ev[0]?.stay === 2 && ev.some(e => e.stay === 1 && /^Vendu/.test(e.title)) && ev.some(e => e.stay === 2 && e.title === 'Revenu au magasin') && hist.data?.data?.stays?.[1]?.current === true, titles.slice(0, 250))
+  const list = await manager(`/api/phones?store_id=${STORE}&limit=5000`)
+  const mine = (list.data?.data ?? []).filter(p => p.imei === IMEI)
+  check('the phones list shows one record for the phone: the current one', mine.length === 1 && mine[0].phone_id === B, mine.map(p => p.phone_id))
+  const look = await manager(`/api/phones/lookup?imei=${IMEI}`)
+  check('lookup while it is in the shop: known, flagged "in the shop"', look.data?.data?.known === true && look.data?.data?.in_shop === true, look.data)
   const histA = await manager(`/api/phones/${A}/history`)
   check('…from the old record too', histA.data?.data?.lives === 2, histA.data?.data?.lives)
   const move = await manager('/api/movements', { method: 'POST', body: { device_type: 'telephone', device_id: IMEI, from_location: 'magasin_principal', to_location: 'externe', reason: 'reparation_externe', store_id: STORE } })
@@ -117,6 +123,9 @@ try {
 
   // ── And it can leave and come back again ──────────────────────────
   const saleB = await sell(B)
+  const look2 = await manager(`/api/phones/lookup?imei=${IMEI}`)
+  check('lookup once sold: its description comes back, no price', look2.data?.data?.known === true && look2.data?.data?.in_shop === false && look2.data?.data?.model === 'E2E vie' && look2.data?.data?.couleur === 'Bleu' && !('prix_achat' in (look2.data?.data ?? {})) && !!look2.data?.data?.sold_on, look2.data)
+  check('lookup of an unknown IMEI: nothing', (await manager('/api/phones/lookup?imei=359700000000001')).data?.data?.known === false)
   const third = await add({ marque: 'Apple' })
   const C = third.data?.data?.phone_id
   check('second life sold, third life: linked to the second', saleB.status === 201 && third.status === 201 && (await state(C))?.vie_precedente_id === B, { b: saleB.status, c: third.status })

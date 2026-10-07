@@ -10,7 +10,7 @@ import { codeLabel } from '@/lib/codes'
 // supplier payments, inventory scans and the trade-in chain.
 
 type Kind = 'stock' | 'edit' | 'sale' | 'return' | 'credit' | 'supplier' | 'inventory' | 'chain' | 'delete'
-interface Event { at: string; kind: Kind; title: string; detail?: string; by?: string | null }
+interface Event { at: string; kind: Kind; title: string; detail?: string; by?: string | null; stay?: number }
 
 const FIELD: Record<string, string> = {
   status: 'Statut', prix_achat: 'Prix d’achat', prix_vente_recommande: 'Prix de vente', prix_vente_minimum: 'Prix minimum',
@@ -148,12 +148,15 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
       if (!next) break
       lives.push(await lifeEvents(next.phone_id)); last = next.phone_id
     }
-    const events: Event[] = lives.length === 1 ? lives[0].events : lives.flatMap((life, i) => [
-      ...life.events.map(e => ({ ...e, title: `Vie ${i + 1} · ${e.title}` })),
-      ...(i > 0 ? [{ at: life.phone.created_at!.toISOString(), kind: 'chain' as Kind, title: `Vie ${i + 1} · Revenu au magasin`, detail: 'Téléphone déjà vendu par le magasin, repris : nouvelle fiche, même IMEI' }] : []),
+    // Each stay in the shop is its own block, newest first
+    const events: Event[] = lives.flatMap((life, i) => [
+      ...life.events.map(e => ({ ...e, stay: i + 1 })),
+      ...(i > 0 ? [{ at: life.phone.created_at!.toISOString(), kind: 'chain' as Kind, title: 'Revenu au magasin', detail: 'Déjà vendu par le magasin, repris : nouvelle période', stay: i + 1 }] : []),
     ])
-    events.sort((a, b) => b.at.localeCompare(a.at))
-    return json({ data: { phone_id: id, events, lives: lives.length } })
+    events.sort((a, b) => (b.stay ?? 1) - (a.stay ?? 1) || b.at.localeCompare(a.at))
+    const day = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : null)
+    const stays = lives.map((life, i) => ({ n: i + 1, from: day(life.phone.date_entree ?? life.phone.created_at), current: i === lives.length - 1 }))
+    return json({ data: { phone_id: id, events, lives: lives.length, stays } })
   } catch (err) {
     return handleError(err, 'GET /api/phones/[id]/history')
   }
