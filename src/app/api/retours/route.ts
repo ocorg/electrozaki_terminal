@@ -8,6 +8,7 @@ import { codeLabel } from '@/lib/codes'
 import { deviceLabels } from '@/lib/device-labels'
 import { saleBalance, unpaidSale, assertDrawerOpen, lockSale } from '@/lib/retours'
 import { alertLater, deviceName, money } from '@/lib/reports'
+import { assertNoLiveTwin } from '@/lib/phoneExit'
 
 const num = (v: Prisma.Decimal | number | null | undefined) => (v == null ? 0 : Number(v))
 
@@ -162,6 +163,9 @@ async function POST_(request: NextRequest) {
       // Where the item goes
       const note = `Retour ${created.retour_id} : ${motif}`.slice(0, 500)
       if (sale.device_type === 'telephone') {
+        // the phone may have come back since under a new record (second life)
+        const returned = await tx.phones.findUnique({ where: { phone_id: sale.device_id }, select: { phone_id: true, imei: true } })
+        if (returned) await assertNoLiveTwin(tx, returned)
         await tx.phones.update({
           where: { phone_id: sale.device_id },
           data:  destination === 'reparation'

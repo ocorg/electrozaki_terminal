@@ -24,10 +24,9 @@ const FIELD: Record<string, string> = {
 const SKIP = new Set(['updated_at', 'updated_by', 'created_at', 'created_by', 'icloud_mdp', 'image_url', 'txn_ref_id', 'settled_by', 'is_deleted', 'date_entree', 'store_id', 'type', 'origine_phone_id', 'void_at', 'void_by'])
 const dh = (v: unknown) => `${Number(v).toLocaleString('fr-MA')} DH`
 
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
-  try {
-    await requireUser(MANAGERS)
-    const id = params.id
+// Everything that happened to ONE record (one life of the phone in the shop)
+async function lifeEvents(id: string) {
+  {
     const phone = await prisma.phones.findUnique({ where: { phone_id: id } })
     if (!phone) throw new HttpError(404, 'Téléphone introuvable')
 
@@ -128,8 +127,33 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     if (phone.origine_phone_id) add({ at: phone.created_at!.toISOString(), kind: 'chain', title: `Repris en échange de ${phone.origine_phone_id}`, detail: `rattaché à ${supName(phone.fournisseur_id)} · dû ${dh(phone.du_fournisseur ?? 0)} à sa vente` })
     for (const t of tradeIns) add({ at: t.created_at!.toISOString(), kind: 'chain', title: `A reçu en reprise ${t.phone_id} (${[t.marque, t.model].filter(Boolean).join(' ')})`, detail: `${dh(t.du_fournisseur ?? 0)} reportés sur ce téléphone repris` })
 
+    return { phone, events }
+  }
+}
+
+export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    await requireUser(MANAGERS)
+    const id = params.id
+    const lives = [await lifeEvents(id)]
+    // A phone that came back (sold, then taken back) has one record per life:
+    // its history is the whole story, earlier and later lives included.
+    for (let prev = lives[0].phone.vie_precedente_id; prev && lives.length < 6;) {
+      const life = await lifeEvents(prev).catch(() => null)
+      if (!life) break
+      lives.unshift(life); prev = life.phone.vie_precedente_id
+    }
+    for (let last = lives[lives.length - 1].phone.phone_id; lives.length < 6;) {
+      const next = await prisma.phones.findFirst({ where: { vie_precedente_id: last }, select: { phone_id: true }, orderBy: { created_at: 'asc' } })
+      if (!next) break
+      lives.push(await lifeEvents(next.phone_id)); last = next.phone_id
+    }
+    const events: Event[] = lives.length === 1 ? lives[0].events : lives.flatMap((life, i) => [
+      ...life.events.map(e => ({ ...e, title: `Vie ${i + 1} · ${e.title}` })),
+      ...(i > 0 ? [{ at: life.phone.created_at!.toISOString(), kind: 'chain' as Kind, title: `Vie ${i + 1} · Revenu au magasin`, detail: 'Téléphone déjà vendu par le magasin, repris : nouvelle fiche, même IMEI' }] : []),
+    ])
     events.sort((a, b) => b.at.localeCompare(a.at))
-    return json({ data: { phone_id: id, events } })
+    return json({ data: { phone_id: id, events, lives: lives.length } })
   } catch (err) {
     return handleError(err, 'GET /api/phones/[id]/history')
   }

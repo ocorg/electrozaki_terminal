@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db'
 import { json, handleError, requireActiveUser, HttpError, MANAGERS } from '@/lib/api'
 import { phoneLabel, syncInventoryWithStock } from '@/lib/inventory'
 import { withNotify } from '@/lib/realtime'
+import { inShop } from '@/lib/phoneExit'
 
 // Response `type`: trouve | hors_perimetre | non_enregistre | deja_scanne
 async function POST_(req: NextRequest, { params }: { params: { id: string } }) {
@@ -42,10 +43,13 @@ async function POST_(req: NextRequest, { params }: { params: { id: string } }) {
       return json({ type: 'trouve', item })
     }
 
-    const phone = await prisma.phones.findFirst({
-      where:  { imei, is_deleted: false },
-      select: { phone_id: true, marque: true, model: true, status: true },
+    // A phone that came back has two records: the one in the shop first
+    const known = await prisma.phones.findMany({
+      where:   { imei, is_deleted: false },
+      select:  { phone_id: true, marque: true, model: true, status: true },
+      orderBy: { created_at: 'desc' },
     })
+    const phone = known.find(p => inShop(p.status)) ?? known[0] ?? null
     if (phone) {
       // B — known phone, not expected here (e.g. already sold)
       const item = await prisma.inventory_session_items.create({

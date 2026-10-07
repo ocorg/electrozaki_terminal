@@ -5,6 +5,7 @@ import { json, handleError, requireUser, requireActiveUser, HttpError, MANAGERS 
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { codeLabel } from '@/lib/codes'
 import { withNotify } from '@/lib/realtime'
+import { inShop } from '@/lib/phoneExit'
 
 export async function GET(request: NextRequest) {
   try {
@@ -82,11 +83,14 @@ async function POST_(request: NextRequest) {
       const typed = String(body.device_id).trim()
       let deviceId = typed
       if (deviceType === 'telephone') {
-        const found = await tx.phones.findMany({
-          where:  { is_deleted: false, OR: [{ phone_id: typed.toUpperCase() }, { imei: typed }] },
-          select: { phone_id: true, status: true }, take: 2,
+        const all = await tx.phones.findMany({
+          where:   { is_deleted: false, OR: [{ phone_id: typed.toUpperCase() }, { imei: typed }] },
+          select:  { phone_id: true, status: true }, orderBy: { created_at: 'desc' },
         })
-        if (!found.length) throw new HttpError(404, `Aucun téléphone avec cet IMEI ou ce numéro : ${typed}`)
+        if (!all.length) throw new HttpError(404, `Aucun téléphone avec cet IMEI ou ce numéro : ${typed}`)
+        // a phone that came back has an old sold record too: the one in the shop is meant
+        const here = all.filter(p => inShop(p.status))
+        const found = here.length ? here : all.slice(0, 1)
         if (found.length > 1) throw new HttpError(400, 'Plusieurs téléphones correspondent : utilisez le numéro interne (PHO-…)')
         // A phone that left through a sale, a credit file or The Void is not in the shop to be moved
         if (['vendu', 'reserve', 'void'].includes(found[0].status)) {

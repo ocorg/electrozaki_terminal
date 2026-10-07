@@ -8,6 +8,8 @@ import { withNotify } from '@/lib/realtime'
 import { attachTradeIn, phonesSoldWithTradeIn } from '@/lib/tradeinChain'
 import { payFromDrawer } from '@/lib/stockPurchase'
 import { assertManualStatus } from '@/lib/phoneExit'
+import { sameImei, inShop } from '@/lib/phoneExit'
+import { codeLabel } from '@/lib/codes'
 
 // Hidden from staff: purchase price, iCloud password, settlement and audit fields
 const STAFF_OMIT = {
@@ -98,6 +100,23 @@ async function POST_(request: NextRequest) {
     // for (lib/tradeinChain) — its supplier is never typed by hand
     const tradeInOf = body.source === 'echange' && typeof body.txn_ref_id === 'string' ? body.txn_ref_id : null
     if (tradeInOf) delete (input as Record<string, unknown>).fournisseur_id
+
+    // A phone that comes back (sold long ago, taken back): a new record for its
+    // second life, linked to the old one, which keeps its sale. Never two
+    // records of the same IMEI in the shop at once.
+    const fields = input as Record<string, unknown>
+    if (typeof fields.imei === 'string') fields.imei = fields.imei.trim() || null
+    const earlier = await sameImei(prisma, fields.imei as string | null)
+    const stillHere = earlier.find(p => inShop(p.status))
+    if (stillHere) throw new HttpError(409, `Ce téléphone est déjà au magasin (« ${codeLabel('device_status', stillHere.status, 'fr')} », entré le ${stillHere.date_entree?.toISOString().slice(0, 10) ?? '?'}) : pas de deuxième fiche`)
+    const previous = earlier[0] ?? null
+    if (previous) {
+      // what does not change between two lives fills what was left empty
+      const blank = (v: unknown) => v === null || v === undefined || v === '' || v === 'Inconnu'
+      for (const k of ['marque', 'serie', 'couleur', 'stockage', 'ram', 'type'] as const) {
+        if (blank(fields[k]) && previous[k] != null) fields[k] = previous[k]
+      }
+    }
     const { data, chain } = await prisma.$transaction(async (tx) => {
       const created = await tx.phones.create({
         data: {
@@ -106,6 +125,7 @@ async function POST_(request: NextRequest) {
           model:       clean(input.model) as string,
           description: clean(input.description) as string | null | undefined,
           date_entree: (input.date_entree as Date | null | undefined) ?? todayDate(),
+          vie_precedente_id: previous?.phone_id ?? null,
           store_id:    (body.store_id as string | undefined) ?? user.store_id ?? null,
           created_by:  user.id,
           updated_by:  user.id,
@@ -138,10 +158,17 @@ async function POST_(request: NextRequest) {
       ip_address:  getIpFromRequest(request),
       ...(chain && { notes: `Reprise rattachée au fournisseur ${chain.supplier} (échange de ${chain.from}, ${chain.moved} DH)` }),
     })
+    if (previous) {
+      await logActivity({
+        store_id: data.store_id, user_id: user.id, user_name: user.display_name, action_type: 'modification', module: 'telephones',
+        record_id: previous.phone_id, ip_address: getIpFromRequest(request),
+        notes: `Revenu au magasin le ${todayDate().toISOString().slice(0, 10)} : nouvelle fiche ${data.phone_id} (deuxième vie)`,
+      })
+    }
 
     // Staff never get purchase price / supplier amounts back
     const out = isManager(user.role) ? data : Object.fromEntries(Object.entries(data).filter(([k]) => !(k in STAFF_OMIT)))
-    return json({ data: out }, { status: 201 })
+    return json({ data: out, ...(previous && { previous: { phone_id: previous.phone_id, status: previous.status } }) }, { status: 201 })
   } catch (err) {
     return handleError(err, 'POST /api/phones')
   }

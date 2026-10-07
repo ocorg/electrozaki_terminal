@@ -693,7 +693,10 @@ model phone_credit_sales {
 
 model phones {
   phone_id                       String               @id @default(dbgenerated("('PHO-'::text || lpad((nextval('phones_seq'::regclass))::text, 4, '0'::text))"))
-  imei                           String?              @unique
+  // one record in the shop per IMEI: partial unique index phones_imei_live_key (migration 18)
+  imei                           String?
+  // the record of this phone's previous life in the shop (sold, then taken back)
+  vie_precedente_id              String?
   source                         device_source
   fournisseur_id                 String?
   txn_ref_id                     String?
@@ -743,6 +746,8 @@ model phones {
   stores                         stores?              @relation(fields: [store_id], references: [store_id], onDelete: NoAction, onUpdate: NoAction)
   users_phones_updated_byTousers user_profiles?       @relation("phones_updated_byTousers", fields: [updated_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
+  @@index([imei], map: "idx_phones_imei")
+  @@index([vie_precedente_id], map: "idx_phones_vie_precedente")
   @@index([location], map: "idx_phones_location")
   @@index([marque], map: "idx_phones_marque")
   @@index([status], map: "idx_phones_status")

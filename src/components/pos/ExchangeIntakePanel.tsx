@@ -81,7 +81,9 @@ export default function ExchangeIntakePanel({ exchangePanel, storeId, isAr, onSu
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
-      showSuccess(`${isAr ? 'أضيف إلى المخزون' : 'Ajouté au stock'}: ${json.data.phone_id}`)
+      showSuccess(json.previous
+        ? (isAr ? 'هاتف سبق بيعه من المحل: بطاقة جديدة بنفس IMEI' : 'Ancien téléphone du magasin reconnu : nouvelle fiche, même IMEI')
+        : `${isAr ? 'أضيف إلى المخزون' : 'Ajouté au stock'}: ${json.data.phone_id}`)
       onSuccess(json.data.phone_id)
     } catch (err: unknown) {
       showError((err as Error).message)

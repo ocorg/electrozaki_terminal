@@ -4,6 +4,7 @@ import { json, handleError, requireActiveUser, HttpError, MANAGERS } from '@/lib
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { withNotify } from '@/lib/realtime'
 import { alertLater, deviceName, money } from '@/lib/reports'
+import { assertNoLiveTwin } from '@/lib/phoneExit'
 
 async function PATCH_(request: NextRequest) {
   try {
@@ -43,6 +44,8 @@ async function PATCH_(request: NextRequest) {
 
       // Put the device back in stock
       if (before.device_type === 'telephone') {
+        const back = await tx.phones.findUnique({ where: { phone_id: before.device_id }, select: { phone_id: true, imei: true } })
+        if (back) await assertNoLiveTwin(tx, back)
         await tx.phones.update({ where: { phone_id: before.device_id }, data: { status: 'disponible', updated_by: user.id } })
       } else if (before.device_type === 'laptop') {
         await tx.laptops.update({ where: { laptop_id: before.device_id }, data: { status: 'disponible', updated_by: user.id } })

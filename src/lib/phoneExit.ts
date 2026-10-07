@@ -1,5 +1,6 @@
 import type { Prisma } from '@prisma/client'
 import { HttpError } from '@/lib/api'
+import { codeLabel } from '@/lib/codes'
 
 type Tx = Prisma.TransactionClient | typeof import('@/lib/db').prisma
 
@@ -36,4 +37,29 @@ export async function assertManualStatus(tx: Tx, phone: { phone_id: string; stat
       ? `Ce téléphone a une vente (${live.ref}) : faites un Retour au POS ou annulez la vente, le statut suivra`
       : `Ce téléphone a un dossier (${live.ref}) : passez par le dossier (décharge ou annulation)`)
   }
+}
+
+// ── A phone that comes back (owner, 2026-10-08) ─────────────────────────
+// A phone sold long ago and taken back starts a second life with a record of
+// its own; the old one keeps its sale. One record "in the shop" per IMEI.
+const GONE = ['vendu', 'void']
+export const inShop = (status: string) => !GONE.includes(status)
+
+/** The other records of this IMEI, newest first. */
+export async function sameImei(tx: Tx, imei: string | null | undefined, exceptId?: string) {
+  const value = (imei ?? '').trim()
+  if (!value) return []
+  return tx.phones.findMany({
+    where:   { imei: value, is_deleted: false, ...(exceptId && { phone_id: { not: exceptId } }) },
+    orderBy: { created_at: 'desc' },
+  })
+}
+
+/**
+ * Refuses to bring an old record back into the shop (return, cancelled sale,
+ * out of The Void) when the phone has come back since under a new record.
+ */
+export async function assertNoLiveTwin(tx: Tx, phone: { phone_id: string; imei: string | null }) {
+  const twin = (await sameImei(tx, phone.imei, phone.phone_id)).find(p => inShop(p.status))
+  if (twin) throw new HttpError(409, `Ce téléphone est revenu au magasin depuis (fiche du ${twin.created_at?.toISOString().slice(0, 10) ?? '?'}, « ${codeLabel('device_status', twin.status, 'fr')} ») : l’opération se fait sur cette fiche`)
 }

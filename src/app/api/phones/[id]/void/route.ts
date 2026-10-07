@@ -3,7 +3,7 @@ import { prisma } from '@/lib/db'
 import { json, handleError, requireActiveUser, HttpError, MANAGERS } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { withNotify } from '@/lib/realtime'
-import { liveSale } from '@/lib/phoneExit'
+import { liveSale, assertNoLiveTwin } from '@/lib/phoneExit'
 import { alertTelegram, money } from '@/lib/reports'
 
 // "The Void" (owner, 2026-10-04): a phone that left the stock with no sale to
@@ -48,6 +48,7 @@ async function DELETE_(req: NextRequest, { params }: { params: { id: string } })
     const before = await prisma.phones.findFirst({ where: { phone_id: params.id, is_deleted: false } })
     if (!before) throw new HttpError(404, 'Téléphone introuvable')
     if (before.status !== 'void') throw new HttpError(400, 'Ce téléphone n’est pas dans The Void')
+    await assertNoLiveTwin(prisma, before)
     const data = await prisma.phones.update({
       where: { phone_id: before.phone_id },
       data:  { status: 'disponible', void_at: null, void_by: null, void_motif: null, updated_by: user.id },
