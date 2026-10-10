@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db'
 import { json, handleError, requireUser, requireActiveUser, HttpError, MANAGERS } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { withNotify } from '@/lib/realtime'
+import { workingDay } from '@/lib/catchUp'
 
 export async function GET(request: NextRequest) {
   try {
@@ -26,7 +27,9 @@ export async function GET(request: NextRequest) {
 async function POST_(request: NextRequest) {
   try {
     const user = await requireActiveUser(MANAGERS)
-    const { client_id, montant, payment_method, store_id, txn_id, payment_ref, notes } = await request.json()
+    const { client_id, montant, payment_method, store_id, txn_id, payment_ref, notes, date } = await request.json()
+    // a payment has no date of its own: its day is when it was recorded — noon of the forgotten day when catching up
+    const day = await workingDay(user, date, store_id ?? user.store_id)
     if (!client_id) throw new HttpError(400, 'client_id requis')
     if (!(Number(montant) > 0)) throw new HttpError(400, 'Montant invalide')
     if (!payment_method) throw new HttpError(400, 'Méthode de paiement requise')
@@ -42,6 +45,7 @@ async function POST_(request: NextRequest) {
         notes:        notes ?? null,
         collected_by: user.id,
         created_by:   user.id,
+        ...(day.late && { created_at: new Date(day.date.getTime() + 12 * 3_600_000) }),
       },
     })
 

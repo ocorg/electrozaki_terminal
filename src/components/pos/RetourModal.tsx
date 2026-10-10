@@ -9,6 +9,7 @@ import { apiWrite } from '@/lib/data/api'
 import { Loader2, RotateCcw, Search, X, ShieldCheck, ShieldOff, Wallet, Ticket } from 'lucide-react'
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import { codeLabel, type Code } from '@/lib/codes'
+import { useWorkDay } from '@/lib/stores/workDay'
 
 // Retour de vente (POS). A return never cancels the sale: it is a refund
 // dated today (cash, transfer or store credit), for all or part of a sale,
@@ -67,6 +68,7 @@ export default function RetourModal({ open, onClose, storeId, primary, onRetourD
   const L      = (fr: string, ar: string) => (isAr ? ar : fr)
   const { user } = useUser()
   const isManager = user?.role === 'gerant' || user?.role === 'proprietaire'
+  const work = useWorkDay()   // today, or the forgotten day being caught up on
 
   const [tab,        setTab]        = useState<Tab>('sale')
   const [q,          setQ]          = useState('')
@@ -152,7 +154,7 @@ export default function RetourModal({ open, onClose, storeId, primary, onRetourD
     try {
       const { data: res } = await apiWrite<{ data: { retour_id: string } }>('/api/retours', {
         method: 'POST',
-        body:   { txn_id: selected.txn_id, qty, montant, mode, destination: dest, motif: reason.trim() },
+        body:   { txn_id: selected.txn_id, qty, montant, mode, destination: dest, motif: reason.trim(), date: work.late ? work.date : undefined },
       })
       if (mode === 'avoir') {
         onAvoir({ retour_id: res.retour_id, solde: montant, label: selected.device_label })

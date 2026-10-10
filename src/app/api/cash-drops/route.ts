@@ -3,22 +3,24 @@ import { prisma } from '@/lib/db'
 import { json, handleError, requireUser, requireActiveUser, dateOnly, todayDate, HttpError, MANAGERS } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { withNotify } from '@/lib/realtime'
+import { workingDay } from '@/lib/catchUp'
 
 async function POST_(request: NextRequest) {
   try {
     // Free-text money in ("Autre"): managers only since 2026-10-04 — employees use the guided entries
     const user = await requireActiveUser(MANAGERS)
-    const body = await request.json() as { amount: number; reason: string; store_id: string }
+    const body = await request.json() as { amount: number; reason: string; store_id: string; date?: string }
     const amount = Number(body.amount)
     if (!(amount > 0)) throw new HttpError(400, 'Montant invalide')
     if (!body.reason?.trim()) throw new HttpError(400, 'Motif requis')
+    const day = await workingDay(user, body.date, body.store_id)
 
     const data = await prisma.cash_drops.create({
       data: {
         store_id:   body.store_id,
         amount,
         reason:     body.reason.trim(),
-        date:       todayDate(),
+        date:       day.date,
         created_by: user.id,
       },
     })

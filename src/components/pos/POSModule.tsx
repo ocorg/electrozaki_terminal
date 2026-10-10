@@ -30,6 +30,7 @@ import {
 } from 'lucide-react'
 import { STORE_TIME_ZONE } from '@/lib/time'
 import { phoneMatches } from '@/lib/phoneSearch'
+import { useWorkDay } from '@/lib/stores/workDay'
 
 // ─── Types ────────────────────────────────────────────────────
 type DeviceResult = (Phone | Laptop) & {
@@ -168,6 +169,8 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
     return () => { alive = false; clearTimeout(timer) }
   }, [tradeInImei])
 
+  // Today, or the forgotten day a manager is catching up on
+  const work = useWorkDay()
   // Store credit (avoir) from a return, spent on this sale
   const [avoir,       setAvoir]       = useState<AppliedAvoir | null>(null)
   const [receiptOpen, setReceiptOpen] = useState(false)
@@ -488,7 +491,8 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
             ram_echange:           saleForm.type_operation === 'echange' ? saleForm.ram_echange      || undefined : undefined,
             etat_batterie_echange: saleForm.type_operation === 'echange' ? saleForm.battery_echange          : undefined,
             description_echange: saleForm.description_echange || undefined,
-            warranty_start:  getBusinessDate(),
+            warranty_start:  work.date,
+            date_vente:      work.late ? work.date : undefined,
             notes:           saleForm.notes           || undefined,
             montant_rendu:   montantRendu > 0 ? montantRendu : 0,
             avoir_montant:   itemAvoir > 0 ? itemAvoir : undefined,

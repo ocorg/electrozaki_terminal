@@ -8,6 +8,7 @@ import { computeStatutPaiement } from '@/lib/utils'
 import { withNotify } from '@/lib/realtime'
 import { deviceLabels } from '@/lib/device-labels'
 import { alertLater, deviceName, money } from '@/lib/reports'
+import { workingDay } from '@/lib/catchUp'
 
 export async function GET(request: NextRequest) {
   try {
@@ -91,7 +92,9 @@ async function POST_(request: NextRequest) {
       const laptop = await prisma.laptops.findUnique({ where: { laptop_id: body.device_id }, select: { warranty_months: true } })
       if (laptop?.warranty_months) warrantyMonths = laptop.warranty_months
     }
-    const warrantyStart  = dateOnly(body.warranty_start) ?? todayDate()
+    // Today, or a forgotten day a manager is catching up on (its caisse open)
+    const day = await workingDay(user, body.date_vente, (body.store_id as string | undefined) ?? user.store_id)
+    const warrantyStart  = day.late ? day.date : dateOnly(body.warranty_start) ?? todayDate()
     const warrantyExpiry = new Date(warrantyStart)
     warrantyExpiry.setUTCMonth(warrantyExpiry.getUTCMonth() + warrantyMonths)
 
@@ -124,7 +127,7 @@ async function POST_(request: NextRequest) {
           txn_original_id:       str(body.txn_original_id),
           qty:                   soldQty,
           prix_vente:            Number(body.prix_vente),
-          date_vente:            dateOnly(body.date_vente) ?? todayDate(),
+          date_vente:            day.date,
           avance:                nums(body.avance),
           date_avance:           dateOnly(body.date_avance),
           payment_method:        body.payment_method,
@@ -205,7 +208,7 @@ async function POST_(request: NextRequest) {
       record_id:   data.txn_id,
       after_state: data,
       ip_address:  getIpFromRequest(request),
-      notes:       `${codeLabel('operation_type', data.type_operation, 'fr')} — ${codeLabel('device_type', data.device_type, 'fr')} ${data.device_id}`,
+      notes:       `${codeLabel('operation_type', data.type_operation, 'fr')} — ${codeLabel('device_type', data.device_type, 'fr')} ${data.device_id}${day.note}`,
     })
 
     // Telegram: a price under the minimum, and anything sold on credit

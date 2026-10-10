@@ -4,7 +4,8 @@ import { prisma } from '@/lib/db'
 import { json, handleError, requireUser, requireActiveUser, dateOnly, todayDate, HttpError } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { withNotify } from '@/lib/realtime'
-import { alertLater, closingReport } from '@/lib/reports'
+import { alertLater, alertTelegram, closingReport } from '@/lib/reports'
+import { pastDay } from '@/lib/catchUp'
 
 // ─── Shared aggregation — single source of truth for GET (live view) and PATCH (EOD submit) ───
 //
@@ -219,11 +220,13 @@ async function POST_(request: NextRequest) {
     const user     = await requireActiveUser()
     const body     = await request.json()
     const store_id = body.store_id ?? user.store_id
-    const date     = todayDate()   // business day (rolls at 4 AM), like the screen that reads it
+    // Today's business day (rolls at 4 AM) — or a forgotten day a manager catches up on
+    const late     = pastDay(user, body.date)
+    const date     = late ?? todayDate()
     if (!store_id) throw new HttpError(400, 'store_id manquant')
 
     const existing = await prisma.caisse.findFirst({ where: { store_id, date }, select: { caisse_id: true, status: true } })
-    if (existing) return json({ error: 'Caisse déjà ouverte pour aujourd\'hui', data: existing }, { status: 409 })
+    if (existing) return json({ error: late ? 'Cette journée a déjà une caisse' : 'Caisse déjà ouverte pour aujourd\'hui', data: existing }, { status: 409 })
 
     const ouverture = Number(body.ouverture ?? 0)
     const data = await prisma.caisse.create({
@@ -239,8 +242,9 @@ async function POST_(request: NextRequest) {
       record_id:   data.caisse_id,
       after_state: data,
       ip_address:  getIpFromRequest(request),
-      notes:       `Ouverture de caisse : ${ouverture} MAD`,
+      notes:       `Ouverture de caisse : ${ouverture} MAD${late ? ` — journée du ${date.toISOString().slice(0, 10)} rattrapée après coup` : ''}`,
     })
+    if (late) alertTelegram(`🕓 Journée rattrapée — la caisse du ${date.toISOString().slice(0, 10).split('-').reverse().join('/')} est ouverte après coup par ${user.display_name} (fond ${ouverture} DH). Ses ventes et dépenses vont être saisies à cette date.`)
 
     return json({ data }, { status: 201 })
   } catch (err) {

@@ -10,6 +10,7 @@ import { User, Smartphone, MoreHorizontal, Loader2 } from 'lucide-react'
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import { Modal, Field, Btn, inputClass } from '@/components/shared'
 import { formatMAD } from '@/lib/utils'
+import { useWorkDay } from '@/lib/stores/workDay'
 
 type Mode = 'client' | 'avance' | 'autre'
 interface ClientRow { client_id: string; nom: string; telephone: string }
@@ -33,6 +34,8 @@ async function post(url: string, body: unknown) {
 }
 
 export default function MoneyInModal({ open, onClose, storeId, primary, clients, onSeveralTimes, onDone }: Props) {
+  const work = useWorkDay()   // today, or the forgotten day being caught up on
+  const late = work.late ? work.date : undefined
   const [mode, setMode]       = useState<Mode>('client')
   const [amount, setAmount]   = useState('')
   const [method, setMethod]   = useState<'especes' | 'virement'>('especes')
@@ -77,11 +80,11 @@ export default function MoneyInModal({ open, onClose, storeId, primary, clients,
     try {
       if (mode === 'client') {
         if (!client || !target) throw new Error('Choisissez le client et ce qu’il règle')
-        if (target === 'compte') await post('/api/credits', { client_id: client.client_id, montant: value, payment_method: method, store_id: storeId })
-        else await post(`/api/phone-credits/${target}/payments`, { montant: value, payment_method: method, store_id: storeId })
+        if (target === 'compte') await post('/api/credits', { client_id: client.client_id, montant: value, payment_method: method, store_id: storeId, date: late })
+        else await post(`/api/phone-credits/${target}/payments`, { montant: value, payment_method: method, store_id: storeId, date_paiement: late })
         showSuccess(`Versement de ${client.nom} enregistré — ${formatMAD(value)}`)
       } else if (mode === 'autre') {
-        await post('/api/cash-drops', { amount: value, reason: reason.trim(), store_id: storeId })
+        await post('/api/cash-drops', { amount: value, reason: reason.trim(), store_id: storeId, date: late })
         showSuccess(`Entrée d'argent enregistrée — ${formatMAD(value)}`)
       }
       onDone(); onClose()

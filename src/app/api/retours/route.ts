@@ -9,6 +9,7 @@ import { deviceLabels } from '@/lib/device-labels'
 import { saleBalance, unpaidSale, assertDrawerOpen, lockSale } from '@/lib/retours'
 import { alertLater, deviceName, money } from '@/lib/reports'
 import { assertNoLiveTwin } from '@/lib/phoneExit'
+import { workingDay } from '@/lib/catchUp'
 
 const num = (v: Prisma.Decimal | number | null | undefined) => (v == null ? 0 : Number(v))
 
@@ -114,6 +115,8 @@ async function POST_(request: NextRequest) {
     const mode        = body.mode as retour_mode
     const destination = body.destination as retour_destination
     const motif       = String(body.motif ?? '').trim()
+    // dated today, or the forgotten day being caught up on
+    const day = await workingDay(user, body.date, user.store_id)
 
     if (!txn_id) throw new HttpError(400, 'Vente manquante')
     if (!Number.isInteger(qty) || qty < 1) throw new HttpError(400, 'Quantité invalide')
@@ -150,11 +153,11 @@ async function POST_(request: NextRequest) {
       if (qty > leftQty) throw new HttpError(400, `Il ne reste que ${leftQty} article(s) à retourner sur cette vente`)
       const leftMoney = Math.round((num(sale.prix_vente) - refunded) * 100) / 100
       if (montant > leftMoney) throw new HttpError(400, `Le remboursement ne peut pas dépasser ${leftMoney} DH pour cette vente`)
-      if (mode === 'especes') await assertDrawerOpen(tx, sale.store_id)
+      if (mode === 'especes' && !day.late) await assertDrawerOpen(tx, sale.store_id)
 
       const created = await tx.retours.create({
         data: {
-          type: 'retour', txn_id, store_id: sale.store_id, date: todayDate(), qty, montant, mode, destination, motif,
+          type: 'retour', txn_id, store_id: sale.store_id, date: day.date, qty, montant, mode, destination, motif,
           avoir_solde: mode === 'avoir' ? montant : 0,
           created_by:  user.id,
         },

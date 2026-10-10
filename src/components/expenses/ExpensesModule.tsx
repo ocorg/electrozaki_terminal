@@ -15,6 +15,7 @@ import {
 import { useCategories, categoryLabel } from '@/lib/hooks/useCategories'
 import { uploadFile } from '@/lib/upload'
 import { confirmDialog } from '@/components/shared/ConfirmHost'
+import { useWorkDay } from '@/lib/stores/workDay'
 
 // Icon mapping for built-in categories — custom categories fall back to MoreHorizontal
 const CAT_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -72,6 +73,7 @@ export default function ExpensesModule({ storeId }: ExpensesModuleProps) {
 
   // Filters
   const today = getBusinessDate()
+  const work  = useWorkDay()
   const [dateFrom, setDateFrom] = useState(today.slice(0, 7) + '-01')
   const [dateTo, setDateTo]     = useState(today)
   const [filterCat, setFilterCat] = useState('')
@@ -110,7 +112,8 @@ export default function ExpensesModule({ storeId }: ExpensesModuleProps) {
           store_id:         storeId,
           categorie:        form.categorie,
           montant:          parseFloat(form.montant),
-          date:             form.date,
+          // catching up on a forgotten day: the expense is that day's unless another date was picked
+          date:             work.late && form.date === getBusinessDate() ? work.date : form.date,
           facture_ref:      form.facture_ref || null,
           notes:            form.notes || null,
           receipt_photo_url: form.receipt_photo_url || null,

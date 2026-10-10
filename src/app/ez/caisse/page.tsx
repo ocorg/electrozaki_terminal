@@ -1,5 +1,11 @@
 import CaisseModule from '@/components/caisse/CaisseModule'
+import { CatchUpEntry } from '@/components/layout/CatchUp'
 
 export default function EZCaissePage() {
-  return <CaisseModule storeId="EZ-001" />
+  return (
+    <>
+      <CatchUpEntry />
+      <CaisseModule storeId="EZ-001" />
+    </>
+  )
 }

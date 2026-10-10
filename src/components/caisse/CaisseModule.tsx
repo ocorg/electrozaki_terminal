@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { STORE_TIME_ZONE } from '@/lib/time'
 import { storeDate } from '@/lib/time'
+import { useWorkDay } from '@/lib/stores/workDay'
 
 interface CaisseData {
   caisse_id:               string
@@ -65,13 +66,15 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
   const [eodAmount, setEodAmount]   = useState('')
   const [eodNotes, setEodNotes]     = useState('')
 
-  const today = getBusinessDate()
+  // Today, or the forgotten day a manager is catching up on
+  const work  = useWorkDay()
+  const today = work.date
 
   // Cached and refreshed in the background whenever the caisse changes on any device
   const prevDate = storeDate(Date.now() - 86_400_000)
-  const todayQ = useApi<CaisseData | null>(`/api/caisse?store_id=${storeId}&date=${getBusinessDate()}`)
+  const todayQ = useApi<CaisseData | null>(`/api/caisse?store_id=${storeId}&date=${today}`)
   // No caisse for today → check if yesterday's is still open (overnight shift)
-  const prevQ  = useApi<CaisseData | null>(todayQ.data === null ? `/api/caisse?store_id=${storeId}&date=${prevDate}` : null)
+  const prevQ  = useApi<CaisseData | null>(todayQ.data === null && !work.late ? `/api/caisse?store_id=${storeId}&date=${prevDate}` : null)
   const caisse  = todayQ.data ?? (prevQ.data?.status === 'ouverte' ? prevQ.data : null)
   const loading = todayQ.isLoading || prevQ.isLoading
 
@@ -99,7 +102,7 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
       const res  = await fetch('/api/caisse', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ store_id: storeId, ouverture: amount }),
+        body:    JSON.stringify({ store_id: storeId, ouverture: amount, ...(work.late && { date: work.date }) }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)

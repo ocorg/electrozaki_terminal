@@ -5,6 +5,7 @@ import { PortalProvider } from '@/lib/context/portal'
 import PortalSidebar from '@/components/layout/PortalSidebar'
 import PortalPrefetch from '@/components/layout/PortalPrefetch'
 import { SiteAlerts } from '@/components/layout/SiteAlerts'
+import { CatchUpBanner } from '@/components/layout/CatchUp'
 
 export default function EZLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -47,6 +48,7 @@ export default function EZLayout({ children }: { children: React.ReactNode }) {
             </button>
           </header>
 
+          <CatchUpBanner />
           <main className="flex-1 overflow-auto print:overflow-visible">
             {children}
           </main>

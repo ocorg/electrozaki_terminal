@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import SupplierStatement from '@/components/suppliers/SupplierStatement'
 import { confirmDialog } from '@/components/shared/ConfirmHost'
+import { useWorkDay } from '@/lib/stores/workDay'
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 
@@ -142,6 +143,7 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
   // How we got to what a supplier is owed (ledger + trade-in chains + PDF)
   const [statementOf, setStatementOf] = useState<string | null>(null)
   const [payMontant,  setPayMontant]  = useState('')
+  const work = useWorkDay()   // today, or the forgotten day being caught up on
   const [payDate,     setPayDate]     = useState(getBusinessDate())
   // Where the money comes from: the day's drawer leaves the caisse
   const [paySource,   setPaySource]   = useState<'caisse' | 'hors_caisse' | 'virement'>('caisse')
@@ -322,7 +324,7 @@ export default function SuppliersModule({ storeId }: SuppliersModuleProps) {
           source:        paySource,
           montant:       toPayNow,
           phone_ids:     Array.from(selectedPhoneIds),
-          date_paiement: getBusinessDate(),
+          date_paiement: work.date,
           notes:         creditUsed > 0 ? `Crédit utilisé : ${formatMAD(creditUsed)}` : null,
         }),
       })
