@@ -46,15 +46,25 @@ export async function pushToManagers(payload: { title: string; body: string; url
   return { sent, configured: true }
 }
 
+/** Marks a part of a Telegram message to show in bold (amounts, titles). */
+export const bold = (s: string | number) => `\u27e6${s}\u27e7`
+const MARKS = /\u27e6([^\u27e6\u27e7]*)\u27e7/g
+
 /** Posts in the store's Telegram group. No customer name or number leaves the ERP. */
 export async function telegram(text: string) {
   const token = process.env.TELEGRAM_BOT_TOKEN, chat = process.env.TELEGRAM_CHAT_ID
   if (!token || !chat) return false
+  const send = (body: Record<string, unknown>) => fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ chat_id: chat, disable_web_page_preview: true, ...body }),
+  })
   try {
-    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-      method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ chat_id: chat, text, disable_web_page_preview: true }),
-    })
+    // bold() parts become <b>…</b>; everything else is escaped, so a name or a
+    // reason typed by someone can never break the message
+    const html = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(MARKS, '<b>$1</b>')
+    let res = await send({ text: html, parse_mode: 'HTML' })
+    // refused formatting: the plain text still goes out
+    if (res.status === 400) res = await send({ text: text.replace(MARKS, '$1') })
     if (!res.ok) console.error('[telegram] failed:', res.status)
     return res.ok
   } catch (err) {

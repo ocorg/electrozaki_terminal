@@ -10,12 +10,16 @@ import { waitUntil } from '@vercel/functions'
 import { prisma } from '@/lib/db'
 import { financials } from '@/lib/analytics'
 import { scheduleStatus } from '@/lib/creditSchedule'
-import { telegram } from '@/lib/siteNotify'
+import { telegram, bold } from '@/lib/siteNotify'
 import { storefrontConfigured } from '@/lib/storefront/db'
 import { site } from '@/lib/storefront/access'
 import { businessDate, STORE_TIME_ZONE } from '@/lib/time'
 
-const dh = (v: unknown) => `${Math.round(Number(v ?? 0)).toLocaleString('fr-FR')} DH`
+// Amounts to the centime when there is one (never rounded), in bold
+const dh = (v: unknown) => {
+  const n = Math.round(Number(v ?? 0) * 100) / 100
+  return bold(`${n.toLocaleString('fr-FR', { minimumFractionDigits: Number.isInteger(n) ? 0 : 2, maximumFractionDigits: 2 })} DH`)
+}
 const dayOf = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString('fr-FR', { timeZone: 'UTC', weekday: 'long', day: '2-digit', month: '2-digit' })
 const utc = (iso: string) => new Date(`${iso}T00:00:00.000Z`)
 const addDays = (iso: string, n: number) => new Date(utc(iso).getTime() + n * 86_400_000).toISOString().slice(0, 10)
@@ -70,8 +74,8 @@ export async function closingReport(storeId: string, caisse: ClosedCaisse, close
   ].filter(Boolean).join(' · ')
 
   const lines = [
-    `📊 Bilan du ${dayOf(iso)}`,
-    `Ventes : ${t.tickets} (${plural(qty('telephones'), 'téléphone', 'téléphones')}, ${plural(qty('accessoires'), 'accessoire', 'accessoires')}) — ${dh(t.revenue)}`,
+    bold(`📊 Bilan du ${dayOf(iso)}`),
+    `Ventes : ${bold(t.tickets)} (${plural(qty('telephones'), 'téléphone', 'téléphones')}, ${plural(qty('accessoires'), 'accessoire', 'accessoires')}) — ${dh(t.revenue)}`,
     `Bénéfice brut : ${dh(t.gross)} · net : ${dh(t.net)}`,
     top ? `Téléphones vendus : ${top}` : null,
     `Encaissé : ${dh(pb.cash)} espèces · ${dh(pb.transfer)} virement${Number(pb.credit) > 0 ? ` · ${dh(pb.credit)} à crédit` : ''}`,
@@ -79,7 +83,7 @@ export async function closingReport(storeId: string, caisse: ClosedCaisse, close
     returns.length ? `Retours : ${returns.length} (${dh(returns.reduce((s, r) => s + r.montant, 0))})` : null,
     t.losses > 0 ? `Pertes (The Void) : ${dh(t.losses)}` : null,
     t.missingCost > 0 ? `⚠️ ${plural(t.missingCost, 'vente sans prix d’achat', 'ventes sans prix d’achat')} : bénéfice à vérifier` : null,
-    `Caisse : comptée ${dh(caisse.solde_reel)} · calculée ${dh(caisse.solde_theorique)} · écart ${ecart === 0 ? '0' : `${ecart > 0 ? '+' : ''}${dh(ecart)}`}${Math.abs(ecart) >= 50 ? ' ⚠️' : ''}`,
+    `Caisse : comptée ${dh(caisse.solde_reel)} · calculée ${dh(caisse.solde_theorique)} · écart ${ecart === 0 ? bold('0') : `${ecart > 0 ? '+' : ''}${dh(ecart)}`}${Math.abs(ecart) >= 50 ? ' ⚠️' : ''}`,
     `Clôturée par ${closedBy} à ${new Date().toLocaleTimeString('fr-FR', { timeZone: STORE_TIME_ZONE, hour: '2-digit', minute: '2-digit' })}`,
   ]
   return lines.filter(Boolean).join('\n')
@@ -133,7 +137,7 @@ export async function morningBrief(storeId: string): Promise<string | null> {
     noPrice ? `• ${plural(noPrice, 'téléphone disponible', 'téléphones disponibles')} sans prix de vente` : null,
     low?.n ? `• Stock bas : ${plural(low.n, 'accessoire', 'accessoires')}` : null,
   ].filter(Boolean)
-  return lines.length ? [`☀️ À faire aujourd’hui — ${dayOf(today)}`, ...lines].join('\n') : null
+  return lines.length ? [bold(`☀️ À faire aujourd’hui — ${dayOf(today)}`), ...lines].join('\n') : null
 }
 
 /** Last week (Monday to Sunday) against the one before. */
@@ -158,10 +162,10 @@ export async function weeklyReport(storeId: string) {
   const vs = (cur: number, prev: number) => (prev ? ` (${cur >= prev ? '+' : ''}${Math.round(((cur - prev) / Math.abs(prev)) * 100)} %)` : '')
   const age = (d: Date | null) => (d ? Math.round((utc(today).getTime() - d.getTime()) / 86_400_000) : 0)
   const lines = [
-    `🗓 Semaine du ${dayOf(from)} au ${dayOf(to)}`,
+    bold(`🗓 Semaine du ${dayOf(from)} au ${dayOf(to)}`),
     `Chiffre d’affaires : ${dh(t.revenue)}${vs(t.revenue, p.revenue)}`,
     `Bénéfice brut : ${dh(t.gross)}${vs(t.gross, p.gross)} · net : ${dh(t.net)}${vs(t.net, p.net)}`,
-    `Ventes : ${t.tickets}${vs(t.tickets, p.tickets)} · dépenses : ${dh(t.opex)}`,
+    `Ventes : ${bold(t.tickets)}${vs(t.tickets, p.tickets)} · dépenses : ${dh(t.opex)}`,
     fin.phones.length ? `Les plus vendus : ${fin.phones.slice(0, 5).map(x => `${x.name} ×${x.qty}`).join(', ')}` : null,
     old.length
       ? `En stock depuis plus de 30 jours : ${plural(old.length, 'téléphone', 'téléphones')} (${old.slice(0, 3).map(x => `${x.model.toLowerCase().startsWith(x.marque.toLowerCase()) ? x.model : `${x.marque} ${x.model}`}${x.stockage ? ` ${x.stockage}` : ''}, ${age(x.date_entree)} j`).join(' ; ')}${old.length > 3 ? '…' : ''})`
