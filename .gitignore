@@ -149,3 +149,7 @@ src/generated/
 
 # copied at postinstall (scripts/copy-zxing-wasm.mjs)
 /public/vendor/
+
+# Claude Code skills installed locally (security-audit): tools for this computer, not part of the ERP
+.claude/skills/
+skills-lock.json
