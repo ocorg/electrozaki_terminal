@@ -18,6 +18,7 @@ export async function GET() {
           images:   { select: { url: true }, orderBy: { sortOrder: 'asc' } },
           internal: { select: { stockQuantity: true } },
           variants: { select: { stockQuantity: true } },
+          facets:   { select: { optionId: true } },
           _count:   { select: { compatibleAccessories: true } },
         },
       }),
@@ -27,11 +28,12 @@ export async function GET() {
       }),
     ])
     return json({
-      data: products.map(({ internal, variants, images, _count, ...p }) => ({
+      data: products.map(({ internal, variants, images, facets, _count, ...p }) => ({
         ...p,
         images:    images.map(i => i.url),
         stock:     p.isPhone ? variants.reduce((n, v) => n + v.stockQuantity, 0) : internal?.stockQuantity ?? null,
         giftCount: _count.compatibleAccessories,
+        facetIds:  facets.map(f => f.optionId),
       })),
       categories,
     })

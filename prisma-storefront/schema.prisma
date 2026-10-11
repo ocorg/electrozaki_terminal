@@ -90,6 +90,7 @@ model Category {
   sortOrder Int        @default(0)
   products  Product[]
   landingPages LandingPage[]
+  facetGroups  FacetGroupCategory[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -172,6 +173,10 @@ model Product {
   // same data rather than drifting apart as two separate lists.
   compatibleAccessories ProductCompatibility[] @relation("CompatibilityPhone")
   compatibleWithPhones  ProductCompatibility[] @relation("CompatibilityAccessory")
+
+  // The attribute checklist staff tick in the ERP (style, protection…).
+  // See FacetGroup below.
+  facets ProductFacet[]
 
   // 1:1 to the staff-only slice. Optional at the type level only because
   // Prisma requires it on the "many/one" side — every real product should
@@ -281,6 +286,86 @@ model ProductCompatibility {
 
   @@unique([productId, compatibleWithId])
   @@index([compatibleWithId])
+}
+
+// ── Attribute checklist ("fiche") ───────────────────────────────────────
+//
+// What a customer chooses an accessory by, beyond the phone it fits: who
+// it's for, its style, material, protection… Groups and their options are
+// rows, not enums, so staff add or retire an option in the ERP and the
+// aisle's filters follow without a deploy (same idea as Category).
+//
+// Two things are deliberately NOT here: the price range (computed from the
+// price) and the phone model (ProductCompatibility already holds it).
+
+enum FacetDisplay {
+  CHIPS // plain choices
+  TILES // big visual tiles, illustrated with photos of matching products
+  METER // an ordered scale ("Fine" → "Antichoc"); options carry a `level`
+}
+
+model FacetGroup {
+  id        String       @id @default(cuid())
+  key       String       @unique // "style": the name used in the page address
+  name      String // "Style", as staff typed it (French)
+  // The question the aisle's guide asks ("Votre style ?"). Null = not one of
+  // the guide's questions: the group is an extra filter in the filter sheet
+  // (and still shows on the product page).
+  question  String?
+  // false = a product has one option at most (its material, its protection).
+  multi     Boolean      @default(true)
+  display   FacetDisplay @default(CHIPS)
+  sortOrder Int          @default(0)
+  // Retired groups keep their ticks but disappear from the site and the
+  // ERP checklist.
+  active    Boolean      @default(true)
+
+  options    FacetOption[]
+  // The aisles (and their sub-aisles) this group describes.
+  categories FacetGroupCategory[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model FacetOption {
+  id        String     @id @default(cuid())
+  groupId   String
+  group     FacetGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  key       String // "fleuri": the value used in the page address
+  name      String // "Fleuri"
+  // METER groups only: 1 = lightest. Null elsewhere.
+  level     Int?
+  sortOrder Int        @default(0)
+  active    Boolean    @default(true)
+
+  products ProductFacet[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([groupId, key])
+}
+
+model FacetGroupCategory {
+  groupId    String
+  group      FacetGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  categoryId String
+  category   Category   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([groupId, categoryId])
+  @@index([categoryId])
+}
+
+// One tick on a product's checklist.
+model ProductFacet {
+  productId String
+  product   Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  optionId  String
+  option    FacetOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+
+  @@id([productId, optionId])
+  @@index([optionId])
 }
 
 // The STAFF-ONLY slice. The storefront's query layer must never import this

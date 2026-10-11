@@ -7,13 +7,14 @@ import { showSuccess, showError } from '@/lib/utils/toasts'
 import { uploadResized } from '@/lib/utils/image'
 import { useSiteLang, Tabs, Chip, AVAILABILITY, GRADE, mad, categoryOptions } from './common'
 import { confirmDialog } from '@/components/shared/ConfirmHost'
+import { FacetsTab, FacetChecklist } from './SiteFacets'
 
 interface Product {
   id: string; slug: string; name: string; brand: string | null; isPhone: boolean; source: 'ERP' | 'MANUAL'
   published: boolean; availability: string; condition: string; recommendedSalePrice: number
   description: string | null; metaTitle: string | null; metaDescription: string | null
   modelKey: string | null; categoryId: string; category: { name: string }
-  images: string[]; stock: number | null; giftCount: number
+  images: string[]; stock: number | null; giftCount: number; facetIds: string[]
 }
 interface Category {
   id: string; name: string; slug: string; parentId: string | null; sortOrder: number; erpCode: string | null
@@ -21,7 +22,7 @@ interface Category {
 }
 interface Photo { modelKey: string; model: string; brand: string; color: string; units: number; photoId: string | null; url: string | null }
 
-type Tab = 'products' | 'photos' | 'categories'
+type Tab = 'products' | 'photos' | 'categories' | 'fiches'
 type Kind = 'phones' | 'accessories' | 'hidden'
 
 export default function SiteCatalogModule() {
@@ -59,6 +60,7 @@ export default function SiteCatalogModule() {
           { key: 'products',   label: L('Produits', 'المنتجات'), count: products.length },
           { key: 'photos',     label: L('Photos téléphones', 'صور الهواتف') },
           { key: 'categories', label: L('Catégories', 'الفئات'), count: categories.length },
+          { key: 'fiches',     label: L('Fiches & filtres', 'البطاقات والفلاتر') },
         ]} />
       </div>
       <div className="flex-1 overflow-y-auto px-4 sm:px-6 pb-6">
@@ -70,6 +72,8 @@ export default function SiteCatalogModule() {
           <ProductsTab products={products} categories={categories} isManager={isManager} />
         ) : tab === 'photos' ? (
           <PhotosTab isManager={isManager} />
+        ) : tab === 'fiches' ? (
+          <FacetsTab categories={categories} isManager={isManager} />
         ) : (
           <CategoriesTab categories={categories} isManager={isManager} />
         )}
@@ -267,6 +271,8 @@ function ProductModal({ product, categories, accessories, onClose }: {
           <input type="checkbox" checked={form.published} onChange={e => set('published', e.target.checked)} className="w-4 h-4" />
           {L('Visible sur le site', 'ظاهر في الموقع')}
         </label>
+
+        <FacetChecklist productId={product.id} categoryId={form.categoryId} categories={categories} ticked={product.facetIds} />
 
         {nameEditable ? (
           <div className="space-y-2">
