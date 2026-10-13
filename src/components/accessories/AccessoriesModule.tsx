@@ -242,6 +242,13 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
     const c = dynamicCategories.find(x => x.code === v)
     return c ? (isAr ? c.ar : c.fr) : v
   }
+  /** What the label generator prints for an accessory. */
+  const accLabel = (acc: Accessory): LabelProduct => ({
+    id:       acc.acc_id,
+    name:     `${acc.marque ? acc.marque + ' ' : ''}${acc.nom}`,
+    category: getCatLabel(acc.categorie),
+    barcode:  acc.barcode ?? undefined,
+  })
 
   const sortedCategories = [...dynamicCategories].sort((a, b) =>
     (isAr ? a.ar : a.fr).localeCompare(isAr ? b.ar : b.fr, isAr ? 'ar' : 'fr')
@@ -434,13 +441,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
                   <div className="flex items-center gap-2 justify-end">
                     <RowAction
                       title={isAr ? 'طباعة الملصق' : 'Générer étiquette'}
-                      onClick={() => setLabelProduct({
-                        id:       acc.acc_id,
-                        name:     `${acc.marque ? acc.marque + ' ' : ''}${acc.nom}`,
-                        category: getCatLabel(acc.categorie),
-                        stockage: undefined,
-                        couleur:  undefined,
-                      })}
+                      onClick={() => setLabelProduct(accLabel(acc))}
                     >
                       <Tag className="w-4 h-4" />
                     </RowAction>
@@ -492,11 +493,16 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
                       )}
                       <span className="text-xs text-ez-faint">{isAr ? 'في المخزون' : 'en stock'}</span>
                     </div>
-                    {canEdit && (
-                      <RowAction title={isAr ? 'تعديل' : 'Modifier'} onClick={() => openEdit(acc)}>
-                        <Edit2 className="w-4 h-4" />
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <RowAction title={isAr ? 'طباعة الملصق' : 'Générer étiquette'} onClick={() => setLabelProduct(accLabel(acc))}>
+                        <Tag className="w-4 h-4" />
                       </RowAction>
-                    )}
+                      {canEdit && (
+                        <RowAction title={isAr ? 'تعديل' : 'Modifier'} onClick={() => openEdit(acc)}>
+                          <Edit2 className="w-4 h-4" />
+                        </RowAction>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}

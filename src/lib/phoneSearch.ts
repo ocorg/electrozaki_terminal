@@ -11,6 +11,7 @@ interface Searchable {
   couleur?: string | null
   imei?: string | null
   imei_2?: string | null
+  phone_id?: string | null
 }
 
 const IMEI_MIN = 4   // digits typed before a number is read as (part of) an IMEI
@@ -19,6 +20,8 @@ const textOf = (p: Searchable) =>
   `${p.marque ?? ''} ${p.marque === 'Apple' ? 'iphone' : ''} ${p.serie ?? ''} ${p.model ?? ''} ${p.couleur ?? ''}`.toLowerCase()
 
 function tokenHits(p: Searchable, text: string, tok: string) {
+  // A label printed for a phone without IMEI carries its record number (PHO-0123)
+  if (tok === p.phone_id?.toLowerCase()) return true
   if (!/^\d+$/.test(tok)) return text.includes(tok)
   if (tok.length >= IMEI_MIN) return [p.imei, p.imei_2].some(v => v?.includes(tok))
   return new RegExp(`(?<!\\d)${tok}(?!\\d)`).test(text)

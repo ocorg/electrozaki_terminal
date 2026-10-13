@@ -73,6 +73,25 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
   const [editPhone, setEditPhone]     = useState<Phone | null>(null)
   const [showFilters, setShowFilters] = useState(false)
   const [labelProduct,  setLabelProduct]  = useState<LabelProduct | null>(null)
+  /** What the label generator prints for a phone. */
+  const phoneLabel = (phone: Phone): LabelProduct => {
+    const cm = phone.model.replace(/\s*\d+(GB|TB)\s*$/i, '').trim()
+    return {
+      id:            phone.phone_id,
+      name:          cm.toLowerCase().startsWith(phone.marque.toLowerCase()) ? cm : `${phone.marque} ${cm}`,
+      marque:        phone.marque,
+      model:         phone.model,
+      // "13 Normal": on an iPhone the plain model is named, as on the shop's labels
+      variante:      phone.marque === 'Apple' || (phone.type && phone.type !== 'Normal') ? (phone.type ?? undefined) : undefined,
+      category:      'Téléphone',
+      type:          phone.condition === 'neuf' ? 'Neuf' : phone.condition === 'occasion' ? 'Occasion' : 'Défectueux',
+      imei:          phone.imei          ?? undefined,
+      couleur:       phone.couleur       ?? undefined,
+      stockage:      phone.stockage      ?? undefined,
+      battery_level: phone.marque === 'Apple' ? (phone.battery_level ?? undefined) : undefined,
+      ram:           phone.marque !== 'Apple' ? (phone.ram ?? undefined) : undefined,
+    }
+  }
   const [confirmDelete,  setConfirmDelete]  = useState<string | null>(null)
   const [creditPhone,    setCreditPhone]    = useState<Phone | null>(null)
   useEscapeKey(() => setCreditPhone(null), creditPhone != null)
@@ -678,24 +697,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                     <div className="flex items-center justify-end gap-2" onClick={e => e.stopPropagation()}>
                       <RowAction
                         title={isAr ? 'طباعة الملصق' : 'Générer étiquette'}
-                        onClick={() => setLabelProduct({
-                          id:            phone.phone_id,
-                          name:          (() => {
-                            const cm = phone.model.replace(/\s*\d+(GB|TB)\s*$/i, '').trim()
-                            return cm.toLowerCase().startsWith(phone.marque.toLowerCase())
-                              ? cm
-                              : `${phone.marque} ${cm}`
-                          })(),
-                          marque:        phone.marque,
-                          model:         phone.model,
-                          category:      'Téléphone',
-                          type:          phone.condition === 'neuf' ? 'Neuf' : phone.condition === 'occasion' ? 'Occasion' : 'Défectueux',
-                          imei:          phone.imei          ?? undefined,
-                          couleur:       phone.couleur       ?? undefined,
-                          stockage:      phone.stockage      ?? undefined,
-                          battery_level: phone.marque === 'Apple' ? (phone.battery_level ?? undefined) : undefined,
-                          ram:           phone.marque !== 'Apple' ? (phone.ram ?? undefined) : undefined,
-                        })}
+                        onClick={() => setLabelProduct(phoneLabel(phone))}
                       >
                         <Tag className="w-4 h-4" />
                       </RowAction>
@@ -802,6 +804,10 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                         {phone.imei ? `IMEI ${phone.imei}` : phone.phone_id}
                       </span>
                       <div className="flex items-center gap-2 flex-shrink-0">
+                        <RowAction title={isAr ? 'طباعة الملصق' : 'Générer étiquette'}
+                          onClick={(e) => { e.stopPropagation(); setLabelProduct(phoneLabel(phone)) }}>
+                          <Tag className="w-4 h-4" />
+                        </RowAction>
                         {canEdit && (['disponible', 'reserve', 'vendu'] as string[]).includes(phone.status) && (
                           <RowAction title={isAr ? 'قرض / عربون' : 'Crédit / Avance'} tone="gold"
                             onClick={(e) => { e.stopPropagation(); setCreditPhone(phone) }}>
