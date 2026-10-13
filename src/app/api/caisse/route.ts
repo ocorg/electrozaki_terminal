@@ -1,11 +1,11 @@
 import { NextRequest } from 'next/server'
 import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
-import { json, handleError, requireUser, requireActiveUser, dateOnly, todayDate, HttpError } from '@/lib/api'
+import { json, handleError, requireUser, requireActiveUser, dateOnly, todayDate, HttpError, MANAGERS } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { withNotify } from '@/lib/realtime'
 import { alertLater, alertTelegram, closingReport } from '@/lib/reports'
-import { pastDay } from '@/lib/catchUp'
+import { pastDay, canCorrect, CORRECTION_DAYS } from '@/lib/catchUp'
 
 // ─── Shared aggregation — single source of truth for GET (live view) and PATCH (EOD submit) ───
 //
@@ -252,11 +252,82 @@ async function POST_(request: NextRequest) {
   }
 }
 
+// Correcting an earlier day (owner, 2026-10-13) — managers, CORRECTION_DAYS back, a reason each time:
+//   • action 'corriger': the opening amount (any day) and the counted amount (closed day)
+//     were typed wrong. A closed day keeps its frozen totals: only the amounts move, and
+//     the calculated cash and the gap follow.
+//   • action 'rouvrir': a closed day opens again so its entries can be fixed or completed
+//     at its date; closing it again recounts everything.
+const frDate = (d: Date) => d.toISOString().slice(0, 10).split('-').reverse().join('/')
+const round2 = (n: number) => Math.round(n * 100) / 100
+const amount = (v: unknown, label: string) => {
+  const n = Number(v)
+  if (v === '' || !Number.isFinite(n) || n < 0) throw new HttpError(400, `${label} invalide`)
+  return round2(n)
+}
+
+async function correct(request: NextRequest, body: Record<string, unknown>) {
+  const user   = await requireActiveUser(MANAGERS)
+  const action = body.action
+  const motif  = typeof body.motif === 'string' ? body.motif.trim() : ''
+  if (action !== 'corriger' && action !== 'rouvrir') throw new HttpError(400, 'Action inconnue')
+  if (!body.caisse_id) throw new HttpError(400, 'caisse_id requis')
+  if (motif.length < 3) throw new HttpError(400, 'Indiquez le motif de la correction')
+
+  const current = await prisma.caisse.findUnique({ where: { caisse_id: String(body.caisse_id) } })
+  if (!current) throw new HttpError(404, 'Caisse introuvable')
+  if (!canCorrect(current.date)) throw new HttpError(400, `Correction possible sur les ${CORRECTION_DAYS} derniers jours seulement`)
+  if (current.status === 'en_attente_cloture') throw new HttpError(400, 'Cette clôture attend encore sa validation')
+  const day = frDate(current.date)
+
+  let data: Prisma.caisseUpdateInput
+  let what: string
+  if (action === 'rouvrir') {
+    if (current.status !== 'cloturee') throw new HttpError(400, 'Cette caisse est déjà ouverte')
+    data = { status: 'ouverte' }
+    what = `Caisse du ${day} rouverte`
+  } else {
+    const closed    = current.status === 'cloturee'
+    const ouverture = body.ouverture == null ? num(current.ouverture) : amount(body.ouverture, 'Montant d’ouverture')
+    if (body.solde_reel != null && !closed) throw new HttpError(400, 'Le montant compté se saisit à la clôture')
+    const solde_reel = body.solde_reel == null ? num(current.solde_reel) : amount(body.solde_reel, 'Montant compté')
+    const changes = [
+      ouverture !== num(current.ouverture) ? `ouverture ${num(current.ouverture)} → ${ouverture} DH` : null,
+      closed && solde_reel !== num(current.solde_reel) ? `compté ${num(current.solde_reel)} → ${solde_reel} DH` : null,
+    ].filter(Boolean)
+    if (!changes.length) throw new HttpError(400, 'Aucun montant n’a changé')
+    // An open day is calculated live from its opening; a closed one keeps its frozen totals
+    const solde_theorique = round2(num(current.solde_theorique) + ouverture - num(current.ouverture))
+    const ecart = round2(solde_reel - solde_theorique)
+    data = closed ? { ouverture, solde_reel, solde_theorique, ecart } : { ouverture }
+    what = `Caisse du ${day} corrigée : ${changes.join(', ')}`
+    if (closed) what += ` (écart ${num(current.ecart)} → ${ecart} DH)`
+  }
+
+  const updated = await prisma.caisse.update({ where: { caisse_id: current.caisse_id }, data })
+  await logActivity({
+    store_id:     current.store_id,
+    user_id:      user.id,
+    user_name:    user.display_name,
+    action_type:  'modification',
+    module:       'caisse',
+    record_id:    current.caisse_id,
+    before_state: current,
+    after_state:  updated,
+    ip_address:   getIpFromRequest(request),
+    notes:        `${what} — motif : ${motif}`,
+  })
+  alertTelegram(`✏️ ${what}\nPar ${user.display_name} — motif : ${motif}`)
+  return json({ data: updated })
+}
+
 // EOD — closing is one step (owner, 2026-10-04): the count closes the day, no approval after it
 async function PATCH_(request: NextRequest) {
   try {
+    const body = await request.json()
+    if (body.action) return await correct(request, body)
     const user = await requireActiveUser()
-    const { caisse_id, solde_reel, notes } = await request.json()
+    const { caisse_id, solde_reel, notes } = body
     if (!caisse_id) throw new HttpError(400, 'caisse_id requis')
     if (solde_reel == null) throw new HttpError(400, 'solde_reel requis')
 

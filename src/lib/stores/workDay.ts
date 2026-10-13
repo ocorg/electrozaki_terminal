@@ -7,6 +7,8 @@ import { getBusinessDate } from '@/lib/utils'
 // instead of today. Kept across page changes; it lapses by itself once the
 // day is out of reach (server rule: lib/catchUp.ts).
 export const CATCH_UP_DAYS = 7
+// A closed day reopened for a correction can be further back (lib/catchUp.ts)
+export const CORRECTION_DAYS = 30
 
 interface WorkDayStore {
   catchUp: string | null            // 'YYYY-MM-DD' being caught up on
@@ -35,7 +37,7 @@ export const yesterday = () => addDays(getBusinessDate(), -1)
 export function useWorkDay() {
   const { catchUp, start, stop } = useStore()
   const today = getBusinessDate()
-  const valid = !!catchUp && catchUp < today && catchUp >= earliestCatchUp()
+  const valid = !!catchUp && catchUp < today && catchUp >= addDays(today, -CORRECTION_DAYS)
   return { date: valid ? catchUp! : today, late: valid, start, stop }
 }
 

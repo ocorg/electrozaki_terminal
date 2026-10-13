@@ -525,7 +525,11 @@ export default function CaisseModule({ storeId }: CaisseModuleProps) {
 
       {/* EOD Button */}
       <button
-        onClick={() => setEodOpen(true)}
+        onClick={() => {
+          // A day reopened for a correction: start from the amount counted that evening
+          if (!eodAmount && caisse.solde_reel != null) setEodAmount(String(caisse.solde_reel))
+          setEodOpen(true)
+        }}
         className="w-full py-4 rounded-2xl font-display font-bold text-lg tracking-wider text-white transition-all active:scale-[0.98] hover:opacity-90"
         style={{
           backgroundColor: '#1A1A1A',
