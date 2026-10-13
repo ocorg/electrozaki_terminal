@@ -90,6 +90,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
       stockage:      phone.stockage      ?? undefined,
       battery_level: phone.marque === 'Apple' ? (phone.battery_level ?? undefined) : undefined,
       ram:           phone.marque !== 'Apple' ? (phone.ram ?? undefined) : undefined,
+      pieces:        phone.replaced_components ?? undefined,
     }
   }
   const [confirmDelete,  setConfirmDelete]  = useState<string | null>(null)

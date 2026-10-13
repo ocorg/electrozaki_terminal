@@ -17,6 +17,7 @@ export interface LabelProduct {
   type?:          string
   imei?:          string
   barcode?:       string   // accessories: the code the POS finds them by
+  pieces?:        { name: string; condition: string }[]   // replaced parts, printed as codes (CO, B…)
   couleur?:       string
   stockage?:      string
   battery_level?: number
@@ -88,7 +89,22 @@ function labelText(product: LabelProduct) {
   if (battery) lines.push({ text: battery, size: 52 })
   if (lines.length <= 2 && product.couleur) lines.push({ text: product.couleur, size: 42 })
 
-  return { lines, code: product.imei || product.barcode || product.id }
+  return { lines, code: product.imei || product.barcode || product.id, parts: partCodes(product.pieces) }
+}
+
+// Replaced parts, in the shop's shorthand (owner, 2026-10-13): the letter of
+// the part, plus "O" when the new part is original — "CO" = caméra originale,
+// "B" = batterie standard. Both cameras share the letter C.
+const PART_LETTERS: Record<string, string> = {
+  'ecran': 'E', 'batterie': 'B', 'camera arriere': 'C', 'camera avant': 'C', 'vitre arriere': 'V',
+  'chassis': 'CH', 'haut-parleur': 'HP', 'connecteur de charge': 'CC',
+}
+function partCodes(pieces: LabelProduct['pieces']): string {
+  const codes = (pieces ?? []).filter(p => p?.name).map(p => {
+    const key = p.name.normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase()
+    return (PART_LETTERS[key] ?? key.charAt(0).toUpperCase()) + (p.condition === 'original' ? 'O' : '')
+  })
+  return Array.from(new Set(codes)).join(' ')
 }
 
 /** Largest font size (from `max` down to `min`) at which the text fits the width. */
@@ -145,7 +161,7 @@ async function drawLabel(canvas: HTMLCanvasElement, product: LabelProduct, porta
   // Without the font the text would be measured with one face and drawn with another
   try { await document.fonts.load(`700 40px ${family}`) } catch {}
 
-  const { lines, code } = labelText(product)
+  const { lines, code, parts } = labelText(product)
   canvas.width  = PX_W
   canvas.height = PX_H
   const ctx = canvas.getContext('2d', { willReadFrequently: true })
@@ -176,8 +192,20 @@ async function drawLabel(canvas: HTMLCanvasElement, product: LabelProduct, porta
   }
   ctx.restore()
 
-  const boxTop = M + qrSize + 12
-  const boxH   = H - M - boxTop
+  // Replaced parts, between the QR code and the logo
+  let boxTop = M + qrSize + 12
+  if (parts) {
+    ctx.font = `700 38px ${family}`
+    // Many parts: two lines rather than letters too small to read
+    const rows = (ctx.measureText(parts).width > LEFT * 1.5 && twoLines(ctx, parts)) || [parts]
+    const size = Math.min(...rows.map(r => fitSize(ctx, r, family, 38, 16, LEFT)))
+    ctx.font = `700 ${size}px ${family}`
+    for (const r of rows) {
+      ctx.fillText(r, M + LEFT / 2, boxTop + size * CAP)
+      boxTop += size * CAP + 10
+    }
+  }
+  const boxH = H - M - boxTop
   if (portal.type === 'ez') {
     const logoW = Math.min(LEFT - 16, (boxH * LOGO_W) / LOGO_H)
     drawLogo(ctx, M + (LEFT - logoW) / 2, boxTop + (boxH - (logoW * LOGO_H) / LOGO_W) / 2, logoW)
