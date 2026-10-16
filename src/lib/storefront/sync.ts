@@ -231,11 +231,13 @@ async function reconcile(tx: Tx, phones: PhoneListing[], accessories: AccessoryL
   for (const v of variants) if (!keptVariants.has(v.id)) variantDeletes.push(v.id)
 
   // Sold-out groups: hidden (DISCONTINUED) but kept, so photos / texts come
-  // back by themselves when the same model is in stock again.
+  // back by themselves when the same model is in stock again. Their promo
+  // price goes (it was the sold units'), so no stale "was" price lingers.
   for (const p of products) {
-    if (p.source !== 'ERP' || !p.isPhone || wanted.has(p.erpKey ?? '') || p.availability === 'DISCONTINUED') continue
-    productUpdates.push({ id: p.id, data: { availability: 'DISCONTINUED' } })
-    stats.removed++
+    if (p.source !== 'ERP' || !p.isPhone || wanted.has(p.erpKey ?? '')) continue
+    if (p.availability === 'DISCONTINUED' && p.compareAtPrice === null) continue
+    productUpdates.push({ id: p.id, data: { availability: 'DISCONTINUED', compareAtPrice: null } })
+    if (p.availability !== 'DISCONTINUED') stats.removed++
   }
 
   // Accessories
