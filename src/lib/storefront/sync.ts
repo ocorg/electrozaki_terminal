@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db'
 import type { Prisma } from '@/generated/storefront/client'
 import { storefrontDb, storefrontConfigured } from './db'
 import { revalidateStorefront } from './revalidate'
+import { currentPhoneOffers, ensurePhoneOfferPages } from './phone-offers'
 import {
   PHONE_SAFE_SELECT, ACCESSORY_SAFE_SELECT, buildPhoneListings, buildAccessoryListings,
   refOf, slugify, type PhoneListing, type AccessoryListing, type ErpPhone, type ErpAccessory,
@@ -313,6 +314,14 @@ export async function syncStorefront(): Promise<SyncResult> {
     await reconcile(tx, buildPhoneListings(phones), buildAccessoryListings(accessories),
       new Map(categories.map(c => [c.code, c.label_fr])), stats)
   }, { timeout: 60_000, maxWait: 20_000 })
+
+  // A model just put on promo gets its promo-page row at once, so the
+  // page's visits are counted from its first day.
+  try {
+    await ensurePhoneOfferPages(await currentPhoneOffers())
+  } catch (err) {
+    console.error('[storefront-sync] phone promo pages:', err)
+  }
 
   stats.ms = Date.now() - started
   if (stats.created || stats.updated || stats.removed) await revalidateStorefront()

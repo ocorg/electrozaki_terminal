@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react'
 import QRCode from 'qrcode'
 import {
-  Megaphone, Plus, Pencil, Trash2, Link2, QrCode, ExternalLink, ImagePlus, Search, Eye, ShoppingBag, RefreshCw,
+  Megaphone, Plus, Pencil, Trash2, Link2, QrCode, ExternalLink, ImagePlus, Search, Eye, ShoppingBag, RefreshCw, Smartphone,
 } from 'lucide-react'
 import { useApi, apiWrite, refreshPrefixes } from '@/lib/data/api'
 import { Modal, Btn, PageHeader, EmptyState, SkeletonRow, Field, inputClass, selectClass, Select } from '@/components/shared'
@@ -28,6 +28,10 @@ interface Landing {
   promoCodeId: string | null; promoCode: { code: string } | null
   startsAt: string | null; endsAt: string | null; active: boolean; views: number
   status: 'live' | 'scheduled' | 'ended' | 'off'; orders: number; revenue: number
+  /** 'phone' = a phone model's promo page, made by the website from the ERP promos */
+  kind: 'phone' | 'manual'
+  /** what a phone promo page sells right now; null = no unit on promo any more */
+  phone: { name: string; units: number; fromPrice: number; bestSaving: number } | null
 }
 interface CatalogProduct { id: string; name: string; isPhone: boolean; published: boolean; availability: string; stock: number | null; categoryId: string; category: { name: string } }
 interface Category { id: string; name: string; parentId: string | null }
@@ -55,7 +59,9 @@ const EMPTY = {
 export default function SiteLandingModule() {
   const { L, isAr, isManager } = useSiteLang()
   const q        = useApi<Landing[]>('/api/site/landing')
-  const pages    = q.data ?? []
+  const all      = q.data ?? []
+  const phonePages = all.filter(p => p.kind === 'phone')
+  const pages    = all.filter(p => p.kind !== 'phone')
   const [editing, setEditing] = useState<{ id?: string; bannerUrl?: string | null; form: typeof EMPTY } | null>(null)
   const [qrFor, setQrFor]     = useState<Landing | null>(null)
 
@@ -88,6 +94,66 @@ export default function SiteLandingModule() {
     } : { form: { ...EMPTY } })
   }
 
+  function card(p: Landing) {
+    const st = p.kind === 'phone' && !p.phone ? STATUS.ended : STATUS[p.status]
+    const theme = THEMES.find(t => t.key === p.theme) ?? THEMES[0]
+    const conv = p.views > 0 ? Math.round((p.orders / p.views) * 1000) / 10 : 0
+    return (
+      <div key={p.id} className="bg-white border border-ez-border rounded-2xl overflow-hidden flex flex-col">
+        <div className="h-20 relative" style={{ background: theme.bg }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          {p.bannerUrl && <img src={p.bannerUrl} alt="" className="absolute inset-0 w-full h-full object-cover opacity-80" />}
+          <span className="absolute top-2 start-2"><Chip tone={st.tone}>{isAr ? st.ar : st.fr}</Chip></span>
+        </div>
+        <div className="p-4 space-y-2 flex-1">
+          <p className="font-bold text-ez-text">{p.title}</p>
+          <p className="text-xs font-mono text-ez-subtle truncate">/offres/{p.slug}</p>
+          {p.kind === 'phone' ? (
+            <p className="text-xs text-ez-subtle">
+              {p.phone
+                ? L(`${p.phone.units} téléphone(s) en promo · dès ${mad(p.phone.fromPrice)} · jusqu'à -${mad(p.phone.bestSaving)}`,
+                    `${p.phone.units} هاتف في العرض · ابتداءً من ${mad(p.phone.fromPrice)}`)
+                : L('Plus aucun téléphone en promo : la page est retirée du site.', 'لا يوجد هاتف في العرض.')}
+            </p>
+          ) : (<>
+          <p className="text-xs text-ez-subtle">
+            {shortDate(p.startsAt)} → {shortDate(p.endsAt)}
+            {' · '}{p.discountType ? (p.discountType === 'PERCENTAGE' ? `-${p.discountValue} %` : `-${p.discountValue} DH`) : L('prix normaux', 'أسعار عادية')}
+            {p.promoCode && ` · ${L('code', 'رمز')} ${p.promoCode.code}`}
+          </p>
+          <p className="text-xs text-ez-subtle">
+            {[p.category?.name, p.productIds.length ? `${p.productIds.length} ${L('produit(s) choisi(s)', 'منتج')}` : null].filter(Boolean).join(' + ')}
+          </p>
+          </>)}
+          <div className="grid grid-cols-4 gap-2 pt-2 border-t border-ez-border text-center">
+            <div><p className="text-lg font-bold tabular-nums">{p.views}</p><p className="text-xs uppercase text-ez-subtle flex items-center justify-center gap-1"><Eye className="w-3 h-3" />{L('visites', 'زيارات')}</p></div>
+            <div><p className="text-lg font-bold tabular-nums">{p.orders}</p><p className="text-xs uppercase text-ez-subtle flex items-center justify-center gap-1"><ShoppingBag className="w-3 h-3" />{L('commandes', 'طلبات')}</p></div>
+            <div><p className="text-lg font-bold tabular-nums">{conv}%</p><p className="text-xs uppercase text-ez-subtle">{L('conversion', 'تحويل')}</p></div>
+            <div><p className="text-sm font-bold tabular-nums pt-1">{mad(p.revenue)}</p><p className="text-xs uppercase text-ez-subtle">{L('ventes', 'مبيعات')}</p></div>
+          </div>
+        </div>
+        <div className="flex items-center gap-1 px-3 py-2 border-t border-ez-border">
+          <button onClick={() => copy(p)} title={L('Copier le lien', 'نسخ الرابط')} className="p-2 rounded-lg text-ez-subtle hover:bg-ez-muted"><Link2 className="w-4 h-4" /></button>
+          <button onClick={() => setQrFor(p)} title="QR code" className="p-2 rounded-lg text-ez-subtle hover:bg-ez-muted"><QrCode className="w-4 h-4" /></button>
+          <a href={urlOf(p)} target="_blank" rel="noopener noreferrer" title={L('Ouvrir la page', 'فتح الصفحة')} className="p-2 rounded-lg text-ez-subtle hover:bg-ez-muted"><ExternalLink className="w-4 h-4" /></a>
+          {isManager && (
+            <>
+              <label className="ms-auto flex items-center gap-1.5 text-xs text-ez-subtle">
+                <input type="checkbox" checked={p.active} onChange={() => toggle(p)} />{L('Active', 'مفعلة')}
+              </label>
+              {p.kind === 'manual' && (
+                <button onClick={() => edit(p)} title={L('Modifier', 'تعديل')} className="p-2 rounded-lg text-ez-subtle hover:bg-ez-muted"><Pencil className="w-4 h-4" /></button>
+              )}
+              {(p.kind === 'manual' || !p.phone) && (
+                <button onClick={() => remove(p)} title={L('Supprimer', 'حذف')} className="p-2 rounded-lg text-red-500 hover:bg-red-50"><Trash2 className="w-4 h-4" /></button>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col h-full overflow-hidden animate-fade-in" dir={isAr ? 'rtl' : 'ltr'}>
       <div className="flex-shrink-0 px-4 sm:px-6 pt-4 sm:pt-6 pb-4">
@@ -98,59 +164,27 @@ export default function SiteLandingModule() {
         />
       </div>
       <div className="flex-1 overflow-y-auto px-4 sm:px-6 pb-6">
+        {phonePages.length > 0 && !q.error && (
+          <section className="mb-8">
+            <h2 className="flex items-center gap-2 text-sm font-bold text-ez-text"><Smartphone className="w-4 h-4" />{L('Promos téléphones', 'عروض الهواتف')}</h2>
+            <p className="text-xs text-ez-subtle mt-1 mb-3">
+              {L('Une page par modèle en promo, créée par le site dès qu’un téléphone a un prix promo dans le stock, retirée quand il n’en reste plus. Les prix sont ceux du stock.',
+                 'صفحة لكل طراز في العرض، تُنشأ تلقائيًا.')}
+            </p>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{phonePages.map(p => card(p))}</div>
+          </section>
+        )}
+        {phonePages.length > 0 && pages.length > 0 && (
+          <h2 className="flex items-center gap-2 text-sm font-bold text-ez-text mb-3"><Megaphone className="w-4 h-4" />{L('Autres pages promo', 'صفحات أخرى')}</h2>
+        )}
         {q.isLoading ? <SkeletonRow /> : q.error ? (
           <EmptyState icon={<Megaphone className="w-6 h-6" />} title={L('Site web indisponible', 'الموقع غير متاح')} description={q.error.message} />
-        ) : pages.length === 0 ? (
+        ) : pages.length === 0 ? (phonePages.length > 0 ? null :
           <EmptyState icon={<Megaphone className="w-6 h-6" />} title={L('Aucune page promo', 'لا توجد صفحات')}
             description={L('Créez votre première offre, par exemple les coques.', 'أنشئ أول عرض.')} />
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {pages.map(p => {
-              const st = STATUS[p.status]
-              const theme = THEMES.find(t => t.key === p.theme) ?? THEMES[0]
-              const conv = p.views > 0 ? Math.round((p.orders / p.views) * 1000) / 10 : 0
-              return (
-                <div key={p.id} className="bg-white border border-ez-border rounded-2xl overflow-hidden flex flex-col">
-                  <div className="h-20 relative" style={{ background: theme.bg }}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    {p.bannerUrl && <img src={p.bannerUrl} alt="" className="absolute inset-0 w-full h-full object-cover opacity-80" />}
-                    <span className="absolute top-2 start-2"><Chip tone={st.tone}>{isAr ? st.ar : st.fr}</Chip></span>
-                  </div>
-                  <div className="p-4 space-y-2 flex-1">
-                    <p className="font-bold text-ez-text">{p.title}</p>
-                    <p className="text-xs font-mono text-ez-subtle truncate">/offres/{p.slug}</p>
-                    <p className="text-xs text-ez-subtle">
-                      {shortDate(p.startsAt)} → {shortDate(p.endsAt)}
-                      {' · '}{p.discountType ? (p.discountType === 'PERCENTAGE' ? `-${p.discountValue} %` : `-${p.discountValue} DH`) : L('prix normaux', 'أسعار عادية')}
-                      {p.promoCode && ` · ${L('code', 'رمز')} ${p.promoCode.code}`}
-                    </p>
-                    <p className="text-xs text-ez-subtle">
-                      {[p.category?.name, p.productIds.length ? `${p.productIds.length} ${L('produit(s) choisi(s)', 'منتج')}` : null].filter(Boolean).join(' + ')}
-                    </p>
-                    <div className="grid grid-cols-4 gap-2 pt-2 border-t border-ez-border text-center">
-                      <div><p className="text-lg font-bold tabular-nums">{p.views}</p><p className="text-xs uppercase text-ez-subtle flex items-center justify-center gap-1"><Eye className="w-3 h-3" />{L('visites', 'زيارات')}</p></div>
-                      <div><p className="text-lg font-bold tabular-nums">{p.orders}</p><p className="text-xs uppercase text-ez-subtle flex items-center justify-center gap-1"><ShoppingBag className="w-3 h-3" />{L('commandes', 'طلبات')}</p></div>
-                      <div><p className="text-lg font-bold tabular-nums">{conv}%</p><p className="text-xs uppercase text-ez-subtle">{L('conversion', 'تحويل')}</p></div>
-                      <div><p className="text-sm font-bold tabular-nums pt-1">{mad(p.revenue)}</p><p className="text-xs uppercase text-ez-subtle">{L('ventes', 'مبيعات')}</p></div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1 px-3 py-2 border-t border-ez-border">
-                    <button onClick={() => copy(p)} title={L('Copier le lien', 'نسخ الرابط')} className="p-2 rounded-lg text-ez-subtle hover:bg-ez-muted"><Link2 className="w-4 h-4" /></button>
-                    <button onClick={() => setQrFor(p)} title="QR code" className="p-2 rounded-lg text-ez-subtle hover:bg-ez-muted"><QrCode className="w-4 h-4" /></button>
-                    <a href={urlOf(p)} target="_blank" rel="noopener noreferrer" title={L('Ouvrir la page', 'فتح الصفحة')} className="p-2 rounded-lg text-ez-subtle hover:bg-ez-muted"><ExternalLink className="w-4 h-4" /></a>
-                    {isManager && (
-                      <>
-                        <label className="ms-auto flex items-center gap-1.5 text-xs text-ez-subtle">
-                          <input type="checkbox" checked={p.active} onChange={() => toggle(p)} />{L('Active', 'مفعلة')}
-                        </label>
-                        <button onClick={() => edit(p)} title={L('Modifier', 'تعديل')} className="p-2 rounded-lg text-ez-subtle hover:bg-ez-muted"><Pencil className="w-4 h-4" /></button>
-                        <button onClick={() => remove(p)} title={L('Supprimer', 'حذف')} className="p-2 rounded-lg text-red-500 hover:bg-red-50"><Trash2 className="w-4 h-4" /></button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
+            {pages.map(p => card(p))}
           </div>
         )}
       </div>

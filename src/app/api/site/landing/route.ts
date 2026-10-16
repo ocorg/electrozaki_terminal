@@ -3,12 +3,18 @@ import { json, handleError, requireUser, requireActiveUser, MANAGERS } from '@/l
 import { withNotify } from '@/lib/realtime'
 import { site, logSite, refreshSite } from '@/lib/storefront/access'
 import { parseLanding, landingStatus } from '@/lib/storefront/landing'
+import { currentPhoneOffers, ensurePhoneOfferPages } from '@/lib/storefront/phone-offers'
 
 // GET — promo pages with their results: visits, orders and sales from them.
+// Phone promo pages (one per model on promo, made by the website) come with
+// what they sell right now; `phone: null` = no unit on promo any more.
 export async function GET() {
   try {
     await requireUser(MANAGERS)
     const db = site()
+    const offers = await currentPhoneOffers()
+    await ensurePhoneOfferPages(offers)
+    const offerBySlug = new Map(offers.map(o => [o.slug, o]))
     const pages = await db.landingPage.findMany({
       orderBy: { createdAt: 'desc' },
       include: {
@@ -28,6 +34,8 @@ export async function GET() {
       data: pages.map(({ products, ...p }) => ({
         ...p,
         productIds: products.map(x => x.productId),
+        kind: !p.categoryId && products.length === 0 ? 'phone' : 'manual',
+        phone: offerBySlug.get(p.slug) ?? null,
         status: landingStatus(p),
         orders: stats.get(p.id)?._count._all ?? 0,
         revenue: Number(stats.get(p.id)?._sum.totalEstimate ?? 0),
