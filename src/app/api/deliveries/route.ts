@@ -5,6 +5,7 @@ import { json, handleError, requireUser, requireActiveUser, pickInput, columnsOf
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { codeLabel } from '@/lib/codes'
 import { withNotify } from '@/lib/realtime'
+import { autoLinkDelivery, syncDeliveryToOrders } from '@/lib/storefront/shipping'
 
 const EDITABLE = columnsOf('deliveries', ['delivery_id', 'caisse_entry_created'])
 const TERMINAL: delivery_status[] = ['livre', 'annule', 'retour']
@@ -75,6 +76,10 @@ async function POST_(request: NextRequest) {
       notes:       `Livraison créée — scénario : ${codeLabel('payment_scenario', delivery.payment_scenario, 'fr')}`,
     })
 
+    // A delivery for a confirmed web order: link them, so the customer's
+    // tracking on the website follows this delivery.
+    await autoLinkDelivery(delivery)
+
     return json({ data: delivery }, { status: 201 })
   } catch (err) {
     return handleError(err, 'POST /api/deliveries')
@@ -133,6 +138,9 @@ async function PATCH_(request: NextRequest) {
       ip_address:   getIpFromRequest(request),
       notes:        `Statut livraison : ${codeLabel('delivery_status', before.statut, 'fr')} → ${codeLabel('delivery_status', statut, 'fr')}`,
     })
+
+    // The web order shipping with this delivery follows its status.
+    await syncDeliveryToOrders(delivery_id, updated.statut)
 
     return json({ data: updated })
   } catch (err) {

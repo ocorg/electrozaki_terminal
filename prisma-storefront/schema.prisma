@@ -72,6 +72,17 @@ enum OrderRequestStatus {
   CANCELLED
 }
 
+// The ERP delivery's stages (delivery_status), as the customer follows them.
+enum ShippingStatus {
+  CONFIRMING
+  AWAITING_ADVANCE
+  PREPARING
+  IN_TRANSIT
+  DELIVERED
+  CANCELLED
+  RETURNED
+}
+
 // ── Catalog ─────────────────────────────────────────────────────────────
 
 // A flat-or-nested category tree, so "Accessoires" can have children like
@@ -414,6 +425,14 @@ model OrderRequest {
   deliveryEstimate    DateTime? @db.Date
   deliveryUnavailable Boolean   @default(false)
   status           OrderRequestStatus @default(NEW)
+  // Shipping, mirrored from the ERP delivery ("Livraisons") the order ships
+  // with: the ERP links them (same phone, or by hand) and copies every
+  // status change here, for the customer's tracking page (/commande/suivi).
+  // Null until the order is linked to a delivery.
+  erpDeliveryId     String?
+  shippingStatus    ShippingStatus?
+  trackingNumber    String? // Ameex parcel number, typed by staff
+  shippingUpdatedAt DateTime?
   totalEstimate    Decimal            @db.Decimal(10, 2)
   whatsappOpenedAt DateTime? // set once the WhatsApp prefill was triggered client-side
   notes            String?            @db.Text
@@ -448,6 +467,7 @@ model OrderRequest {
   updatedAt DateTime @updatedAt
 
   @@index([status])
+  @@index([erpDeliveryId])
 }
 
 enum AdvancePaymentStatus {

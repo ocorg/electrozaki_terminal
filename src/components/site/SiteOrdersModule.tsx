@@ -1,17 +1,33 @@
 'use client'
 import { useMemo, useState } from 'react'
-import { ShoppingBag, Phone, MessageCircle, RefreshCw, Receipt, CheckCircle2, XCircle, Store, Truck, FileText } from 'lucide-react'
+import { ShoppingBag, Phone, MessageCircle, RefreshCw, Receipt, CheckCircle2, XCircle, Store, Truck, FileText, Link2, Unlink, ExternalLink } from 'lucide-react'
 import { useApi, apiWrite } from '@/lib/data/api'
 import { Modal, Btn, PageHeader, EmptyState, SkeletonRow } from '@/components/shared'
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import { useSiteLang, Tabs, Chip, ORDER_STATUS, PAYMENT_STATUS, whatsappLink, mad, dateTime, shortDay } from './common'
 import { confirmDialog } from '@/components/shared/ConfirmHost'
+import { codeLabel } from '@/lib/codes'
+import type { delivery_status } from '@prisma/client'
+
+const SITE = process.env.NEXT_PUBLIC_STOREFRONT_URL ?? 'https://electrozaki.ma'
+
+// The customer-facing shipping stage, copied from the linked delivery.
+const SHIPPING: Record<string, { fr: string; ar: string; tone: 'green' | 'blue' | 'gray' | 'amber' | 'red' }> = {
+  CONFIRMING:       { fr: 'Livraison : confirmation', ar: 'التوصيل: تأكيد',      tone: 'gray' },
+  AWAITING_ADVANCE: { fr: 'Livraison : attente avance', ar: 'التوصيل: انتظار العربون', tone: 'amber' },
+  PREPARING:        { fr: 'En préparation',         ar: 'قيد التحضير',        tone: 'blue' },
+  IN_TRANSIT:       { fr: 'En route',               ar: 'في الطريق',          tone: 'blue' },
+  DELIVERED:        { fr: 'Livrée',                 ar: 'تم التسليم',         tone: 'green' },
+  CANCELLED:        { fr: 'Livraison annulée',      ar: 'التوصيل ملغى',       tone: 'red' },
+  RETURNED:         { fr: 'Retour',                 ar: 'مرتجع',              tone: 'red' },
+}
 
 interface OrderRow {
   id: string; ref: string; customerName: string; customerPhone: string; status: string
   totalEstimate: number; discountAmount: number; requiresAdvance: boolean; advancePaymentStatus: string
   whatsappOpenedAt: string | null; createdAt: string
   deliveryCity: string | null; deliveryFee: number; deliveryEstimate: string | null; deliveryUnavailable: boolean
+  erpDeliveryId: string | null; shippingStatus: string | null; trackingNumber: string | null
   landingPage?: { title: string } | null
   items: { productNameSnapshot: string; quantity: number; isGift: boolean }[]
 }
@@ -19,6 +35,7 @@ interface OrderRow {
 interface OrderDetail extends Omit<OrderRow, 'items'> {
   deliveryAddress: string | null; notes: string | null; receiptUrl: string | null; receiptIsPdf?: boolean
   promoCode: { code: string } | null
+  deliveryCandidates: { id: string; name: string; statut: delivery_status; total: number; createdAt: string }[]
   items: {
     id: string; productNameSnapshot: string; quantity: number; priceAtRequest: number; isGift: boolean; bundleId: string | null
     product: { slug: string; isPhone: boolean }
@@ -92,6 +109,9 @@ export default function SiteOrdersModule() {
                   <p className="text-xs text-ez-subtle line-clamp-2">
                     {o.items.map(i => `${i.quantity}× ${i.productNameSnapshot}`).join(' · ')}
                   </p>
+                  {o.shippingStatus && SHIPPING[o.shippingStatus] && (
+                    <Chip tone={SHIPPING[o.shippingStatus].tone}>{isAr ? SHIPPING[o.shippingStatus].ar : SHIPPING[o.shippingStatus].fr}{o.erpDeliveryId ? ` · ${o.erpDeliveryId}` : ''}</Chip>
+                  )}
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-ez-text">{mad(o.totalEstimate)}</span>
                     {o.requiresAdvance && <Chip tone={pay.tone}>{isAr ? pay.ar : pay.fr}</Chip>}
@@ -222,6 +242,8 @@ function OrderModal({ id, isManager, onClose }: { id: string; isManager: boolean
             </div>
           )}
 
+          {o.status === 'CONFIRMED' && <ShippingPanel order={o} isManager={isManager} onChange={() => q.refresh()} />}
+
           {/* Actions */}
           <div className="flex flex-wrap gap-2 pt-2 border-t border-ez-border">
             {o.status === 'NEW' && (
@@ -257,5 +279,88 @@ function OrderModal({ id, isManager, onClose }: { id: string; isManager: boolean
         </div>
       )}
     </Modal>
+  )
+}
+
+// The delivery the order ships with (linked automatically when a delivery is
+// created for this phone number in "Livraisons", or by hand here) and the
+// Ameex number: both reach the customer's tracking page on the website.
+function ShippingPanel({ order: o, isManager, onChange }: { order: OrderDetail; isManager: boolean; onChange: () => Promise<unknown> | void }) {
+  const { L, isAr } = useSiteLang()
+  const lang = isAr ? 'ar' : 'fr'
+  const [tracking, setTracking] = useState(o.trackingNumber ?? '')
+  const [busy, setBusy] = useState<string | null>(null)
+
+  async function save(key: string, body: Record<string, unknown>, ok: string) {
+    setBusy(key)
+    try {
+      await apiWrite(`/api/site/orders/${o.id}`, { method: 'PATCH', body })
+      showSuccess(ok)
+      await onChange()
+    } catch (e) {
+      showError((e as Error).message)
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const linked = o.deliveryCandidates.find(d => d.id === o.erpDeliveryId)
+  const others = o.deliveryCandidates.filter(d => d.id !== o.erpDeliveryId)
+  const ship = o.shippingStatus ? SHIPPING[o.shippingStatus] : null
+
+  return (
+    <div className="rounded-xl border border-ez-border p-4 space-y-3">
+      <p className="text-sm font-semibold flex items-center gap-2"><Truck className="w-4 h-4" />{L('Livraison & suivi client', 'التوصيل وتتبع العميل')}</p>
+
+      {o.erpDeliveryId ? (
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <span className="font-mono font-semibold">{o.erpDeliveryId}</span>
+          {linked && <span className="text-ez-subtle">· {codeLabel('delivery_status', linked.statut, lang)}</span>}
+          {ship && <Chip tone={ship.tone}>{isAr ? ship.ar : ship.fr}</Chip>}
+          {isManager && (
+            <Btn size="sm" variant="ghost" loading={busy === 'unlink'} onClick={() => save('unlink', { erpDeliveryId: null }, L('Livraison déliée', 'تم فك الربط'))}>
+              <Unlink className="w-3.5 h-3.5" />{L('Délier', 'فك الربط')}
+            </Btn>
+          )}
+        </div>
+      ) : (
+        <p className="text-xs text-ez-subtle">
+          {L('Pas encore de livraison liée. Elle se lie toute seule quand vous créez la livraison de ce client (même téléphone) dans « Livraisons ».',
+             'لا يوجد توصيل مرتبط بعد. يرتبط تلقائيًا عند إنشاء توصيل لنفس الهاتف.')}
+        </p>
+      )}
+
+      {isManager && others.length > 0 && (
+        <div className="space-y-1.5">
+          <p className="text-xs text-ez-subtle">{L('Livraisons à ce numéro :', 'توصيلات بهذا الرقم:')}</p>
+          {others.map(d => (
+            <div key={d.id} className="flex flex-wrap items-center gap-2 text-xs">
+              <span className="font-mono font-semibold">{d.id}</span>
+              <span className="text-ez-subtle">{d.name} · {codeLabel('delivery_status', d.statut, lang)} · {mad(d.total)} · {shortDay(d.createdAt)}</span>
+              <Btn size="sm" variant="secondary" loading={busy === `link-${d.id}`} onClick={() => save(`link-${d.id}`, { erpDeliveryId: d.id }, L('Livraison liée', 'تم الربط'))}>
+                <Link2 className="w-3.5 h-3.5" />{L('Lier', 'ربط')}
+              </Btn>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-end gap-2">
+        <label className="flex-1 min-w-[12rem] text-xs text-ez-subtle">
+          {L('N° de suivi Ameex (montré au client)', 'رقم تتبع Ameex')}
+          <input value={tracking} onChange={e => setTracking(e.target.value.toUpperCase())} placeholder="MRK0926B1PF1924"
+            className="mt-1 w-full rounded-lg border border-ez-border px-3 py-2 font-mono text-sm text-ez-text" />
+        </label>
+        <Btn size="sm" loading={busy === 'tracking'} disabled={tracking.trim() === (o.trackingNumber ?? '')}
+          onClick={() => save('tracking', { trackingNumber: tracking.trim() || null }, L('Numéro de suivi enregistré', 'تم الحفظ'))}>
+          {L('Enregistrer', 'حفظ')}
+        </Btn>
+      </div>
+
+      <a href={`${SITE}/fr/commande/suivi?ref=${o.ref}`} target="_blank" rel="noopener noreferrer"
+        className="inline-flex items-center gap-1.5 text-xs font-semibold text-ez-text underline">
+        <ExternalLink className="w-3.5 h-3.5" />{L('Voir ce que voit le client', 'عرض ما يراه العميل')}
+      </a>
+    </div>
   )
 }

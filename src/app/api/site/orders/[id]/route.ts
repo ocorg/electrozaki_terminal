@@ -5,6 +5,7 @@ import { withNotify } from '@/lib/realtime'
 import { logActivity } from '@/lib/utils/logger'
 import { site, orderRef, phonesForRef } from '@/lib/storefront/access'
 import { receiptViewUrl } from '@/lib/storefront/storage'
+import { candidateDeliveries, linkOrderToDelivery } from '@/lib/storefront/shipping'
 
 type Ctx = { params: { id: string } }
 
@@ -43,6 +44,8 @@ export async function GET(_request: NextRequest, { params }: Ctx) {
         receiptUrl: order.receiptKey ? await receiptViewUrl(order.receiptKey) : null,
         receiptIsPdf: order.receiptKey?.endsWith('.pdf') ?? false,
         items,
+        // Deliveries this order could ship with (same phone), for linking.
+        deliveryCandidates: await candidateDeliveries(order.customerPhone),
       },
     })
   } catch (err) {
@@ -55,12 +58,38 @@ export async function GET(_request: NextRequest, { params }: Ctx) {
 const STATUSES  = ['NEW', 'CONTACTED'] as const
 const PAYMENTS  = ['VERIFIED', 'REJECTED'] as const
 
-// PATCH { status?, advancePaymentStatus? } — follow-up (all staff); verifying
-// the 300 DH advance is money, so managers only.
+// PATCH { status?, advancePaymentStatus?, trackingNumber?, erpDeliveryId? } —
+// follow-up; verifying the 300 DH advance is money, so managers only.
+// trackingNumber = the Ameex parcel number shown to the customer;
+// erpDeliveryId = the delivery it ships with (null unlinks).
 async function PATCH_(request: NextRequest, { params }: Ctx) {
   try {
-    const body: { status?: string; advancePaymentStatus?: string } = await request.json()
+    const body: { status?: string; advancePaymentStatus?: string; trackingNumber?: string | null; erpDeliveryId?: string | null } = await request.json()
     const user = await requireActiveUser(MANAGERS)
+
+    if (body.trackingNumber !== undefined || body.erpDeliveryId !== undefined) {
+      const before = await site().orderRequest.findUnique({ where: { id: params.id }, select: { trackingNumber: true, erpDeliveryId: true } })
+      if (!before) throw new HttpError(404, 'Commande introuvable')
+      if (body.trackingNumber !== undefined) {
+        const n = typeof body.trackingNumber === 'string' ? body.trackingNumber.trim().toUpperCase().slice(0, 40) : ''
+        if (n && !/^[A-Z0-9-]{4,40}$/.test(n)) throw new HttpError(400, 'Numéro de suivi invalide')
+        await site().orderRequest.update({ where: { id: params.id }, data: { trackingNumber: n || null } })
+      }
+      if (body.erpDeliveryId !== undefined) {
+        const id = typeof body.erpDeliveryId === 'string' && body.erpDeliveryId.trim() ? body.erpDeliveryId.trim() : null
+        await linkOrderToDelivery(params.id, id).catch(e => { throw new HttpError(404, (e as Error).message) })
+      }
+      const after = await site().orderRequest.findUnique({
+        where: { id: params.id }, select: { trackingNumber: true, erpDeliveryId: true, shippingStatus: true },
+      })
+      await logActivity({
+        store_id: user.store_id ?? null, user_id: user.id, user_name: user.display_name,
+        action_type: 'modification', module: 'site_web', record_id: orderRef(params.id),
+        before_state: before, after_state: after,
+        notes: `Commande web ${orderRef(params.id)} : livraison / suivi mis à jour`,
+      })
+      if (body.status === undefined && body.advancePaymentStatus === undefined) return json({ ok: true, data: after })
+    }
 
     const data: { status?: (typeof STATUSES)[number]; advancePaymentStatus?: (typeof PAYMENTS)[number] } = {}
     if (body.status !== undefined) {
