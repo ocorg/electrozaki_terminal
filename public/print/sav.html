@@ -400,7 +400,7 @@ async function executeSavPrint(pecRef,rstRef){
 }
 
 window.addEventListener('message',function(e){
-  if(!e.data)return;
+  if(e.origin!==window.location.origin||!e.data)return;
   if(e.data.type==='SAV_REF_READY')executeSavPrint(e.data.pecRef,e.data.rstRef);
 });
 

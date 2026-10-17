@@ -321,7 +321,7 @@ async function executeRepPrint(ref){
 }
 
 window.addEventListener('message',function(e){
-  if(!e.data)return;
+  if(e.origin!==window.location.origin||!e.data)return;
   if(e.data.type==='ACQ_REF_READY')executeRepPrint(e.data.ref);
 });
 

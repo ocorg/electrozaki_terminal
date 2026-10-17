@@ -525,7 +525,7 @@ async function executeFacPrint(ref){
 }
 
 window.addEventListener('message',function(e){
-  if(!e.data)return;
+  if(e.origin!==window.location.origin||!e.data)return;
   if(e.data.type==='FAC_REF_READY')executeFacPrint(e.data.ref);
 });
 
