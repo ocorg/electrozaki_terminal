@@ -22,11 +22,25 @@ export async function saleBalance(tx: Tx, txn_id: string) {
 
 /**
  * Sales not fully paid (credit, partial advance) are followed in Crédits:
- * refunding them here would pay back money never received.
+ * refunding them here would pay back money never received. A "Plusieurs
+ * fois" sale keeps only its down payment on the sale line; once its file is
+ * paid off (`settled`), the whole price was received and it returns like a
+ * cash sale.
  */
-export function unpaidSale(sale: { payment_method: string; prix_vente: Prisma.Decimal; avance: Prisma.Decimal | null; valeur_echange: Prisma.Decimal | null }) {
+export function unpaidSale(sale: { payment_method: string; prix_vente: Prisma.Decimal; avance: Prisma.Decimal | null; valeur_echange: Prisma.Decimal | null }, settled = false) {
+  if (settled) return false
   const pv = num(sale.prix_vente), av = num(sale.avance), ve = num(sale.valeur_echange)
   return sale.payment_method === 'credit' || (av > 0 && pv - av - ve > 0)
+}
+
+/** The sales among these whose "Plusieurs fois" file is paid off. */
+export async function settledSales(db: Tx, txnIds: string[]) {
+  if (!txnIds.length) return new Set<string>()
+  const files = await db.phone_credit_sales.findMany({
+    where:  { txn_id: { in: txnIds }, statut: 'solde', is_deleted: false },
+    select: { txn_id: true },
+  })
+  return new Set(files.map(f => f.txn_id!))
 }
 
 /**

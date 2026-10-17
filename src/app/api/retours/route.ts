@@ -6,7 +6,7 @@ import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { withNotify } from '@/lib/realtime'
 import { codeLabel } from '@/lib/codes'
 import { deviceLabels } from '@/lib/device-labels'
-import { saleBalance, unpaidSale, assertDrawerOpen, lockSale } from '@/lib/retours'
+import { saleBalance, unpaidSale, settledSales, assertDrawerOpen, lockSale } from '@/lib/retours'
 import { alertLater, deviceName, money } from '@/lib/reports'
 import { assertNoLiveTwin } from '@/lib/phoneExit'
 import { workingDay } from '@/lib/catchUp'
@@ -67,13 +67,14 @@ export async function GET(request: NextRequest) {
       take: browsing ? 1000 : 200,
     })
 
-    const [labels, returned] = await Promise.all([
+    const [labels, returned, settled] = await Promise.all([
       deviceLabels(rows),
       prisma.retours.groupBy({
         by:    ['txn_id'],
         where: { txn_id: { in: rows.map(r => r.txn_id) }, type: 'retour' },
         _sum:  { qty: true, montant: true },
       }),
+      settledSales(prisma, rows.map(r => r.txn_id)),
     ])
     const back = new Map(returned.map(r => [r.txn_id, r._sum]))
 
@@ -91,7 +92,7 @@ export async function GET(request: NextRequest) {
         warranty_expiry: r.warranty_expiry,
         returned_qty:    back.get(r.txn_id)?.qty ?? 0,
         refunded:        num(back.get(r.txn_id)?.montant),
-        unpaid:          unpaidSale(r),
+        unpaid:          unpaidSale(r, settled.has(r.txn_id)),
       })),
     })
   } catch (err) {
@@ -129,7 +130,7 @@ async function POST_(request: NextRequest) {
       await lockSale(tx, txn_id)
       const sale = await tx.transactions.findUnique({ where: { txn_id } })
       if (!sale || sale.voided || sale.type_operation === 'retour') throw new HttpError(404, 'Vente introuvable')
-      if (unpaidSale(sale)) {
+      if (unpaidSale(sale, (await settledSales(tx, [txn_id])).size > 0)) {
         throw new HttpError(409, 'Vente à crédit ou avec avance non soldée : le retour se règle avec le propriétaire (module Crédits).')
       }
       if (sale.device_type === 'accessoire' && destination === 'reparation') throw new HttpError(400, 'Un accessoire ne part pas en réparation')
