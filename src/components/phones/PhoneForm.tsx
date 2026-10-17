@@ -442,6 +442,7 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
               <option value="Haut-parleur">Haut-parleur</option>
               <option value="Connecteur de charge">Connecteur</option>
               <option value="Assemblage carte logique">Carte logique</option>
+              <option value="Caméra TrueDepth">Cam. TrueDepth</option>
             </Select>
             <Select
               className={`${selectClass} w-28`}

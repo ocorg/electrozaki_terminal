@@ -98,6 +98,7 @@ function labelText(product: LabelProduct) {
 const PART_LETTERS: Record<string, string> = {
   'ecran': 'E', 'batterie': 'B', 'camera arriere': 'C', 'camera avant': 'C', 'vitre arriere': 'V',
   'chassis': 'CH', 'haut-parleur': 'HP', 'connecteur de charge': 'CC', 'assemblage carte logique': 'CL',
+  'camera truedepth': 'TD',
 }
 function partCodes(pieces: LabelProduct['pieces']): string {
   const codes = (pieces ?? []).filter(p => p?.name).map(p => {

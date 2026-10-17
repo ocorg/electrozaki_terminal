@@ -146,6 +146,7 @@ const PART_FLAG: Record<string, 'screenGenuine' | 'batteryGenuine' | 'cameraGenu
   'batterie':             'batteryGenuine',
   'camera arriere':       'cameraGenuine',
   'camera avant':         'cameraGenuine',
+  'camera truedepth':     'cameraGenuine',
   'connecteur de charge': 'chargingPortGenuine',
   'haut-parleur':         'speakerGenuine',
 }
