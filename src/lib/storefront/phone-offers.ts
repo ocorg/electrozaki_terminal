@@ -54,8 +54,10 @@ export async function currentPhoneOffers(): Promise<PhoneOfferSummary[]> {
     },
   })
   const bySlug = new Map<string, PhoneOfferSummary>()
+  const brandOf = new Map<string, string>()
   for (const l of listings) {
     const slug = offerSlug(l.modelKey!)
+    brandOf.set(slug, l.modelKey!.split('|')[0])
     const offer = bySlug.get(slug) ?? { slug, name: modelName(l.name, l.brand), units: 0, fromPrice: Infinity, bestSaving: 0 }
     for (const v of l.variants) {
       const price = Number(v.priceOverride ?? l.recommendedSalePrice)
@@ -65,7 +67,31 @@ export async function currentPhoneOffers(): Promise<PhoneOfferSummary[]> {
     }
     bySlug.set(slug, offer)
   }
-  return [...bySlug.values()].sort((a, b) => b.bestSaving - a.bestSaving || a.name.localeCompare(b.name))
+  const models = [...bySlug.values()].sort((a, b) => b.bestSaving - a.bestSaving || a.name.localeCompare(b.name))
+
+  // Brand pages (/offres/iphone, /offres/samsung): every model of the brand,
+  // for one campaign link. Same slugs and names as the website
+  // (storefront lib/offers/phone-offers.ts → BRAND_PAGES).
+  const brands: PhoneOfferSummary[] = []
+  for (const [key, b] of Object.entries(BRAND_PAGES)) {
+    const own = models.filter(m => brandOf.get(m.slug) === key)
+    if (!own.length) continue
+    brands.push({
+      slug: b.slug,
+      name: `${b.name} (${own.length} modèle${own.length > 1 ? 's' : ''})`,
+      units: own.reduce((n, m) => n + m.units, 0),
+      fromPrice: Math.min(...own.map(m => m.fromPrice)),
+      bestSaving: Math.max(...own.map(m => m.bestSaving)),
+    })
+  }
+  return [...brands, ...models]
+}
+
+const BRAND_PAGES: Record<string, { slug: string; name: string }> = {
+  apple:   { slug: 'iphone',  name: 'iPhone' },
+  samsung: { slug: 'samsung', name: 'Samsung Galaxy' },
+  xiaomi:  { slug: 'xiaomi',  name: 'Xiaomi' },
+  honor:   { slug: 'honor',   name: 'Honor' },
 }
 
 /**
@@ -79,7 +105,7 @@ export async function ensurePhoneOfferPages(offers: PhoneOfferSummary[]): Promis
   const missing = offers.filter(o => !existing.has(o.slug))
   if (missing.length) {
     await db.landingPage.createMany({
-      data: missing.map(o => ({ slug: o.slug, title: `Promo ${o.name}`, active: true })),
+      data: missing.map(o => ({ slug: o.slug, title: `Promo ${o.name.replace(/ \(\d+ modèles?\)$/, '')}`, active: true })),
       skipDuplicates: true,
     })
   }
