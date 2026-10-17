@@ -97,7 +97,7 @@ function labelText(product: LabelProduct) {
 // "B" = batterie standard. Both cameras share the letter C.
 const PART_LETTERS: Record<string, string> = {
   'ecran': 'E', 'batterie': 'B', 'camera arriere': 'C', 'camera avant': 'C', 'vitre arriere': 'V',
-  'chassis': 'CH', 'haut-parleur': 'HP', 'connecteur de charge': 'CC',
+  'chassis': 'CH', 'haut-parleur': 'HP', 'connecteur de charge': 'CC', 'assemblage carte logique': 'CL',
 }
 function partCodes(pieces: LabelProduct['pieces']): string {
   const codes = (pieces ?? []).filter(p => p?.name).map(p => {
