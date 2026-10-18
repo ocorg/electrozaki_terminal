@@ -209,3 +209,31 @@ export async function waitingFor(phone: { phone_id: string; store_id: string | n
   return `🔔 Arrivé en stock : ${await deviceName('telephone', phone.phone_id)}${priced.prix_vente_recommande ? ` à ${dh(priced.prix_vente_recommande)}` : ''}\n`
     + `${plural(hits.length, 'personne l’attend', 'personnes l’attendent')} dans le CRM : ${who}${hits.length > 6 ? '…' : ''}`
 }
+
+/**
+ * 11 am (owner, 2026-10-18): the parcels to get ready before the delivery
+ * company comes to collect. Ready to go = the order is prepared (its advance
+ * is in, or accessories only); waiting for the advance = do not send yet.
+ * Null when nothing is pending.
+ */
+export async function deliveriesToPrepare(storeId: string): Promise<string | null> {
+  const pending = await prisma.deliveries.findMany({
+    where:   { store_id: storeId, is_deleted: false, statut: { in: ['confirmation_en_cours', 'attente_avance', 'prepare'] } },
+    include: { delivery_items: { select: { device_type: true, device_id: true, qty: true } } },
+    orderBy: { created_at: 'asc' },
+  })
+  if (!pending.length) return null
+  const line = async (d: (typeof pending)[number]) => {
+    const what = await Promise.all(d.delivery_items.map(async i => `${await deviceName(i.device_type, i.device_id)}${i.qty > 1 ? ` ×${i.qty}` : ''}`))
+    const cash = d.commande ? orderMoney(d).aEncaisser : Number(d.montant_restant ?? 0)
+    return `• ${d.delivery_id} — ${d.client_name}${d.ville ? `, ${d.ville}` : ''}${d.transporteur ? ` (${d.transporteur})` : ''}\n   ${what.join(', ') || '—'} · à encaisser ${dh(cash)}`
+  }
+  const ready   = pending.filter(d => d.statut === 'prepare')
+  const waiting = pending.filter(d => d.statut !== 'prepare')
+  return [
+    bold(`📦 Colis à préparer — ${dayOf(businessDate())}`),
+    ready.length ? `${plural(ready.length, 'colis prêt à partir', 'colis prêts à partir')} :\n${(await Promise.all(ready.map(line))).join('\n')}` : 'Aucun colis prêt à partir.',
+    waiting.length ? `\n⏳ ${plural(waiting.length, 'commande attend', 'commandes attendent')} son avance (ne pas envoyer) :\n${(await Promise.all(waiting.map(line))).join('\n')}` : null,
+    ready.length ? '\nUne fois remis au transporteur : Livraisons → « En route ».' : null,
+  ].filter(Boolean).join('\n')
+}

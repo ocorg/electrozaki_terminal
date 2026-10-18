@@ -1,0 +1,24 @@
+# 11 am reminder of the parcels to prepare (owner, 2026-10-18) — sent to the
+# store's Telegram group by the ERP (src/app/api/cron/deliveries). Scheduled
+# here because the free Vercel plan has room for two daily jobs only.
+# GitHub may start a scheduled job a few minutes late: 10:50 UTC (= Morocco,
+# GMT+0) lands around 11:00. "Run workflow" in the Actions tab sends it now.
+name: Rappel colis à préparer
+on:
+  schedule:
+    - cron: '50 10 * * *'
+  workflow_dispatch:
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ask the ERP to send the reminder
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          code=$(curl -s -o out.json -w '%{http_code}' --max-time 120 \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            https://electrozakiterminal.vercel.app/api/cron/deliveries)
+          cat out.json; echo
+          test "$code" = "200"
