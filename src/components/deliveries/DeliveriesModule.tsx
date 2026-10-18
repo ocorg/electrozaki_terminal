@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useApi } from '@/lib/data/api'
 import { useUser }          from '@/lib/hooks/useUser'
 import { usePortal }        from '@/lib/context/portal'
@@ -8,9 +8,9 @@ import { Modal, Btn, Field, inputClass } from '@/components/shared'
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import {
   Loader2, Plus, Package, Truck,
-  List, LayoutGrid, Download, Printer,
+  List, LayoutGrid, Printer,
 } from 'lucide-react'
-import { STORE_TIME_ZONE } from '@/lib/time'
+import DeliveryLabel from '@/components/print/DeliveryLabel'
 
 // ─── Types ────────────────────────────────────────────────────
 interface DeliveryItem {
@@ -67,187 +67,6 @@ const SCENARIO_SHORT: Record<string, string> = {
   paiement_livraison:     'À la livraison',
 }
 
-// ─── Delivery Label (40×30mm Phomemo) ────────────────────────
-interface LabelProps {
-  delivery:    Delivery
-  device_name: string
-  open:        boolean
-  onClose:     () => void
-}
-
-function DeliveryLabel({ delivery, device_name, open, onClose }: LabelProps) {
-  const labelRef          = useRef<HTMLDivElement>(null)
-  const [exporting, setExporting] = useState(false)
-  const W = 453; const H = 339; const W_MM = 40; const H_MM = 30
-
-  async function capture(): Promise<Blob | null> {
-    if (!labelRef.current) return null
-    setExporting(true)
-    try {
-      const html2canvas = (await import('html2canvas')).default
-      const canvas = await html2canvas(labelRef.current, {
-        scale:           1,
-        useCORS:         true,
-        backgroundColor: '#FFFFFF',
-        width:           W,
-        height:          H,
-      })
-      return await new Promise(res => canvas.toBlob(res, 'image/png'))
-    } finally {
-      setExporting(false)
-    }
-  }
-
-  async function handlePDF() {
-    const blob = await capture()
-    if (!blob) return
-    setExporting(true)
-    try {
-      const { jsPDF } = await import('jspdf')
-      const pdf = new jsPDF({
-        orientation: 'landscape',
-        unit:        'mm',
-        format:      [W_MM, H_MM],
-      })
-      const imgData = await new Promise<string>(res => {
-        const r = new FileReader()
-        r.onload  = () => res(r.result as string)
-        r.readAsDataURL(blob)
-      })
-      pdf.addImage(imgData, 'PNG', 0, 0, W_MM, H_MM)
-      pdf.save(`delivery-${delivery.delivery_id}.pdf`)
-    } finally {
-      setExporting(false)
-    }
-  }
-
-  async function handlePrint() {
-    const blob = await capture()
-    if (!blob) return
-    const url = URL.createObjectURL(blob)
-    const win = window.open(url, '_blank')
-    win?.addEventListener('load', () => {
-      win.print()
-      URL.revokeObjectURL(url)
-    })
-  }
-
-  return (
-    <Modal open={open} onClose={onClose} title="Étiquette de livraison" size="md">
-      <div className="space-y-5">
-
-        {/* Preview */}
-        <div className="flex justify-center overflow-hidden w-full">
-          <div style={{
-            transform:       'scale(0.72)',
-            transformOrigin: 'top center',
-            marginBottom:    `-${Math.round(H * 0.28)}px`,
-          }}>
-            <div
-              ref={labelRef}
-              style={{
-                width:           `${W}px`,
-                height:          `${H}px`,
-                backgroundColor: '#FFFFFF',
-                border:          '1px solid #E8E5DE',
-                borderRadius:    '6px',
-                padding:         '14px',
-                display:         'flex',
-                flexDirection:   'column',
-                justifyContent:  'space-between',
-                fontFamily:      "'Barlow Condensed', Arial, sans-serif",
-                overflow:        'hidden',
-              }}
-            >
-              {/* Top row */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <p style={{ fontSize: '9px', fontWeight: 'bold', color: '#C9A440', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                    LIVRAISON
-                  </p>
-                  <p style={{ fontSize: '18px', fontWeight: 'bold', color: '#1A1A1A', lineHeight: 1.1 }}>
-                    {delivery.delivery_id}
-                  </p>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <p style={{ fontSize: '9px', fontWeight: 'bold', color: '#EF4444', border: '1px solid #EF4444', padding: '2px 6px', borderRadius: '4px' }}>
-                    ⚠ FRAGILE
-                  </p>
-                  <p style={{ fontSize: '7px', color: '#EF4444', marginTop: '2px' }}>
-                    تعامل بحذر
-                  </p>
-                </div>
-              </div>
-
-              {/* Device */}
-              <div>
-                <p style={{ fontSize: '9px', color: '#6B6860', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                  Appareil
-                </p>
-                <p style={{ fontSize: '13px', fontWeight: 'bold', color: '#1A1A1A', lineHeight: 1.2 }}>
-                  {device_name}
-                </p>
-              </div>
-
-              {/* Client */}
-              <div>
-                <p style={{ fontSize: '9px', color: '#6B6860', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                  Destinataire / المستلم
-                </p>
-                <p style={{ fontSize: '12px', fontWeight: 'bold', color: '#1A1A1A' }}>
-                  {delivery.client_name}
-                </p>
-                <p style={{ fontSize: '10px', color: '#3A3835' }}>
-                  {delivery.client_phone}
-                </p>
-                <p style={{ fontSize: '9px', color: '#6B6860', lineHeight: 1.3 }}>
-                  {delivery.client_address}
-                </p>
-              </div>
-
-              {/* Footer */}
-              <p style={{ fontSize: '7px', color: '#B0ADA6' }}>
-                Handle with Care / يُرجى التعامل بحذر — {new Date().toLocaleDateString('fr-FR', { timeZone: STORE_TIME_ZONE })}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <p className="text-xs text-ez-faint text-center">
-          Format: 40×30 mm — Compatible Phomemo
-        </p>
-
-        {/* Actions */}
-        <div className="grid grid-cols-2 gap-3">
-          <button
-            onClick={handlePDF}
-            disabled={exporting}
-            className="flex items-center justify-center gap-2 p-3 rounded-xl border border-ez-border bg-white hover:bg-ez-bg text-sm text-ez-subtle transition-all disabled:opacity-50"
-          >
-            {exporting
-              ? <Loader2 className="w-4 h-4" style={{ animation: 'spin 1s linear infinite' }} />
-              : <Download className="w-4 h-4" />
-            }
-            PDF
-          </button>
-          <button
-            onClick={handlePrint}
-            disabled={exporting}
-            className="flex items-center justify-center gap-2 p-3 rounded-xl border border-ez-border bg-white hover:bg-ez-bg text-sm text-ez-subtle transition-all disabled:opacity-50"
-          >
-            <Printer className="w-4 h-4" /> Imprimer
-          </button>
-        </div>
-
-        <div className="flex justify-end">
-          <Btn variant="secondary" onClick={onClose}>Fermer</Btn>
-        </div>
-
-      </div>
-    </Modal>
-  )
-}
-
 // ─── Main Module ──────────────────────────────────────────────
 // Orders to deliver are taken at the POS ("Vente à livrer", owner 2026-10-18);
 // here they are followed to the end: advance, on the way, delivered (the sale
@@ -275,7 +94,7 @@ export default function DeliveriesModule({ storeId }: DeliveriesModuleProps) {
   const [dragging,   setDragging]   = useState<string | null>(null)
   const [step,       setStep]       = useState<Step | null>(null)
   const [busy,       setBusy]       = useState(false)
-  const [labelState, setLabelState] = useState<{ delivery: Delivery; device_name: string } | null>(null)
+  const [labelOf,    setLabelOf]    = useState<Delivery | null>(null)
 
   // Step form (one at a time)
   const [f, setF] = useState<Record<string, string>>({})
@@ -400,7 +219,7 @@ export default function DeliveriesModule({ storeId }: DeliveriesModuleProps) {
         ) : (
           <span className="text-[9px] px-1.5 py-0.5 rounded bg-ez-bg border border-ez-border text-ez-subtle">{SCENARIO_SHORT[d.payment_scenario]}</span>
         )}
-        <button onClick={() => setLabelState({ delivery: d, device_name: d.delivery_items[0]?.label ?? d.delivery_items[0]?.device_id ?? '—' })}
+        <button onClick={() => setLabelOf(d)}
           className="w-full text-xs py-1 rounded-lg border border-ez-border text-ez-subtle hover:bg-ez-bg transition-all flex items-center justify-center gap-1">
           <Printer className="w-3 h-3" /> Étiquette
         </button>
@@ -569,8 +388,14 @@ export default function DeliveriesModule({ storeId }: DeliveriesModuleProps) {
       </Modal>
 
       {/* ── Delivery Label Modal ── */}
-      {labelState && (
-        <DeliveryLabel delivery={labelState.delivery} device_name={labelState.device_name} open={!!labelState} onClose={() => setLabelState(null)} />
+      {labelOf && (
+        <DeliveryLabel open onClose={() => setLabelOf(null)} parcel={{
+          delivery_id: labelOf.delivery_id, client_name: labelOf.client_name, client_phone: labelOf.client_phone,
+          client_address: labelOf.client_address, ville: labelOf.ville,
+          // what the agent collects: the order's rest + a fee paid by the client; old cards: their rest
+          aEncaisser: labelOf.money ? labelOf.money.aEncaisser : Number(labelOf.montant_restant ?? 0),
+          contenu: labelOf.delivery_items.map(i => `${i.label ?? i.device_id}${i.qty > 1 ? ` ×${i.qty}` : ''}`),
+        }} />
       )}
     </div>
   )
