@@ -20,7 +20,7 @@ interface Category {
   id: string; name: string; slug: string; parentId: string | null; sortOrder: number; erpCode: string | null
   _count: { products: number; children: number }
 }
-interface Photo { modelKey: string; model: string; brand: string; color: string; units: number; photoId: string | null; url: string | null }
+interface Photo { modelKey: string; model: string; brand: string; color: string; units: number; unpriced: number; photoId: string | null; url: string | null }
 
 type Tab = 'products' | 'photos' | 'categories' | 'fiches'
 type Kind = 'phones' | 'accessories' | 'hidden'
@@ -419,7 +419,8 @@ function PhotosTab({ isManager }: { isManager: boolean }) {
               </div>
               <div>
                 <p className="text-sm font-semibold text-ez-text truncate">{p.model}</p>
-                <p className="text-xs text-ez-subtle truncate">{p.color} · {p.units} {L('en stock', 'في المخزون')}</p>
+                <p className="text-xs text-ez-subtle truncate">{p.color}{p.units > 0 && <> · {p.units} {L('en stock', 'في المخزون')}</>}</p>
+                {p.unpriced > 0 && <p className="text-[11px] font-bold text-amber-700 truncate">{p.unpriced} {L('sans prix : pas encore sur le site', 'بدون ثمن')}</p>}
               </div>
               {isManager && (
                 <div className="flex gap-1">

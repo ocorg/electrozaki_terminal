@@ -2,29 +2,47 @@ import { NextRequest } from 'next/server'
 import { json, handleError, requireUser, requireActiveUser, HttpError, MANAGERS } from '@/lib/api'
 import { withNotify } from '@/lib/realtime'
 import { site, logSite } from '@/lib/storefront/access'
-import { buildPhoneListings } from '@/lib/storefront/listing'
+import { buildPhoneListings, modelKey, phoneName, type ErpPhone } from '@/lib/storefront/listing'
+import { prisma } from '@/lib/db'
 import { readErpStock } from '@/lib/storefront/sync'
 import { uploadSitePhoto, deleteSitePhoto } from '@/lib/storefront/storage'
 
-// GET — every phone model + colour currently for sale, with its photo (or
-// none yet), so staff see at a glance what still needs a picture.
+// GET — every phone model + colour in stock that the website will show, with
+// its photo (or none yet), so staff see at a glance what still needs a
+// picture. Phones not priced yet are listed too (owner, 2026-10-18): their
+// photo can be ready before they go on sale.
 export async function GET() {
   try {
     await requireUser(MANAGERS)
-    const [{ phones }, photos] = await Promise.all([
+    const [{ phones }, unpriced, photos] = await Promise.all([
       readErpStock(),
+      prisma.phones.findMany({
+        // the website's own rule (readErpStock), the price aside
+        where:  { status: 'disponible', is_deleted: false, NOT: { is_damaged: true }, prix_vente_recommande: null, condition: { in: ['neuf', 'occasion'] },
+                  OR: [{ store_id: null }, { stores: { is_active: true } }] },
+        select: { marque: true, serie: true, model: true, couleur: true },
+      }),
       site().modelPhoto.findMany({ select: { id: true, modelKey: true, color: true, url: true } }),
     ])
-    const combos = new Map<string, { modelKey: string; model: string; brand: string; color: string; units: number }>()
+    const combos = new Map<string, { modelKey: string; model: string; brand: string; color: string; units: number; unpriced: number }>()
     for (const listing of buildPhoneListings(phones)) {
       for (const v of listing.variants) {
         const color = v.photoColor ?? ''
         if (!color) continue
         const key   = `${listing.modelKey}|${color.toLowerCase()}`
-        const combo = combos.get(key) ?? { modelKey: listing.modelKey, model: listing.modelName, brand: listing.brand, color, units: 0 }
+        const combo = combos.get(key) ?? { modelKey: listing.modelKey, model: listing.modelName, brand: listing.brand, color, units: 0, unpriced: 0 }
         combo.units += v.stockQuantity
         combos.set(key, combo)
       }
+    }
+    for (const p of unpriced) {
+      const color = (p.couleur ?? '').replace(/\s+/g, ' ').trim()
+      if (!color) continue
+      const mk    = modelKey(p as ErpPhone)
+      const key   = `${mk}|${color.toLowerCase()}`
+      const combo = combos.get(key) ?? { modelKey: mk, model: phoneName(p as ErpPhone), brand: p.marque.trim(), color, units: 0, unpriced: 0 }
+      combo.unpriced += 1
+      combos.set(key, combo)
     }
     const data = Array.from(combos.values())
       .map(c => {
