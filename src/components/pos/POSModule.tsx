@@ -26,7 +26,7 @@ import {
   Search, ShoppingCart, User, CreditCard, ArrowLeftRight,
   X, AlertTriangle, Loader2, CheckCircle,
   Smartphone, Laptop as LaptopIcon, Package, Plus, Minus,
-  Printer, RotateCcw
+  Printer, RotateCcw, Truck
 } from 'lucide-react'
 import { STORE_TIME_ZONE } from '@/lib/time'
 import { phoneMatches } from '@/lib/phoneSearch'
@@ -193,6 +193,28 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
 
   const [cashDropOpen,  setCashDropOpen]  = useState(false)
   const [priceInputs,   setPriceInputs]   = useState<Record<string, string>>({})
+
+  // Sale to deliver (owner, 2026-10-18 — lib/deliveryOrders): the order is
+  // taken here, the sale is recorded once the parcel is delivered
+  const [livrer,    setLivrer]    = useState(false)
+  const [livraison, setLivraison] = useState({ adresse: '', ville: '', transporteur: '', frais: '', charge: 'client' as 'client' | 'boutique', avance: '', ref: '' })
+  const setLiv = (k: keyof typeof livraison, v: string) => setLivraison(prev => ({ ...prev, [k]: v }))
+  // A CRM lead being sold (?lead=LEAD-0012, &livrer=1): its client is filled
+  // in, and the lead is won with this sale or this delivery
+  const [lead, setLead] = useState<{ lead_id: string; nom: string | null; telephone: string | null } | null>(null)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const id = params.get('lead')
+    if (!id) return
+    fetch(`/api/leads/${encodeURIComponent(id)}`).then(r => r.json()).then(j => {
+      const l = j.data
+      if (!l || l.etape === 'gagne' || l.etape === 'perdu') return
+      setLead({ lead_id: l.lead_id, nom: l.nom, telephone: l.telephone })
+      setShowClient(true)
+      setSaleForm(prev => ({ ...prev, client_nom: l.nom ?? (l.pseudo ? `@${l.pseudo}` : ''), client_tel: (l.telephone ?? '').replace(/\D/g, '').slice(-10) }))
+      if (params.get('livrer') === '1') setLivrer(true)
+    }).catch(() => {})
+  }, [])
 
   // ── Stock: the store's whole available stock, cached and kept current by live
   // change events. Search and category browsing then run instantly in the browser.
@@ -390,8 +412,61 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
       ? (saleForm.montant_especes + saleForm.montant_carte) - netAPayer
       : 0
 
+  // ── Order to deliver ──────────────────────────────────────
+  const livFrais   = Math.max(Number(livraison.frais) || 0, 0)
+  const livAvance  = Math.max(Number(livraison.avance) || 0, 0)
+  const livReste   = Math.max(totalVente - livAvance, 0)
+  const livAgent   = livReste + (livraison.charge === 'client' ? livFrais : 0)   // collected at the door
+
+  async function handleOrder() {
+    if (cart.length === 0) { showError('Panier vide'); return }
+    if (cart.some(i => i._type === 'laptop')) { showError('Livraison : téléphones et accessoires seulement'); return }
+    if (saleForm.type_operation !== 'vente' || avoir) { showError('Une commande à livrer : vente simple, sans échange ni avoir'); return }
+    if (!saleForm.client_nom.trim() || saleForm.client_tel.length < 10) { showError('Nom et numéro du client obligatoires'); return }
+    if (!livraison.adresse.trim() || !livraison.ville.trim()) { showError('Adresse et ville obligatoires'); return }
+    if (livAvance > totalVente) { showError("L'avance dépasse le total"); return }
+    if (livAvance > 0 && !livraison.ref.trim()) { showError('Référence du virement de l’avance obligatoire'); return }
+    setSubmitting(true)
+    try {
+      const res = await fetch('/api/deliveries/order', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          store_id: storeId,
+          client: { client_id: selectedClientId ?? undefined, nom: saleForm.client_nom.trim(), telephone: saleForm.client_tel },
+          adresse: livraison.adresse, ville: livraison.ville, transporteur: livraison.transporteur,
+          frais_livraison: livFrais, frais_charge: livraison.charge,
+          avance: livAvance, avance_ref: livraison.ref, notes: saleForm.notes || undefined,
+          lead_id: lead?.lead_id,
+          items: cart.map(i => ({
+            device_type: i._type === 'phone' ? 'telephone' : 'accessoire', device_id: i._id, qty: i.qty ?? 1,
+            prix_vente: i.prix_vente_saisi * (i.qty ?? 1),
+            override_by: overrideAuthorizedBy ?? undefined, override_reason: overrideAuthorizedBy != null ? overrideReason : undefined,
+          })),
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error)
+      showSuccess(json.data.statut === 'attente_avance'
+        ? `Commande ${json.data.delivery_id} créée — en attente de l’avance (Livraisons)`
+        : `Commande ${json.data.delivery_id} créée — à préparer (Livraisons)`)
+      const sold = new Set(cart.filter(i => i._type === 'phone').map(i => i._id))
+      if (sold.size > 0) setSoldIds(prev => new Set([...Array.from(prev), ...Array.from(sold)]))
+      void accQ.refresh()
+      resetAll()
+    } catch (err: unknown) {
+      showError((err as Error).message)
+    } finally { setSubmitting(false) }
+  }
+
+  function resetAll() {
+    setCart([]); setPriceInputs({}); setSaleForm({ ...EMPTY_SALE }); setOverrideAuthorizedBy(null); setOverrideReason(''); setSelectedClientId(null); setShowClient(false); setClientSuggestions([]); setAvoir(null)
+    setLivrer(false); setLivraison({ adresse: '', ville: '', transporteur: '', frais: '', charge: 'client', avance: '', ref: '' }); setLead(null)
+    if (window.location.search.includes('lead=')) window.history.replaceState(null, '', window.location.pathname)
+  }
+
   // ── Submit ────────────────────────────────────────────────
   async function handleSubmit() {
+    if (livrer) return handleOrder()
     if (cart.length === 0) { showError(isAr ? 'السلة فارغة' : 'Panier vide'); return }
     if (cart.some(c => (c as unknown as Record<string, unknown>).categorie === 'service' && !(Number(c.prix_vente_saisi) > 0))) {
       showError(isAr ? 'اكتب ثمن الخدمة في السلة' : 'Tapez le prix du service dans le panier'); return
@@ -526,6 +601,13 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
         montant_rendu:   montantRendu > 0 ? montantRendu : undefined,
       })
       showSuccess(isAr ? 'تمت عملية البيع ✓' : 'Vente enregistrée ✓')
+      // A CRM lead sold in the shop: won with this sale
+      if (lead && lastTxnId) {
+        fetch(`/api/leads/${lead.lead_id}`, {
+          method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ etape: 'gagne', txn_id: lastTxnId, montant: totalVente }),
+        }).then(r => { if (r.ok) showSuccess(`Lead ${lead.lead_id} gagné ✓`) }).catch(() => {})
+      }
 
       // Remove sold phones/laptops from grid instantly — no re-fetch needed
       const sold = new Set(cart.filter(i => i._type !== 'accessory').map(i => i._id))
@@ -549,7 +631,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
           sold_phone_ids:          cart.filter(i => i._type === 'phone').map(i => i._id),
         })
       }
-      setCart([]); setPriceInputs({}); setSaleForm({ ...EMPTY_SALE }); setOverrideAuthorizedBy(null); setOverrideReason(''); setSelectedClientId(null); setShowClient(false); setClientSuggestions([]); setAvoir(null)
+      resetAll()
     } catch (err: unknown) {
       showError((err as Error).message)
     } finally { setSubmitting(false) }
@@ -955,12 +1037,32 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
             </div>
           )}
 
+          {/* A CRM lead being sold */}
+          {lead && (
+            <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-xs">
+              <span className="text-violet-800">Vente pour le lead <b className="font-mono">{lead.lead_id}</b>{lead.nom ? ` — ${lead.nom}` : ''} : il sera marqué gagné</span>
+              <button type="button" className="text-violet-600 hover:text-red-500" title="Détacher le lead"
+                onClick={() => { setLead(null); window.history.replaceState(null, '', window.location.pathname) }}>×</button>
+            </div>
+          )}
+
+          {/* Sale to deliver: managers, phones and accessories */}
+          {canCredit && saleForm.type_operation === 'vente' && (
+            <button type="button" onClick={() => { setLivrer(v => !v); if (!livrer) setSale('payment_method', 'especes') }}
+              className="w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl border text-xs font-bold transition-all"
+              style={{ backgroundColor: livrer ? primary : 'white', borderColor: livrer ? primary : '#E8E5DE', color: livrer ? 'white' : '#6B6860' }}>
+              <span className="flex items-center gap-1.5"><Truck className="w-3.5 h-3.5" /> Vente à livrer</span>
+              <span>{livrer ? 'Oui' : 'Non'}</span>
+            </button>
+          )}
+
           {/* Payment */}
           <div>
             <p className="text-xs font-bold text-ez-subtle uppercase tracking-widest mb-3 flex items-center gap-2">
               <CreditCard className="w-3.5 h-3.5" />
               {isAr ? 'طريقة الدفع' : 'Paiement'}
             </p>
+            {!livrer && (<>
             <div className="grid grid-cols-2 gap-2">
               {([
                 { v: 'especes',    fr: 'Espèces',  ar: 'نقداً'       },
@@ -1046,26 +1148,27 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                   value={saleForm.montant_carte || ''} onChange={e => setSale('montant_carte', Number(e.target.value))} />
               </div>
             )}
+            </>)}
 
-            {/* Client: required when paying in several times, optional otherwise */}
-            {!severalTimes && !showClient && (
+            {/* Client: required when paying in several times or delivering, optional otherwise */}
+            {!severalTimes && !showClient && !livrer && (
               <button type="button" onClick={() => setShowClient(true)}
                 className="mt-3 w-full flex items-center justify-between gap-2 px-3 py-2 bg-white border border-ez-border rounded-xl text-xs text-ez-subtle">
                 <span className="flex items-center gap-1.5 font-bold"><User className="w-3 h-3" /> Client de passage</span>
                 <span className="underline">Ajouter un client</span>
               </button>
             )}
-            {(severalTimes || showClient) && (
+            {(severalTimes || showClient || livrer) && (
               <div className="mt-3 p-3 bg-white border border-ez-border rounded-xl space-y-2 animate-fade-in">
                 <p className="text-xs font-bold text-ez-subtle uppercase tracking-widest flex items-center gap-1.5">
                   <User className="w-3 h-3" />
                   {t(isAr, 'common.client')}
-                  {severalTimes && (
+                  {(severalTimes || livrer) && (
                     <span className="text-purple-600 font-bold normal-case tracking-normal">
                       {'— '}{isAr ? 'مطلوب' : 'requis'}
                     </span>
                   )}
-                  {!severalTimes && (
+                  {!severalTimes && !livrer && (
                     <button type="button" className="ml-auto text-[10px] font-bold underline normal-case tracking-normal text-ez-subtle"
                       onClick={() => { setShowClient(false); setSaleForm(prev => ({ ...prev, client_nom: '', client_tel: '' })); setSelectedClientId(null); setClientSuggestions([]) }}>
                       Client de passage
@@ -1109,6 +1212,37 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                   type="tel" maxLength={10} />
               </div>
             )}
+
+            {/* The order: where it goes, who carries it, the advance */}
+            {livrer && (
+              <div className="mt-3 p-3 bg-white border border-ez-border rounded-xl space-y-2 animate-fade-in">
+                <p className="text-xs font-bold text-ez-subtle uppercase tracking-widest flex items-center gap-1.5"><Truck className="w-3 h-3" /> Livraison</p>
+                <input className={inputClass} placeholder="Adresse *" value={livraison.adresse} onChange={e => setLiv('adresse', e.target.value)} />
+                <div className="grid grid-cols-2 gap-2">
+                  <input className={inputClass} placeholder="Ville *" value={livraison.ville} onChange={e => setLiv('ville', e.target.value)} />
+                  <input className={inputClass} placeholder="Transporteur" value={livraison.transporteur} onChange={e => setLiv('transporteur', e.target.value)} />
+                </div>
+                <div className="grid grid-cols-2 gap-2 items-center">
+                  <input type="number" min={0} inputMode="decimal" className={inputClass} placeholder="Frais de livraison" value={livraison.frais} onChange={e => setLiv('frais', e.target.value)} />
+                  <div className="grid grid-cols-2 gap-1">
+                    {([['client', 'Client'], ['boutique', 'Boutique']] as const).map(([v, l]) => (
+                      <button key={v} type="button" onClick={() => setLiv('charge', v)}
+                        className="py-2 rounded-lg text-[11px] font-bold border"
+                        style={{ backgroundColor: livraison.charge === v ? primary : 'white', borderColor: livraison.charge === v ? primary : '#E8E5DE', color: livraison.charge === v ? 'white' : '#6B6860' }}>{l}</button>
+                    ))}
+                  </div>
+                </div>
+                <p className="text-[11px] text-ez-faint">Frais payés par {livraison.charge === 'client' ? 'le client (encaissés avec le reste)' : 'la boutique (une dépense, retenue par le transporteur)'}</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <input type="number" min={0} inputMode="decimal" className={inputClass}
+                    placeholder={cartPhones.length ? 'Avance (300 min.)' : 'Avance (facultative)'} value={livraison.avance} onChange={e => setLiv('avance', e.target.value)} />
+                  <input className={inputClass} placeholder="Réf. virement" value={livraison.ref} onChange={e => setLiv('ref', e.target.value)} />
+                </div>
+                {cartPhones.length > 0 && livAvance < 300 && (
+                  <p className="text-[11px] font-bold text-amber-600">Avec un téléphone, le colis part après une avance de 300 DH au moins : sans elle, la commande attend dans Livraisons.</p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Notes */}
@@ -1117,6 +1251,18 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
             value={saleForm.notes} onChange={e => setSale('notes', e.target.value)} />
 
           {/* Summary */}
+          {livrer ? (
+            <div className="bg-white border border-ez-border rounded-2xl p-4 space-y-2 text-sm">
+              <div className="flex justify-between"><span className="text-ez-subtle">Total commande</span><b>{formatMAD(totalVente)}</b></div>
+              <div className="flex justify-between"><span className="text-ez-subtle">Avance (virement)</span><span>- {formatMAD(livAvance)}</span></div>
+              {livraison.charge === 'client' && livFrais > 0 && <div className="flex justify-between"><span className="text-ez-subtle">Frais de livraison (client)</span><span>+ {formatMAD(livFrais)}</span></div>}
+              <div className="flex justify-between items-end pt-2 border-t border-ez-border">
+                <span className="font-bold text-ez-text">À encaisser par le livreur</span>
+                <span className="font-display font-bold text-xl" style={{ color: primary }}>{formatMAD(livAgent)}</span>
+              </div>
+              <p className="text-[11px] text-ez-faint">La vente sera enregistrée le jour de la livraison.</p>
+            </div>
+          ) : (
           <div className="bg-white border border-ez-border rounded-2xl p-4 space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-ez-subtle">{isAr ? 'مجموع السلة' : 'Total panier'}</span>
@@ -1179,16 +1325,18 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
             </div>
           </div>
 
+          )}
+
           {/* Submit */}
           <button onClick={handleSubmit} disabled={cart.length === 0 || submitting}
             className="w-full py-3 rounded-2xl text-sm font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             style={{ backgroundColor: primary, color: 'white' }}>
-            {submitting ? (t(isAr, 'common.saving')) : (isAr ? 'تأكيد البيع' : 'Confirmer la vente')}
+            {submitting ? (t(isAr, 'common.saving')) : livrer ? 'Créer la commande à livrer' : (isAr ? 'تأكيد البيع' : 'Confirmer la vente')}
           </button>
 
           {/* Reset */}
           <button type="button"
-            onClick={() => { setCart([]); setPriceInputs({}); setSaleForm({ ...EMPTY_SALE }); setOverrideAuthorizedBy(null); setOverrideReason(''); setSelectedClientId(null); setShowClient(false); setClientSuggestions([]); setAvoir(null) }}
+            onClick={resetAll}
             className="w-full py-2.5 rounded-2xl text-xs font-bold border border-ez-border text-ez-faint hover:border-red-300 hover:text-red-400 transition-all">
             {isAr ? '× مسح الكل' : '× Réinitialiser'}
           </button>

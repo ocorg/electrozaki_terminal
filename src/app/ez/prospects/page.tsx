@@ -1,8 +1,6 @@
-'use client'
-import { useUser } from '@/lib/hooks/useUser'
-import ProspectsModule from '@/components/prospects/ProspectsModule'
+import { redirect } from 'next/navigation'
 
+// Prospects became the CRM (owner, 2026-10-18): its requests are leads now
 export default function EZProspectsPage() {
-  const { user } = useUser()
-  return <ProspectsModule storeId="EZ-001" role={user?.role} />
+  redirect('/ez/crm')
 }

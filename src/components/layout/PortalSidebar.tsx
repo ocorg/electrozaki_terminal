@@ -6,7 +6,7 @@ import { signOut } from 'next-auth/react'
 import { useUser } from '@/lib/hooks/useUser'
 import { usePortal } from '@/lib/context/portal'
 import {
-  LayoutDashboard, ShoppingCart, Smartphone, ClipboardList, Package,
+  LayoutDashboard, ShoppingCart, Smartphone, MessagesSquare, Package,
   Wrench, Users, Truck, Receipt, Vault, ArrowLeftRight,
   Settings, LogOut, Globe, ChevronRight,
   PanelLeftClose, PanelLeftOpen, Store, FileText, Clock,
@@ -58,11 +58,11 @@ function getNavItems(portalBase: string, portalType: string): NavItem[] {
     { href: `${portalBase}/stock/accessories`,icon: Package,         label: 'Accessoires',        roles: ['employe','gerant','proprietaire'] },
     { href: `${portalBase}/prix`,             icon: ListOrdered,     label: 'Liste des prix',     roles: ['gerant','proprietaire'] },
     { divider: true, label: 'OPÉRATIONS',                                                         roles: ['employe','gerant','proprietaire'] },
+    { href: `${portalBase}/crm`,              icon: MessagesSquare,  label: 'CRM',                roles: ['gerant','proprietaire'] },
     { href: `${portalBase}/deliveries`,       icon: PackageCheck,    label: 'Livraisons',         roles: ['gerant','proprietaire'] },
     { href: `${portalBase}/repairs`,          icon: Wrench,          label: 'Réparations',        roles: ['gerant','proprietaire'] },
     { href: `${portalBase}/clients`,          icon: Users,           label: 'Clients',            roles: ['gerant','proprietaire'] },
     { href: `${portalBase}/suppliers`,        icon: Truck,           label: 'Fournisseurs',       roles: ['gerant','proprietaire'] },
-    { href: `${portalBase}/prospects`,        icon: ClipboardList,   label: 'Prospects',          roles: ['gerant','proprietaire'] },
     { href: `${portalBase}/inventory`,        icon: PackageSearch,   label: 'Inventaire',         roles: ['gerant','proprietaire'] },
     { href: `${portalBase}/expenses`,         icon: Receipt,         label: 'Dépenses',           roles: ['gerant','proprietaire'] },
     { href: `${portalBase}/caisse`,           icon: Vault,           label: 'Caisse du jour',     roles: ['employe','gerant','proprietaire'] },

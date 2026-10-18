@@ -6,6 +6,9 @@ import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { codeLabel } from '@/lib/codes'
 import { withNotify } from '@/lib/realtime'
 import { autoLinkDelivery, syncDeliveryToOrders } from '@/lib/storefront/shipping'
+import { patchOrder } from '@/lib/deliveryPatch'
+import { orderMoney } from '@/lib/deliveryOrders'
+import { deviceLabels } from '@/lib/device-labels'
 
 const EDITABLE = columnsOf('deliveries', ['delivery_id', 'caisse_entry_created'])
 const TERMINAL: delivery_status[] = ['livre', 'annule', 'retour']
@@ -28,7 +31,15 @@ export async function GET(request: NextRequest) {
       include: { delivery_items: true },
       orderBy: { created_at: 'desc' },
     })
-    return json({ data })
+    // What each parcel holds, in words, and the money still to come
+    const labels = await deviceLabels(data.flatMap(d => d.delivery_items))
+    return json({
+      data: data.map(d => ({
+        ...d,
+        delivery_items: d.delivery_items.map(i => ({ ...i, label: labels.get(i.device_id) ?? i.device_id })),
+        ...(d.commande && { money: orderMoney(d) }),
+      })),
+    })
   } catch (err) {
     return handleError(err, 'GET /api/deliveries')
   }
@@ -92,8 +103,13 @@ async function POST_(request: NextRequest) {
 async function PATCH_(request: NextRequest) {
   try {
     const user = await requireActiveUser(MANAGERS)
-    const { delivery_id, statut, notes } = await request.json() as { delivery_id?: string; statut?: delivery_status; notes?: string }
-    if (!delivery_id || !statut) throw new HttpError(400, 'delivery_id et statut requis')
+    const body = await request.json() as Record<string, unknown>
+    const { delivery_id, statut, notes } = body as { delivery_id?: string; statut?: delivery_status; notes?: string }
+    if (!delivery_id) throw new HttpError(400, 'delivery_id requis')
+    // Orders taken at the POS follow their own rules (sale on delivery)
+    const order = await prisma.deliveries.findUnique({ where: { delivery_id }, select: { commande: true } })
+    if (order?.commande) return await patchOrder(request, user, delivery_id, body)
+    if (!statut) throw new HttpError(400, 'delivery_id et statut requis')
 
     const { before, updated } = await prisma.$transaction(async (tx) => {
       const before = await tx.deliveries.findUnique({ where: { delivery_id }, include: { delivery_items: true } })

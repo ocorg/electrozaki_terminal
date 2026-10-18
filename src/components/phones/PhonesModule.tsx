@@ -13,9 +13,11 @@ import PhoneHistoryPanel from '@/components/phones/PhoneHistoryPanel'
 import { VoidModal, PastSaleModal, leaveVoid } from '@/components/phones/PhoneExitModals'
 import { confirmDialog } from '@/components/shared/ConfirmHost'
 import PhoneCreditPanel from '@/components/phones/PhoneCreditPanel'
-import type { Phone, Prospect } from '@/types/database'
+import type { Phone } from '@/types/database'
 import BulkPriceModal from '@/components/phones/BulkPriceModal'
 import { phoneMatchesProspect } from '@/lib/prospects'
+import { wantsPhone } from '@/lib/leads'
+import type { Lead } from '@/components/crm/CrmModule'
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import ScanButton from '@/components/scanner/ScanButton'
 import LabelGenerator, { type LabelProduct } from '@/components/print/LabelGenerator'
@@ -188,14 +190,15 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
   }
   function chooseStatus(s: string) { setFilterStatus(s); setStatusAuto(false) }
 
-  const openProspects = useApi<Prospect[]>(canEdit ? `/api/prospects?store_id=${storeId}&open=1` : null).data ?? EMPTY
+  // CRM leads still open that want a phone: how many people wait for each phone
+  const openLeads = (useApi<Lead[]>(canSeeFinancials ? `/api/leads?store_id=${storeId}&etape=ouverts` : null).data ?? EMPTY).filter(wantsPhone)
   const suppliers     = useApi<{ supplier_id: string; nom: string; type_fournisseur: string }[]>(canEdit ? '/api/suppliers?mode=dropdown' : null).data ?? EMPTY
 
   const getSupplierBadge = (fournisseur_id: string | null | undefined) =>
     fournisseur_id ? (suppliers.find(s => s.supplier_id === fournisseur_id) ?? null) : null
 
   const getProspectMatchCount = (phone: Phone): number =>
-    openProspects.filter(p => phoneMatchesProspect(p, phone)).length
+    openLeads.filter(l => phoneMatchesProspect(l, phone)).length
 
   // The store's whole phone list is cached; filters and search apply instantly here
   const phonesQ = useApi<Phone[]>(`/api/phones?store_id=${storeId}&limit=5000`)
@@ -576,7 +579,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                         {getProspectMatchCount(phone) > 0 && (
                           <div className="flex items-center gap-1 mt-1">
                             <span className="text-xs font-bold px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700">
-                              {getProspectMatchCount(phone)} prospect{getProspectMatchCount(phone) > 1 ? 's' : ''}
+                              {getProspectMatchCount(phone)} client{getProspectMatchCount(phone) > 1 ? 's' : ''} l’attend{getProspectMatchCount(phone) > 1 ? 'ent' : ''} (CRM)
                             </span>
                           </div>
                         )}
@@ -767,7 +770,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                         <span className={`${chip} font-bold`} style={{ backgroundColor: '#FAF5E8', color: '#A8862E', border: '1px solid #E8D494' }}>PROMO</span>
                       )}
                       {nPros > 0 && (
-                        <span className={`${chip} font-bold bg-purple-100 text-purple-700`}>{nPros} prospect{nPros > 1 ? 's' : ''}</span>
+                        <span className={`${chip} font-bold bg-purple-100 text-purple-700`}>{nPros} client{nPros > 1 ? 's' : ''} (CRM)</span>
                       )}
                       {sup && (
                         <span className={chip}

@@ -20,6 +20,7 @@ const STATUS_STYLES: Partial<Record<CodeDomain, Record<string, string>>> = {
   stock_level:    { disponible: GREEN, alerte: AMBER, epuise: RED },
   payment_status: { solde: GREEN, reste: BLUE, trop_percu: ORANGE },
   operation_type: { vente: GREEN, echange: BLUE, avance: AMBER, retour: ORANGE },
+  lead_etape:     { nouveau: BLUE, en_discussion: AMBER, proposition: ORANGE, attente_stock: 'bg-violet-50 text-violet-700 border-violet-200', gagne: GREEN, perdu: SLATE },
 }
 
 interface StatusBadgeProps<D extends CodeDomain> {

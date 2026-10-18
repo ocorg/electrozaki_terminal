@@ -5,7 +5,7 @@ export type Entity =
   | 'transactions' | 'phones' | 'laptops' | 'accessories' | 'caisse' | 'expenses'
   | 'repairs' | 'clients' | 'suppliers' | 'credits' | 'deliveries' | 'movements'
   | 'inventory' | 'prospects' | 'documents' | 'attendance' | 'categories'
-  | 'settings' | 'users' | 'stores' | 'catalog' | 'changelog' | 'site'
+  | 'settings' | 'users' | 'stores' | 'catalog' | 'changelog' | 'site' | 'leads'
 
 // Every write also adds an activity-log entry
 const LOG = '/api/log'
@@ -21,10 +21,12 @@ export const AFFECTS: Record<Entity, string[]> = {
   clients:      ['/api/clients', LOG],
   suppliers:    ['/api/suppliers', '/api/supplier-payments', '/api/phones', LOG],
   credits:      ['/api/credits', '/api/credit-imports', '/api/phone-credits', '/api/caisse', '/api/clients', '/api/phones', '/api/dashboard', LOG],
-  deliveries:   ['/api/deliveries', '/api/phones', '/api/laptops', '/api/transactions', '/api/caisse', '/api/dashboard', LOG],
+  // A delivered order is a sale (figures, stock, client) and closes its CRM lead
+  deliveries:   ['/api/deliveries', '/api/phones', '/api/laptops', '/api/accessories', '/api/transactions', '/api/analytics', '/api/caisse', '/api/dashboard', '/api/clients', '/api/leads', LOG],
   movements:    ['/api/movements', '/api/phones', '/api/laptops', '/api/accessories', LOG],
   inventory:    ['/api/inventory', LOG],
   prospects:    ['/api/prospects', LOG],
+  leads:        ['/api/leads', LOG],
   documents:    ['/api/documents', '/api/warranty', '/api/transactions', '/api/phones', '/api/caisse', '/api/dashboard', LOG],
   attendance:   ['/api/attendance', '/api/bzg', LOG],
   categories:   ['/api/categories'],
@@ -62,6 +64,7 @@ const WRITE_ENTITIES: [prefix: string, entities: Entity[]][] = [
   ['/api/movements',          ['movements']],
   ['/api/inventory',          ['inventory']],
   ['/api/prospects',          ['prospects']],
+  ['/api/leads',              ['leads']],
   ['/api/documents',          ['documents']],
   ['/api/warranty',           ['documents']],
   ['/api/attendance',         ['attendance']],

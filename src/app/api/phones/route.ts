@@ -10,6 +10,7 @@ import { payFromDrawer } from '@/lib/stockPurchase'
 import { assertManualStatus } from '@/lib/phoneExit'
 import { sameImei, inShop } from '@/lib/phoneExit'
 import { codeLabel } from '@/lib/codes'
+import { alertLater, waitingFor } from '@/lib/reports'
 
 // Hidden from staff: purchase price, iCloud password, settlement and audit fields
 const STAFF_OMIT = {
@@ -172,6 +173,9 @@ async function POST_(request: NextRequest) {
         notes: `Revenu au magasin le ${todayDate().toISOString().slice(0, 10)} : nouvelle fiche ${data.phone_id} (deuxième vie)`,
       })
     }
+
+    // CRM: people waiting for a phone like this one (lib/prospects matching rules)
+    if (data.status === 'disponible') alertLater(() => waitingFor(data))
 
     // Staff never get purchase price / supplier amounts back
     const out = isManager(user.role) ? data : Object.fromEntries(Object.entries(data).filter(([k]) => !(k in STAFF_OMIT)))

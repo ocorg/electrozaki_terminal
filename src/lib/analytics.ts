@@ -15,6 +15,9 @@ import { prisma } from '@/lib/db'
 // - Expenses = every category except "marchandises", which is buying stock
 //   (its cost is already counted when the item sells). Dons are an expense.
 // - Net profit = gross margin − expenses.
+// - Orders delivered (2026-10-18): the delivery fee paid by the shop is an
+//   expense of the delivery day; the advance kept on a refused parcel is
+//   income (there was no sale).
 
 const num = (v: unknown) => (v === null || v === undefined ? 0 : Number(v))
 const round = (v: number) => Math.round(v * 100) / 100
@@ -75,6 +78,22 @@ const EXPENSES = (store: string, from: Date, to: Date) => Prisma.sql`
   FROM expenses e JOIN categories c ON c.code = e.categorie
   WHERE e.store_id = ${store} AND NOT e.is_deleted AND e.date >= ${from} AND e.date <= ${to}`
 
+/** Delivery fees the shop paid on the orders delivered in the range. */
+const DELIVERY_FEES = (store: string, from: Date, to: Date) => Prisma.sql`
+  SELECT d.delivery_id, d.date_livraison AS d, d.frais_livraison AS montant
+  FROM deliveries d
+  WHERE d.store_id = ${store} AND d.commande AND NOT COALESCE(d.is_deleted, false) AND d.statut = 'livre'
+    AND d.frais_charge = 'boutique' AND d.frais_livraison > 0
+    AND d.date_livraison >= ${from} AND d.date_livraison <= ${to}`
+
+/** Advances kept on parcels refused or cancelled in the range (no sale: income). */
+const KEPT_ADVANCES = (store: string, from: Date, to: Date) => Prisma.sql`
+  SELECT d.delivery_id, (d.updated_at AT TIME ZONE 'UTC')::date AS d, d.montant_avance AS montant
+  FROM deliveries d
+  WHERE d.store_id = ${store} AND d.commande AND NOT COALESCE(d.is_deleted, false) AND d.statut IN ('retour', 'annule')
+    AND d.avance_decision = 'gardee' AND d.montant_avance > 0
+    AND (d.updated_at AT TIME ZONE 'UTC')::date >= ${from} AND (d.updated_at AT TIME ZONE 'UTC')::date <= ${to}`
+
 /** Phones sent to "The Void" in the range: their purchase price is a loss. */
 const LOSSES = (store: string, from: Date, to: Date) => Prisma.sql`
   SELECT p.phone_id, (p.void_at AT TIME ZONE 'UTC')::date AS d, COALESCE(p.prix_achat, 0) AS cost,
@@ -116,38 +135,45 @@ function collected(s: Sale) {
 }
 
 async function load(store: string, from: Date, to: Date) {
-  const [sales, returns, repairs, expenses, losses] = await Promise.all([
+  const [sales, returns, repairs, expenses, losses, fees, kept] = await Promise.all([
     prisma.$queryRaw<Row[]>(SALES(store, from, to)),
     prisma.$queryRaw<Row[]>(RETURNS(store, from, to)),
     prisma.$queryRaw<Row[]>(REPAIRS(store, from, to)),
     prisma.$queryRaw<Row[]>(EXPENSES(store, from, to)),
     prisma.$queryRaw<Row[]>(LOSSES(store, from, to)),
+    prisma.$queryRaw<Row[]>(DELIVERY_FEES(store, from, to)),
+    prisma.$queryRaw<Row[]>(KEPT_ADVANCES(store, from, to)),
   ])
   return {
     sales: sales.map(toSale),
     returns: returns.map(r => ({ id: String(r.retour_id), d: iso(r.d), qty: num(r.qty), montant: num(r.montant), mode: String(r.mode),
       destination: r.destination as string | null, motif: String(r.motif), txn_id: String(r.txn_id), cat: String(r.cat), costBack: num(r.cost_back), item: String(r.item) })),
     repairs: repairs.map(r => ({ id: String(r.rep_id), d: iso(r.d), price: num(r.price), parts: num(r.parts), kind: String(r.kind), item: String(r.item) })),
-    expenses: expenses.map(e => ({ id: String(e.exp_id), d: iso(e.d), cat: String(e.categorie), label: String(e.label_fr), montant: num(e.montant), notes: e.notes as string | null })),
+    expenses: [
+      ...expenses.map(e => ({ id: String(e.exp_id), d: iso(e.d), cat: String(e.categorie), label: String(e.label_fr), montant: num(e.montant), notes: e.notes as string | null })),
+      ...fees.map(e => ({ id: String(e.delivery_id), d: iso(e.d), cat: 'livraison', label: 'Frais de livraison', montant: num(e.montant), notes: `Livraison ${e.delivery_id}` as string | null })),
+    ],
+    kept: kept.map(k => ({ id: String(k.delivery_id), d: iso(k.d), montant: num(k.montant) })),
     losses: losses.map(l => ({ id: String(l.phone_id), d: iso(l.d), cost: num(l.cost), item: String(l.item), motif: l.motif as string | null })),
   }
 }
 type Data = Awaited<ReturnType<typeof load>>
 
-function totals({ sales, returns, repairs, expenses, losses }: Data, days: number) {
+function totals({ sales, returns, repairs, expenses, losses, kept }: Data, days: number) {
   const salesRevenue = sales.reduce((s, x) => s + x.pv, 0)
   const refunds      = returns.reduce((s, x) => s + x.montant, 0)
   const cogs         = sales.reduce((s, x) => s + x.cost, 0) - returns.reduce((s, x) => s + x.costBack, 0)
   const repairRev    = repairs.reduce((s, x) => s + x.price, 0)
   const repairParts  = repairs.reduce((s, x) => s + x.parts, 0)
-  const revenue      = salesRevenue - refunds + repairRev
+  const keptAdvances = kept.reduce((s, x) => s + x.montant, 0)   // refused parcels' advances kept
+  const revenue      = salesRevenue - refunds + repairRev + keptAdvances
   const gross        = revenue - cogs - repairParts
   const opex         = expenses.filter(e => e.cat !== STOCK_PURCHASE_CATEGORY).reduce((s, x) => s + x.montant, 0)
   const lost         = losses.reduce((s, x) => s + x.cost, 0)   // phones sent to The Void
   const net          = gross - opex - lost
   const nbSales      = new Set(sales.map(s => s.at.toISOString().slice(0, 16) + (s.client ?? '') + (s.seller ?? ''))).size
   return {
-    revenue: round(revenue), salesRevenue: round(salesRevenue), refunds: round(refunds), repairRevenue: round(repairRev),
+    revenue: round(revenue), salesRevenue: round(salesRevenue), refunds: round(refunds), repairRevenue: round(repairRev), keptAdvances: round(keptAdvances),
     cogs: round(cogs), repairParts: round(repairParts), gross: round(gross), opex: round(opex), losses: round(lost), net: round(net),
     grossMargin: revenue ? round((gross / revenue) * 100) : null, netMargin: revenue ? round((net / revenue) * 100) : null,
     itemsSold: sales.reduce((s, x) => s + x.qty, 0), lines: sales.length, tickets: nbSales,
@@ -178,6 +204,7 @@ export async function financials(store: string, from: Date, to: Date) {
     : cat.startsWith('telephone_') ? "Téléphones d'occasion"
     : cat === 'laptop' ? 'Ordinateurs'
     : cat === 'repairs' ? 'Réparations'
+    : cat === 'avances' ? 'Avances gardées (colis refusés)'
     : accLabel.get(cat.slice(4)) ?? cat.slice(4)
 
   // ── By category: sales − returns, cost, margin; repairs as one more line ──
@@ -190,6 +217,7 @@ export async function financials(store: string, from: Date, to: Date) {
   for (const s of sales) bump(s.cat, s.pv, s.cost, s.qty)
   for (const r of returns) bump(r.cat, -r.montant, -r.costBack, -r.qty)
   if (repairs.length) bump('repairs', repairs.reduce((s, x) => s + x.price, 0), repairs.reduce((s, x) => s + x.parts, 0), repairs.length)
+  if (data.kept.length) bump('avances', data.kept.reduce((s, x) => s + x.montant, 0), 0, data.kept.length)
   const t = totals(data, days)
   const categories = [...byCat].map(([k, v]) => ({
     key: k, label: catLabel(k), group: k.startsWith('acc_') ? 'accessoires' : k.startsWith('telephone_') ? 'telephones' : k,
@@ -251,6 +279,7 @@ export async function financials(store: string, from: Date, to: Date) {
   for (const s of sales) { const b = at(s.d); if (b) { b.revenue += s.pv; b.gross += s.pv - s.cost; b.n += 1 } }
   for (const r of returns) { const b = at(r.d); if (b) { b.revenue -= r.montant; b.gross -= r.montant - r.costBack } }
   for (const r of repairs) { const b = at(r.d); if (b) { b.revenue += r.price; b.gross += r.price - r.parts } }
+  for (const k of data.kept) { const b = at(k.d); if (b) { b.revenue += k.montant; b.gross += k.montant } }
   for (const e of expenses) { const b = at(e.d); if (b && e.cat !== STOCK_PURCHASE_CATEGORY) b.opex += e.montant }
 
   // ── Cash (trésorerie) ──

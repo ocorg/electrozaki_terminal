@@ -10,7 +10,8 @@ export async function deviceLabels(rows: { device_type: string; device_id: strin
   ])
   const join = (parts: (string | null | undefined)[]) => parts.filter(Boolean).join(' ')
   const labels = new Map<string, string>()
-  for (const p of phones)      labels.set(p.phone_id,  join([p.marque, p.model, p.stockage, p.couleur && `· ${p.couleur}`]))
+  // "Xiaomi" + "Xiaomi Redmi Note 14": the brand once
+  for (const p of phones)      labels.set(p.phone_id,  join([p.model.toLowerCase().startsWith(p.marque.toLowerCase()) ? null : p.marque, p.model, p.stockage, p.couleur && `· ${p.couleur}`]))
   for (const a of accessories) labels.set(a.acc_id,    join([a.nom, a.marque && `· ${a.marque}`]))
   for (const l of laptops)     labels.set(l.laptop_id, join([l.marque, l.model, l.stockage]))
   return labels

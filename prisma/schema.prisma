@@ -192,6 +192,44 @@ enum prospect_demand {
   modele
 }
 
+// CRM (migration 19): social-media leads
+enum lead_canal {
+  instagram
+  whatsapp
+  tiktok
+  facebook
+  appel
+  site
+  magasin
+  autre
+}
+
+enum lead_type {
+  achat
+  vente
+  reprise
+  autre
+}
+
+enum lead_etape {
+  nouveau
+  en_discussion
+  proposition
+  attente_stock
+  gagne
+  perdu
+}
+
+enum lead_motif {
+  prix
+  pas_en_stock
+  achete_ailleurs
+  sans_reponse
+  curieux
+  refus_livraison
+  autre
+}
+
 enum promo_type {
   valeur
   pourcentage
@@ -461,6 +499,19 @@ model deliveries {
   statut               delivery_status  @default(confirmation_en_cours)
   notes                String?
   caisse_entry_created Boolean?         @default(false)
+  // Orders made at the POS (migration 19): the sale is recorded at delivery
+  ville                String?
+  transporteur         String?
+  frais_livraison      Decimal          @default(0) @db.Decimal(10, 2)
+  frais_charge         String           @default("client")
+  avance_ref           String?
+  avance_date          DateTime?        @db.Date
+  date_livraison       DateTime?        @db.Date
+  versement_recu_at    DateTime?        @db.Timestamptz(6)
+  avance_decision      String?
+  motif_retour         String?
+  lead_id              String?
+  commande             Boolean          @default(false)
   created_at           DateTime?        @default(now()) @db.Timestamptz(6)
   created_by           String?          @db.Uuid
   updated_at           DateTime?        @default(now()) @db.Timestamptz(6)
@@ -478,6 +529,10 @@ model delivery_items {
   device_id     String
   txn_id        String?
   label_printed Boolean?      @default(false)
+  qty             Int           @default(1)
+  prix_vente      Decimal?      @db.Decimal(10, 2)
+  override_by     String?       @db.Uuid
+  override_reason String?
   created_at    DateTime?     @default(now()) @db.Timestamptz(6)
   deliveries    deliveries?   @relation(fields: [delivery_id], references: [delivery_id], onDelete: Cascade, onUpdate: NoAction)
   transactions  transactions? @relation(fields: [txn_id], references: [txn_id], onDelete: NoAction, onUpdate: NoAction)
@@ -1208,4 +1263,61 @@ model site_notified {
   created_at DateTime @default(now()) @db.Timestamptz(6)
 
   @@id([kind, ref_id])
+}
+
+// CRM (migration 19): a conversation started on a social network, to its outcome
+model leads {
+  lead_id       String       @id @default(dbgenerated("('LEAD-'::text || lpad((nextval('leads_seq'::regclass))::text, 4, '0'::text))"))
+  store_id      String
+  canal         lead_canal
+  nom           String?
+  pseudo        String?
+  telephone     String?
+  client_id     String?
+  type_demande  lead_type    @default(achat)
+  etape         lead_etape   @default(nouveau)
+  motif_perte   lead_motif?
+  cherche       String?
+  marque        String?
+  model         String?
+  stockage      String?
+  budget_min    Decimal?     @db.Decimal(10, 2)
+  budget_max    Decimal?     @db.Decimal(10, 2)
+  accessoire    String?
+  leur_marque   String?
+  leur_model    String?
+  leur_stockage String?
+  leur_batterie Int?
+  leur_etat     String?
+  leur_pieces   String?
+  prix_demande  Decimal?     @db.Decimal(10, 2)
+  prix_propose  Decimal?     @db.Decimal(10, 2)
+  details       String?
+  relance_le    DateTime?    @db.Date
+  txn_id        String?
+  delivery_id   String?
+  phone_id      String?
+  montant       Decimal?     @db.Decimal(10, 2)
+  closed_at     DateTime?    @db.Timestamptz(6)
+  created_at    DateTime     @default(now()) @db.Timestamptz(6)
+  created_by    String?      @db.Uuid
+  updated_at    DateTime     @default(now()) @db.Timestamptz(6)
+  updated_by    String?      @db.Uuid
+  is_deleted    Boolean      @default(false)
+  lead_notes    lead_notes[]
+
+  @@index([store_id, etape], map: "idx_leads_store_etape")
+  @@index([telephone], map: "idx_leads_telephone")
+  @@index([relance_le], map: "idx_leads_relance")
+}
+
+model lead_notes {
+  note_id    String   @id @default(dbgenerated("('LNT-'::text || lpad((nextval('lead_notes_seq'::regclass))::text, 5, '0'::text))"))
+  lead_id    String
+  texte      String
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  created_by String?  @db.Uuid
+  leads      leads    @relation(fields: [lead_id], references: [lead_id], onDelete: Cascade, map: "lead_notes_lead_fkey")
+
+  @@index([lead_id], map: "idx_lead_notes_lead")
 }

@@ -6,6 +6,8 @@
 //   • short alerts when money moves out of the ordinary
 // Figures come from the same calculations as the screens (lib/analytics, caisse).
 import { Prisma } from '@prisma/client'
+import { orderMoney } from '@/lib/deliveryOrders'
+import { phoneMatchesProspect } from '@/lib/prospects'
 import { waitUntil } from '@vercel/functions'
 import { prisma } from '@/lib/db'
 import { financials } from '@/lib/analytics'
@@ -113,7 +115,7 @@ async function creditsToChase(storeId: string, today: string) {
 /** What needs doing today; null when there is nothing to say. */
 export async function morningBrief(storeId: string): Promise<string | null> {
   const today = businessDate()
-  const [credits, ready, overdue, noPrice, [low], openDays, web] = await Promise.all([
+  const [credits, ready, overdue, noPrice, [low], openDays, web, follow, toShip, unpaid] = await Promise.all([
     creditsToChase(storeId, today),
     prisma.reparations.count({ where: { store_id: storeId, is_deleted: false, statut: 'pret' } }),
     prisma.reparations.count({ where: { store_id: storeId, is_deleted: false, statut: { in: ['en_attente', 'devis_envoye', 'en_cours'] }, date_prevue: { lt: utc(today) } } }),
@@ -123,8 +125,18 @@ export async function morningBrief(storeId: string): Promise<string | null> {
     storefrontConfigured()
       ? Promise.all([site().orderRequest.count({ where: { status: 'NEW' } }), site().repairRequest.count({ where: { status: 'NEW' } })]).catch(() => [0, 0])
       : Promise.resolve([0, 0]),
+    // CRM: conversations to follow up today (or overdue)
+    prisma.leads.count({ where: { store_id: storeId, is_deleted: false, etape: { in: ['nouveau', 'en_discussion', 'proposition', 'attente_stock'] }, relance_le: { lte: utc(today) } } }),
+    // Orders to deliver still waiting for their advance or to ship
+    prisma.deliveries.count({ where: { store_id: storeId, commande: true, is_deleted: false, statut: { in: ['attente_avance', 'prepare'] } } }),
+    // Delivered, but the delivery company has not paid yet
+    prisma.deliveries.findMany({ where: { store_id: storeId, commande: true, is_deleted: false, statut: 'livre', versement_recu_at: null }, select: { montant_total: true, montant_avance: true, frais_livraison: true, frais_charge: true } }),
   ])
+  const owed = unpaid.reduce((sum, d) => sum + orderMoney(d).verse, 0)
   const lines = [
+    follow ? `• ${plural(follow, 'conversation à relancer', 'conversations à relancer')} (CRM)` : null,
+    toShip ? `• ${plural(toShip, 'commande à livrer attend', 'commandes à livrer attendent')} son avance ou son envoi` : null,
+    unpaid.length ? `• Le transporteur doit encore verser ${dh(owed)} (${plural(unpaid.length, 'commande livrée', 'commandes livrées')})` : null,
     openDays.length ? `• Caisse non clôturée : ${openDays.map(c => dayOf(c.date.toISOString().slice(0, 10))).join(', ')}` : null,
     web[0] ? `• ${plural(web[0], 'commande web attend', 'commandes web attendent')} une réponse` : null,
     web[1] ? `• ${plural(web[1], 'demande du site attend', 'demandes du site attendent')} une réponse` : null,
@@ -174,4 +186,26 @@ export async function weeklyReport(storeId: string) {
     credits.late.length ? `Crédits en retard : ${credits.late.length} (${dh(credits.lateAmount)})` : 'Crédits : aucun retard',
   ]
   return lines.filter(Boolean).join('\n')
+}
+
+/**
+ * A phone comes into stock: the CRM leads still open that it fits (same
+ * matching rules as the screens), so they are contacted. Null when nobody waits.
+ */
+export async function waitingFor(phone: { phone_id: string; store_id: string | null; marque: string; model: string; stockage: string | null; prix_vente_recommande: Prisma.Decimal | null; promo_type: string | null; promo_montant: Prisma.Decimal | null }): Promise<string | null> {
+  if (!phone.store_id) return null
+  const leads = await prisma.leads.findMany({
+    where:  { store_id: phone.store_id, is_deleted: false, etape: { in: ['nouveau', 'en_discussion', 'proposition', 'attente_stock'] }, type_demande: { in: ['achat', 'reprise'] }, NOT: { cherche: 'accessoire' } },
+    select: { lead_id: true, nom: true, pseudo: true, telephone: true, canal: true, marque: true, model: true, stockage: true, budget_min: true, budget_max: true },
+  })
+  const priced = {
+    marque: phone.marque, model: phone.model, stockage: phone.stockage,
+    prix_vente_recommande: phone.prix_vente_recommande == null ? null : Number(phone.prix_vente_recommande),
+    promo_type: phone.promo_type as 'valeur' | 'pourcentage' | null, promo_montant: phone.promo_montant == null ? null : Number(phone.promo_montant),
+  }
+  const hits = leads.filter(l => phoneMatchesProspect({ ...l, budget_min: l.budget_min == null ? null : Number(l.budget_min), budget_max: l.budget_max == null ? null : Number(l.budget_max) }, priced))
+  if (!hits.length) return null
+  const who = hits.slice(0, 6).map(l => `${l.nom ?? (l.pseudo ? '@' + l.pseudo : l.telephone ?? l.lead_id)} (${l.lead_id})`).join(', ')
+  return `🔔 Arrivé en stock : ${await deviceName('telephone', phone.phone_id)}${priced.prix_vente_recommande ? ` à ${dh(priced.prix_vente_recommande)}` : ''}\n`
+    + `${plural(hits.length, 'personne l’attend', 'personnes l’attendent')} dans le CRM : ${who}${hits.length > 6 ? '…' : ''}`
 }
