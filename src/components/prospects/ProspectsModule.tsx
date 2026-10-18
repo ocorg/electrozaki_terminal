@@ -5,7 +5,7 @@ import { useUser }          from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
 import { t } from '@/lib/i18n/t'
 import { usePortal }        from '@/lib/context/portal'
-import { formatDate }       from '@/lib/utils'
+import { formatDate, computePromoPrice } from '@/lib/utils'
 import { usePhoneCatalog }  from '@/lib/hooks/usePhoneCatalog'
 import ComboBox             from '@/components/phones/ComboBox'
 import {
@@ -446,9 +446,23 @@ export default function ProspectsModule({ storeId, role }: ProspectsModuleProps)
                                     )}
                                   </p>
                                 </div>
-                                <span className="text-xs font-bold text-ez-text tabular-nums flex-shrink-0">
-                                  {mad(ph.prix_vente_recommande)} MAD
-                                </span>
+                                {(() => {
+                                  // The price the customer pays: a promo crosses out the listed price
+                                  const promo = computePromoPrice(Number(ph.prix_vente_recommande ?? 0), ph.promo_type, ph.promo_montant)
+                                  return promo == null ? (
+                                    <span className="text-xs font-bold text-ez-text tabular-nums flex-shrink-0">
+                                      {mad(ph.prix_vente_recommande)} MAD
+                                    </span>
+                                  ) : (
+                                    <span className="flex flex-col items-end flex-shrink-0 tabular-nums">
+                                      <span className="text-[11px] text-ez-faint line-through">{mad(ph.prix_vente_recommande)} MAD</span>
+                                      <span className="text-xs font-bold" style={{ color: '#C9A440' }}>{mad(promo)} MAD</span>
+                                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: '#FAF5E8', color: '#C9A440' }}>
+                                        {ph.promo_type === 'pourcentage' ? `-${ph.promo_montant}%` : `-${mad(ph.promo_montant)} MAD`}
+                                      </span>
+                                    </span>
+                                  )
+                                })()}
                               </li>
                               )
                             })}

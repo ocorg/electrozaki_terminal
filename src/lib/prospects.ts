@@ -1,4 +1,5 @@
 import type { Phone, Prospect } from '@/types/database'
+import { computePromoPrice } from '@/lib/utils'
 
 // One rule for "this phone fits this prospect", shared by the Prospects cards
 // and the prospect badge in the Phones list so both always agree.
@@ -33,7 +34,9 @@ export function phoneMatchesProspect(p: Prospect, ph: Phone): boolean {
     if (want != null && (have == null || have < want)) return false
   }
   if (p.budget_max != null || p.budget_min != null) {
-    const price = Number(ph.prix_vente_recommande ?? 0)
+    // the price the customer pays: the promo price when the phone has one
+    const listed = Number(ph.prix_vente_recommande ?? 0)
+    const price  = computePromoPrice(listed, ph.promo_type, ph.promo_montant) ?? listed
     if (price <= 0) return false
     if (p.budget_max != null && price > Number(p.budget_max)) return false
     if (p.budget_min != null && price < Number(p.budget_min)) return false
