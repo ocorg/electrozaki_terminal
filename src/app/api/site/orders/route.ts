@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { json, handleError, requireUser, MANAGERS } from '@/lib/api'
 import { site, orderRef } from '@/lib/storefront/access'
+import { openFollowups, callReason } from '@/lib/storefront/followups'
 
 const STATUSES = ['NEW', 'CONTACTED', 'CONFIRMED', 'CANCELLED'] as const
 
@@ -22,7 +23,9 @@ export async function GET(request: NextRequest) {
         items: { select: { productNameSnapshot: true, quantity: true, isGift: true } },
       },
     })
-    return json({ data: orders.map(o => ({ ...o, ref: orderRef(o.id) })) })
+    // When to call the customer back, and why today (lib/storefront/followups)
+    const followups = await openFollowups(orders.map(o => o.id))
+    return json({ data: orders.map(o => ({ ...o, ref: orderRef(o.id), followup: followups.get(o.id) ?? null, callReason: callReason(o, followups.get(o.id)) })) })
   } catch (err) {
     return handleError(err, 'GET /api/site/orders')
   }

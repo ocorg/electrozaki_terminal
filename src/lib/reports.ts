@@ -8,6 +8,7 @@
 import { Prisma } from '@prisma/client'
 import { orderMoney } from '@/lib/deliveryOrders'
 import { phoneMatchesProspect } from '@/lib/prospects'
+import { ordersToCall, WAIT_DAYS } from '@/lib/storefront/followups'
 import { waitUntil } from '@vercel/functions'
 import { prisma } from '@/lib/db'
 import { financials } from '@/lib/analytics'
@@ -236,4 +237,22 @@ export async function deliveriesToPrepare(storeId: string): Promise<string | nul
     waiting.length ? `\n⏳ ${plural(waiting.length, 'commande attend', 'commandes attendent')} son avance (ne pas envoyer) :\n${(await Promise.all(waiting.map(line))).join('\n')}` : null,
     ready.length ? '\nUne fois remis au transporteur : Livraisons → « En route ».' : null,
   ].filter(Boolean).join('\n')
+}
+
+/** 11 am, with the parcels: website customers to call back today (lib/storefront/followups). Null when none. */
+export async function webOrdersToCall(): Promise<string | null> {
+  const orders = await ordersToCall()
+  if (!orders.length) return null
+  const why = {
+    promesse: (o: (typeof orders)[number]) => `date promise dépassée (${o.deliveryEstimate ? o.deliveryEstimate.toISOString().slice(0, 10).split('-').reverse().slice(0, 2).join('/') : '?'}) : prévenez-le`,
+    attente:  (o: (typeof orders)[number]) => `commandée il y a ${o.days} j, pas encore partie : dites-lui quand`,
+    rappel:   (o: (typeof orders)[number]) => `à rappeler${o.followup?.note ? ` : « ${o.followup.note} »` : ''}`,
+  }
+  const lines = orders.map(o => {
+    const what = o.items.filter(i => !i.isGift).map(i => `${i.quantity > 1 ? `${i.quantity}× ` : ''}${i.productNameSnapshot}`).join(', ')
+    return `• #${o.ref} — ${o.customerName} ${o.customerPhone}${o.deliveryCity ? `, ${o.deliveryCity}` : ''}
+   ${what || '—'} · ${why[o.reason!](o)}`
+  })
+  return [bold(`📞 Clients du site à rappeler (${orders.length})`), ...lines,
+    `(Commandes de ${WAIT_DAYS} jours ou plus pas encore parties, dates promises dépassées et rappels notés — Commandes web → « À rappeler ».)`].join('\n')
 }

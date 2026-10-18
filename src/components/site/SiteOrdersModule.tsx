@@ -30,6 +30,15 @@ interface OrderRow {
   erpDeliveryId: string | null; shippingStatus: string | null; trackingNumber: string | null
   landingPage?: { title: string } | null
   items: { productNameSnapshot: string; quantity: number; isGift: boolean }[]
+  // calling the customer back (lib/storefront/followups)
+  followup?: { relance_le: string; note: string | null } | null
+  callReason?: 'promesse' | 'attente' | 'rappel' | null
+}
+
+const CALL_REASON: Record<string, { fr: string; ar: string }> = {
+  promesse: { fr: 'Date promise dépassée', ar: 'تجاوز الموعد' },
+  attente:  { fr: 'Pas encore partie',     ar: 'لم تخرج بعد' },
+  rappel:   { fr: 'À rappeler',            ar: 'للاتصال' },
 }
 
 interface OrderDetail extends Omit<OrderRow, 'items'> {
@@ -43,7 +52,7 @@ interface OrderDetail extends Omit<OrderRow, 'items'> {
   }[]
 }
 
-type Filter = 'open' | 'NEW' | 'CONTACTED' | 'CONFIRMED' | 'CANCELLED' | 'all'
+type Filter = 'open' | 'call' | 'NEW' | 'CONTACTED' | 'CONFIRMED' | 'CANCELLED' | 'all'
 
 export default function SiteOrdersModule() {
   const { L, isAr, isManager } = useSiteLang()
@@ -53,7 +62,7 @@ export default function SiteOrdersModule() {
   const orders  = useMemo(() => ordersQ.data ?? [], [ordersQ.data])
 
   const shown = orders.filter(o =>
-    filter === 'all' ? true : filter === 'open' ? o.status === 'NEW' || o.status === 'CONTACTED' : o.status === filter)
+    filter === 'all' ? true : filter === 'call' ? !!o.callReason : filter === 'open' ? o.status === 'NEW' || o.status === 'CONTACTED' : o.status === filter)
   const count = (s: string) => orders.filter(o => o.status === s).length
 
   return (
@@ -70,6 +79,7 @@ export default function SiteOrdersModule() {
         />
         <Tabs<Filter> value={filter} onChange={setFilter} tabs={[
           { key: 'open',      label: L('À traiter', 'للمعالجة'), count: count('NEW') + count('CONTACTED') },
+          { key: 'call',      label: L('À rappeler', 'للاتصال'), count: orders.filter(o => o.callReason).length },
           { key: 'NEW',       label: L('Nouvelles', 'جديدة'), count: count('NEW') },
           { key: 'CONTACTED', label: L('Contactées', 'تم الاتصال'), count: count('CONTACTED') },
           { key: 'CONFIRMED', label: L('Confirmées', 'مؤكدة'), count: count('CONFIRMED') },
@@ -97,6 +107,9 @@ export default function SiteOrdersModule() {
                     <Chip tone={st.tone}>{isAr ? st.ar : st.fr}</Chip>
                   </div>
                   <p className="font-bold text-ez-text">{o.customerName}</p>
+                  {o.callReason
+                    ? <Chip tone="red">📞 {isAr ? CALL_REASON[o.callReason].ar : CALL_REASON[o.callReason].fr}{o.callReason === 'rappel' && o.followup?.note ? ` — ${o.followup.note}` : ''}</Chip>
+                    : o.followup && <Chip tone="gray">📞 {L('Rappel le', 'اتصال يوم')} {shortDay(o.followup.relance_le)}</Chip>}
                   {o.landingPage && <Chip tone="gold">{L('Page promo', 'صفحة عرض')} : {o.landingPage.title}</Chip>}
                   {o.deliveryCity && (
                     <p className="text-xs text-ez-subtle flex flex-wrap items-center gap-1.5">
@@ -123,12 +136,15 @@ export default function SiteOrdersModule() {
         )}
       </div>
 
-      {openId && <OrderModal id={openId} isManager={isManager} onClose={() => setOpenId(null)} />}
+      {openId && <OrderModal id={openId} row={orders.find(o => o.id === openId) ?? null} isManager={isManager}
+        onClose={() => setOpenId(null)} onFollowup={() => ordersQ.refresh()} />}
     </div>
   )
 }
 
-function OrderModal({ id, isManager, onClose }: { id: string; isManager: boolean; onClose: () => void }) {
+function OrderModal({ id, row, isManager, onClose, onFollowup }: {
+  id: string; row: OrderRow | null; isManager: boolean; onClose: () => void; onFollowup: () => Promise<unknown> | void
+}) {
   const { L, isAr } = useSiteLang()
   const q = useApi<OrderDetail>(`/api/site/orders/${id}`)
   const o = q.data
@@ -243,6 +259,10 @@ function OrderModal({ id, isManager, onClose }: { id: string; isManager: boolean
           )}
 
           {o.status === 'CONFIRMED' && <ShippingPanel order={o} isManager={isManager} onChange={() => q.refresh()} />}
+
+          {isManager && o.status !== 'CANCELLED' && o.shippingStatus !== 'DELIVERED' && (
+            <CallBackPanel id={o.id} refNo={o.ref} name={o.customerName} phone={o.customerPhone} row={row} onChange={onFollowup} />
+          )}
 
           {/* Actions */}
           <div className="flex flex-wrap gap-2 pt-2 border-t border-ez-border">
@@ -361,6 +381,72 @@ function ShippingPanel({ order: o, isManager, onChange }: { order: OrderDetail; 
         className="inline-flex items-center gap-1.5 text-xs font-semibold text-ez-text underline">
         <ExternalLink className="w-3.5 h-3.5" />{L('Voir ce que voit le client', 'عرض ما يراه العميل')}
       </a>
+    </div>
+  )
+}
+
+// Calling the customer back (lib/storefront/followups): why today, a date and
+// a note for later, and a WhatsApp message ready to complete.
+function CallBackPanel({ id, refNo, name, phone, row, onChange }: {
+  id: string; refNo: string; name: string; phone: string; row: OrderRow | null; onChange: () => Promise<unknown> | void
+}) {
+  const { L, isAr } = useSiteLang()
+  const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10)
+  const [date, setDate] = useState(row?.followup?.relance_le ?? tomorrow)
+  const [note, setNote] = useState(row?.followup?.note ?? '')
+  const [busy, setBusy] = useState<string | null>(null)
+  const reason = row?.callReason
+
+  async function save(key: string, method: 'PUT' | 'DELETE', ok: string) {
+    setBusy(key)
+    try {
+      await apiWrite(`/api/site/orders/${id}/followup`, { method, body: method === 'PUT' ? { relance_le: date, note } : undefined })
+      showSuccess(ok)
+      await onChange()
+    } catch (e) {
+      showError((e as Error).message)
+    } finally {
+      setBusy(null)
+    }
+  }
+  const text = `Bonjour ${name}, c'est Electro Zaki au sujet de votre commande #${refNo} : `
+
+  return (
+    <div className="rounded-xl border border-ez-border p-4 space-y-3">
+      <p className="text-sm font-semibold flex items-center gap-2"><Phone className="w-4 h-4" />{L('Rappeler le client', 'الاتصال بالعميل')}</p>
+      {reason && (
+        <p className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-red-700 text-xs font-medium">
+          {reason === 'promesse' ? L('La date de livraison promise est passée : prévenez le client et donnez-lui une nouvelle date.', 'تجاوز موعد التسليم: أخبر العميل.')
+            : reason === 'attente' ? L('Commandée il y a 2 jours ou plus et pas encore partie : dites au client quand elle part.', 'لم تخرج بعد: أخبر العميل متى.')
+            : L(`Rappel prévu aujourd’hui${row?.followup?.note ? ` : « ${row.followup.note} »` : ''}.`, 'اتصال مبرمج اليوم.')}
+        </p>
+      )}
+      <a href={`${whatsappLink(phone)}?text=${encodeURIComponent(text)}`} target="_blank" rel="noopener noreferrer"
+        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-emerald-300 text-emerald-700 text-sm font-semibold hover:bg-emerald-50">
+        <MessageCircle className="w-4 h-4" />{L('Écrire au client sur WhatsApp', 'مراسلة العميل')}
+      </a>
+      <div className="flex flex-wrap items-end gap-2">
+        <label className="text-xs text-ez-subtle">
+          {L('Rappeler le', 'الاتصال يوم')}
+          <input type="date" value={date} min={new Date().toISOString().slice(0, 10)} onChange={e => setDate(e.target.value)}
+            className="mt-1 block rounded-lg border border-ez-border px-3 py-2 text-sm text-ez-text" />
+        </label>
+        <label className="flex-1 min-w-[12rem] text-xs text-ez-subtle">
+          {L('Pourquoi (facultatif)', 'السبب')}
+          <input value={note} onChange={e => setNote(e.target.value)} placeholder={L('Ex. : livraison mardi, client dispo le soir', 'مثال: التسليم يوم الثلاثاء')}
+            className="mt-1 w-full rounded-lg border border-ez-border px-3 py-2 text-sm text-ez-text" />
+        </label>
+        <Btn size="sm" loading={busy === 'save'} disabled={!date} onClick={() => save('save', 'PUT', L('Rappel noté', 'تم الحفظ'))}>{L('Noter le rappel', 'حفظ')}</Btn>
+      </div>
+      {row?.followup && (
+        <div className="flex flex-wrap items-center gap-2 text-xs text-ez-subtle">
+          <span>{L('Rappel prévu le', 'اتصال مبرمج يوم')} <b className="text-ez-text">{shortDay(row.followup.relance_le)}</b>{row.followup.note ? ` — ${row.followup.note}` : ''}</span>
+          <Btn size="sm" variant="secondary" loading={busy === 'done'} onClick={() => save('done', 'DELETE', L('Rappel fait', 'تم'))}>
+            <CheckCircle2 className="w-3.5 h-3.5" />{L('Client rappelé', 'تم الاتصال')}
+          </Btn>
+        </div>
+      )}
+      {!isAr && <p className="text-[11px] text-ez-faint">Les commandes à rappeler arrivent aussi chaque jour à 11 h sur Telegram, avec les colis à préparer.</p>}
     </div>
   )
 }

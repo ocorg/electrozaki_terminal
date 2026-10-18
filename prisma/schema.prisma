@@ -1321,3 +1321,17 @@ model lead_notes {
 
   @@index([lead_id], map: "idx_lead_notes_lead")
 }
+
+// Calling a website customer back (migration 20): when, and why
+model web_order_followups {
+  order_id   String    @id
+  relance_le DateTime  @db.Date
+  note       String?
+  done_at    DateTime? @db.Timestamptz(6)
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  created_by String?   @db.Uuid
+  updated_at DateTime  @default(now()) @db.Timestamptz(6)
+  updated_by String?   @db.Uuid
+
+  @@index([relance_le], map: "idx_web_order_followups_due")
+}
