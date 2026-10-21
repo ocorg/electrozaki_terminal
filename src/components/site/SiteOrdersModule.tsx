@@ -1,6 +1,6 @@
 'use client'
 import { useMemo, useState } from 'react'
-import { ShoppingBag, Phone, MessageCircle, RefreshCw, Receipt, CheckCircle2, XCircle, Store, Truck, FileText, Link2, Unlink, ExternalLink } from 'lucide-react'
+import { ShoppingBag, Phone, MessageCircle, RefreshCw, Receipt, CheckCircle2, XCircle, Store, Truck, FileText, Link2, Unlink, ExternalLink, Star } from 'lucide-react'
 import { useApi, apiWrite } from '@/lib/data/api'
 import { Modal, Btn, PageHeader, EmptyState, SkeletonRow } from '@/components/shared'
 import { showSuccess, showError } from '@/lib/utils/toasts'
@@ -260,6 +260,8 @@ function OrderModal({ id, row, isManager, onClose, onFollowup }: {
 
           {o.status === 'CONFIRMED' && <ShippingPanel order={o} isManager={isManager} onChange={() => q.refresh()} />}
 
+          {o.shippingStatus === 'DELIVERED' && <ReviewAskPanel refNo={o.ref} name={o.customerName} phone={o.customerPhone} />}
+
           {isManager && o.status !== 'CANCELLED' && o.shippingStatus !== 'DELIVERED' && (
             <CallBackPanel id={o.id} refNo={o.ref} name={o.customerName} phone={o.customerPhone} row={row} onChange={onFollowup} />
           )}
@@ -380,6 +382,33 @@ function ShippingPanel({ order: o, isManager, onChange }: { order: OrderDetail; 
       <a href={`${SITE}/fr/commande/suivi?ref=${o.ref}`} target="_blank" rel="noopener noreferrer"
         className="inline-flex items-center gap-1.5 text-xs font-semibold text-ez-text underline">
         <ExternalLink className="w-3.5 h-3.5" />{L('Voir ce que voit le client', 'عرض ما يراه العميل')}
+      </a>
+    </div>
+  )
+}
+
+// Delivered: ask the customer for a review on the website (Site web → Avis
+// clients). The link opens their order with the reference filled in; they
+// type their phone, then rate what they received.
+function ReviewAskPanel({ refNo, name, phone }: { refNo: string; name: string; phone: string }) {
+  const { L } = useSiteLang()
+  const first = name.trim().split(/\s+/)[0] ?? ''
+  const link = `${SITE}/fr/commande/suivi?ref=${refNo}`
+  const text =
+    `Bonjour ${first}, merci pour votre commande chez Electro Zaki ! ` +
+    `Pouvez-vous nous donner votre avis en 1 minute ? ${link} ` +
+    `(tapez votre numéro de téléphone, puis notez votre téléphone de 1 à 5 étoiles).\n\n` +
+    `السلام ${first}، شكرا على ثقتك فـ Electro Zaki! عطينا رأيك فدقيقة: ${link}`
+  return (
+    <div className="rounded-xl border border-ez-border p-4 space-y-2">
+      <p className="text-sm font-semibold flex items-center gap-2"><Star className="w-4 h-4" />{L('Avis du client', 'رأي العميل')}</p>
+      <p className="text-xs text-ez-subtle">
+        {L('Commande livrée : le client peut maintenant donner son avis sur le site. Envoyez-lui le lien quelques jours après la livraison.',
+           'تم التسليم: يمكن للعميل الآن إعطاء رأيه في الموقع. أرسل له الرابط بعد أيام من التسليم.')}
+      </p>
+      <a href={`${whatsappLink(phone)}?text=${encodeURIComponent(text)}`} target="_blank" rel="noopener noreferrer"
+        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-emerald-300 text-emerald-700 text-sm font-semibold hover:bg-emerald-50">
+        <MessageCircle className="w-4 h-4" />{L('Demander son avis sur WhatsApp', 'طلب رأيه على واتساب')}
       </a>
     </div>
   )

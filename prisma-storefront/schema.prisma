@@ -497,6 +497,9 @@ model OrderRequestItem {
   isGift   Boolean @default(false)
   bundleId String?
 
+  // The customer's review of this line, once the order is delivered.
+  review ProductReview?
+
   // Snapshots — so an edited or later-discontinued product doesn't silently
   // rewrite the history of what was actually requested.
   productNameSnapshot String
@@ -505,6 +508,34 @@ model OrderRequestItem {
 
   @@index([orderRequestId])
   @@index([productId])
+}
+
+// ── Customer reviews ────────────────────────────────────────────────────
+//
+// Only a customer whose website order was delivered can review, one review
+// per order line, from the order tracking page (ref + phone). Published at
+// once; staff can hide one from the ERP (Site web → Avis clients). Phones
+// are rated per model (modelKey): every listing of the model shows the same
+// reviews. No phone number here: the author is shown as "Prénom N.".
+// Product name and modelKey are copies, so a review survives its listing.
+model ProductReview {
+  id          String           @id @default(cuid())
+  orderItemId String           @unique
+  orderItem   OrderRequestItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  productId   String
+  modelKey    String?
+  productName String
+  rating      Int // 1 to 5
+  comment     String?          @db.Text
+  authorName  String
+  locale      String // the language it was written in
+  hidden      Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([modelKey, hidden])
+  @@index([productId, hidden])
+  @@index([createdAt])
 }
 
 // ── Contact page ────────────────────────────────────────────────────────

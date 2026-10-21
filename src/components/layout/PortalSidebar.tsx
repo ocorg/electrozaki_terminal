@@ -11,7 +11,7 @@ import {
   Settings, LogOut, Globe, ChevronRight,
   PanelLeftClose, PanelLeftOpen, Store, FileText, Clock,
   UserCheck, ScrollText, Shield, PackageCheck, CreditCard, List, PackageSearch,
-  ShoppingBag, Tag, Inbox, Megaphone, Activity, PieChart, ListOrdered
+  ShoppingBag, Tag, Inbox, Megaphone, Activity, PieChart, ListOrdered, Star
 } from 'lucide-react'
 import type { UserRole } from '@/types/database'
 import { useLanguageStore } from '@/lib/stores/language'
@@ -72,6 +72,7 @@ function getNavItems(portalBase: string, portalType: string): NavItem[] {
     { href: `${portalBase}/site/orders`,      icon: ShoppingBag,     label: 'Commandes web',      roles: ['gerant','proprietaire'], badge: 'orders' },
     { href: `${portalBase}/site/requests`,    icon: Inbox,           label: 'Demandes du site',   roles: ['gerant','proprietaire'], badge: 'repairs' },
     { href: `${portalBase}/site/catalog`,     icon: Globe,           label: 'Catalogue du site',  roles: ['gerant','proprietaire'] },
+    { href: `${portalBase}/site/reviews`,     icon: Star,            label: 'Avis clients',       roles: ['gerant','proprietaire'] },
     { href: `${portalBase}/site/promos`,      icon: Tag,             label: 'Promos & packs',     roles: ['gerant','proprietaire'] },
     { href: `${portalBase}/site/landing`,     icon: Megaphone,       label: 'Pages promo',        roles: ['gerant','proprietaire'] },
     { href: `${portalBase}/site/stats`,       icon: Activity,        label: 'Statistiques',       roles: ['gerant','proprietaire'] },
