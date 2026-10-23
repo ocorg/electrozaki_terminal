@@ -83,7 +83,9 @@ const EMPTY_SALE: SaleForm = {
   battery_echange: undefined, ram_echange: '',
   prix_vente_echange: undefined, prix_min_echange: undefined,
   echange_vers_reparation: false,
-  phone_remis: true,
+  // like the Phones module: a phone with money still owed stays in the shop
+  // (réservé) unless the manager says the client takes it
+  phone_remis: false,
 }
 
 interface POSModuleProps {
@@ -1091,7 +1093,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                 </p>
                 {cartPhones.length > 0 && (
                   <div className="grid grid-cols-2 gap-2">
-                    {[{ v: true, l: 'Le client le prend' }, { v: false, l: 'On le garde (réservé)' }].map(o => (
+                    {[{ v: false, l: 'On le garde (réservé)' }, { v: true, l: 'Le client le prend' }].map(o => (
                       <button key={String(o.v)} type="button" onClick={() => setSale('phone_remis', o.v)}
                         className="py-2 rounded-xl text-xs font-bold border transition-all"
                         style={{
