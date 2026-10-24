@@ -449,6 +449,10 @@ model OrderRequest {
   receiptUrl           String? // legacy public URL — unused, dropped once the new code is live
   receiptUploadedAt    DateTime?
   dataConsentAccepted  Boolean              @default(false)
+  // When the customer ticked "j'accepte les conditions générales de vente"
+  // (/conditions-de-vente) before ordering: the seller must be able to prove
+  // it (law 31-08). Null for orders placed before the box existed.
+  termsAcceptedAt      DateTime?
 
   // Promo-code discount, locked in at submission time — same philosophy as
   // requiresAdvance above: a later change to the code (or its deletion)
