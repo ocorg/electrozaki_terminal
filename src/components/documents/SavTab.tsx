@@ -473,7 +473,7 @@ function PecPrintTemplate({ form, pecRef, today, info }: {
       <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '3px solid #C9A440', paddingBottom: '5mm', marginBottom: '5mm' }}>
         <div>
           <div style={{ fontSize: '22pt', fontWeight: 800, color: '#C9A440', letterSpacing: '2px' }}>ELECTRO ZAKI</div>
-          <div style={{ fontSize: '8pt', color: '#666', marginTop: '1mm' }}>Bd Al Massira Al Khadra, Ouislane, Meknès · Tél: +212 6 67 65 44 30</div>
+          <div style={{ fontSize: '8pt', color: '#666', marginTop: '1mm' }}>Bd Al Massira Al Khadra, Ouislane, Meknès · Tél: +212 6 20 21 01 24</div>
         </div>
         <div style={{ textAlign: 'right' }}>
           <div style={{ fontSize: '13pt', fontWeight: 700 }}>BON DE PRISE EN CHARGE SAV</div>
@@ -556,7 +556,7 @@ function RstPrintTemplate({ form, rstRef, pecRef, today, info }: {
       <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '3px solid #C9A440', paddingBottom: '5mm', marginBottom: '5mm' }}>
         <div>
           <div style={{ fontSize: '22pt', fontWeight: 800, color: '#C9A440', letterSpacing: '2px' }}>ELECTRO ZAKI</div>
-          <div style={{ fontSize: '8pt', color: '#666', marginTop: '1mm' }}>Bd Al Massira Al Khadra, Ouislane, Meknès · Tél: +212 6 67 65 44 30</div>
+          <div style={{ fontSize: '8pt', color: '#666', marginTop: '1mm' }}>Bd Al Massira Al Khadra, Ouislane, Meknès · Tél: +212 6 20 21 01 24</div>
         </div>
         <div style={{ textAlign: 'right' }}>
           <div style={{ fontSize: '13pt', fontWeight: 700 }}>BON DE RESTITUTION SAV</div>

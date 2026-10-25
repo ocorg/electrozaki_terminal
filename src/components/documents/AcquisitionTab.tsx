@@ -365,7 +365,7 @@ function AcquisitionPrintTemplate({
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '3px solid #C9A440', paddingBottom: '5mm', marginBottom: '5mm' }}>
         <div>
           <div style={{ fontSize: '22pt', fontWeight: 800, color: '#C9A440', letterSpacing: '2px' }}>ELECTRO ZAKI</div>
-          <div style={{ fontSize: '8pt', color: '#666', marginTop: '1mm' }}>Bd Al Massira Al Khadra, Ouislane, Meknès · Tél: +212 6 67 65 44 30</div>
+          <div style={{ fontSize: '8pt', color: '#666', marginTop: '1mm' }}>Bd Al Massira Al Khadra, Ouislane, Meknès · Tél: +212 6 20 21 01 24</div>
           <div style={{ fontSize: '7.5pt', color: '#666' }}>ICE: 002533374000004 · IF: 45725467 · TP: 17202369 · RC: 102816 (Meknès)</div>
         </div>
         <div style={{ textAlign: 'right' }}>
