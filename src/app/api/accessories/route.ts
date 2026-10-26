@@ -4,7 +4,7 @@ import { prisma } from '@/lib/db'
 import { json, handleError, requireUser, requireActiveUser, requireFields, pickInput, columnsOf, HttpError, MANAGERS, isManager } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { withNotify } from '@/lib/realtime'
-import { payFromDrawer } from '@/lib/stockPurchase'
+import { drawerAmount, payFromDrawer } from '@/lib/stockPurchase'
 
 const EDITABLE = columnsOf('accessories', ['acc_id'])
 // What staff may fill or change (owner's rules, 2026-10-01): details and
@@ -64,7 +64,7 @@ async function POST_(request: NextRequest) {
         ...(!manager && { omit: { prix_achat: true } }),
       })
       // Bought with the drawer's cash (managers): leaves the day's caisse
-      if (manager) await payFromDrawer(tx, { amount: body.paye_caisse, label: `Achat ${created.acc_id} — ${created.nom}`, storeId: created.store_id, userId: user.id })
+      if (manager) await payFromDrawer(tx, { amount: drawerAmount(body.paye_caisse, created.prix_achat, created.quantite, 'Payé de la caisse : tapez la quantité achetée'), label: `Achat ${created.acc_id} — ${created.nom}`, storeId: created.store_id, userId: user.id })
       return created
     })
 
@@ -104,8 +104,8 @@ async function PATCH_(request: NextRequest) {
         data:  { ...input, updated_by: user.id },
         ...(!manager && { omit: { prix_achat: true } }),
       })
-      // A restock paid with the drawer's cash
-      if (manager) await payFromDrawer(tx, { amount: body.paye_caisse, label: `Réappro ${updated.acc_id} — ${updated.nom}`, storeId: updated.store_id, userId: user.id })
+      // A restock paid with the drawer's cash: the units added to the quantity
+      if (manager) await payFromDrawer(tx, { amount: drawerAmount(body.paye_caisse, updated.prix_achat, updated.quantite - before.quantite, 'Réappro payé de la caisse : augmentez la quantité du nombre de pièces achetées'), label: `Réappro ${updated.acc_id} — ${updated.nom}`, storeId: updated.store_id, userId: user.id })
       return updated
     })
 

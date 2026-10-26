@@ -69,7 +69,7 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
 
   const [form, setForm]           = useState<Partial<Phone>>({ ...EMPTY })
   const [loading, setLoading]     = useState(false)
-  const [payeCaisse, setPayeCaisse]             = useState('')   // bought with the day's drawer cash
+  const [payeCaisse, setPayeCaisse]             = useState(false) // bought with the day's drawer cash, at the purchase price
   const [newCompName, setNewCompName]           = useState('')
   const [newCompCondition, setNewCompCondition] = useState<'original' | 'standard'>('original')
 
@@ -85,7 +85,7 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
   // ── Init ─────────────────────────────────────────────────
   useEffect(() => {
     setForm(phone ? { ...phone } : { ...EMPTY })
-    setPayeCaisse('')
+    setPayeCaisse(false)
   }, [phone, open])
 
   // ── Auto-set battery 100 when Neuf + Apple ───────────────
@@ -126,6 +126,9 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
       showError(t(isAr, 'common.brandModelRequired'))
       return
     }
+    if (!isEdit && payeCaisse && !(Number(form.prix_achat) > 0)) {
+      showError('Payé de la caisse : tapez le prix d’achat'); return
+    }
     setLoading(true)
     try {
       // If the model+couleur combo doesn't exist in catalog, auto-add it
@@ -139,7 +142,7 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
         })
       }
 
-      const payload = { ...form, store_id: storeId, ...(!isEdit && payeCaisse ? { paye_caisse: Number(payeCaisse) } : {}) }
+      const payload = { ...form, store_id: storeId, ...(!isEdit && payeCaisse ? { paye_caisse: true } : {}) }
       const res = await fetch('/api/phones', {
         method:  isEdit ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -549,11 +552,19 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
             </div>
 
             {!isEdit && (
-              <Field label="Payé en espèces de la caisse (DH) — laisser vide si non">
-                <input type="number" min={0} step={0.01} className={inputClass} placeholder="0"
-                  value={payeCaisse} onChange={e => setPayeCaisse(e.target.value)} />
-                <p className="text-xs text-ez-faint mt-1">Achat à un particulier payé avec la caisse du jour : la sortie de caisse se fait toute seule.</p>
-              </Field>
+              <div>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" className="w-4 h-4 rounded" checked={payeCaisse} onChange={e => setPayeCaisse(e.target.checked)} />
+                  <span className="text-sm font-medium text-ez-text">Payé en espèces de la caisse du jour</span>
+                </label>
+                <p className="text-xs text-ez-faint mt-1 ml-6">
+                  {payeCaisse
+                    ? Number(form.prix_achat) > 0
+                      ? `${formatMAD(Number(form.prix_achat))} (le prix d’achat) sortent de la caisse tout seuls.`
+                      : 'Tapez le prix d’achat ci-dessus : c’est ce montant qui sort de la caisse.'
+                    : 'Achat à un particulier payé avec la caisse : cochez, le prix d’achat sort de la caisse tout seul.'}
+                </p>
+              </div>
             )}
 
             {/* Promo */}

@@ -49,7 +49,7 @@ interface AccessoryForm {
   prix_achat:            string
   prix_vente_recommande: string
   prix_vente_minimum:    string
-  paye_caisse:           string   // purchase / restock paid with the day's drawer cash
+  paye_caisse:           boolean  // purchase / restock paid with the day's drawer cash, at the purchase price
 }
 
 const EMPTY_FORM: AccessoryForm = {
@@ -63,7 +63,7 @@ const EMPTY_FORM: AccessoryForm = {
   prix_achat:             '',
   prix_vente_recommande:  '',
   prix_vente_minimum:     '',
-  paye_caisse:            '',
+  paye_caisse:            false,
 }
 
 interface AccessoriesModuleProps {
@@ -124,6 +124,9 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
     try { await accQ.refresh() } finally { setManualRefresh(false) }
   }
 
+  // Units paid from the drawer: the quantity bought, or for a restock the units added
+  const drawerUnits = (parseInt(form.quantite) || 0) - (editAcc ? editAcc.quantite : 0)
+
   function setF(k: keyof AccessoryForm, v: string) {
     setForm((prev: AccessoryForm) => ({ ...prev, [k]: v }))
   }
@@ -163,7 +166,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
       prix_achat:            acc.prix_achat != null ? String(acc.prix_achat) : '',
       prix_vente_recommande: acc.prix_vente_recommande != null ? String(acc.prix_vente_recommande) : '',
       prix_vente_minimum:    acc.prix_vente_minimum != null ? String(acc.prix_vente_minimum) : '',
-      paye_caisse:           '',
+      paye_caisse:           false,
     })
     setFormOpen(true)
   }
@@ -172,6 +175,12 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
     if (!form.nom) {
       showError(isAr ? 'اسم الاكسسوار مطلوب' : 'Nom obligatoire')
       return
+    }
+    if (canFinancials && form.paye_caisse) {
+      if (!(Number(form.prix_achat) > 0)) { showError('Payé de la caisse : tapez le prix d’achat'); return }
+      if (!(drawerUnits > 0)) {
+        showError(editAcc ? 'Réappro payé de la caisse : augmentez la quantité du nombre de pièces achetées' : 'Payé de la caisse : tapez la quantité achetée'); return
+      }
     }
     setSubmitting(true)
     try {
@@ -188,7 +197,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
         prix_achat:            form.prix_achat            ? parseFloat(form.prix_achat)            : null,
         prix_vente_recommande: form.prix_vente_recommande ? parseFloat(form.prix_vente_recommande) : null,
         prix_vente_minimum:    form.prix_vente_minimum    ? parseFloat(form.prix_vente_minimum)    : null,
-        ...(canFinancials && form.paye_caisse ? { paye_caisse: parseFloat(form.paye_caisse) } : {}),
+        ...(canFinancials && form.paye_caisse ? { paye_caisse: true } : {}),
       }
 
       const res = await fetch('/api/accessories', {
@@ -650,17 +659,30 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
                   <Field key={f.key} label={f.label}>
                     <input type="number" min={0} step={0.01} className={inputClass}
                       placeholder="0.00"
-                      value={(form as Record<string, string>)[f.key]}
+                      value={(form as unknown as Record<string, string>)[f.key]}
                       onChange={e => setF(f.key as keyof typeof EMPTY_FORM, e.target.value)} />
                   </Field>
                 ))}
               </div>
               <div className="mt-4">
-                <Field label={editAcc ? 'Réappro payé en espèces de la caisse (DH) — laisser vide si non' : 'Achat payé en espèces de la caisse (DH) — laisser vide si non'}>
-                  <input type="number" min={0} step={0.01} className={inputClass} placeholder="0"
-                    value={form.paye_caisse} onChange={e => setF('paye_caisse', e.target.value)} />
-                </Field>
-                <p className="text-xs text-ez-faint mt-1">La sortie de caisse se fait toute seule (plus besoin de la saisir dans Dépenses).</p>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" className="w-4 h-4 rounded" checked={form.paye_caisse}
+                    onChange={e => setForm(prev => ({ ...prev, paye_caisse: e.target.checked }))} />
+                  <span className="text-sm font-medium text-ez-text">
+                    {editAcc ? 'Réappro payé en espèces de la caisse du jour' : 'Achat payé en espèces de la caisse du jour'}
+                  </span>
+                </label>
+                <p className="text-xs text-ez-faint mt-1 ml-6">
+                  {!form.paye_caisse
+                    ? editAcc
+                      ? 'Cochez, puis augmentez la quantité des pièces achetées : prix d’achat × pièces ajoutées sortent de la caisse.'
+                      : 'Cochez : prix d’achat × quantité sortent de la caisse tout seuls.'
+                    : drawerUnits > 0 && Number(form.prix_achat) > 0
+                      ? `${formatMAD(Number(form.prix_achat) * drawerUnits)} sortent de la caisse (${formatMAD(Number(form.prix_achat))} × ${drawerUnits}).`
+                      : editAcc
+                        ? 'Tapez le prix d’achat et augmentez la quantité du nombre de pièces achetées.'
+                        : 'Tapez le prix d’achat et la quantité achetée.'}
+                </p>
               </div>
             </div>
           )}

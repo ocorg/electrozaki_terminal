@@ -8,6 +8,18 @@ type Tx = Prisma.TransactionClient
 // accessory itself, it leaves the caisse as a "marchandises" expense linked
 // to the item — instead of a loose line in Dépenses. Analyse financière
 // already treats "marchandises" as stock, not as a cost.
+// What leaves the drawer (owner, 2026-10-26): "payé de la caisse" is a tick,
+// the amount is the purchase price already typed × the units bought — the
+// same price is never typed twice. A screen opened before that change still
+// sends the typed amount: it is taken as is.
+export function drawerAmount(paid: unknown, prixAchat: unknown, units: number, noUnits: string): number {
+  if (paid !== true) return Number(paid) || 0
+  const price = Number(prixAchat)
+  if (!(price > 0)) throw new HttpError(400, 'Payé de la caisse : tapez le prix d’achat')
+  if (!(units > 0)) throw new HttpError(400, noUnits)
+  return Math.round(price * units * 100) / 100
+}
+
 export async function payFromDrawer(tx: Tx, opts: { amount: unknown; label: string; storeId: string | null; userId: string }) {
   const montant = Math.round(Number(opts.amount) * 100) / 100
   if (!Number.isFinite(montant) || montant <= 0) return null
