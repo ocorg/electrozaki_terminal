@@ -75,6 +75,14 @@ async function POST_(request: NextRequest) {
     // (owner, 2026-10-04) — employees sell paid in full only
     const onCredit = body.payment_method === 'credit' || Number(body.avance) > 0
     if (onCredit && !isManager(user.role)) throw new HttpError(403, 'Vente à crédit ou avec avance : réservée aux gérants')
+    // Mixte (owner, 2026-10-28): cash + transfer = what the line costs, the
+    // cash being what the drawer keeps (change already given back). A few
+    // cents of tolerance: the POS shares one payment across the cart's lines.
+    if (body.payment_method === 'mixte') {
+      const due  = Number(body.prix_vente) - (Number(body.valeur_echange) || 0) - (Number(body.avoir_montant) || 0)
+      const paid = (Number(body.montant_especes) || 0) + (Number(body.montant_carte) || 0)
+      if (due > 0 && Math.abs(paid - due) > 0.05) throw new HttpError(400, `Mixte : espèces + virement (${paid}) ≠ montant à payer (${due})`)
+    }
     // A phone paid in several times: the sale + its credit file (dossier)
     const dossier = body.dossier && typeof body.dossier === 'object' ? body.dossier as { phone_remis?: boolean } : null
     if (dossier) {

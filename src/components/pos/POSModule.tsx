@@ -178,7 +178,8 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
   const [receiptOpen, setReceiptOpen] = useState(false)
   const [receiptData, setReceiptData] = useState<ReceiptData | null>(null)
 
-  const [qtyPicker, setQtyPicker] = useState<{ device: DeviceResult; qty: number } | null>(null)
+  const [qtyPicker, setQtyPicker] = useState<{ device: DeviceResult; qty: number; price: string } | null>(null)
+  const [mixAuto, setMixAuto]     = useState(true)   // Mixte: the transfer takes the rest until typed by hand
 
   const [exchangePanel, setExchangePanel] = useState<ExchangePanelState & { open: boolean } | null>(null)
   const [successTxn,    setSuccessTxn]    = useState<string | null>(null)
@@ -290,33 +291,47 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
     if (user?.role === 'employe' && !(listed > 0) && !isService) {
       showError(isAr ? 'السعر غير محدد بعد — اطلب من المسير' : 'Prix pas encore défini — demandez à un gérant'); return
     }
-    if (device._type !== 'accessory') {
-      if (cart.find(c => c._id === device._id)) {
-        showError(isAr ? 'موجود في السلة' : 'Déjà dans le panier'); return
-      }
-      const prix = (device as Phone).prix_vente_recommande ?? 0
-      setCart(prev => [...prev, { ...device, prix_vente_saisi: prix, qty: 1 }])
-      setSearch('')
-      showSuccess(t(isAr, 'common.addedToCart'))
-      return
+    const inCart = cart.find(c => c._id === device._id)
+    if (device._type !== 'accessory' && inCart) {
+      showError(isAr ? 'موجود في السلة' : 'Déjà dans le panier'); return
     }
-    const existingQty = cart.find(c => c._id === device._id)?.qty ?? 1
-    setQtyPicker({ device, qty: existingQty })
+    // Every item opens the picker: quantity (accessories) then the price, typed
+    // in a big box (owner, 2026-10-28). Already in the cart: its own qty and price.
+    const prix = inCart ? inCart.prix_vente_saisi : getAccPrice(device)
+    setQtyPicker({ device, qty: inCart?.qty ?? 1, price: prix > 0 ? String(prix) : '' })
     setSearch('')
   }
 
   function confirmQtyPicker() {
     if (!qtyPicker) return
-    const { device, qty } = qtyPicker
-    const prix   = getAccPrice(device)
-    const inCart = cart.find(c => c._id === device._id)
-    if (inCart) {
-      setCart(prev => prev.map(c => c._id === device._id ? { ...c, qty } : c))
-    } else {
-      setCart(prev => [...prev, { ...device, prix_vente_saisi: prix, qty }])
-    }
+    const { device } = qtyPicker
+    const qty  = device._type === 'accessory' ? Math.max(1, qtyPicker.qty) : 1
+    // 0 is allowed on purpose: an item given free with a sale (offert)
+    const prix = Math.round(Number(qtyPicker.price) * 100) / 100
+    if (qtyPicker.price.trim() === '' || !(prix >= 0)) { showError('Tapez le prix de vente'); return }
+    const line = { ...device, prix_vente_saisi: prix, qty }
+    setCart(prev => prev.some(c => c._id === device._id)
+      ? prev.map(c => c._id === device._id ? { ...c, qty, prix_vente_saisi: prix } : c)
+      : [...prev, line])
+    setPriceInputs(p => { const n = { ...p }; delete n[device._id]; return n })
     setQtyPicker(null)
+    // An employee under the minimum: a manager authorises it, as in the cart
+    if (isBelowMinimum(prix, (device as Phone).prix_vente_minimum) && user?.role === 'employe') {
+      setOverrideItem(line); setOverrideOpen(true); return
+    }
     showSuccess(t(isAr, 'common.addedToCart'))
+  }
+
+  // Override window closed without a manager's code: the price goes back to
+  // the listed one, never left under the minimum
+  function handleOverrideClosed() {
+    if (overrideItem) {
+      const back = getAccPrice(overrideItem)
+      setCart(prev => prev.map(c => c._id === overrideItem._id ? { ...c, prix_vente_saisi: back } : c))
+      showError(`Prix sous le minimum non autorisé : remis à ${formatMAD(back)}`)
+    }
+    setOverrideOpen(false)
+    setOverrideItem(null)
   }
 
   function removeFromCart(id: string) {
@@ -407,12 +422,28 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
   const aEncaisser     =
     severalTimes ? (saleForm.avance || 0)
     : Math.max(netAPayer, 0)
+  // Mixte (owner, 2026-10-28): the split is shown, and change is given from the
+  // cash only — the drawer keeps what is due minus the transfer, never the
+  // cash handed over (a 1 000 sale, 400 by transfer, 700 handed = 600 kept, 100 back).
+  const isMixte        = saleForm.payment_method === 'mixte'
+  const netDu          = round2(Math.max(netAPayer, 0))
+  const mixVirTrop     = isMixte && saleForm.montant_carte > netDu + 0.01
+  const mixCashDue     = round2(Math.max(netDu - saleForm.montant_carte, 0))
+  const mixCashKept    = isMixte ? Math.min(saleForm.montant_especes, mixCashDue) : 0
+  const mixManque      = isMixte ? round2(Math.max(mixCashDue - saleForm.montant_especes, 0)) : 0
   const montantRendu   =
     saleForm.payment_method === 'especes' && saleForm.montant_especes > 0 && saleForm.montant_especes > netAPayer
       ? saleForm.montant_especes - netAPayer
-      : saleForm.payment_method === 'mixte' && (saleForm.montant_especes + saleForm.montant_carte) > 0 && (saleForm.montant_especes + saleForm.montant_carte) > netAPayer
-      ? (saleForm.montant_especes + saleForm.montant_carte) - netAPayer
+      : isMixte && !mixVirTrop
+      ? round2(Math.max(saleForm.montant_especes - mixCashDue, 0))
       : 0
+  // The cart changed after the cash was typed: the automatic transfer follows
+  useEffect(() => {
+    if (isMixte && mixAuto && saleForm.montant_especes > 0) {
+      const vir = round2(Math.max(netDu - saleForm.montant_especes, 0))
+      if (vir !== saleForm.montant_carte) setSaleForm(prev => ({ ...prev, montant_carte: vir }))
+    }
+  }, [netDu]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Order to deliver ──────────────────────────────────────
   const livFrais   = Math.max(Number(livraison.frais) || 0, 0)
@@ -461,7 +492,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
   }
 
   function resetAll() {
-    setCart([]); setPriceInputs({}); setSaleForm({ ...EMPTY_SALE }); setOverrideAuthorizedBy(null); setOverrideReason(''); setSelectedClientId(null); setShowClient(false); setClientSuggestions([]); setAvoir(null)
+    setCart([]); setPriceInputs({}); setMixAuto(true); setSaleForm({ ...EMPTY_SALE }); setOverrideAuthorizedBy(null); setOverrideReason(''); setSelectedClientId(null); setShowClient(false); setClientSuggestions([]); setAvoir(null)
     setLivrer(false); setLivraison({ adresse: '', ville: '', transporteur: '', frais: '', charge: 'client', avance: '', ref: '' }); setLead(null)
     if (window.location.search.includes('lead=')) window.history.replaceState(null, '', window.location.pathname)
   }
@@ -475,6 +506,11 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
     }
     if (saleForm.payment_method === 'virement' && !saleForm.payment_ref) {
       showError(isAr ? 'مرجع التحويل مطلوب' : 'Référence virement obligatoire'); return
+    }
+    if (isMixte) {
+      if (mixVirTrop)        { showError('Mixte : le virement dépasse le montant à payer'); return }
+      if (mixManque > 0.01)  { showError(`Mixte : il manque ${formatMAD(mixManque)} (espèces + virement)`); return }
+      if (saleForm.montant_carte > 0 && !saleForm.payment_ref.trim()) { showError('Mixte : référence du virement obligatoire'); return }
     }
     if (severalTimes) {
       if (!canCredit) { showError('Paiement en plusieurs fois : réservé aux gérants'); return }
@@ -524,7 +560,9 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
         const share  = totalVente > 0 ? itemPv / totalVente : 0
 
         let itemAvance    = isLast ? round2(saleForm.avance          - allocAvance ) : round2(saleForm.avance          * share)
-        const itemEspeces = isLast ? round2(saleForm.montant_especes - allocEspeces) : round2(saleForm.montant_especes * share)
+        // Mixte: only the cash the drawer keeps (change given back is not in it)
+        const especesNet  = isMixte ? mixCashKept : saleForm.montant_especes
+        const itemEspeces = isLast ? round2(especesNet - allocEspeces) : round2(especesNet * share)
         const itemCarte   = isLast ? round2(saleForm.montant_carte   - allocCarte  ) : round2(saleForm.montant_carte   * share)
         let itemEchange   = isLast ? round2(saleForm.valeur_echange  - allocEchange) : round2(saleForm.valeur_echange  * share)
         if (severalTimes) {
@@ -571,7 +609,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
             warranty_start:  work.date,
             date_vente:      work.late ? work.date : undefined,
             notes:           saleForm.notes           || undefined,
-            montant_rendu:   montantRendu > 0 ? montantRendu : 0,
+            montant_rendu:   isLast && montantRendu > 0 ? montantRendu : 0,   // once per sale, not on every line
             avoir_montant:   itemAvoir > 0 ? itemAvoir : undefined,
             avoir_retour_id: itemAvoir > 0 ? avoir?.retour_id : undefined,
             override_required: overrideAuthorizedBy != null ? true : undefined,
@@ -598,7 +636,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
         valeur_echange: saleForm.valeur_echange > 0 ? saleForm.valeur_echange : undefined,
         avoir:          avoirUsed > 0 ? avoirUsed : undefined,
         fariq: severalTimes ? displayFariq : fariq, payment_method: saleForm.payment_method,
-        montant_especes: saleForm.montant_especes || undefined,
+        montant_especes: (isMixte ? mixCashKept : saleForm.montant_especes) || undefined,
         montant_carte:   saleForm.montant_carte   || undefined,
         montant_rendu:   montantRendu > 0 ? montantRendu : undefined,
       })
@@ -1072,7 +1110,11 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                 { v: 'mixte', fr: 'Mixte',     ar: 'مختلط'      },
                 ...(canCredit ? [{ v: 'credit', fr: 'Plusieurs fois', ar: 'بالتقسيط' }] : []),
               ] as { v: PaymentMethod; fr: string; ar: string }[]).map(({ v, fr, ar }) => (
-                <button key={v} type="button" onClick={() => setSale('payment_method', v)}
+                <button key={v} type="button" onClick={() => {
+                  // amounts typed for "Mixte" never travel with another method
+                  if (v !== saleForm.payment_method) setSaleForm(prev => ({ ...prev, payment_method: v, montant_especes: 0, montant_carte: 0 }))
+                  setMixAuto(true)
+                }}
                   className="py-2 rounded-xl text-xs font-bold border transition-all"
                   style={{
                     backgroundColor: saleForm.payment_method === v ? primary : 'white',
@@ -1106,7 +1148,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                 )}
               </div>
             )}
-            {saleForm.payment_method === 'virement' && (
+            {(saleForm.payment_method === 'virement' || (saleForm.payment_method === 'mixte' && saleForm.montant_carte > 0)) && (
               <input className={`${inputClass} mt-2`} placeholder={t(isAr, 'common.transferReference')}
                 value={saleForm.payment_ref} onChange={e => setSale('payment_ref', e.target.value)} />
             )}
@@ -1141,13 +1183,35 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
               </div>
             )}
             {saleForm.payment_method === 'mixte' && (
-              <div className="grid grid-cols-2 gap-2 mt-2">
-                <input type="number" min={0} step={0.01} inputMode="decimal" className={inputClass}
-                  placeholder={t(isAr, 'common.cash')}
-                  value={saleForm.montant_especes || ''} onChange={e => setSale('montant_especes', Number(e.target.value))} />
-                <input type="number" min={0} step={0.01} inputMode="decimal" className={inputClass}
-                  placeholder={t(isAr, 'common.transfer')}
-                  value={saleForm.montant_carte || ''} onChange={e => setSale('montant_carte', Number(e.target.value))} />
+              <div className="mt-2 space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="block">
+                    <span className="block text-[11px] font-bold text-ez-subtle uppercase tracking-widest mb-1">{t(isAr, 'common.cash')}</span>
+                    <input type="number" min={0} step={0.01} inputMode="decimal" className={inputClass} placeholder="0"
+                      value={saleForm.montant_especes || ''}
+                      onChange={e => {
+                        const esp = Math.max(Number(e.target.value) || 0, 0)
+                        // the transfer takes the rest until it is typed by hand
+                        setSaleForm(prev => ({ ...prev, montant_especes: esp, ...(mixAuto && { montant_carte: round2(Math.max(netDu - esp, 0)) }) }))
+                      }} />
+                  </label>
+                  <label className="block">
+                    <span className="block text-[11px] font-bold text-ez-subtle uppercase tracking-widest mb-1">{t(isAr, 'common.transfer')}</span>
+                    <input type="number" min={0} step={0.01} inputMode="decimal" className={inputClass} placeholder="0"
+                      value={saleForm.montant_carte || ''}
+                      onChange={e => { setMixAuto(false); setSale('montant_carte', Math.max(Number(e.target.value) || 0, 0)) }} />
+                  </label>
+                </div>
+                <div className={`text-xs rounded-lg px-3 py-2 border ${mixManque > 0.01 || mixVirTrop ? 'bg-red-50 border-red-200 text-red-700' : 'bg-emerald-50 border-emerald-200 text-emerald-800'}`}>
+                  <div className="flex justify-between"><span>À payer</span><b>{formatMAD(netDu)}</b></div>
+                  <div className="flex justify-between"><span>Espèces gardées en caisse</span><b>{formatMAD(mixCashKept)}</b></div>
+                  <div className="flex justify-between"><span>Virement</span><b>{formatMAD(saleForm.montant_carte)}</b></div>
+                  {mixVirTrop
+                    ? <p className="font-bold mt-1">Le virement dépasse le montant à payer</p>
+                    : mixManque > 0.01
+                      ? <p className="font-bold mt-1">Il manque {formatMAD(mixManque)}</p>
+                      : montantRendu > 0 && <p className="font-bold mt-1">À rendre en espèces : {formatMAD(montantRendu)}</p>}
+                </div>
               </div>
             )}
             </>)}
@@ -1307,10 +1371,27 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
               <span className="text-ez-text">{isAr ? 'المبلغ المُحصَّل الآن' : 'À encaisser maintenant'}</span>
               <span className="text-ez-text">{formatMAD(aEncaisser)}</span>
             </div>
+            {isMixte && (
+              <div className="pl-3 border-l-2 border-ez-border space-y-0.5">
+                <div className="flex justify-between text-xs">
+                  <span className="text-ez-subtle">dont espèces (caisse)</span>
+                  <span className="text-ez-text font-bold">{formatMAD(mixCashKept)}</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-ez-subtle">dont virement</span>
+                  <span className="text-ez-text font-bold">{formatMAD(saleForm.montant_carte)}</span>
+                </div>
+                {mixManque > 0.01 && (
+                  <div className="flex justify-between text-xs font-bold text-red-600">
+                    <span>Manque</span><span>{formatMAD(mixManque)}</span>
+                  </div>
+                )}
+              </div>
+            )}
             {montantRendu > 0 && (
               <div className="flex justify-between text-sm">
                 <span className="text-ez-subtle">{isAr ? 'المبلغ المُسلَّم' : 'Espèces remises'}</span>
-                <span className="text-ez-text">{formatMAD(saleForm.payment_method === 'especes' ? saleForm.montant_especes : saleForm.montant_especes + saleForm.montant_carte)}</span>
+                <span className="text-ez-text">{formatMAD(saleForm.montant_especes)}</span>
               </div>
             )}
             <div className="flex justify-between items-end pt-2 border-t border-ez-border">
@@ -1388,7 +1469,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
 
       <OverridePinModal
         open={overrideOpen}
-        onClose={() => setOverrideOpen(false)}
+        onClose={handleOverrideClosed}
         overrideItem={overrideItem}
         isAr={isAr}
         primary={primary}
@@ -1396,8 +1477,20 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
       />
 
       <QtyPickerModal
-        device={qtyPicker ? { _id: qtyPicker.device._id, _displayName: qtyPicker.device._displayName, price: getAccPrice(qtyPicker.device) } : null}
+        device={qtyPicker ? (() => {
+          const d = qtyPicker.device as Phone
+          const promo = d.promo_type && d.promo_montant && d.prix_vente_recommande
+            ? computePromoPrice(d.prix_vente_recommande, d.promo_type, d.promo_montant) : null
+          return {
+            _displayName: qtyPicker.device._displayName, imei: d.imei,
+            withQty: qtyPicker.device._type === 'accessory',
+            recommended: getAccPrice(qtyPicker.device), minimum: d.prix_vente_minimum, promoPrice: promo,
+            inCart: cart.some(c => c._id === qtyPicker.device._id),
+          }
+        })() : null}
         qty={qtyPicker?.qty ?? 1}
+        price={qtyPicker?.price ?? ''}
+        onPriceChange={price => setQtyPicker(p => p ? { ...p, price } : p)}
         onQtyChange={qty => setQtyPicker(p => p ? { ...p, qty } : p)}
         onConfirm={confirmQtyPicker}
         onClose={() => setQtyPicker(null)}

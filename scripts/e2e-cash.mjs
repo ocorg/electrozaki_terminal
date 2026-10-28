@@ -156,6 +156,24 @@ try {
   const accStaff = await staff('/api/accessories', { method: 'POST', body: { store_id: STORE, nom: `E2E cash staff ${tag}`, categorie: cat.code, quantite: 1, paye_caisse: 999 } })
   if (accStaff.data?.data?.acc_id) made.accs.push(accStaff.data.data.acc_id)
   check('staff cannot take money out of the caisse through a stock form', accStaff.status === 201 && n((await caisse()).solde_theorique) === n(c7.solde_theorique), accStaff.status)
+
+  // ── Mixte (owner, 2026-10-28): cash + transfer must cover the line ──
+  const sell = (body) => manager('/api/transactions', { method: 'POST', body: { store_id: STORE, device_type: 'accessoire', device_id: acc.data?.data?.acc_id, type_operation: 'vente', qty: 1, warranty_start: today, payment_method: 'mixte', ...body } })
+  const m0 = await caisse()
+  const mOk = await sell({ prix_vente: 1000, montant_especes: 600, montant_carte: 400, payment_ref: 'VIR-E2E', montant_rendu: 100 })
+  if (mOk.data?.data?.txn_id) made.txns.push(mOk.data.data.txn_id)
+  const m1 = await caisse()
+  check('Mixte 1 000 = 600 cash kept + 400 transfer: caisse +600 cash, +400 transfer', mOk.status === 201
+    && n(m1.solde_theorique) - n(m0.solde_theorique) === 600 && n(m1.payment_breakdown?.transfer) - n(m0.payment_breakdown?.transfer) === 400,
+    { s: mOk.status, e: mOk.data?.error, cash: n(m1.solde_theorique) - n(m0.solde_theorique), vir: n(m1.payment_breakdown?.transfer) - n(m0.payment_breakdown?.transfer) })
+  const mShort = await sell({ prix_vente: 1000, montant_especes: 500, montant_carte: 400, payment_ref: 'VIR-E2E' })
+  if (mShort.data?.data?.txn_id) made.txns.push(mShort.data.data.txn_id)
+  const mOver = await sell({ prix_vente: 1000, montant_especes: 700, montant_carte: 400, payment_ref: 'VIR-E2E' })
+  if (mOver.data?.data?.txn_id) made.txns.push(mOver.data.data.txn_id)
+  check('Mixte not adding up (900 or 1 100 for 1 000): refused (400), caisse unchanged', mShort.status === 400 && mOver.status === 400 && n((await caisse()).solde_theorique) === n(m1.solde_theorique), { s: mShort.status, o: mOver.status })
+  const mFree = await sell({ prix_vente: 0, montant_especes: 0, montant_carte: 0 })
+  if (mFree.data?.data?.txn_id) made.txns.push(mFree.data.data.txn_id)
+  check('a free item (0 DH) in a Mixte cart still saves', mFree.status === 201, { s: mFree.status, e: mFree.data?.error })
 } catch (err) {
   check('script ran to the end', false, String(err?.stack ?? err))
 } finally {
