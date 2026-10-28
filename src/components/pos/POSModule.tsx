@@ -1482,7 +1482,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
           const promo = d.promo_type && d.promo_montant && d.prix_vente_recommande
             ? computePromoPrice(d.prix_vente_recommande, d.promo_type, d.promo_montant) : null
           return {
-            _displayName: qtyPicker.device._displayName, imei: d.imei,
+            _id: qtyPicker.device._id, _displayName: qtyPicker.device._displayName, imei: d.imei,
             withQty: qtyPicker.device._type === 'accessory',
             recommended: getAccPrice(qtyPicker.device), minimum: d.prix_vente_minimum, promoPrice: promo,
             inCart: cart.some(c => c._id === qtyPicker.device._id),

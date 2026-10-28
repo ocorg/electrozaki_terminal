@@ -9,6 +9,7 @@ import { t } from '@/lib/i18n/t'
 // in a big box, right after the quantity — no more aiming at the small price
 // field of the cart. Phones and laptops get the price only (one unit each).
 interface DeviceSnap {
+  _id:          string
   _displayName: string
   imei?:        string | null
   withQty:      boolean          // accessories: several units
@@ -32,12 +33,15 @@ interface Props {
 
 export default function QtyPickerModal({ device, qty, price, onQtyChange, onPriceChange, onConfirm, onClose, primary, isAr }: Props) {
   const priceRef = useRef<HTMLInputElement>(null)
-  // Price box focused and selected: typing replaces the suggested price
+  // Price box focused and selected ONCE, when the window opens for an item:
+  // the first digit replaces the suggested price, the next ones add to it.
+  // (Keyed on the item's id — the device object is rebuilt on every keystroke.)
+  const openFor = device?._id ?? null
   useEffect(() => {
-    if (!device) return
+    if (!openFor) return
     const id = setTimeout(() => { priceRef.current?.focus(); priceRef.current?.select() }, 50)
     return () => clearTimeout(id)
-  }, [device])
+  }, [openFor])
 
   if (!device) return null
   const unit   = Number(price) || 0
