@@ -1,7 +1,8 @@
 'use client'
-import { useState } from 'react'
-import { Plus, Pencil, Trash2, Eye, EyeOff, ListChecks } from 'lucide-react'
-import { useApi, apiWrite } from '@/lib/data/api'
+import { useRef, useState } from 'react'
+import { Plus, Pencil, Trash2, Eye, EyeOff, ListChecks, ImagePlus, RefreshCw } from 'lucide-react'
+import { useApi, apiWrite, refreshPrefixes } from '@/lib/data/api'
+import { uploadResized } from '@/lib/utils/image'
 import { Modal, Btn, EmptyState, SkeletonRow, Field, inputClass, selectClass, Select } from '@/components/shared'
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import { confirmDialog } from '@/components/shared/ConfirmHost'
@@ -218,13 +219,37 @@ export function FacetsTab({ categories, isManager }: { categories: Category[]; i
 // ── One product's checklist ──────────────────────────────────────────────
 
 /** The checklist of a product: the groups attached to its aisle (or its parent aisle). */
-export function FacetChecklist({ productId, categoryId, categories, ticked }: {
+// Photos only for the "Extras" group (owner, 2026-10-29: a pochette's own card
+// holder, stand, strap…); style, protection or material need none.
+const PHOTO_GROUPS = ['extras']
+
+export function FacetChecklist({ productId, categoryId, categories, ticked, photos }: {
   productId: string; categoryId: string; categories: Category[]; ticked: string[]
+  /** accessories: this product's own photo per ticked feature (Extras…) */
+  photos?: Record<string, string>
 }) {
   const { L } = useSiteLang()
   const q = useApi<FacetGroup[]>(FACETS)
   const [picked, setPicked] = useState<string[] | null>(null)
   const [saving, setSaving] = useState(false)
+  const [photoBusy, setPhotoBusy] = useState<string | null>(null)
+  const fileRef  = useRef<HTMLInputElement>(null)
+  const photoFor = useRef<string | null>(null)
+
+  async function uploadPhoto(file: File) {
+    const optionId = photoFor.current
+    if (!optionId) return
+    setPhotoBusy(optionId)
+    try {
+      await uploadResized(`/api/site/catalog/${productId}/facets/photo`, file, { optionId })
+      refreshPrefixes(['/api/site'])
+      showSuccess(L('Photo enregistrée', 'تم حفظ الصورة'))
+    } catch (e) { showError((e as Error).message) } finally { setPhotoBusy(null) }
+  }
+  async function removePhoto(optionId: string) {
+    if (!(await confirmDialog(L('Retirer cette photo ?', 'حذف هذه الصورة؟')))) return
+    try { await apiWrite(`/api/site/catalog/${productId}/facets/photo`, { method: 'DELETE', body: { optionId } }) } catch (e) { showError((e as Error).message) }
+  }
 
   const parentId = categories.find(c => c.id === categoryId)?.parentId
   const groups = (q.data ?? []).filter(g => g.active && g.categoryIds.some(id => id === categoryId || id === parentId))
@@ -265,8 +290,38 @@ export function FacetChecklist({ productId, categoryId, categories, ticked }: {
               )
             })}
           </div>
+          {/* Photo of THIS product's feature (its stand, its card holder…), once the tick is saved */}
+          {photos && PHOTO_GROUPS.includes(g.key) && g.options.some(o => ticked.includes(o.id) && current.includes(o.id)) && (
+            <div className="flex flex-wrap gap-2 mt-2">
+              {g.options.filter(o => ticked.includes(o.id) && current.includes(o.id)).map(o => {
+                const url = photos[o.id]
+                return (
+                  <div key={o.id} className="w-20 text-center">
+                    <div className="relative w-20 h-20 rounded-lg border border-ez-border overflow-hidden bg-ez-bg flex items-center justify-center">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      {url ? <img src={url} alt="" className="w-full h-full object-contain" /> : (
+                        <button type="button" disabled={photoBusy === o.id} onClick={() => { photoFor.current = o.id; fileRef.current?.click() }}
+                          className="w-full h-full flex flex-col items-center justify-center gap-0.5 text-ez-subtle hover:text-gold border-2 border-dashed border-ez-border rounded-lg">
+                          {photoBusy === o.id ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-4 h-4" />}
+                          <span className="text-[10px] font-bold">{L('Photo', 'صورة')}</span>
+                        </button>
+                      )}
+                      {url && (
+                        <button type="button" onClick={() => removePhoto(o.id)} className="absolute top-1 end-1 p-1 rounded bg-white/90 text-red-600"><Trash2 className="w-3 h-3" /></button>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-ez-subtle mt-0.5 truncate">{o.name}</p>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       ))}
+      {photos && (
+        <input ref={fileRef} type="file" accept="image/*" className="hidden"
+          onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) uploadPhoto(f) }} />
+      )}
       <div className="flex justify-end">
         <Btn size="sm" onClick={save} loading={saving} disabled={picked === null}>{L('Enregistrer la fiche', 'حفظ البطاقة')}</Btn>
       </div>

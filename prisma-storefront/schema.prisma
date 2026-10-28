@@ -148,6 +148,12 @@ model Product {
   // of one model — lets staff set photos and gift options once per model.
   modelKey  String?
 
+  // Accessories sold in several colours (owner, 2026-10-29): each colour is its
+  // own product (own ERP stock); the colours of one model share colorGroup and
+  // each page shows buttons to the others. Set in ERP Site web → Catalogue.
+  colorName  String?
+  colorGroup String?
+
   // Phase-2 "transparency" spec: battery health is iPhone-specific in
   // practice but kept generic here rather than a phone-only subtype: any
   // used device with a battery can carry it, and it's just null otherwise.
@@ -211,6 +217,7 @@ model Product {
   @@index([availability])
   @@index([published])
   @@index([modelKey])
+  @@index([colorGroup])
 }
 
 model ProductImage {
@@ -374,6 +381,8 @@ model ProductFacet {
   product   Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
   optionId  String
   option    FacetOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  // This product's own photo of the feature (its card holder, its stand…)
+  imageUrl  String?
 
   @@id([productId, optionId])
   @@index([optionId])

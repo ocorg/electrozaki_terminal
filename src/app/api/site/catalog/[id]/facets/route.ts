@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { json, handleError, requireActiveUser, HttpError, MANAGERS } from '@/lib/api'
 import { withNotify } from '@/lib/realtime'
 import { site, logSite, refreshSite } from '@/lib/storefront/access'
+import { deleteSitePhoto } from '@/lib/storefront/storage'
 
 type Ctx = { params: { id: string } }
 
@@ -30,10 +31,16 @@ async function PUT_(request: NextRequest, { params }: Ctx) {
       if (n > 1 && !o.group.multi) throw new HttpError(400, `Un seul choix possible pour « ${o.group.name} »`)
     }
 
+    // A ticked feature keeps its photo (owner, 2026-10-29); an unticked one's
+    // photo is deleted from storage once the new checklist is saved.
+    const before   = await db.productFacet.findMany({ where: { productId: product.id }, select: { optionId: true, imageUrl: true } })
+    const photoOf  = new Map(before.filter(f => f.imageUrl).map(f => [f.optionId, f.imageUrl!]))
+    const dropped  = Array.from(photoOf.entries()).filter(([optionId]) => !ids.includes(optionId)).map(([, url]) => url)
     await db.$transaction(async tx => {
       await tx.productFacet.deleteMany({ where: { productId: product.id } })
-      if (ids.length) await tx.productFacet.createMany({ data: ids.map(optionId => ({ productId: product.id, optionId })) })
+      if (ids.length) await tx.productFacet.createMany({ data: ids.map(optionId => ({ productId: product.id, optionId, imageUrl: photoOf.get(optionId) ?? null })) })
     })
+    for (const url of dropped) await deleteSitePhoto(url).catch(() => {})
     await logSite(user, 'modification', `Fiche de « ${product.name} » modifiée (${ids.length} choix)`, { record_id: product.id })
     refreshSite()
     return json({ ok: true })

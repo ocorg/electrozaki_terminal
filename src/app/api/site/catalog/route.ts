@@ -13,12 +13,12 @@ export async function GET() {
         select: {
           id: true, slug: true, name: true, brand: true, isPhone: true, source: true, published: true,
           availability: true, condition: true, recommendedSalePrice: true, description: true,
-          metaTitle: true, metaDescription: true, modelKey: true, categoryId: true,
+          metaTitle: true, metaDescription: true, modelKey: true, categoryId: true, colorName: true, colorGroup: true,
           category: { select: { name: true } },
           images:   { select: { url: true }, orderBy: { sortOrder: 'asc' } },
           internal: { select: { stockQuantity: true } },
           variants: { select: { stockQuantity: true } },
-          facets:   { select: { optionId: true } },
+          facets:   { select: { optionId: true, imageUrl: true } },
           _count:   { select: { compatibleAccessories: true } },
         },
       }),
@@ -34,6 +34,8 @@ export async function GET() {
         stock:     p.isPhone ? variants.reduce((n, v) => n + v.stockQuantity, 0) : internal?.stockQuantity ?? null,
         giftCount: _count.compatibleAccessories,
         facetIds:  facets.map(f => f.optionId),
+        // this product's own photo of a ticked feature (Extras: its stand…)
+        facetImages: Object.fromEntries(facets.filter(f => f.imageUrl).map(f => [f.optionId, f.imageUrl])),
       })),
       categories,
     })

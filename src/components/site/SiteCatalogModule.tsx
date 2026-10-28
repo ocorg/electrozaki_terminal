@@ -15,6 +15,7 @@ interface Product {
   description: string | null; metaTitle: string | null; metaDescription: string | null
   modelKey: string | null; categoryId: string; category: { name: string }
   images: string[]; stock: number | null; giftCount: number; facetIds: string[]
+  colorName: string | null; colorGroup: string | null; facetImages: Record<string, string>
 }
 interface Category {
   id: string; name: string; slug: string; parentId: string | null; sortOrder: number; erpCode: string | null
@@ -23,6 +24,7 @@ interface Category {
 interface Photo { modelKey: string; model: string; brand: string; color: string; units: number; unpriced: number; photoId: string | null; url: string | null }
 
 type Tab = 'products' | 'photos' | 'categories' | 'fiches'
+const MAX_PHOTOS = 8   // same limit as /api/site/catalog/[id]/images
 type Kind = 'phones' | 'accessories' | 'hidden'
 
 export default function SiteCatalogModule() {
@@ -196,10 +198,12 @@ function ProductModal({ product, categories, accessories, onClose }: {
   const [form, setForm] = useState({
     name: product.name, brand: product.brand ?? '', categoryId: product.categoryId,
     description: product.description ?? '', metaTitle: product.metaTitle ?? '', metaDescription: product.metaDescription ?? '',
-    published: product.published,
+    published: product.published, colorName: product.colorName ?? '',
   })
   const [saving, setSaving]       = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [progress, setProgress]   = useState('')
+  const [dragOver, setDragOver]   = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   async function save() {
@@ -210,19 +214,37 @@ function ProductModal({ product, categories, accessories, onClose }: {
         metaDescription: form.metaDescription, published: form.published,
       }
       if (nameEditable) { body.name = form.name; body.brand = form.brand }
+      if (!product.isPhone) body.colorName = form.colorName
       await apiWrite(`/api/site/catalog/${product.id}`, { method: 'PATCH', body })
       showSuccess(L('Enregistré', 'تم الحفظ'))
       onClose()
     } catch (e) { showError((e as Error).message) } finally { setSaving(false) }
   }
 
-  async function addPhoto(file: File) {
+  // Several photos at once, picked or dropped (owner, 2026-10-28). One after
+  // the other, in the order chosen: the first one is the cover on the site.
+  async function addPhotos(list: FileList | File[]) {
+    const files = Array.from(list).filter(f => f.type.startsWith('image/'))
+    if (!files.length) { showError(L('Choisissez des images', 'اختر صوراً')); return }
+    const room = MAX_PHOTOS - product.images.length
+    if (room <= 0) { showError(L(`${MAX_PHOTOS} photos maximum`, `${MAX_PHOTOS} صور كحد أقصى`)); return }
+    const todo = files.slice(0, room)
     setUploading(true)
+    let done = 0
     try {
-      await uploadResized(`/api/site/catalog/${product.id}/images`, file)
+      for (const f of todo) {
+        setProgress(`${done + 1}/${todo.length}`)
+        await uploadResized(`/api/site/catalog/${product.id}/images`, f)
+        done++
+      }
+      showSuccess(done > 1 ? L(`${done} photos ajoutées`, `تمت إضافة ${done} صور`) : L('Photo ajoutée', 'تمت إضافة الصورة'))
+      if (files.length > todo.length) showError(L(`${files.length - todo.length} photo(s) non ajoutée(s) : ${MAX_PHOTOS} maximum`, `${MAX_PHOTOS} صور كحد أقصى`))
+    } catch (e) {
+      showError(`${done ? L(`${done} ajoutée(s), puis : `, '') : ''}${(e as Error).message}`)
+    } finally {
       refreshPrefixes(['/api/site'])
-      showSuccess(L('Photo ajoutée', 'تمت إضافة الصورة'))
-    } catch (e) { showError((e as Error).message) } finally { setUploading(false) }
+      setUploading(false); setProgress('')
+    }
   }
 
   async function removePhoto(url: string) {
@@ -272,26 +294,39 @@ function ProductModal({ product, categories, accessories, onClose }: {
           {L('Visible sur le site', 'ظاهر في الموقع')}
         </label>
 
-        <FacetChecklist productId={product.id} categoryId={form.categoryId} categories={categories} ticked={product.facetIds} />
+        {!product.isPhone && <ColorGroupEditor product={product} accessories={accessories} colorName={form.colorName} onColorName={v => set('colorName', v)} />}
+
+        <FacetChecklist productId={product.id} categoryId={form.categoryId} categories={categories} ticked={product.facetIds}
+          photos={product.isPhone ? undefined : product.facetImages} />
 
         {nameEditable ? (
-          <div className="space-y-2">
-            <p className="text-xs uppercase tracking-widest text-ez-subtle font-medium">{L('Photos', 'الصور')}</p>
-            <div className="flex flex-wrap gap-2">
-              {product.images.map(url => (
+          <div className="space-y-2"
+            onDragOver={e => { if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); setDragOver(true) } }}
+            onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(false) }}
+            onDrop={e => { e.preventDefault(); setDragOver(false); if (!uploading && e.dataTransfer.files.length) addPhotos(e.dataTransfer.files) }}>
+            <p className="text-xs uppercase tracking-widest text-ez-subtle font-medium">
+              {L('Photos', 'الصور')} <span className="normal-case tracking-normal">· {product.images.length}/{MAX_PHOTOS} · {L('la 1re est la photo principale', 'الأولى هي الصورة الرئيسية')}</span>
+            </p>
+            <div className={`flex flex-wrap gap-2 rounded-xl p-2 -m-2 border-2 border-dashed transition-colors ${dragOver ? 'border-gold bg-gold/5' : 'border-transparent'}`}>
+              {product.images.map((url, i) => (
                 <div key={url} className="relative w-20 h-20 rounded-lg border border-ez-border overflow-hidden bg-ez-bg">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={url} alt="" className="w-full h-full object-contain" />
+                  {i === 0 && <span className="absolute bottom-0 inset-x-0 text-[9px] font-bold text-center bg-gold text-white">{L('Principale', 'رئيسية')}</span>}
                   <button onClick={() => removePhoto(url)} className="absolute top-1 end-1 p-1 rounded bg-white/90 text-red-600"><Trash2 className="w-3 h-3" /></button>
                 </div>
               ))}
-              <button onClick={() => fileRef.current?.click()} disabled={uploading}
-                className="w-20 h-20 rounded-lg border-2 border-dashed border-ez-border flex items-center justify-center text-ez-subtle hover:border-gold">
-                {uploading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-5 h-5" />}
-              </button>
-              <input ref={fileRef} type="file" accept="image/*" className="hidden"
-                onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) addPhoto(f) }} />
+              {product.images.length < MAX_PHOTOS && (
+                <button onClick={() => fileRef.current?.click()} disabled={uploading}
+                  className="w-20 h-20 rounded-lg border-2 border-dashed border-ez-border flex flex-col items-center justify-center gap-0.5 text-ez-subtle hover:border-gold">
+                  {uploading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-5 h-5" />}
+                  <span className="text-[10px] font-bold">{uploading ? progress : L('Ajouter', 'إضافة')}</span>
+                </button>
+              )}
+              <input ref={fileRef} type="file" accept="image/*" multiple className="hidden"
+                onChange={e => { const files = Array.from(e.target.files ?? []); e.target.value = ''; if (files.length) addPhotos(files) }} />
             </div>
+            <p className="text-xs text-ez-faint">{L('Choisissez plusieurs photos d’un coup, ou glissez-les ici. Sur le site, elles défilent en carrousel.', 'اختر عدة صور دفعة واحدة أو اسحبها هنا.')}</p>
           </div>
         ) : (
           <>
@@ -306,6 +341,74 @@ function ProductModal({ product, categories, accessories, onClose }: {
         </div>
       </div>
     </Modal>
+  )
+}
+
+/** Colours of one accessory model (owner, 2026-10-29): each colour is its own
+ *  product with its own stock; linked ones show colour buttons on the site. */
+function ColorGroupEditor({ product, accessories, colorName, onColorName }: {
+  product: Product; accessories: Product[]; colorName: string; onColorName: (v: string) => void
+}) {
+  const { L } = useSiteLang()
+  const [search, setSearch] = useState('')
+  const [busy, setBusy]     = useState(false)
+  const siblings = product.colorGroup ? accessories.filter(a => a.colorGroup === product.colorGroup && a.id !== product.id) : []
+  const q = search.trim().toLowerCase()
+  const choices = q.length < 2 ? [] : accessories
+    .filter(a => a.id !== product.id && (!product.colorGroup || a.colorGroup !== product.colorGroup)
+      && `${a.name} ${a.brand ?? ''} ${a.colorName ?? ''}`.toLowerCase().includes(q))
+    .slice(0, 8)
+
+  async function link(colorWith: string | null) {
+    setBusy(true)
+    try {
+      await apiWrite(`/api/site/catalog/${product.id}`, { method: 'PATCH', body: { colorWith } })
+      showSuccess(colorWith ? L('Couleurs liées', 'تم الربط') : L('Retiré des couleurs du modèle', 'تمت الإزالة'))
+      setSearch('')
+    } catch (e) { showError((e as Error).message) } finally { setBusy(false) }
+  }
+
+  return (
+    <div className="rounded-xl border border-ez-border p-4 space-y-3">
+      <p className="text-sm font-semibold">{L('Couleur & autres couleurs du même modèle', 'اللون والألوان الأخرى')}</p>
+      <Field label={L('Couleur de cet article (affichée au client)', 'لون هذا المنتج')} hint={L('Ex. : Rouge, Noir mat, Bleu nuit. Enregistrez en bas.', '')}>
+        <input value={colorName} onChange={e => onColorName(e.target.value)} className={inputClass} maxLength={30} placeholder="Rouge" />
+      </Field>
+      {siblings.length > 0 ? (
+        <div className="space-y-1.5">
+          <p className="text-xs text-ez-subtle">{L('Sur le site, des boutons mènent vers ces couleurs :', 'في الموقع تظهر أزرار لهذه الألوان:')}</p>
+          <div className="flex flex-wrap gap-1.5">
+            {siblings.map(a => (
+              <span key={a.id} className={`px-2.5 py-1 rounded-full text-xs border ${a.published ? 'border-ez-border' : 'border-dashed border-ez-border text-ez-subtle'}`}
+                title={a.name}>
+                {a.colorName || L('couleur ?', 'لون؟')}{!a.published && ` · ${L('masqué', 'مخفي')}`}
+              </span>
+            ))}
+          </div>
+          {siblings.some(a => !a.colorName) && <p className="text-xs text-amber-700">{L('Donnez une couleur à chaque article du groupe.', 'أعط لوناً لكل منتج.')}</p>}
+          <Btn size="sm" variant="ghost" loading={busy} onClick={() => link(null)}>{L('Retirer cet article du groupe', 'إزالة من المجموعة')}</Btn>
+        </div>
+      ) : (
+        <p className="text-xs text-ez-subtle">{L('Pas encore lié à d’autres couleurs.', 'غير مرتبط بألوان أخرى.')}</p>
+      )}
+      <div className="space-y-1.5">
+        <input value={search} onChange={e => setSearch(e.target.value)} className={inputClass}
+          placeholder={L('Même modèle dans une autre couleur : chercher l’accessoire…', 'ابحث عن نفس الطراز بلون آخر…')} />
+        {choices.length > 0 && (
+          <div className="border border-ez-border rounded-lg divide-y divide-ez-border">
+            {choices.map(a => (
+              <button key={a.id} type="button" disabled={busy} onClick={() => link(a.id)}
+                className="w-full flex items-center gap-2 p-2 text-sm text-start hover:bg-ez-muted">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                {a.images[0] ? <img src={a.images[0]} alt="" className="w-8 h-8 rounded object-contain bg-ez-bg" /> : <ImageOff className="w-4 h-4 text-ez-placeholder" />}
+                <span className="flex-1 truncate">{a.name}{a.colorName ? ` · ${a.colorName}` : ''}</span>
+                <span className="text-xs font-bold text-gold">{L('Lier', 'ربط')}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
   )
 }
 

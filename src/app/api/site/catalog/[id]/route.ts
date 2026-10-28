@@ -15,7 +15,7 @@ async function PATCH_(request: NextRequest, { params }: Ctx) {
     const db   = site()
     const product = await db.product.findUnique({
       where:  { id: params.id },
-      select: { id: true, name: true, isPhone: true, source: true, published: true, recommendedSalePrice: true, description: true, categoryId: true, brand: true },
+      select: { id: true, name: true, isPhone: true, source: true, published: true, recommendedSalePrice: true, description: true, categoryId: true, brand: true, colorName: true, colorGroup: true },
     })
     if (!product) throw new HttpError(404, 'Produit introuvable')
 
@@ -38,6 +38,25 @@ async function PATCH_(request: NextRequest, { params }: Ctx) {
       if (!category) throw new HttpError(400, 'Catégorie invalide')
       data.categoryId = category.id
     }
+    // Colours of one accessory model (owner, 2026-10-29): each colour is its own
+    // product; "colorWith" joins this one to another colour's group (that
+    // product starts the group when it has none), null leaves the group.
+    if ('colorName' in body) {
+      if (product.isPhone) throw new HttpError(400, 'Les couleurs des téléphones viennent du stock ERP')
+      data.colorName = text(body.colorName, 30)
+    }
+    if ('colorWith' in body) {
+      if (product.isPhone) throw new HttpError(400, 'Les couleurs des téléphones viennent du stock ERP')
+      if (body.colorWith === null) {
+        data.colorGroup = null
+      } else {
+        const other = await db.product.findUnique({ where: { id: String(body.colorWith) }, select: { id: true, isPhone: true, colorGroup: true } })
+        if (!other || other.isPhone || other.id === product.id) throw new HttpError(400, 'Accessoire invalide')
+        const group = other.colorGroup ?? other.id
+        if (!other.colorGroup) await db.product.update({ where: { id: other.id }, data: { colorGroup: group } })
+        data.colorGroup = group
+      }
+    }
     if (data.published === true && Number(product.recommendedSalePrice) <= 0) {
       throw new HttpError(400, "Ce produit n'a pas de prix de vente dans l'ERP")
     }
@@ -46,7 +65,7 @@ async function PATCH_(request: NextRequest, { params }: Ctx) {
     const updated = await db.product.update({
       where:  { id: product.id },
       data,
-      select: { name: true, published: true, description: true, categoryId: true, brand: true },
+      select: { name: true, published: true, description: true, categoryId: true, brand: true, colorName: true, colorGroup: true },
     })
     await logSite(user, 'modification', `Produit du site « ${updated.name} » modifié`, {
       record_id: product.id, before_state: product, after_state: updated,
