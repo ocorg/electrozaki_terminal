@@ -41,6 +41,11 @@ async function PATCH_(request: NextRequest, { params }: Ctx) {
     // Colours of one accessory model (owner, 2026-10-29): each colour is its own
     // product; "colorWith" joins this one to another colour's group (that
     // product starts the group when it has none), null leaves the group.
+    // An accessory from the ERP: its colour and model are set in Stock →
+    // Accessoires and synced (owner, 2026-10-29); only hand-made products here.
+    if (('colorName' in body || 'colorWith' in body) && product.source === 'ERP' && !product.isPhone) {
+      throw new HttpError(400, 'La couleur se règle dans Stock → Accessoires')
+    }
     if ('colorName' in body) {
       if (product.isPhone) throw new HttpError(400, 'Les couleurs des téléphones viennent du stock ERP')
       data.colorName = text(body.colorName, 30)

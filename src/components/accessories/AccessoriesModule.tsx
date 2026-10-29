@@ -14,7 +14,7 @@ import { showSuccess, showError } from '@/lib/utils/toasts'
 import type { AccCategory } from '@/types/database'
 import {
   Package, Plus, Search, X, RefreshCw,
-  Edit2, AlertTriangle, Minus, TrendingUp, Trash2, Tag
+  Edit2, AlertTriangle, Minus, TrendingUp, Trash2, Tag, Palette
 } from 'lucide-react'
 
 
@@ -34,6 +34,8 @@ interface Accessory {
   quantite:               number
   seuil_alerte:           number
   store_id?:              string | null
+  couleur?:               string | null
+  groupe_couleur?:        string | null
   status_computed?:       string
   is_low_stock?:          boolean
 }
@@ -50,6 +52,7 @@ interface AccessoryForm {
   prix_vente_recommande: string
   prix_vente_minimum:    string
   paye_caisse:           boolean  // purchase / restock paid with the day's drawer cash, at the purchase price
+  couleur:               string
 }
 
 const EMPTY_FORM: AccessoryForm = {
@@ -64,6 +67,7 @@ const EMPTY_FORM: AccessoryForm = {
   prix_vente_recommande:  '',
   prix_vente_minimum:     '',
   paye_caisse:            false,
+  couleur:                '',
 }
 
 interface AccessoriesModuleProps {
@@ -92,6 +96,10 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
   const [labelProduct,  setLabelProduct]  = useState<LabelProduct | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [deleting,      setDeleting]      = useState(false)
+  // Same model in other colours (owner, 2026-10-29): the accessory to join
+  // (acc_id), null = leave the model's colours, undefined = unchanged
+  const [colorLink, setColorLink]   = useState<string | null | undefined>(undefined)
+  const [colorSearch, setColorSearch] = useState('')
 
   // The store's whole accessory list is cached; filters and search apply instantly here
   const accQ    = useApi<Accessory[]>(`/api/accessories?store_id=${storeId}`)
@@ -100,12 +108,13 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
   useEffect(() => { if (accQ.error) showError(accQ.error.message) }, [accQ.error])
 
   const accessories = useMemo(() => {
-    const tokens = search.trim().toLowerCase().split(/s+/).filter(Boolean)
+    // words split on spaces (the pattern used to split on the letter "s")
+    const tokens = search.trim().toLowerCase().split(/\s+/).filter(Boolean)
     return (accQ.data ?? []).filter(a =>
       (!filterCat || a.categorie === filterCat) &&
       (!onlyLowStock || a.is_low_stock) &&
       (search.trim().length < 2 || tokens.every(tok =>
-        [a.nom, a.marque, a.barcode].some(v => v?.toLowerCase().includes(tok))))
+        [a.nom, a.marque, a.barcode, a.couleur].some(v => v?.toLowerCase().includes(tok))))
     )
   }, [accQ.data, filterCat, onlyLowStock, search])
 
@@ -150,6 +159,23 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
   function openAdd() {
     setEditAcc(null)
     setForm({ ...EMPTY_FORM })
+    setColorLink(undefined); setColorSearch('')
+    setFormOpen(true)
+  }
+
+  // "+ Couleur": the same model in another colour — a new accessory (its own
+  // stock), filled in from this one and joined to its colours
+  function openAddColour(acc: Accessory) {
+    setEditAcc(null)
+    setForm({
+      ...EMPTY_FORM,
+      nom: acc.nom, categorie: acc.categorie, marque: acc.marque ?? '', compatible_with: acc.compatible_with ?? '',
+      seuil_alerte: String(acc.seuil_alerte),
+      prix_achat:            acc.prix_achat != null ? String(acc.prix_achat) : '',
+      prix_vente_recommande: acc.prix_vente_recommande != null ? String(acc.prix_vente_recommande) : '',
+      prix_vente_minimum:    acc.prix_vente_minimum != null ? String(acc.prix_vente_minimum) : '',
+    })
+    setColorLink(acc.acc_id); setColorSearch('')
     setFormOpen(true)
   }
 
@@ -167,7 +193,9 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
       prix_vente_recommande: acc.prix_vente_recommande != null ? String(acc.prix_vente_recommande) : '',
       prix_vente_minimum:    acc.prix_vente_minimum != null ? String(acc.prix_vente_minimum) : '',
       paye_caisse:           false,
+      couleur:               acc.couleur ?? '',
     })
+    setColorLink(undefined); setColorSearch('')
     setFormOpen(true)
   }
 
@@ -198,6 +226,8 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
         prix_vente_recommande: form.prix_vente_recommande ? parseFloat(form.prix_vente_recommande) : null,
         prix_vente_minimum:    form.prix_vente_minimum    ? parseFloat(form.prix_vente_minimum)    : null,
         ...(canFinancials && form.paye_caisse ? { paye_caisse: true } : {}),
+        couleur:               form.couleur.trim() || null,
+        ...(colorLink !== undefined && { colorWith: colorLink }),
       }
 
       const res = await fetch('/api/accessories', {
@@ -254,7 +284,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
   /** What the label generator prints for an accessory. */
   const accLabel = (acc: Accessory): LabelProduct => ({
     id:       acc.acc_id,
-    name:     `${acc.marque ? acc.marque + ' ' : ''}${acc.nom}`,
+    name:     `${acc.marque ? acc.marque + ' ' : ''}${acc.nom}${acc.couleur ? ' · ' + acc.couleur : ''}`,
     category: getCatLabel(acc.categorie),
     barcode:  acc.barcode ?? undefined,
   })
@@ -400,7 +430,10 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
                       <Package className="w-4 h-4" style={{ color: primary }} />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-ez-text truncate">{acc.nom}</p>
+                      <p className="text-sm font-medium text-ez-text truncate">
+                        {acc.nom}
+                        {acc.couleur && <span className="ms-1.5 text-xs font-semibold px-1.5 py-0.5 rounded-full bg-ez-muted text-ez-subtle">{acc.couleur}</span>}
+                      </p>
                       <p className="text-xs text-ez-faint">
                         {acc.marque ? `${acc.marque} · ` : ''}{acc.barcode || acc.acc_id}
                       </p>
@@ -455,6 +488,11 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
                       <Tag className="w-4 h-4" />
                     </RowAction>
                     {canEdit && (
+                      <RowAction title={isAr ? 'لون آخر' : 'Ajouter une autre couleur (même modèle)'} onClick={() => openAddColour(acc)}>
+                        <Palette className="w-4 h-4" />
+                      </RowAction>
+                    )}
+                    {canEdit && (
                       <RowAction title={isAr ? 'تعديل' : 'Modifier'} onClick={() => openEdit(acc)}>
                         <Edit2 className="w-4 h-4" />
                       </RowAction>
@@ -471,7 +509,10 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
                 <div key={`mob-${acc.acc_id}`}
                   className={`lg:hidden px-4 py-3.5 space-y-2 transition-all ${acc.is_low_stock ? 'bg-red-50/40' : 'hover:bg-ez-bg'}`}>
                   <div className="flex items-start justify-between gap-3">
-                    <p className="text-[15px] font-semibold text-ez-text leading-snug line-clamp-2 min-w-0">{acc.nom}</p>
+                    <p className="text-[15px] font-semibold text-ez-text leading-snug line-clamp-2 min-w-0">
+                      {acc.nom}
+                      {acc.couleur && <span className="ms-1.5 text-xs font-semibold px-1.5 py-0.5 rounded-full bg-ez-muted text-ez-subtle align-middle">{acc.couleur}</span>}
+                    </p>
                     {acc.prix_vente_recommande != null && (
                       <p className="text-base font-bold flex-shrink-0 tabular-nums" style={{ color: primary }}>
                         {formatMAD(acc.prix_vente_recommande)}
@@ -506,6 +547,11 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
                       <RowAction title={isAr ? 'طباعة الملصق' : 'Générer étiquette'} onClick={() => setLabelProduct(accLabel(acc))}>
                         <Tag className="w-4 h-4" />
                       </RowAction>
+                      {canEdit && (
+                        <RowAction title={isAr ? 'لون آخر' : 'Ajouter une autre couleur (même modèle)'} onClick={() => openAddColour(acc)}>
+                          <Palette className="w-4 h-4" />
+                        </RowAction>
+                      )}
                       {canEdit && (
                         <RowAction title={isAr ? 'تعديل' : 'Modifier'} onClick={() => openEdit(acc)}>
                           <Edit2 className="w-4 h-4" />
@@ -562,7 +608,9 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
         onClose={() => { setFormOpen(false); setEditAcc(null) }}
         title={editAcc
           ? (isAr ? 'تعديل الإكسسوار' : 'Modifier l\'accessoire')
-          : (isAr ? 'إضافة إكسسوار' : 'Ajouter un accessoire')}
+          : colorLink
+            ? (isAr ? 'لون جديد لنفس الطراز' : 'Nouvelle couleur du même modèle')
+            : (isAr ? 'إضافة إكسسوار' : 'Ajouter un accessoire')}
         size="md"
       >
         <div className="space-y-4" dir={isAr ? 'rtl' : 'ltr'}>
@@ -609,6 +657,61 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
               placeholder="iPhone 14/15, Galaxy S23..."
               value={form.compatible_with} onChange={e => setF('compatible_with', e.target.value)} />
           </Field>
+
+          {/* Colour + the same model's other colours (each colour = its own stock) */}
+          <div className="rounded-xl border border-ez-border p-3 space-y-2">
+            <Field label={isAr ? 'اللون' : 'Couleur'} hint={isAr ? '' : 'Une couleur = un article avec son propre stock. Ex. : Rouge, Noir mat.'}>
+              <input type="text" className={inputClass} maxLength={30} placeholder={isAr ? 'أحمر' : 'Rouge'}
+                value={form.couleur} onChange={e => setF('couleur', e.target.value)} />
+            </Field>
+            {(() => {
+              const all      = accQ.data ?? []
+              const group    = colorLink === null ? null
+                : colorLink ? (all.find(a => a.acc_id === colorLink)?.groupe_couleur ?? colorLink)
+                : editAcc?.groupe_couleur ?? null
+              const siblings = group ? all.filter(a => (a.groupe_couleur === group || a.acc_id === group) && a.acc_id !== editAcc?.acc_id) : []
+              const q        = colorSearch.trim().toLowerCase()
+              const choices  = q.length < 2 ? [] : all
+                .filter(a => a.acc_id !== editAcc?.acc_id && !siblings.some(x => x.acc_id === a.acc_id)
+                  && `${a.nom} ${a.marque ?? ''} ${a.couleur ?? ''}`.toLowerCase().includes(q))
+                .slice(0, 6)
+              return (
+                <div className="space-y-1.5">
+                  <p className="text-xs font-bold text-ez-subtle uppercase tracking-widest">{isAr ? 'نفس الطراز بألوان أخرى' : 'Même modèle, autres couleurs'}</p>
+                  {siblings.length > 0 ? (
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {siblings.map(a => (
+                        <span key={a.acc_id} title={a.nom} className="px-2.5 py-1 rounded-full text-xs border border-ez-border">
+                          {a.couleur || (isAr ? 'لون؟' : 'couleur ?')} · {a.quantite}
+                        </span>
+                      ))}
+                      {editAcc?.groupe_couleur && colorLink === undefined && (
+                        <button type="button" onClick={() => setColorLink(null)} className="text-xs text-red-500 underline ms-1">
+                          {isAr ? 'إزالة من الطراز' : 'Retirer de ce modèle'}
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-ez-faint">{colorLink === null ? (isAr ? 'سيُزال من الطراز عند الحفظ' : 'Sera retiré du modèle à l’enregistrement.') : (isAr ? 'غير مرتبط بألوان أخرى' : 'Pas lié à d’autres couleurs.')}</p>
+                  )}
+                  {siblings.some(a => !a.couleur) && <p className="text-xs text-amber-700">{isAr ? 'أعط لوناً لكل منتج' : 'Donnez une couleur à chaque article du modèle.'}</p>}
+                  <input type="text" className={inputClass} value={colorSearch} onChange={e => setColorSearch(e.target.value)}
+                    placeholder={isAr ? 'ابحث عن نفس الطراز بلون آخر…' : 'Lier au même modèle dans une autre couleur : chercher…'} />
+                  {choices.length > 0 && (
+                    <div className="border border-ez-border rounded-lg divide-y divide-ez-border">
+                      {choices.map(a => (
+                        <button key={a.acc_id} type="button" onClick={() => { setColorLink(a.acc_id); setColorSearch('') }}
+                          className="w-full flex items-center gap-2 p-2 text-sm text-start hover:bg-ez-muted">
+                          <span className="flex-1 truncate">{a.nom}{a.couleur ? ` · ${a.couleur}` : ''}</span>
+                          <span className="text-xs font-bold" style={{ color: primary }}>{isAr ? 'ربط' : 'Lier'}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
             <Field label={isAr ? 'الكمية الحالية' : 'Quantité actuelle'} required>

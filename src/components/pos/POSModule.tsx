@@ -239,7 +239,8 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
       ...a,
       _type:        'accessory' as const,
       _id:          a.acc_id as string,
-      _displayName: [a.nom, a.marque ? `· ${a.marque}` : ''].filter(Boolean).join(' '),
+      // the colour too (each colour is its own item, 2026-10-29): sell the right one
+      _displayName: [a.nom, a.couleur ? `· ${a.couleur}` : '', a.marque ? `· ${a.marque}` : ''].filter(Boolean).join(' '),
     }) as unknown as DeviceResult)
     const laptops: DeviceResult[] = (lapQ.data ?? []).map(l => ({
       ...l,

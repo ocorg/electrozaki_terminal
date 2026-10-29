@@ -33,6 +33,8 @@ export const ACCESSORY_SAFE_SELECT = {
   marque:                true,
   prix_vente_recommande: true,
   quantite:              true,
+  couleur:               true,
+  groupe_couleur:        true, // an acc_id: only ever sent through refOf()
 } as const
 
 export const FORBIDDEN_FIELDS = [
@@ -65,6 +67,8 @@ export interface ErpAccessory {
   marque: string | null
   prix_vente_recommande: Num
   quantite: number
+  couleur: string | null
+  groupe_couleur: string | null
 }
 
 export type Grade = 'NEUF' | 'TRES_BON' | 'BON' | 'PIECES_REMPLACEES'
@@ -366,6 +370,9 @@ export interface AccessoryListing {
   categoryCode: string
   price: number | null
   stock: number
+  /** the colours of one model (Stock → Accessoires): colour buttons on the site */
+  colorName: string | null
+  colorGroup: string | null
 }
 
 export function buildAccessoryListings(accessories: ErpAccessory[]): AccessoryListing[] {
@@ -379,6 +386,9 @@ export function buildAccessoryListings(accessories: ErpAccessory[]): AccessoryLi
       categoryCode: a.categorie,
       price:        price !== null && Number.isFinite(price) && price > 0 ? price : null,
       stock:        Math.max(0, a.quantite),
+      colorName:    clean(a.couleur) || null,
+      // an opaque reference, never the acc_id itself
+      colorGroup:   a.groupe_couleur ? refOf('col', a.groupe_couleur) : null,
     }
   })
 }

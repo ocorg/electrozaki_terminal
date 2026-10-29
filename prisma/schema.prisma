@@ -318,6 +318,10 @@ model accessories {
   fournisseur_id                      String?
   location                            location_type  @default(magasin_principal)
   image_url                           String?
+  /// colour of this item (owner, 2026-10-29): each colour is its own accessory, own stock
+  couleur                             String?
+  /// same model in other colours: the acc_id of the group's first accessory
+  groupe_couleur                      String?
   created_at                          DateTime       @default(now()) @db.Timestamptz(6)
   created_by                          String?        @db.Uuid
   updated_at                          DateTime       @default(now()) @db.Timestamptz(6)
@@ -332,6 +336,7 @@ model accessories {
 
   @@index([quantite, seuil_alerte], map: "idx_accessories_low_stock")
   @@index([store_id], map: "idx_accessories_store")
+  @@index([groupe_couleur], map: "idx_accessories_groupe_couleur")
 }
 
 model activity_log {

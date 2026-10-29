@@ -214,7 +214,7 @@ function ProductModal({ product, categories, accessories, onClose }: {
         metaDescription: form.metaDescription, published: form.published,
       }
       if (nameEditable) { body.name = form.name; body.brand = form.brand }
-      if (!product.isPhone) body.colorName = form.colorName
+      if (!product.isPhone && product.source !== 'ERP') body.colorName = form.colorName
       await apiWrite(`/api/site/catalog/${product.id}`, { method: 'PATCH', body })
       showSuccess(L('Enregistré', 'تم الحفظ'))
       onClose()
@@ -347,6 +347,34 @@ function ProductModal({ product, categories, accessories, onClose }: {
 /** Colours of one accessory model (owner, 2026-10-29): each colour is its own
  *  product with its own stock; linked ones show colour buttons on the site. */
 function ColorGroupEditor({ product, accessories, colorName, onColorName }: {
+  product: Product; accessories: Product[]; colorName: string; onColorName: (v: string) => void
+}) {
+  const { L } = useSiteLang()
+  // From the ERP: colour and model come from Stock → Accessoires (shown only)
+  if (product.source === 'ERP') {
+    const others = product.colorGroup ? accessories.filter(a => a.colorGroup === product.colorGroup && a.id !== product.id) : []
+    return (
+      <div className="rounded-xl border border-ez-border p-4 space-y-2">
+        <p className="text-sm font-semibold">{L('Couleur', 'اللون')} : {product.colorName ?? <span className="text-ez-subtle font-normal">{L('aucune', 'لا يوجد')}</span>}</p>
+        {others.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            <span className="text-xs text-ez-subtle self-center">{L('Autres couleurs :', 'ألوان أخرى:')}</span>
+            {others.map(a => (
+              <span key={a.id} title={a.name} className={`px-2.5 py-1 rounded-full text-xs border ${a.published ? 'border-ez-border' : 'border-dashed border-ez-border text-ez-subtle'}`}>
+                {a.colorName || '?'}{!a.published && ` · ${L('masqué', 'مخفي')}`}
+              </span>
+            ))}
+          </div>
+        )}
+        <p className="text-xs text-ez-faint">{L('La couleur et les autres couleurs du modèle se règlent dans Stock → Accessoires (synchronisé).', 'يضبط اللون في المخزون ← الإكسسوارات.')}</p>
+      </div>
+    )
+  }
+  return <ColorGroupManual product={product} accessories={accessories} colorName={colorName} onColorName={onColorName} />
+}
+
+/** A hand-made (non-ERP) product: colour set here. */
+function ColorGroupManual({ product, accessories, colorName, onColorName }: {
   product: Product; accessories: Product[]; colorName: string; onColorName: (v: string) => void
 }) {
   const { L } = useSiteLang()
