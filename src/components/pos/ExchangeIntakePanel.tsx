@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import { t } from '@/lib/i18n/t'
+import { modelNameProblem, colourLooksEnglish } from '@/lib/phoneNaming'
 
 export interface ExchangePanelState {
   txn_id:                  string
@@ -54,6 +55,10 @@ export default function ExchangeIntakePanel({ exchangePanel, storeId, isAr, onSu
       showError(isAr ? 'الموديل والرقم التسلسلي مطلوبان' : 'Modèle et IMEI requis')
       return
     }
+    // Same naming rules as the phone form (owner, 2026-10-29)
+    const problem = modelNameProblem(form.marque as string, form.modele as string)
+    if (problem) { showError(problem); return }
+    if (colourLooksEnglish(form.couleur as string)) { showError('Couleur : tapez-la en français (ex. Noir, Bleu Ciel, Argent)'); return }
     setLoading(true)
     try {
       const res = await fetch('/api/phones', {
@@ -110,6 +115,9 @@ export default function ExchangeIntakePanel({ exchangePanel, storeId, isAr, onSu
           <label className="text-xs text-amber-700 font-medium">{t(isAr, 'common.model')} *</label>
           <input className={INPUT}
             value={form.modele as string} onChange={e => set('modele', e.target.value)} />
+          {modelNameProblem(form.marque as string, form.modele as string) && (
+            <p className="text-[11px] font-medium text-amber-700 mt-0.5">{modelNameProblem(form.marque as string, form.modele as string)}</p>
+          )}
         </div>
         <div>
           <label className="text-xs text-amber-700 font-medium">IMEI *</label>

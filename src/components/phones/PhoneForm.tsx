@@ -12,6 +12,7 @@ import type { Phone, DeviceCondition, DeviceSource, LocationType } from '@/types
 import ScanButton from '@/components/scanner/ScanButton'
 import ComboBox from '@/components/phones/ComboBox'
 import { usePhoneCatalog } from '@/lib/hooks/usePhoneCatalog'
+import { modelNameProblem, colourLooksEnglish } from '@/lib/phoneNaming'
 
 interface PhoneFormProps {
   open:     boolean
@@ -74,6 +75,9 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
   const [newCompCondition, setNewCompCondition] = useState<'original' | 'standard'>('original')
 
   // ── Derived state ────────────────────────────────────────
+  // Naming rules (lib/phoneNaming), only on a model / colour typed or changed here
+  const modelProblem  = form.model !== phone?.model ? modelNameProblem(form.marque, form.model) : null
+  const colourEnglish = form.couleur !== phone?.couleur && colourLooksEnglish(form.couleur)
   const isApple = form.marque === 'Apple'
   const isNeuf  = form.condition === 'neuf'
 
@@ -129,6 +133,10 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
     if (!isEdit && payeCaisse && !(Number(form.prix_achat) > 0)) {
       showError('Payé de la caisse : tapez le prix d’achat'); return
     }
+    // Naming rules (owner, 2026-10-29): checked on a model / colour typed or
+    // changed here, so an older record is never blocked by a name nobody touched
+    if (modelProblem) { showError(modelProblem); return }
+    if (colourEnglish) { showError('Couleur : tapez-la en français (ex. Noir, Bleu Ciel, Argent)'); return }
     setLoading(true)
     try {
       // If the model+couleur combo doesn't exist in catalog, auto-add it
@@ -275,6 +283,7 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
               placeholder={!form.marque ? 'Choisissez d\'abord la marque' : 'Choisir ou saisir...'}
               disabled={!form.marque}
             />
+            {modelProblem && <p className="text-xs font-medium text-amber-700 mt-1">{modelProblem}</p>}
           </Field>
         </div>
 
@@ -308,6 +317,7 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
               placeholder={!form.model ? 'Choisissez d\'abord le modèle' : 'Choisir ou saisir...'}
               disabled={!form.model}
             />
+            {colourEnglish && <p className="text-xs font-medium text-amber-700 mt-1">En français, ex. « Noir », « Bleu Ciel », « Argent »</p>}
           </Field>
         </div>
 

@@ -38,12 +38,10 @@ export function usePhoneCatalog(): CatalogState {
       const key = serieKey(brand, serie)
       entries = entries.filter(e => serieKey(brand, e.serie) === key)
     }
-    // Short names ("iPhone 13 Pro" → "13 Pro" in the "iPhone 13" series),
-    // deduplicated AFTER shortening so old and new spellings merge
-    return uniqueLabels(entries.map(e => {
-      const label = stripBrandPrefix(e.serie, e.model)
-      return { key: norm(label), label }
-    }))
+    // Full names, as stored and shown on the website ("iPhone 13 Pro",
+    // "Xiaomi Redmi 17") — owner, 2026-10-29. Short names ("13 Pro") are no
+    // longer offered, so they stop coming back into the stock.
+    return uniqueLabels(entries.map(e => ({ key: norm(e.model), label: e.model })))
   }, [catalog])
 
   const couleursFor = useCallback((model: string) => {

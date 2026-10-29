@@ -109,10 +109,26 @@ export function slugify(text: string): string {
  */
 export function phoneName(p: Pick<ErpPhone, 'marque' | 'serie' | 'model'>): string {
   const model  = clean(p.model)
-  const family = clean(p.serie).split(' ')[0] ?? ''
+  const serie  = clean(p.serie)
+  const family = serie.split(' ')[0] ?? ''
   const lower  = norm(model)
   if (lower.startsWith(norm(p.marque)) || !family || lower.startsWith(norm(family))) return model
+  // A model that is only a suffix ("(2nd generation)", "13 Pro", "9AT") takes the
+  // whole series in front, without repeating what they share (owner, 2026-10-29:
+  // the site showed "iPhone (2nd generation)" for an iPhone SE).
+  if (/^[(\d]/.test(model) && serie) return joinOverlap(serie, model)
   return `${family} ${model}`
+}
+
+/** "iPhone 13" + "13 Pro" → "iPhone 13 Pro"; "Redmi 9" + "9AT" → "Redmi 9AT"; "iPhone SE" + "(…)" → "iPhone SE (…)". */
+function joinOverlap(serie: string, model: string): string {
+  for (let k = Math.min(serie.length, model.length); k > 0; k--) {
+    const tail = serie.slice(-k)
+    if (norm(tail) === norm(model.slice(0, k)) && (k === serie.length || serie[serie.length - k - 1] === ' ')) {
+      return `${serie.slice(0, serie.length - k)}${model}`.trim()
+    }
+  }
+  return `${serie} ${model}`
 }
 
 export function modelKey(p: Pick<ErpPhone, 'marque' | 'serie' | 'model'>): string {
