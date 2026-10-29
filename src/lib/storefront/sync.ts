@@ -34,6 +34,9 @@ export interface SyncResult {
 }
 
 const PHONE_CATEGORY_CODE = 'telephone'
+/** Tablets sold from the phones stock (Galaxy Tab, iPad…): their own "Tablettes" aisle. */
+const TABLET_CATEGORY_CODE = 'tablette'
+const TABLET_RE = /\b(tab|ipad|pad)\b/i
 /** ERP accessory categories never published on the website. */
 const NOT_ON_WEBSITE = ['service']
 const LOCK_KEY = 7_345_001 // pg advisory lock: one sync at a time
@@ -84,7 +87,7 @@ async function reconcile(tx: Tx, phones: PhoneListing[], accessories: AccessoryL
   // ── Read everything once ───────────────────────────────────────────────
   const products = await tx.product.findMany({
     select: {
-      id: true, slug: true, source: true, erpKey: true, modelKey: true, isPhone: true, name: true, condition: true,
+      id: true, slug: true, source: true, erpKey: true, modelKey: true, isPhone: true, name: true, condition: true, categoryId: true,
       brand: true, recommendedSalePrice: true, compareAtPrice: true, availability: true, tags: true, specs: true,
       colorName: true, colorGroup: true,
     },
@@ -134,8 +137,9 @@ async function reconcile(tx: Tx, phones: PhoneListing[], accessories: AccessoryL
       await tx.category.update({ where: { id: phonesCat.id }, data: { erpCode: code } })
       id = phonesCat.id
     } else {
-      const parent = code === PHONE_CATEGORY_CODE ? null : categories.find(c => c.slug === 'accessoires')?.id ?? null
-      const name   = code === PHONE_CATEGORY_CODE ? 'Téléphones' : labels.get(code) ?? code
+      const topLevel = code === PHONE_CATEGORY_CODE || code === TABLET_CATEGORY_CODE
+      const parent = topLevel ? null : categories.find(c => c.slug === 'accessoires')?.id ?? null
+      const name   = code === PHONE_CATEGORY_CODE ? 'Téléphones' : code === TABLET_CATEGORY_CODE ? 'Tablettes' : labels.get(code) ?? code
       let slug     = slugify(name)
       if (categories.some(c => c.slug === slug)) slug = `${slug}-${code.replace(/_/g, '-')}`
       const created = await tx.category.create({ data: { name, slug, erpCode: code, parentId: parent, sortOrder: 100 } })
@@ -169,6 +173,8 @@ async function reconcile(tx: Tx, phones: PhoneListing[], accessories: AccessoryL
   const wanted = new Set<string>()
   for (const l of phones) {
     wanted.add(l.erpKey)
+    const isTablet = TABLET_RE.test(l.name)
+    const category = isTablet ? await ensureCategory(TABLET_CATEGORY_CODE) : phoneCategory
     const core = {
       name: l.name, modelKey: l.modelKey, brand: l.brand, condition: l.grade, recommendedSalePrice: l.price,
       compareAtPrice: l.compareAtPrice, availability: 'IN_STOCK' as const, tags: l.tags, specs: l.specs,
@@ -179,7 +185,7 @@ async function reconcile(tx: Tx, phones: PhoneListing[], accessories: AccessoryL
       productId = newId()
       productCreates.push({
         id: productId, ...core, isPhone: true, slug: claimSlug(l.slugBase),
-        categoryId: phoneCategory, source: 'ERP', erpKey: l.erpKey, published: true,
+        categoryId: category, source: 'ERP', erpKey: l.erpKey, published: true,
       })
       stats.created++
       // A new storage/grade of a known model inherits its accessories and gifts.
@@ -192,8 +198,12 @@ async function reconcile(tx: Tx, phones: PhoneListing[], accessories: AccessoryL
       product = undefined
     } else {
       productId = product.id
-      if (differs({ ...product, recommendedSalePrice: num(product.recommendedSalePrice), compareAtPrice: num(product.compareAtPrice) }, core)) {
-        productUpdates.push({ id: productId, data: core }) // category only set on creation: staff may move it
+      // A tablet still in "Téléphones" (listed before the Tablettes aisle
+      // existed) moves once; otherwise the category is only set on creation:
+      // staff may move it.
+      const moveToTablets = isTablet && product.categoryId === phoneCategory
+      if (moveToTablets || differs({ ...product, recommendedSalePrice: num(product.recommendedSalePrice), compareAtPrice: num(product.compareAtPrice) }, core)) {
+        productUpdates.push({ id: productId, data: moveToTablets ? { ...core, categoryId: category } : core })
         stats.updated++
       }
     }
