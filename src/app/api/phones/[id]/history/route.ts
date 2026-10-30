@@ -72,6 +72,9 @@ async function lifeEvents(id: string) {
         if (l.notes?.startsWith('Reprise rattachée')) add({ at, kind: 'chain', title: l.notes, by: l.user_name })
       } else if (l.action_type === 'suppression') {
         add({ at, kind: 'delete', title: 'Supprimé', by: l.user_name })
+      } else if (l.notes?.startsWith('Échange SAV')) {
+        // the sale moved from one phone to the other (lib/phoneSwap, 2026-10-30)
+        add({ at, kind: 'return', title: l.notes.split(' : ')[0], detail: l.notes.slice(l.notes.indexOf(' : ') + 3), by: l.user_name })
       } else {
         // only real changes ("" and empty count as the same)
         const changes = Object.keys(after)

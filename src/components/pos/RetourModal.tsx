@@ -10,6 +10,7 @@ import { Loader2, RotateCcw, Search, X, ShieldCheck, ShieldOff, Wallet, Ticket }
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import { codeLabel, type Code } from '@/lib/codes'
 import { useWorkDay } from '@/lib/stores/workDay'
+import PhoneSwapPanel from '@/components/pos/PhoneSwapPanel'
 
 // Retour de vente (POS). A return never cancels the sale: it is a refund
 // dated today (cash, transfer or store credit), for all or part of a sale,
@@ -29,6 +30,8 @@ interface Sale {
   returned_qty:    number
   refunded:        number
   unpaid:          boolean
+  swappable:       boolean   // a phone still out with this sale: can be exchanged (SAV)
+  file:            { credit_id: string; open: boolean; discharged: boolean } | null
 }
 
 interface Avoir {
@@ -87,6 +90,8 @@ export default function RetourModal({ open, onClose, storeId, primary, onRetourD
   const [payout,     setPayout]     = useState<Avoir | null>(null)
   const [payoutAmt,  setPayoutAmt]  = useState(0)
   const [payoutMode, setPayoutMode] = useState<'especes' | 'virement'>('especes')
+  // Refund, or exchange the phone (SAV, owner 2026-10-30)
+  const [action,     setAction]     = useState<'retour' | 'echange'>('retour')
 
   // Reset when closed
   useEffect(() => {
@@ -121,6 +126,7 @@ export default function RetourModal({ open, onClose, storeId, primary, onRetourD
 
   function select(s: Sale) {
     setSelected(s)
+    setAction(s.unpaid ? 'echange' : 'retour')
     setQty(1)
     setMontant(Math.min(leftMoney(s), Math.round(unitPrice(s))))
     setMode('especes')
@@ -245,7 +251,7 @@ export default function RetourModal({ open, onClose, storeId, primary, onRetourD
               const w    = warranty(s)
               const on   = selected?.txn_id === s.txn_id
               return (
-                <button key={s.txn_id} type="button" disabled={done || s.unpaid} onClick={() => select(s)}
+                <button key={s.txn_id} type="button" disabled={done || (s.unpaid && !s.swappable)} onClick={() => select(s)}
                   className="w-full flex items-start gap-4 px-4 py-3 text-left transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{ backgroundColor: on ? `${primary}12` : 'white', borderLeft: on ? `3px solid ${primary}` : '3px solid transparent' }}>
                   <div className="flex-1 min-w-0">
@@ -259,7 +265,9 @@ export default function RetourModal({ open, onClose, storeId, primary, onRetourD
                     </p>
                     {done && <p className="text-xs font-bold text-red-500">{L('Déjà entièrement retourné', 'تم إرجاعه بالكامل')}</p>}
                     {!done && s.returned_qty > 0 && <p className="text-xs font-bold text-amber-600">{L(`${s.returned_qty} déjà retourné(s)`, `${s.returned_qty} تم إرجاعها`)}</p>}
-                    {s.unpaid && <p className="text-xs font-bold text-amber-600">{L('Crédit / avance non soldée : retour avec le propriétaire', 'بيع بالدين: الإرجاع مع المالك')}</p>}
+                    {s.unpaid && <p className="text-xs font-bold text-amber-600">{s.swappable
+                      ? L('Crédit / avance non soldée : échange du téléphone possible, remboursement avec le propriétaire', 'بيع بالدين: يمكن استبدال الهاتف')
+                      : L('Crédit / avance non soldée : retour avec le propriétaire', 'بيع بالدين: الإرجاع مع المالك')}</p>}
                   </div>
                   <p className="text-sm font-bold flex-shrink-0" style={{ color: primary }}>{formatMAD(s.prix_vente)}</p>
                 </button>
@@ -312,6 +320,25 @@ export default function RetourModal({ open, onClose, storeId, primary, onRetourD
               })()}
             </div>
 
+            {selected.swappable && (
+              <div className="flex gap-1 p-1 bg-white border border-ez-border rounded-xl w-fit">
+                {([['retour', L('Rembourser', 'استرداد')], ['echange', L('Échanger le téléphone', 'استبدال الهاتف')]] as const).map(([key, label]) => (
+                  <button key={key} type="button" disabled={key === 'retour' && selected.unpaid} onClick={() => setAction(key)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed ${action === key ? 'text-white' : 'text-ez-subtle'}`}
+                    style={action === key ? { backgroundColor: primary } : undefined}>{label}</button>
+                ))}
+              </div>
+            )}
+
+            {action === 'echange' && selected.swappable ? (
+              isManager ? (
+                <PhoneSwapPanel sale={selected} storeId={storeId} primary={primary}
+                  onCancel={() => setSelected(null)}
+                  onDone={() => { onRetourDone(); onClose() }} />
+              ) : (
+                <p className="text-xs text-amber-700">{L("Seul un gérant ou le propriétaire peut valider un échange.", 'فقط المدير يمكنه تأكيد الاستبدال')}</p>
+              )
+            ) : (<>
             <div className="grid grid-cols-2 gap-3">
               {leftQty(selected) > 1 ? (
                 <div>
@@ -380,6 +407,7 @@ export default function RetourModal({ open, onClose, storeId, primary, onRetourD
                 placeholder={L('Ex : défaut écran, ne correspond pas, changement de modèle…', 'مثال: عيب في الشاشة...')}
                 className="w-full border border-ez-border rounded-xl px-3 py-2 text-sm bg-white focus:outline-none" />
             </div>
+            </>)}
           </div>
         )}
 
@@ -413,7 +441,7 @@ export default function RetourModal({ open, onClose, storeId, primary, onRetourD
             <p className="text-xs text-amber-700 mr-auto">{L('Seul un gérant ou le propriétaire peut valider un retour.', 'فقط المدير يمكنه تأكيد الإرجاع')}</p>
           )}
           <Btn variant="secondary" onClick={onClose}>{t(isAr, 'common.cancel')}</Btn>
-          {tab === 'sale' && (
+          {tab === 'sale' && action === 'retour' && (
             <button onClick={confirmReturn}
               disabled={!selected || !isManager || reason.trim().length < 3 || submitting}
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-red-500 text-white text-sm font-bold transition-all hover:bg-red-600 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed">

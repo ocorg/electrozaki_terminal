@@ -13,6 +13,7 @@ import PhoneHistoryPanel from '@/components/phones/PhoneHistoryPanel'
 import { VoidModal, PastSaleModal, leaveVoid } from '@/components/phones/PhoneExitModals'
 import { confirmDialog } from '@/components/shared/ConfirmHost'
 import PhoneCreditPanel from '@/components/phones/PhoneCreditPanel'
+import PhoneSwapPanel, { type SwapSale } from '@/components/pos/PhoneSwapPanel'
 import type { Phone } from '@/types/database'
 import BulkPriceModal from '@/components/phones/BulkPriceModal'
 import { phoneMatchesProspect } from '@/lib/prospects'
@@ -24,7 +25,7 @@ import LabelGenerator, { type LabelProduct } from '@/components/print/LabelGener
 import {
   Plus, Search, Filter, RefreshCw,
   Smartphone, Edit2, MapPin, Shield,
-  ChevronDown, X, Eye, EyeOff, Trash2, Loader2, BookOpen, Check, CreditCard, Tag, BatteryMedium, AlertTriangle, Wrench, History, CalendarClock, Undo2, Ban
+  ChevronDown, X, Eye, EyeOff, Trash2, Loader2, BookOpen, Check, CreditCard, Tag, BatteryMedium, AlertTriangle, Wrench, History, CalendarClock, Undo2, Ban, ArrowLeftRight
 } from 'lucide-react'
 import { codeLabel } from '@/lib/codes'
 import type { DeviceStatus } from '@/types/database'
@@ -70,6 +71,19 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
       ? [{ label: 'Vente passée (vraie date)', icon: <CalendarClock className="w-4 h-4" />, onClick: () => setPastSalePhone(phone) },
          { label: 'Envoyer dans The Void', icon: <Ban className="w-4 h-4" />, onClick: () => setVoidPhone(phone) }]
       : []
+  // A sold / reserved phone the client brings back for another one (SAV, 2026-10-30)
+  const swapAction = (phone: Phone) => ['vendu', 'reserve'].includes(phone.status)
+    ? [{ label: 'Échanger (SAV)', icon: <ArrowLeftRight className="w-4 h-4" />, onClick: () => void openSwap(phone) }]
+    : []
+  const [swapSale, setSwapSale] = useState<SwapSale | null>(null)
+  async function openSwap(phone: Phone) {
+    try {
+      const r = await fetch(`/api/echanges?phone_id=${encodeURIComponent(phone.phone_id)}`)
+      const j = await r.json()
+      if (!r.ok) throw new Error(j.error)
+      setSwapSale(j.data)
+    } catch (err) { showError((err as Error).message) }
+  }
 
   const [formOpen, setFormOpen]       = useState(false)
   const [editPhone, setEditPhone]     = useState<Phone | null>(null)
@@ -719,6 +733,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                         <RowMenu items={[
                           { label: isAr ? 'السجل' : 'Historique', icon: <History className="w-4 h-4" />, onClick: () => setHistoryPhone(phone) },
                           ...exitActions(phone),
+                          ...swapAction(phone),
                           { label: isAr ? 'حذف' : 'Supprimer', icon: <Trash2 className="w-4 h-4" />, danger: true, onClick: () => setConfirmDelete(phone.phone_id) },
                         ]} />
                       )}
@@ -887,6 +902,12 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
       />
 
       {voidPhone && <VoidModal phone={voidPhone} onClose={() => setVoidPhone(null)} onDone={() => void fetchPhones()} />}
+      {swapSale && (
+        <Modal open onClose={() => setSwapSale(null)} title={`Échanger le téléphone — ${swapSale.txn_id}`} size="lg">
+          <PhoneSwapPanel sale={swapSale} storeId={storeId} primary={portal.primaryColor}
+            onCancel={() => setSwapSale(null)} onDone={() => { setSwapSale(null); void fetchPhones() }} />
+        </Modal>
+      )}
       {pastSalePhone && <PastSaleModal phone={pastSalePhone} onClose={() => setPastSalePhone(null)} onDone={() => void fetchPhones()} />}
 
       {/* Full history of a phone (managers) */}

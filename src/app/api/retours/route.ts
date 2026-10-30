@@ -67,7 +67,8 @@ export async function GET(request: NextRequest) {
       take: browsing ? 1000 : 200,
     })
 
-    const [labels, returned, settled] = await Promise.all([
+    const phoneIds = rows.filter(r => r.device_type === 'telephone').map(r => r.device_id)
+    const [labels, returned, settled, phoneStatus, files] = await Promise.all([
       deviceLabels(rows),
       prisma.retours.groupBy({
         by:    ['txn_id'],
@@ -75,8 +76,16 @@ export async function GET(request: NextRequest) {
         _sum:  { qty: true, montant: true },
       }),
       settledSales(prisma, rows.map(r => r.txn_id)),
+      // SAV exchange (owner, 2026-10-30): the phone must still be out with this sale
+      prisma.phones.findMany({ where: { phone_id: { in: phoneIds } }, select: { phone_id: true, status: true } }),
+      prisma.phone_credit_sales.findMany({
+        where:  { txn_id: { in: rows.map(r => r.txn_id) }, is_deleted: false, statut: { not: 'annule' } },
+        select: { txn_id: true, credit_id: true, statut: true, discharged_at: true },
+      }),
     ])
     const back = new Map(returned.map(r => [r.txn_id, r._sum]))
+    const status = new Map(phoneStatus.map(p => [p.phone_id, p.status]))
+    const fileOf = new Map(files.map(f => [f.txn_id!, f]))
 
     return json({
       data: rows.map(r => ({
@@ -93,6 +102,9 @@ export async function GET(request: NextRequest) {
         returned_qty:    back.get(r.txn_id)?.qty ?? 0,
         refunded:        num(back.get(r.txn_id)?.montant),
         unpaid:          unpaidSale(r, settled.has(r.txn_id)),
+        // the phone can be exchanged (sold or reserved, not returned)
+        swappable:       r.device_type === 'telephone' && ['vendu', 'reserve'].includes(status.get(r.device_id) ?? '') && (back.get(r.txn_id)?.qty ?? 0) < r.qty,
+        file:            fileOf.has(r.txn_id) ? { credit_id: fileOf.get(r.txn_id)!.credit_id, open: fileOf.get(r.txn_id)!.statut === 'en_cours', discharged: !!fileOf.get(r.txn_id)!.discharged_at } : null,
       })),
     })
   } catch (err) {

@@ -45,6 +45,8 @@ const WRITE_ENTITIES: [prefix: string, entities: Entity[]][] = [
   ['/api/transactions',       ['transactions']],
   // A return refunds a sale and puts the item back (stock, repair, damaged).
   ['/api/retours',            ['transactions', 'phones', 'laptops', 'accessories']],
+  // SAV exchange: the sale, both phones, a payment-plan file, the caisse (difference)
+  ['/api/echanges',           ['transactions', 'phones', 'credits']],
   ['/api/phones/catalog',     ['catalog']],
   ['/api/phones',             ['phones']],
   ['/api/laptops',            ['laptops']],
