@@ -92,6 +92,8 @@ interface PaymentForm {
 interface PhoneCreditPanelProps {
   phoneId:        string
   phoneStatus:    string
+  /** ordered for the client, not arrived yet (lib/phoneOrder) */
+  enCommande?:    boolean
   storeId:        string
   userId:         string
   userName:       string
@@ -102,6 +104,7 @@ interface PhoneCreditPanelProps {
 export default function PhoneCreditPanel({
   phoneId,
   phoneStatus,
+  enCommande = false,
   storeId,
   onCreditCreated,
 }: PhoneCreditPanelProps) {
@@ -358,7 +361,8 @@ export default function PhoneCreditPanel({
   const isFullyPaid  = hasCredit && Number(credit.montant_restant) <= 0.01
   // Discharged earlier but the phone is still not "vendu": the button fixes it
   const needsSoldFix = hasCredit && !!credit.discharged_at && credit.statut !== 'annule' && !!credit.phone_status && credit.phone_status !== 'vendu'
-  const canDischarge = (isFullyPaid && !credit.discharged_at && credit.statut !== 'annule') || needsSoldFix
+  // an ordered phone is discharged once it has arrived (its IMEI typed)
+  const canDischarge = !enCommande && ((isFullyPaid && !credit.discharged_at && credit.statut !== 'annule') || needsSoldFix)
 
   // A credit sale starts at the POS ("Plusieurs fois", managers) since
   // 2026-10-04 — here the file is only consulted and followed.
@@ -413,7 +417,8 @@ export default function PhoneCreditPanel({
             <span className={credit.phone_remis ? 'text-amber-400/70' : 'text-blue-400/70'}>
               {credit.phone_remis ? 'Téléphone remis' : 'Téléphone réservé'}
             </span>
-            {isManager && editable && !credit.discharged_at && !remiseOpen && (
+            {enCommande && <span className="text-gold font-bold">· En commande (pas encore arrivé)</span>}
+            {isManager && editable && !credit.discharged_at && !remiseOpen && !enCommande && (
               <button type="button" onClick={() => setRemiseOpen(true)}
                 className="underline text-white/60 hover:text-white">
                 {credit.phone_remis ? 'Garder au magasin' : 'Le client prend le téléphone'}
@@ -573,7 +578,7 @@ export default function PhoneCreditPanel({
                   ? 'bg-gold hover:bg-[#b8932e] text-black cursor-pointer'
                   : 'bg-white/5 text-white/25 cursor-not-allowed'
               }`}
-              title={!canDischarge ? `Reste ${credit.montant_restant.toLocaleString('fr-MA')} DH à payer` : 'Décharger et générer la FAC'}
+              title={enCommande ? 'Téléphone commandé : saisissez son IMEI à son arrivée' : !canDischarge ? `Reste ${credit.montant_restant.toLocaleString('fr-MA')} DH à payer` : 'Décharger et générer la FAC'}
             >
               {submitting
                 ? <Loader2 className="w-4 h-4 animate-spin" />
@@ -585,7 +590,7 @@ export default function PhoneCreditPanel({
         )}
 
         {/* Owner: the client gives up */}
-        {isOwner && moneyOpen && (
+        {(isOwner || (isManager && enCommande)) && moneyOpen && (
           <button onClick={() => setCancelOpen(true)}
             className="w-full flex items-center justify-center gap-1.5 py-2 border-t border-white/10 text-xs text-red-400/70 hover:text-red-400 hover:bg-red-500/5 transition-all">
             <Ban className="w-3.5 h-3.5" />Annuler le dossier
@@ -595,7 +600,7 @@ export default function PhoneCreditPanel({
 
       {editOpen && <EditCreditModal credit={credit} onClose={() => setEditOpen(false)} onSaved={refresh} />}
       {fixPayment && <PaymentFixModal credit={credit} payment={fixPayment} onClose={() => setFixPayment(null)} onSaved={refresh} />}
-      {cancelOpen && <CancelCreditModal credit={credit} onClose={() => setCancelOpen(false)} onDone={refresh} />}
+      {cancelOpen && <CancelCreditModal credit={credit} enCommande={enCommande} onClose={() => setCancelOpen(false)} onDone={refresh} />}
       {scheduleOpen && <ScheduleModal credit={credit} echeances={echeances} onClose={() => setScheduleOpen(false)} onSaved={refresh} />}
 
       {/* Modal — Ajouter versement */}

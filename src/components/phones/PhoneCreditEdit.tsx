@@ -228,21 +228,42 @@ export function PaymentFixModal({ credit, payment, onClose, onSaved }: { credit:
 }
 
 // ── Cancel the whole credit (owner) ────────────────────────────────
-export function CancelCreditModal({ credit, onClose, onDone }: { credit: EditableCredit; onClose: () => void; onDone: () => void }) {
+export function CancelCreditModal({ credit, enCommande = false, onClose, onDone }: { credit: EditableCredit; enCommande?: boolean; onClose: () => void; onDone: () => void }) {
   const [motif, setMotif] = useState('')
   const [busy, setBusy]   = useState(false)
+  // An ordered phone (lib/phoneOrder, 2026-10-30): what happens to the advance, chosen each time
+  const [argent, setArgent] = useState<'' | 'rembourser_especes' | 'rembourser_virement' | 'avoir' | 'garder'>('')
   async function cancel() {
+    if (enCommande && Number(credit.montant_paye) > 0 && !argent) { toast.error('Choisissez ce que devient l’acompte'); return }
     setBusy(true)
     try {
-      const data = await send(`/api/phone-credits/${credit.credit_id}/cancel`, 'POST', { motif })
-      toast.success(data.phone_back_on_sale ? 'Dossier annulé — téléphone remis en vente' : 'Dossier annulé')
+      const data = await send(`/api/phone-credits/${credit.credit_id}/cancel`, 'POST', { motif, argent: enCommande ? (argent || 'garder') : undefined })
+      toast.success(enCommande ? 'Commande annulée' : data.phone_back_on_sale ? 'Dossier annulé — téléphone remis en vente' : 'Dossier annulé')
       onDone(); onClose()
     } catch (e) { toast.error((e as Error).message) } finally { setBusy(false) }
   }
   return (
     <Shell title="Annuler le dossier" subtitle={`${credit.credit_id} · ${credit.client_name}`} onClose={onClose}>
+      {enCommande ? (
+        <>
+          <p className="text-sm text-white/70">Commande annulée : le téléphone commandé est retiré (il n’était pas arrivé) et l’échéancier supprimé.</p>
+          {Number(credit.montant_paye) > 0 && (
+            <div className="space-y-2">
+              <Label>Le client a versé {dh(credit.montant_paye)} : que devient cet argent ?</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {([['rembourser_especes', 'Rembourser en espèces'], ['rembourser_virement', 'Rembourser par virement'], ['avoir', 'En avoir (bon d’achat)'], ['garder', 'Gardé par le magasin']] as const).map(([v, l]) => (
+                  <button key={v} type="button" onClick={() => setArgent(v)}
+                    className={`py-2 rounded-xl text-xs font-bold border ${argent === v ? 'bg-gold text-white border-gold' : 'border-white/15 text-white/70'}`}>{l}</button>
+                ))}
+              </div>
+              <p className="text-xs text-white/50">Un remboursement sort de la caisse d’aujourd’hui ; un avoir s’utilise au POS (Retours → Avoirs).</p>
+            </div>
+          )}
+        </>
+      ) : (
       <p className="text-sm text-white/70">Le client renonce : le téléphone redevient <b>disponible</b> et l'échéancier est supprimé.</p>
-      {Number(credit.montant_paye) > 0 && (
+      )}
+      {!enCommande && Number(credit.montant_paye) > 0 && (
         <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 px-4 py-3 text-sm text-amber-200">
           Le client a déjà versé <b>{dh(credit.montant_paye)}</b> : à lui rembourser ou à garder selon votre accord. Les versements restent enregistrés.
         </div>

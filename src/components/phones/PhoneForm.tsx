@@ -194,6 +194,12 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
           </div>
         )}
 
+        {phone?.en_commande && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            <b>Téléphone commandé pour un client.</b> À son arrivée : saisissez son <b>IMEI</b> (et prix d’achat, fournisseur, batterie) puis enregistrez — il est alors validé, en stock et réservé au client.
+          </div>
+        )}
+
         {/* Row 1 — Source + Condition (source and supplier are managers') */}
         <div className={`grid ${canSeeFinancials ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
           {canSeeFinancials && (

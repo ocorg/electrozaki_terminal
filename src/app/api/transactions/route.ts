@@ -90,6 +90,14 @@ async function POST_(request: NextRequest) {
       if (deviceType !== 'telephone') throw new HttpError(400, 'Un dossier se crée pour un téléphone')
       if (!body.client_id) throw new HttpError(400, 'Client obligatoire pour un paiement en plusieurs fois')
     }
+    // A phone ordered for a client (lib/phoneOrder): sold "Plusieurs fois",
+    // kept at the shop until it arrives
+    if (deviceType === 'telephone') {
+      const ordered = await prisma.phones.findUnique({ where: { phone_id: String(body.device_id) }, select: { en_commande: true } })
+      if (ordered?.en_commande && (!dossier || dossier.phone_remis !== false)) {
+        throw new HttpError(400, 'Téléphone commandé : vendez-le « Plusieurs fois » avec l’acompte, gardé au magasin (réservé)')
+      }
+    }
 
     // Warranty: device's own warranty_months, 6 by default
     let warrantyMonths = 6

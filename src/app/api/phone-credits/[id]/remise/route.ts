@@ -4,6 +4,7 @@ import { json, handleError, requireActiveUser, HttpError, MANAGERS } from '@/lib
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { withNotify } from '@/lib/realtime'
 import { requireMotif } from '@/lib/phoneCredits'
+import { assertArrived } from '@/lib/phoneOrder'
 
 // POST /api/phone-credits/[id]/remise { remis, motif } — while a payment plan
 // runs, the phone changes hands (owner, 2026-10-30):
@@ -27,6 +28,8 @@ async function POST_(req: NextRequest, { params }: { params: { id: string } }) {
       if (before.discharged_at) throw new HttpError(400, 'Dossier déjà déchargé : le téléphone est vendu et remis')
       if (before.phone_remis === remis) throw new HttpError(400, remis ? 'Le téléphone est déjà remis au client' : 'Le téléphone est déjà réservé au magasin')
 
+      // an ordered phone can't be handed over before it arrives
+      if (remis) await assertArrived(tx, before.phone_id)
       // The phone must be this file's, in the state that goes with it
       const phone = await tx.phones.findUnique({ where: { phone_id: before.phone_id }, select: { status: true } })
       const expected = remis ? 'reserve' : 'vendu'

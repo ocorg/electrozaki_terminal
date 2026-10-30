@@ -48,6 +48,7 @@ export async function readErpStock(): Promise<{ phones: ErpPhone[]; accessories:
     prisma.phones.findMany({
       where: {
         status:                'disponible',
+        en_commande:           false,   // ordered for a client, not arrived (lib/phoneOrder)
         is_deleted:            false,
         NOT:                   { is_damaged: true },
         prix_vente_recommande: { not: null },

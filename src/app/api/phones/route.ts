@@ -57,6 +57,8 @@ export async function GET(request: NextRequest) {
       is_deleted: false,
       ...(store_id       && { store_id }),
       ...(status         && { status }),
+      // a phone ordered for a client is no stock to sell (lib/phoneOrder)
+      ...(status === 'disponible' && { en_commande: false }),
       ...(marque         && { marque: { contains: marque, mode: 'insensitive' } }),
       ...(location       && { location }),
       ...(stockage       && { stockage }),
@@ -202,9 +204,18 @@ async function PATCH_(request: NextRequest) {
     // "Vendu", "Réservé" and "The Void" come from a real operation, never from a list
     if (manager && typeof input.status === 'string') await assertManualStatus(prisma, before, input.status)
     if (!manager && !Object.keys(input).length) throw new HttpError(403, 'Réservé aux gérants : prix, statut et promotions')
+    // An ordered phone arrives (lib/phoneOrder): its IMEI typed validates it —
+    // unless that IMEI is already a phone in the shop
+    let arrived = false
+    if (before.en_commande && typeof input.imei === 'string' && input.imei.trim()) {
+      input.imei = input.imei.trim()
+      const twin = (await sameImei(prisma, input.imei as string, phone_id)).find(p => inShop(p.status))
+      if (twin) throw new HttpError(409, `Cet IMEI est déjà au magasin (${twin.phone_id}, « ${codeLabel('device_status', twin.status, 'fr')} »)`)
+      arrived = true
+    }
     const data = await prisma.phones.update({
       where: { phone_id },
-      data:  { ...input, updated_by: user.id },
+      data:  { ...input, ...(arrived && { en_commande: false, date_entree: todayDate() }), updated_by: user.id },
       ...(!manager && { omit: STAFF_OMIT }),
     })
 

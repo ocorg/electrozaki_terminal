@@ -19,6 +19,7 @@ export function countByResult(items: { resultat: string }[]) {
 /** Phones the shop is expected to hold: everything that did not leave. */
 export const EXPECTED_PHONES = (storeId: string) => ({
   store_id: storeId, is_deleted: false, status: { notIn: ['vendu', 'void', 'en_livraison'] },
+  en_commande: false,   // ordered for a client, not arrived (lib/phoneOrder)
 } satisfies Prisma.phonesWhereInput)
 
 /**

@@ -67,6 +67,8 @@ export async function swapPhone(tx: Tx, input: SwapInput) {
   const newPhone = await tx.phones.findUnique({ where: { phone_id: input.newPhoneId } })
   if (!newPhone || newPhone.is_deleted) throw new HttpError(404, 'Nouveau téléphone introuvable')
   if (newPhone.status !== 'disponible') throw new HttpError(409, `Le nouveau téléphone n'est pas disponible (${newPhone.status})`)
+  if (newPhone.en_commande) throw new HttpError(409, 'Le nouveau téléphone est commandé, pas encore arrivé')
+  if (oldPhone.en_commande) throw new HttpError(409, 'Le téléphone de cette vente est commandé, pas encore arrivé : annulez ou attendez son arrivée')
   if (sale.store_id && newPhone.store_id && newPhone.store_id !== sale.store_id) throw new HttpError(400, 'Le nouveau téléphone est dans un autre magasin')
   const otherFile = await tx.phone_credit_sales.findFirst({ where: { phone_id: newPhone.phone_id, is_deleted: false, statut: 'en_cours' }, select: { credit_id: true } })
   if (otherFile) throw new HttpError(409, `Le nouveau téléphone a déjà un dossier (${otherFile.credit_id})`)

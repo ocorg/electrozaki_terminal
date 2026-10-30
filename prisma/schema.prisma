@@ -757,6 +757,8 @@ model phones {
   imei                           String?
   // the record of this phone's previous life in the shop (sold, then taken back)
   vie_precedente_id              String?
+  /// ordered for a client, not arrived yet (owner, 2026-10-30): no IMEI until it arrives
+  en_commande                    Boolean              @default(false)
   source                         device_source
   fournisseur_id                 String?
   txn_ref_id                     String?

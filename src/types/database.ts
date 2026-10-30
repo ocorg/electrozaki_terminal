@@ -53,6 +53,7 @@ export interface UserProfile {
 export interface Phone {
   phone_id:               string
   imei?:                  string | null
+  en_commande?:           boolean   // ordered for a client, not arrived yet (IMEI typed on arrival)
   source:                 DeviceSource
   fournisseur_id?:        string | null
   txn_ref_id?:            string | null

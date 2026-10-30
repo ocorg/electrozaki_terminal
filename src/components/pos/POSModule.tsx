@@ -14,6 +14,7 @@ import type { Phone, Laptop, PaymentMethod, OperationType } from '@/types/databa
 import ScanButton from '@/components/scanner/ScanButton'
 import ComboBox from '@/components/phones/ComboBox'
 import RetourModal, { type AppliedAvoir } from '@/components/pos/RetourModal'
+import OrderPhoneModal from '@/components/pos/OrderPhoneModal'
 import MoneyInModal         from '@/components/pos/MoneyInModal'
 import AttendanceWidget     from '@/components/attendance/AttendanceWidget'
 import QtyPickerModal       from '@/components/pos/QtyPickerModal'
@@ -144,6 +145,8 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
 
   const [submitting,  setSubmitting]  = useState(false)
   const [retourOpen,  setRetourOpen]  = useState(false)
+  // A phone ordered for a client who pays an advance (lib/phoneOrder, 2026-10-30)
+  const [orderOpen,   setOrderOpen]   = useState(false)
   // Trade-in of a phone the shop already sold: its description is filled in
   // from the old record (owner, 2026-10-08), to be corrected where it changed
   const [knownTradeIn, setKnownTradeIn] = useState<{ imei: string; in_shop: boolean; sold_on: string | null } | null>(null)
@@ -336,7 +339,24 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
   }
 
   function removeFromCart(id: string) {
+    discardOrders(cart.filter(c => c._id === id))
     setCart(prev => prev.filter(c => c._id !== id))
+  }
+
+  // An ordered phone taken out of the cart before its sale never existed: removed
+  function discardOrders(items: CartItem[]) {
+    for (const i of items) {
+      if ((i as Phone).en_commande) fetch(`/api/phones/commande?phone_id=${encodeURIComponent(i._id)}`, { method: 'DELETE' }).catch(() => {})
+    }
+  }
+
+  // The ordered phone goes into the cart, the sale set to "Plusieurs fois", kept at the shop
+  function addOrderedPhone(p: Phone) {
+    const price = Number(p.prix_vente_recommande) || 0
+    const label = [p.model, p.stockage, p.couleur].filter(Boolean).join(' ')
+    setCart(prev => [...prev, { ...p, _type: 'phone', _id: p.phone_id, _displayName: `${label} · en commande`, prix_vente_saisi: price, qty: 1 } as CartItem])
+    setSaleForm(prev => ({ ...prev, payment_method: 'credit', phone_remis: false, montant_especes: 0, montant_carte: 0 }))
+    showSuccess('Téléphone commandé ajouté : saisissez l’acompte du client (Plusieurs fois)')
   }
 
   // onChange — always update the raw string; only sync to cart when valid
@@ -502,6 +522,10 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
   async function handleSubmit() {
     if (livrer) return handleOrder()
     if (cart.length === 0) { showError(isAr ? 'السلة فارغة' : 'Panier vide'); return }
+    // An ordered phone: sold in several times with the advance, kept at the shop (lib/phoneOrder)
+    if (cart.some(c => c._type === 'phone' && (c as Phone).en_commande) && (saleForm.payment_method !== 'credit' || saleForm.phone_remis !== false)) {
+      showError('Téléphone commandé : choisissez « Plusieurs fois » et « On le garde (réservé) »'); return
+    }
     if (cart.some(c => (c as unknown as Record<string, unknown>).categorie === 'service' && !(Number(c.prix_vente_saisi) > 0))) {
       showError(isAr ? 'اكتب ثمن الخدمة في السلة' : 'Tapez le prix du service dans le panier'); return
     }
@@ -993,6 +1017,13 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                 style={{ backgroundColor: 'white', borderColor: '#FCA5A5', color: '#EF4444' }}>
                 {t(isAr, 'common.returnNoun')}
               </button>
+              {canCredit && (
+                <button onClick={() => setOrderOpen(true)} title="Le client paie un acompte pour un téléphone pas encore en stock"
+                  className="py-2.5 rounded-xl text-xs font-bold border transition-all"
+                  style={{ backgroundColor: 'white', borderColor: '#E8D494', color: '#9A7520' }}>
+                  {isAr ? 'طلبية' : 'Commande'}
+                </button>
+              )}
             </div>
           </div>
 
@@ -1420,7 +1451,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
 
           {/* Reset */}
           <button type="button"
-            onClick={resetAll}
+            onClick={() => { discardOrders(cart); resetAll() }}
             className="w-full py-2.5 rounded-2xl text-xs font-bold border border-ez-border text-ez-faint hover:border-red-300 hover:text-red-400 transition-all">
             {isAr ? '× مسح الكل' : '× Réinitialiser'}
           </button>
@@ -1464,6 +1495,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
       )}
 
       {/* Retour modal */}
+      <OrderPhoneModal open={orderOpen} onClose={() => setOrderOpen(false)} storeId={storeId} primary={primary} onCreated={addOrderedPhone} />
       <RetourModal open={retourOpen} onClose={() => setRetourOpen(false)} storeId={storeId} primary={primary}
         onRetourDone={() => { setCart([]); setSaleForm({ ...EMPTY_SALE }); setAvoir(null) }}
         onAvoir={a => setAvoir(a)} />

@@ -5,6 +5,7 @@ import { json, handleError, requireActiveUser, HttpError, MANAGERS } from '@/lib
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { withNotify } from '@/lib/realtime'
 import { attachTradeIn } from '@/lib/tradeinChain'
+import { assertArrived } from '@/lib/phoneOrder'
 
 // Trade-in state → condition of the phone entering stock
 const CONDITION_FOR_ETAT: Record<string, device_condition> = { bon: 'occasion', moyen: 'occasion', mauvais: 'defectueux' }
@@ -30,6 +31,8 @@ async function POST_(req: NextRequest, { params }: { params: { id: string } }) {
         throw new HttpError(400, `Décharge impossible — reste ${Number(credit.montant_restant).toFixed(2)} DH à payer`)
       }
       if (credit.statut === 'annule') throw new HttpError(400, 'Ce dossier est annulé')
+      // an ordered phone is discharged once it has arrived (IMEI typed)
+      await assertArrived(tx, credit.phone_id as string)
       if (credit.discharged_at) {
         // Already discharged but the phone isn't "vendu" (status changed by
         // hand, or discharged before that fix): just put it right

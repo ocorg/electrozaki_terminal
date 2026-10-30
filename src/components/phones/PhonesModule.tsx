@@ -676,6 +676,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                     {/* Status */}
                     <div className="min-w-0 overflow-hidden">
                       <StatusBadge domain="device_status" code={phone.status} lang={isAr ? 'ar' : 'fr'} />
+                      {phone.en_commande && <span className="ml-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200" title="Commandé pour un client : saisissez son IMEI à son arrivée">En commande · IMEI à saisir</span>}
                     </div>
 
                     {/* Prix de vente — visible à tous les rôles */}
@@ -768,6 +769,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
                     </div>
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <StatusBadge domain="device_status" code={phone.status} lang={isAr ? 'ar' : 'fr'} size="sm" />
+                      {phone.en_commande && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">En commande · IMEI à saisir</span>}
                       {phone.stockage && <span className={`${chip} bg-ez-muted text-ez-text font-mono`}>{phone.stockage}</span>}
                       {phone.marque.toLowerCase() !== 'apple' && phone.ram && (
                         <span className={`${chip} bg-ez-muted text-ez-subtle`}>{phone.ram}</span>
@@ -947,6 +949,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
               <PhoneCreditPanel
                 phoneId={creditPhone.phone_id}
                 phoneStatus={creditPhone.status as string}
+                enCommande={!!creditPhone.en_commande}
                 storeId={storeId}
                 userId={user?.id ?? ''}
                 userName={''}
