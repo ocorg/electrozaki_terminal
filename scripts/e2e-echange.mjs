@@ -142,6 +142,20 @@ try {
     && sale4.device_id === B4 && n(sale4.prix_vente) === 5600 && (await status(B4)).status === 'vendu' && (await status(A4)).status === 'en_reparation',
     { s: e4.status, e: e4.data?.error, f4, sale4 })
 
+  // ── 4b. The phone changes hands while the plan runs (2026-10-30) ──────
+  const keep = await manager(`/api/phone-credits/${file?.credit_id}/remise`, { method: 'POST', body: { remis: false, motif: 'client le laisse' } })
+  const kept = (await db.query(`select phone_remis from phone_credit_sales where credit_id = $1`, [file?.credit_id])).rows[0]
+  check('plan: "Garder au magasin" → the phone is Réservé, the file says not handed over', keep.status === 200 && (await status(B4)).status === 'reserve' && kept.phone_remis === false, { s: keep.status, e: keep.data?.error })
+  const twice = await manager(`/api/phone-credits/${file?.credit_id}/remise`, { method: 'POST', body: { remis: false, motif: 'encore' } })
+  check('asking the same state twice is refused (400)', twice.status === 400, twice.status)
+  const byStaffR = await staff(`/api/phone-credits/${file?.credit_id}/remise`, { method: 'POST', body: { remis: true, motif: 'employé' } })
+  check('an employee cannot hand over a plan phone (403)', byStaffR.status === 403, byStaffR.status)
+  const take = await manager(`/api/phone-credits/${file?.credit_id}/remise`, { method: 'POST', body: { remis: true, motif: 'le client vient le chercher' } })
+  const f4b = (await db.query(`select phone_remis, statut, montant_paye, discharged_at from phone_credit_sales where credit_id = $1`, [file?.credit_id])).rows[0]
+  check('plan: "Le client prend le téléphone" → Vendu, payments and status unchanged, not discharged', take.status === 200 && (await status(B4)).status === 'vendu' && f4b.phone_remis === true && f4b.statut === 'en_cours' && n(f4b.montant_paye) === 1000 && !f4b.discharged_at, { s: take.status, e: take.data?.error, f4b })
+  const dis = await manager(`/api/phone-credits/${file?.credit_id}/discharge`, { method: 'POST', body: {} })
+  check('discharge still refused while money is owed (400)', dis.status === 400, dis.status)
+
   // ── 5. Refusals ───────────────────────────────────────────────────────
   const A5 = await phone('A5', 2000), B5 = await phone('B5', 2000)
   const s5 = await sell({ device_id: A5, prix_vente: 2000, payment_method: 'especes' })

@@ -114,6 +114,10 @@ export default function PhoneCreditPanel({
   // and the schedule; only the owner cancels a credit
   const { user } = useUser()
   const isOwner = user?.role === 'proprietaire'
+  const isManager = user?.role === 'proprietaire' || user?.role === 'gerant'
+  // The phone changes hands while the plan runs (owner, 2026-10-30): reason asked inline
+  const [remiseOpen,  setRemiseOpen]  = useState(false)
+  const [remiseMotif, setRemiseMotif] = useState('')
   const [editOpen,     setEditOpen]     = useState(false)
   const [fixPayment,   setFixPayment]   = useState<CreditPayment | null>(null)
   const [cancelOpen,   setCancelOpen]   = useState(false)
@@ -290,6 +294,29 @@ export default function PhoneCreditPanel({
     }
   }
 
+  // ── Remis / gardé au magasin en cours de paiement ────────────────
+  async function handleRemise() {
+    if (!credit) return
+    if (remiseMotif.trim().length < 3) { toast.error('Indiquez le motif'); return }
+    setSubmitting(true)
+    try {
+      const res  = await fetch(`/api/phone-credits/${credit.credit_id}/remise`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ remis: !credit.phone_remis, motif: remiseMotif.trim() }),
+      })
+      const json = await res.json() as { error?: string }
+      if (!res.ok) throw new Error(json.error)
+      toast.success(credit.phone_remis ? 'Téléphone gardé au magasin (réservé)' : 'Téléphone remis au client (vendu)')
+      setRemiseOpen(false); setRemiseMotif('')
+      onCreditCreated()
+      await fetchCredit()
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Erreur')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   // ── Marquer reprise comme reçue (mid-crédit) ─────────────────────
   async function handleReceiveReprise() {
     if (!credit) return
@@ -386,7 +413,32 @@ export default function PhoneCreditPanel({
             <span className={credit.phone_remis ? 'text-amber-400/70' : 'text-blue-400/70'}>
               {credit.phone_remis ? 'Téléphone remis' : 'Téléphone réservé'}
             </span>
+            {isManager && editable && !credit.discharged_at && !remiseOpen && (
+              <button type="button" onClick={() => setRemiseOpen(true)}
+                className="underline text-white/60 hover:text-white">
+                {credit.phone_remis ? 'Garder au magasin' : 'Le client prend le téléphone'}
+              </button>
+            )}
           </div>
+          {remiseOpen && (
+            <div className="mt-2 p-2.5 rounded-lg border border-white/10 bg-white/[0.04] space-y-2">
+              <p className="text-xs text-white/70">
+                {credit.phone_remis
+                  ? 'Le téléphone revient au magasin : il repasse « Réservé ». Les versements continuent.'
+                  : 'Le client part avec le téléphone : il passe « Vendu ». Les versements continuent ; la décharge se fait une fois tout payé.'}
+              </p>
+              <input value={remiseMotif} onChange={e => setRemiseMotif(e.target.value)} autoFocus
+                placeholder="Motif (ex. le client vient le chercher)"
+                className="w-full rounded-lg bg-white/10 border border-white/10 px-2.5 py-1.5 text-sm text-white placeholder:text-white/30 focus:outline-none" />
+              <div className="flex justify-end gap-2">
+                <button type="button" onClick={() => { setRemiseOpen(false); setRemiseMotif('') }} className="px-3 py-1.5 rounded-lg text-xs text-white/60 hover:text-white">Annuler</button>
+                <button type="button" onClick={handleRemise} disabled={submitting || remiseMotif.trim().length < 3}
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold bg-gold text-white disabled:opacity-40">
+                  {credit.phone_remis ? 'Garder au magasin' : 'Remettre au client'}
+                </button>
+              </div>
+            </div>
+          )}
           {credit.notes && <p className="text-xs text-white/40 mt-1 italic">{credit.notes}</p>}
         </div>
 
