@@ -31,7 +31,7 @@ async function POST_(request: NextRequest, { params }: Ctx) {
     if (!optionId) throw new HttpError(400, 'Choix manquant')
     if (!(file instanceof Blob)) throw new HttpError(400, 'Aucun fichier')
     const row = await tick(params.id, optionId)
-    const url = await uploadSitePhoto(Buffer.from(await file.arrayBuffer()))
+    const url = await uploadSitePhoto(Buffer.from(await file.arrayBuffer()), 'extras')
     await site().productFacet.update({ where: { productId_optionId: { productId: params.id, optionId } }, data: { imageUrl: url } })
     if (row.imageUrl) await deleteSitePhoto(row.imageUrl).catch(() => {})
     await logSite(user, 'modification', `Photo « ${row.option.name} » du produit du site « ${row.product.name} »`, { record_id: params.id })

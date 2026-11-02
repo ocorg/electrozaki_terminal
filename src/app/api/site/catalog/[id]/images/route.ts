@@ -26,7 +26,7 @@ async function POST_(request: NextRequest, { params }: Ctx) {
 
     const file = (await request.formData()).get('file')
     if (!(file instanceof Blob)) throw new HttpError(400, 'Aucun fichier')
-    const url = await uploadSitePhoto(Buffer.from(await file.arrayBuffer()))
+    const url = await uploadSitePhoto(Buffer.from(await file.arrayBuffer()), 'accessoires')
     await site().productImage.create({ data: { productId: product.id, url, sortOrder: count, altText: product.name } })
 
     await logSite(user, 'creation', `Photo ajoutée au produit du site « ${product.name} »`, { record_id: product.id })

@@ -67,7 +67,7 @@ async function POST_(request: NextRequest) {
     if (!modelKey || !color || modelKey.length > 120 || color.length > 60) throw new HttpError(400, 'Modèle ou couleur invalide')
     if (!(file instanceof Blob)) throw new HttpError(400, 'Aucun fichier')
 
-    const url = await uploadSitePhoto(Buffer.from(await file.arrayBuffer()))
+    const url = await uploadSitePhoto(Buffer.from(await file.arrayBuffer()), 'telephones')
     const db  = site()
     const old = await db.modelPhoto.findUnique({ where: { modelKey_color: { modelKey, color } } })
     await db.modelPhoto.upsert({

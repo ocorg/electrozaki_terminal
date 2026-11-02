@@ -33,8 +33,14 @@ function detectImage(buf: Buffer): { type: string; ext: string } | null {
   return null
 }
 
-/** Stores a product photo in the public website bucket and returns its URL. */
-export async function uploadSitePhoto(buf: Buffer): Promise<string> {
+// One folder per kind of photo (owner, 2026-11-02), so the files can be told
+// apart in Cloudflare. Photos uploaded before stay in "products/".
+export const PHOTO_FOLDERS = ['telephones', 'accessoires', 'extras', 'bannieres'] as const
+export type PhotoFolder = (typeof PHOTO_FOLDERS)[number]
+const DELETABLE = ['products', ...PHOTO_FOLDERS]
+
+/** Stores a photo in the public website bucket, in its folder, and returns its URL. */
+export async function uploadSitePhoto(buf: Buffer, folder: PhotoFolder): Promise<string> {
   if (buf.length === 0) throw new HttpError(400, 'Fichier vide')
   if (buf.length > MAX_PHOTO_BYTES) throw new HttpError(400, 'Photo trop lourde (2 Mo maximum)')
   const kind = detectImage(buf)
@@ -44,7 +50,7 @@ export async function uploadSitePhoto(buf: Buffer): Promise<string> {
   const publicUrl = process.env.STOREFRONT_R2_PUBLIC_URL
   if (!bucket || !publicUrl) throw new HttpError(500, 'Stockage du site non configuré')
 
-  const key = `products/${Date.now()}-${crypto.randomUUID()}.${kind.ext}`
+  const key = `${folder}/${Date.now()}-${crypto.randomUUID()}.${kind.ext}`
   await client().send(new PutObjectCommand({
     Bucket:       bucket,
     Key:          key,
@@ -59,7 +65,7 @@ export async function uploadSitePhoto(buf: Buffer): Promise<string> {
 export async function deleteSitePhoto(url: string): Promise<void> {
   const publicUrl = process.env.STOREFRONT_R2_PUBLIC_URL?.replace(/\/$/, '')
   const bucket    = process.env.STOREFRONT_R2_BUCKET
-  if (!publicUrl || !bucket || !url.startsWith(`${publicUrl}/products/`)) return
+  if (!publicUrl || !bucket || !DELETABLE.some(f => url.startsWith(`${publicUrl}/${f}/`))) return
   try {
     await client().send(new DeleteObjectCommand({ Bucket: bucket, Key: url.slice(publicUrl.length + 1) }))
   } catch (err) {

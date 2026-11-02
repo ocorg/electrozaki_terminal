@@ -15,7 +15,7 @@ async function POST_(request: NextRequest, { params }: Ctx) {
     const file = (await request.formData()).get('file')
     if (!(file instanceof Blob)) throw new HttpError(400, 'Aucun fichier')
 
-    const url = await uploadSitePhoto(Buffer.from(await file.arrayBuffer()))
+    const url = await uploadSitePhoto(Buffer.from(await file.arrayBuffer()), 'bannieres')
     await site().landingPage.update({ where: { id: page.id }, data: { bannerUrl: url } })
     if (page.bannerUrl) await deleteSitePhoto(page.bannerUrl)
     await logSite(user, 'modification', `Bannière de la page promo « ${page.title} »`, { record_id: page.id })
