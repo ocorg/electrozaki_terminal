@@ -230,6 +230,10 @@ model ProductImage {
   // the colour this photo shows (owner, 2026-11-02): one record per family,
   // the customer picks the colour on the product page
   colorName String?
+  // design within the family ("Logo doré") and the phone shape the case is cut
+  // for: carre | pilule | plateau (lib/accessoryChoice) — owner, 2026-11-03
+  designName String?
+  phoneShape String?
 
   @@index([productId])
 }
@@ -515,6 +519,7 @@ model OrderRequestItem {
 
   // chosen on the product page (owner, 2026-11-02): an accessory family sold
   // in several colours and for several phone models
+  optionDesign String?
   optionColor String?
   optionModel String?
 

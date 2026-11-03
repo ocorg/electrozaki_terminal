@@ -268,6 +268,13 @@ export const CODES = {
     inventaire:             { fr: 'Inventaire',             ar: 'الجرد' },
     site_web:               { fr: 'Site web',               ar: 'الموقع الإلكتروني' },
   },
+  // The camera opening a case photo is cut for (website ProductImage.phoneShape,
+  // owner 2026-11-03): the site offers only the iPhones of that shape.
+  phone_shape: {
+    carre:   { fr: 'iPhone 11 → 15, 16 Pro / Pro Max', ar: 'iPhone 11 → 15، 16 Pro / Pro Max' },
+    pilule:  { fr: 'iPhone 16, 16 Plus, 17',           ar: 'iPhone 16، 16 Plus، 17' },
+    plateau: { fr: 'iPhone 17 Pro / Pro Max',          ar: 'iPhone 17 Pro / Pro Max' },
+  },
 } as const satisfies Record<string, Labels>
 
 export type CodeDomain = keyof typeof CODES
@@ -287,3 +294,7 @@ export function toCode(label: string): string {
 export function codeOptions<D extends CodeDomain>(domain: D, lang: Lang): { value: Code<D>; label: string }[] {
   return Object.entries(CODES[domain] as Labels).map(([value, l]) => ({ value: value as Code<D>, label: l[lang] }))
 }
+
+export type PhoneShape = Code<'phone_shape'>
+export const isPhoneShape = (v: string): v is PhoneShape => v in CODES.phone_shape
+export const PHONE_SHAPE_LABELS = Object.fromEntries(Object.entries(CODES.phone_shape).map(([k, l]) => [k, l.fr])) as Record<PhoneShape, string>
