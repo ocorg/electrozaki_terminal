@@ -15,7 +15,7 @@ export async function GET() {
           availability: true, condition: true, recommendedSalePrice: true, description: true,
           metaTitle: true, metaDescription: true, modelKey: true, categoryId: true, colorName: true, colorGroup: true,
           category: { select: { name: true } },
-          images:   { select: { url: true }, orderBy: { sortOrder: 'asc' } },
+          images:   { select: { url: true, colorName: true }, orderBy: { sortOrder: 'asc' } },
           internal: { select: { stockQuantity: true } },
           variants: { select: { stockQuantity: true } },
           facets:   { select: { optionId: true, imageUrl: true } },
@@ -31,6 +31,7 @@ export async function GET() {
       data: products.map(({ internal, variants, images, facets, _count, ...p }) => ({
         ...p,
         images:    images.map(i => i.url),
+        imageColors: images.map(i => i.colorName ?? ''),
         stock:     p.isPhone ? variants.reduce((n, v) => n + v.stockQuantity, 0) : internal?.stockQuantity ?? null,
         giftCount: _count.compatibleAccessories,
         facetIds:  facets.map(f => f.optionId),

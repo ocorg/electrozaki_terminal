@@ -14,7 +14,7 @@ interface Product {
   published: boolean; availability: string; condition: string; recommendedSalePrice: number
   description: string | null; metaTitle: string | null; metaDescription: string | null
   modelKey: string | null; categoryId: string; category: { name: string }
-  images: string[]; stock: number | null; giftCount: number; facetIds: string[]
+  images: string[]; imageColors?: string[]; stock: number | null; giftCount: number; facetIds: string[]
   colorName: string | null; colorGroup: string | null; facetImages: Record<string, string>
 }
 interface Category {
@@ -24,7 +24,7 @@ interface Category {
 interface Photo { modelKey: string; model: string; brand: string; color: string; units: number; unpriced: number; photoId: string | null; url: string | null }
 
 type Tab = 'products' | 'photos' | 'categories' | 'fiches'
-const MAX_PHOTOS = 8   // same limit as /api/site/catalog/[id]/images
+const MAX_PHOTOS = 24  // same limit as /api/site/catalog/[id]/images
 type Kind = 'phones' | 'accessories' | 'hidden'
 
 export default function SiteCatalogModule() {
@@ -247,6 +247,14 @@ function ProductModal({ product, categories, accessories, onClose }: {
     }
   }
 
+  // The colour each photo shows (owner, 2026-11-02): the site's colour buttons.
+  async function savePhotoColour(url: string, value: string, before: string) {
+    if (value.trim() === before) return
+    try {
+      await apiWrite(`/api/site/catalog/${product.id}/images`, { method: 'PATCH', body: { url, colorName: value } })
+    } catch (e) { showError((e as Error).message) } finally { refreshPrefixes(['/api/site']) }
+  }
+
   async function removePhoto(url: string) {
     if (!(await confirmDialog(L('Retirer cette photo ?', 'حذف هذه الصورة؟')))) return
     try {
@@ -308,14 +316,31 @@ function ProductModal({ product, categories, accessories, onClose }: {
               {L('Photos', 'الصور')} <span className="normal-case tracking-normal">· {product.images.length}/{MAX_PHOTOS} · {L('la 1re est la photo principale', 'الأولى هي الصورة الرئيسية')}</span>
             </p>
             <div className={`flex flex-wrap gap-2 rounded-xl p-2 -m-2 border-2 border-dashed transition-colors ${dragOver ? 'border-gold bg-gold/5' : 'border-transparent'}`}>
-              {product.images.map((url, i) => (
-                <div key={url} className="relative w-20 h-20 rounded-lg border border-ez-border overflow-hidden bg-ez-bg">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={url} alt="" className="w-full h-full object-contain" />
-                  {i === 0 && <span className="absolute bottom-0 inset-x-0 text-[9px] font-bold text-center bg-gold text-white">{L('Principale', 'رئيسية')}</span>}
-                  <button onClick={() => removePhoto(url)} className="absolute top-1 end-1 p-1 rounded bg-white/90 text-red-600"><Trash2 className="w-3 h-3" /></button>
-                </div>
-              ))}
+              {product.images.map((url, i) => {
+                const colour = product.imageColors?.[i] ?? ''
+                return (
+                  <div key={url} className="w-20 space-y-1">
+                    <div className="relative w-20 h-20 rounded-lg border border-ez-border overflow-hidden bg-ez-bg">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={url} alt="" className="w-full h-full object-contain" />
+                      {i === 0 && <span className="absolute bottom-0 inset-x-0 text-[9px] font-bold text-center bg-gold text-white">{L('Principale', 'رئيسية')}</span>}
+                      <button onClick={() => removePhoto(url)} className="absolute top-1 end-1 p-1 rounded bg-white/90 text-red-600"><Trash2 className="w-3 h-3" /></button>
+                    </div>
+                    {!product.isPhone && (
+                      <input key={`${url}-${colour}`} defaultValue={colour} list={`photo-colours-${product.id}`} maxLength={30}
+                        placeholder={L('Couleur', 'اللون')} aria-label={L('Couleur de cette photo', 'لون هذه الصورة')}
+                        onBlur={e => savePhotoColour(url, e.target.value, colour)}
+                        onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
+                        className="w-20 rounded-md border border-ez-border px-1.5 py-1 text-[11px] focus:border-gold focus:outline-none" />
+                    )}
+                  </div>
+                )
+              })}
+              {!product.isPhone && (
+                <datalist id={`photo-colours-${product.id}`}>
+                  {[...new Set((product.imageColors ?? []).filter(Boolean))].map(c => <option key={c} value={c} />)}
+                </datalist>
+              )}
               {product.images.length < MAX_PHOTOS && (
                 <button onClick={() => fileRef.current?.click()} disabled={uploading}
                   className="w-20 h-20 rounded-lg border-2 border-dashed border-ez-border flex flex-col items-center justify-center gap-0.5 text-ez-subtle hover:border-gold">
@@ -327,6 +352,9 @@ function ProductModal({ product, categories, accessories, onClose }: {
                 onChange={e => { const files = Array.from(e.target.files ?? []); e.target.value = ''; if (files.length) addPhotos(files) }} />
             </div>
             <p className="text-xs text-ez-faint">{L('Choisissez plusieurs photos d’un coup, ou glissez-les ici. Sur le site, elles défilent en carrousel.', 'اختر عدة صور دفعة واحدة أو اسحبها هنا.')}</p>
+            {!product.isPhone && (
+              <p className="text-xs text-ez-faint">{L('Sous chaque photo, écrivez sa couleur (en français) : sur le site, le client choisit une de ces couleurs, et son modèle de téléphone parmi les « Modèle » cochés dans la fiche.', 'اكتب لون كل صورة بالفرنسية: في الموقع يختار الزبون أحد هذه الألوان وطراز هاتفه.')}</p>
+            )}
           </div>
         ) : (
           <>

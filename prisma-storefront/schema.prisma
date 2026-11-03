@@ -227,6 +227,9 @@ model ProductImage {
   url       String
   altText   String?
   sortOrder Int     @default(0)
+  // the colour this photo shows (owner, 2026-11-02): one record per family,
+  // the customer picks the colour on the product page
+  colorName String?
 
   @@index([productId])
 }
@@ -509,6 +512,11 @@ model OrderRequestItem {
   // same order, or part of a pack (bundleId).
   isGift   Boolean @default(false)
   bundleId String?
+
+  // chosen on the product page (owner, 2026-11-02): an accessory family sold
+  // in several colours and for several phone models
+  optionColor String?
+  optionModel String?
 
   // The customer's review of this line, once the order is delivered.
   review ProductReview?
