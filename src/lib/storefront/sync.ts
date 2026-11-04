@@ -30,6 +30,8 @@ export interface SyncResult {
   created: number
   updated: number
   removed: number
+  /** listings whose photos or units changed while the listing itself didn't */
+  details: number
   ms: number
 }
 
@@ -237,7 +239,10 @@ async function reconcile(tx: Tx, phones: PhoneListing[], accessories: AccessoryL
     ].filter((u, i, all): u is string => !!u && all.indexOf(u) === i)
     const current = product ? images.filter(i => i.productId === productId).map(i => i.url) : []
     if (!same(current, gallery)) {
-      if (product) imageResets.push(productId)
+      if (product) {
+        imageResets.push(productId)
+        stats.details++
+      }
       gallery.forEach((url, sortOrder) => imageCreates.push({ productId, url, sortOrder, altText: l.name }))
     }
   }
@@ -291,6 +296,8 @@ async function reconcile(tx: Tx, phones: PhoneListing[], accessories: AccessoryL
 
   // ── Write (bulk where possible) ────────────────────────────────────────
   if (productCreates.length)  await tx.product.createMany({ data: productCreates })
+  // Units added, changed or gone (price, photo, battery…) refresh the site too.
+  stats.details += variantCreates.length + variantUpdates.length + variantDeletes.length
   if (variantDeletes.length)  await tx.productVariant.deleteMany({ where: { id: { in: variantDeletes } } })
   for (const u of variantUpdates) await tx.productVariant.update({ where: { id: u.id }, data: u.data })
   if (variantCreates.length)  await tx.productVariant.createMany({ data: variantCreates as never })
@@ -306,7 +313,7 @@ async function reconcile(tx: Tx, phones: PhoneListing[], accessories: AccessoryL
 
 export async function syncStorefront(): Promise<SyncResult> {
   const started = Date.now()
-  const stats: SyncResult = { phones: 0, accessories: 0, created: 0, updated: 0, removed: 0, ms: 0 }
+  const stats: SyncResult = { phones: 0, accessories: 0, created: 0, updated: 0, removed: 0, details: 0, ms: 0 }
 
   const [{ phones: stock, accessories }, categories, held] = await Promise.all([
     readErpStock(),
@@ -338,7 +345,10 @@ export async function syncStorefront(): Promise<SyncResult> {
   }
 
   stats.ms = Date.now() - started
-  if (stats.created || stats.updated || stats.removed) await revalidateStorefront()
+  // A photo added in "Photo téléphone", or one unit's price, changes the
+  // pages too: the S22 5G page kept showing no photo for an hour after its
+  // photo was added (2026-11-04), its cached copy was never refreshed.
+  if (stats.created || stats.updated || stats.removed || stats.details) await revalidateStorefront()
   return stats
 }
 
