@@ -12,6 +12,7 @@ import ScanButton from '@/components/scanner/ScanButton'
 import LabelGenerator, { type LabelProduct } from '@/components/print/LabelGenerator'
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import type { AccCategory } from '@/types/database'
+import { ColourPicker, ColourDot, useCouleurs, useColourLabel } from '@/components/shared/ColourPicker'
 import {
   Package, Plus, Search, X, RefreshCw,
   Edit2, AlertTriangle, Minus, TrendingUp, Trash2, Tag, Palette
@@ -79,6 +80,8 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
   const { language } = useLanguageStore()
   const portal       = usePortal()
   const isAr         = language === 'ar'
+  const couleurs     = useCouleurs()
+  const colourLabel  = useColourLabel()
   const primary      = portal.primaryColor
   const canFinancials = user?.role === 'gerant' || user?.role === 'proprietaire'
   // Staff add accessories and change details and quantity — never prices
@@ -432,7 +435,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-ez-text truncate">
                         {acc.nom}
-                        {acc.couleur && <span className="ms-1.5 text-xs font-semibold px-1.5 py-0.5 rounded-full bg-ez-muted text-ez-subtle">{acc.couleur}</span>}
+                        {acc.couleur && <span className="ms-1.5 inline-flex items-center gap-1 text-xs font-semibold px-1.5 py-0.5 rounded-full bg-ez-muted text-ez-subtle"><ColourDot colour={couleurs.byName.get(acc.couleur)} size={10} />{colourLabel(couleurs.byName.get(acc.couleur), acc.couleur)}</span>}
                       </p>
                       <p className="text-xs text-ez-faint">
                         {acc.marque ? `${acc.marque} · ` : ''}{acc.barcode || acc.acc_id}
@@ -511,7 +514,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
                   <div className="flex items-start justify-between gap-3">
                     <p className="text-[15px] font-semibold text-ez-text leading-snug line-clamp-2 min-w-0">
                       {acc.nom}
-                      {acc.couleur && <span className="ms-1.5 text-xs font-semibold px-1.5 py-0.5 rounded-full bg-ez-muted text-ez-subtle align-middle">{acc.couleur}</span>}
+                      {acc.couleur && <span className="ms-1.5 inline-flex items-center gap-1 text-xs font-semibold px-1.5 py-0.5 rounded-full bg-ez-muted text-ez-subtle align-middle"><ColourDot colour={couleurs.byName.get(acc.couleur)} size={10} />{colourLabel(couleurs.byName.get(acc.couleur), acc.couleur)}</span>}
                     </p>
                     {acc.prix_vente_recommande != null && (
                       <p className="text-base font-bold flex-shrink-0 tabular-nums" style={{ color: primary }}>
@@ -660,9 +663,8 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
 
           {/* Colour + the same model's other colours (each colour = its own stock) */}
           <div className="rounded-xl border border-ez-border p-3 space-y-2">
-            <Field label={isAr ? 'اللون' : 'Couleur'} hint={isAr ? '' : 'Une couleur = un article avec son propre stock. Ex. : Rouge, Noir mat.'}>
-              <input type="text" className={inputClass} maxLength={30} placeholder={isAr ? 'أحمر' : 'Rouge'}
-                value={form.couleur} onChange={e => setF('couleur', e.target.value)} />
+            <Field label={isAr ? 'اللون' : 'Couleur'} hint={isAr ? '' : 'Une couleur = un article avec son propre stock. Choisie dans la liste des couleurs.'}>
+              <ColourPicker value={form.couleur || null} onChange={nom => setF('couleur', nom ?? '')} emptyLabel={isAr ? 'بدون لون' : 'Aucune couleur'} />
             </Field>
             {(() => {
               const all      = accQ.data ?? []

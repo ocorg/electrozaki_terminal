@@ -230,6 +230,7 @@ model ProductImage {
   // the colour this photo shows (owner, 2026-11-02): one record per family,
   // the customer picks the colour on the product page
   colorName String?
+  color     Color?  @relation(fields: [colorName], references: [name], onUpdate: Cascade, onDelete: Restrict)
   // design within the family ("Logo doré") and the phone shape the case is cut
   // for: carre | pilule | plateau (lib/accessoryChoice) — owner, 2026-11-03
   designName String?
@@ -830,4 +831,17 @@ model BotHit {
 
   @@id([day, category, name])
   @@index([day])
+}
+
+// The ERP's accessory colour list (owner, 2026-11-04), copied by the ERP: the
+// French name the photos use, its English / Arabic names and the dot colour.
+model Color {
+  name      String         @id
+  nameEn    String?
+  nameAr    String?
+  hex       String
+  // transparent | multicolore | ecossais: drawn as a pattern, not a flat dot
+  motif     String?
+  sortOrder Int            @default(0)
+  images    ProductImage[]
 }

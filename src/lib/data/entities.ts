@@ -5,7 +5,7 @@ export type Entity =
   | 'transactions' | 'phones' | 'laptops' | 'accessories' | 'caisse' | 'expenses'
   | 'repairs' | 'clients' | 'suppliers' | 'credits' | 'deliveries' | 'movements'
   | 'inventory' | 'prospects' | 'documents' | 'attendance' | 'categories'
-  | 'settings' | 'users' | 'stores' | 'catalog' | 'changelog' | 'site' | 'leads'
+  | 'settings' | 'users' | 'stores' | 'catalog' | 'changelog' | 'site' | 'leads' | 'couleurs'
 
 // Every write also adds an activity-log entry
 const LOG = '/api/log'
@@ -38,6 +38,8 @@ export const AFFECTS: Record<Entity, string[]> = {
   // Website (storefront) data managed from "Site web"; reserving a phone for
   // a web order also changes ERP stock.
   site:         ['/api/site', '/api/phones', '/api/dashboard', LOG],
+  // the accessory colour list (pickers, accessories, website photos)
+  couleurs:     ['/api/couleurs', '/api/accessories', '/api/site', LOG],
 }
 
 // API path of a write → the entities it changes
@@ -51,6 +53,7 @@ const WRITE_ENTITIES: [prefix: string, entities: Entity[]][] = [
   ['/api/phones',             ['phones']],
   ['/api/laptops',            ['laptops']],
   ['/api/accessories',        ['accessories']],
+  ['/api/couleurs',           ['couleurs']],
   ['/api/bzg/caisse',         ['caisse']],
   ['/api/caisse',             ['caisse']],
   ['/api/cash-drops',         ['caisse']],

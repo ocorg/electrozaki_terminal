@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { copyCouleursToSite } from '@/lib/couleurs'
 import { prisma } from '@/lib/db'
 import type { Prisma } from '@/generated/storefront/client'
 import { storefrontDb, storefrontConfigured } from './db'
@@ -314,6 +315,8 @@ async function reconcile(tx: Tx, phones: PhoneListing[], accessories: AccessoryL
 export async function syncStorefront(): Promise<SyncResult> {
   const started = Date.now()
   const stats: SyncResult = { phones: 0, accessories: 0, created: 0, updated: 0, removed: 0, details: 0, ms: 0 }
+  // the accessory colour list's copy (dots and names in each language) stays complete
+  await copyCouleursToSite().catch(e => console.error('sync: couleurs', e))
 
   const [{ phones: stock, accessories }, categories, held] = await Promise.all([
     readErpStock(),

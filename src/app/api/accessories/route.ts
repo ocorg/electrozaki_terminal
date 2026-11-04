@@ -5,7 +5,8 @@ import { json, handleError, requireUser, requireActiveUser, requireFields, pickI
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { withNotify } from '@/lib/realtime'
 import { drawerAmount, payFromDrawer } from '@/lib/stockPurchase'
-import { cleanColour, colourGroupWith } from '@/lib/accessoryColors'
+import { colourGroupWith } from '@/lib/accessoryColors'
+import { couleurFromList } from '@/lib/couleurs'
 
 // groupe_couleur is never typed: it is set through "colorWith" (lib/accessoryColors)
 const EDITABLE = columnsOf('accessories', ['acc_id', 'groupe_couleur'])
@@ -56,11 +57,13 @@ async function POST_(request: NextRequest) {
     const manager = isManager(user.role)
 
     const storeId = body.store_id ?? user.store_id ?? null
+    // the colour comes from the colour list (owner, 2026-11-04)
+    const couleur = 'couleur' in body ? await couleurFromList(body.couleur) : undefined
     const data = await prisma.$transaction(async (tx) => {
       const created = await tx.accessories.create({
         data: {
           ...(pickInput('accessories', body, manager ? EDITABLE : STAFF_EDITABLE) as Prisma.accessoriesUncheckedCreateInput),
-          ...('couleur' in body && { couleur: cleanColour(body.couleur) }),
+          ...(couleur !== undefined && { couleur }),
           // "+ Couleur": a new colour of an existing model joins its group
           ...(body.colorWith && { groupe_couleur: await colourGroupWith(tx, body.colorWith, null, storeId) }),
           store_id:   storeId,
@@ -103,7 +106,7 @@ async function PATCH_(request: NextRequest) {
     if (!manager && before.is_deleted) throw new HttpError(404, 'Accessoire introuvable')
     // Staff: prices and supplier are ignored
     const input = pickInput('accessories', body, manager ? EDITABLE : STAFF_EDITABLE)
-    if ('couleur' in body) input.couleur = cleanColour(body.couleur)
+    if ('couleur' in body) input.couleur = await couleurFromList(body.couleur)
     if (!manager && !Object.keys(input).length && !('colorWith' in body)) throw new HttpError(403, 'Réservé aux gérants : les prix')
     const data = await prisma.$transaction(async (tx) => {
       // Same model in another colour: join (or leave, with null) its group

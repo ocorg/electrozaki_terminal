@@ -8,6 +8,7 @@ import { uploadResized } from '@/lib/utils/image'
 import { useSiteLang, Tabs, Chip, AVAILABILITY, GRADE, mad, categoryOptions } from './common'
 import { confirmDialog } from '@/components/shared/ConfirmHost'
 import { codeOptions } from '@/lib/codes'
+import { ColourPicker, ColoursTab } from '@/components/shared/ColourPicker'
 import { FacetsTab, FacetChecklist } from './SiteFacets'
 
 interface Product {
@@ -24,7 +25,7 @@ interface Category {
 }
 interface Photo { modelKey: string; model: string; brand: string; color: string; units: number; unpriced: number; photoId: string | null; url: string | null }
 
-type Tab = 'products' | 'photos' | 'categories' | 'fiches'
+type Tab = 'products' | 'photos' | 'categories' | 'fiches' | 'couleurs'
 const MAX_PHOTOS = 30  // same limit as /api/site/catalog/[id]/images
 type Kind = 'phones' | 'accessories' | 'hidden'
 
@@ -64,6 +65,7 @@ export default function SiteCatalogModule() {
           { key: 'photos',     label: L('Photos téléphones', 'صور الهواتف') },
           { key: 'categories', label: L('Catégories', 'الفئات'), count: categories.length },
           { key: 'fiches',     label: L('Fiches & filtres', 'البطاقات والفلاتر') },
+          { key: 'couleurs',   label: L('Couleurs', 'الألوان') },
         ]} />
       </div>
       <div className="flex-1 overflow-y-auto px-4 sm:px-6 pb-6">
@@ -77,6 +79,8 @@ export default function SiteCatalogModule() {
           <PhotosTab isManager={isManager} />
         ) : tab === 'fiches' ? (
           <FacetsTab categories={categories} isManager={isManager} />
+        ) : tab === 'couleurs' ? (
+          <ColoursTab />
         ) : (
           <CategoriesTab categories={categories} isManager={isManager} />
         )}
@@ -337,10 +341,7 @@ function ProductModal({ product, categories, accessories, onClose }: {
                           placeholder={L('Design', 'التصميم')} aria-label={L('Design de cette photo', 'تصميم هذه الصورة')}
                           onBlur={e => savePhoto(url, 'designName', e.target.value, design)}
                           onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }} className={box} />
-                        <input key={`${url}-c-${colour}`} defaultValue={colour} list={`photo-colours-${product.id}`} maxLength={30}
-                          placeholder={L('Couleur', 'اللون')} aria-label={L('Couleur de cette photo', 'لون هذه الصورة')}
-                          onBlur={e => savePhoto(url, 'colorName', e.target.value, colour)}
-                          onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }} className={box} />
+                        <ColourPicker compact value={colour || null} onChange={nom => savePhoto(url, 'colorName', nom ?? '', colour)} />
                         <select value={shape} aria-label={L('Pour quels iPhone', 'لأي iPhone')}
                           onChange={e => savePhoto(url, 'phoneShape', e.target.value, shape)} className={box}>
                           <option value="">{L('Tous les iPhone', 'كل iPhone')}</option>
@@ -353,9 +354,6 @@ function ProductModal({ product, categories, accessories, onClose }: {
               })}
               {!product.isPhone && (
                 <>
-                  <datalist id={`photo-colours-${product.id}`}>
-                    {[...new Set((product.imageColors ?? []).filter(Boolean))].map(c => <option key={c} value={c} />)}
-                  </datalist>
                   <datalist id={`photo-designs-${product.id}`}>
                     {[...new Set((product.imageDesigns ?? []).filter(Boolean))].map(c => <option key={c} value={c} />)}
                   </datalist>
@@ -373,7 +371,7 @@ function ProductModal({ product, categories, accessories, onClose }: {
             </div>
             <p className="text-xs text-ez-faint">{L('Choisissez plusieurs photos d’un coup, ou glissez-les ici. Sur le site, elles défilent en carrousel.', 'اختر عدة صور دفعة واحدة أو اسحبها هنا.')}</p>
             {!product.isPhone && (
-              <p className="text-xs text-ez-faint">{L('Sous chaque photo : son design (si le produit en a plusieurs), sa couleur (en français) et les iPhone pour lesquels elle est faite. Sur le site, le client choisit le design, puis la couleur, puis son iPhone parmi les « Modèle » cochés dans la fiche qui existent dans cette couleur.', 'تحت كل صورة: التصميم واللون (بالفرنسية) وأجهزة iPhone المناسبة. في الموقع يختار الزبون التصميم ثم اللون ثم هاتفه.')}</p>
+              <p className="text-xs text-ez-faint">{L('Sous chaque photo : son design (si le produit en a plusieurs), sa couleur (dans la liste des couleurs) et les iPhone pour lesquels elle est faite. Sur le site, le client choisit le design, puis la couleur, puis son iPhone parmi les « Modèle » cochés dans la fiche qui existent dans cette couleur.', 'تحت كل صورة: التصميم واللون (بالفرنسية) وأجهزة iPhone المناسبة. في الموقع يختار الزبون التصميم ثم اللون ثم هاتفه.')}</p>
             )}
           </div>
         ) : (

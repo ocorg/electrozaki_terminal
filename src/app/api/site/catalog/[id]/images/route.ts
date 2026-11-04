@@ -4,7 +4,7 @@ import { withNotify } from '@/lib/realtime'
 import { site, logSite, refreshSite } from '@/lib/storefront/access'
 import { uploadSitePhoto, deleteSitePhoto } from '@/lib/storefront/storage'
 import { cleanColour } from '@/lib/accessoryColors'
-import { colourLooksEnglish } from '@/lib/phoneNaming'
+import { couleurFromList, copyCouleursToSite } from '@/lib/couleurs'
 import { isPhoneShape, PHONE_SHAPE_LABELS, type PhoneShape } from '@/lib/codes'
 
 type Ctx = { params: { id: string } }
@@ -61,9 +61,9 @@ async function PATCH_(request: NextRequest, { params }: Ctx) {
     }
     const data: { colorName?: string | null; designName?: string | null; phoneShape?: PhoneShape | null } = {}
     if ('colorName' in body) {
-      const colorName = cleanColour(body.colorName)
-      if (colorName && colourLooksEnglish(colorName)) throw new HttpError(400, `« ${colorName} » : écrivez la couleur en français (Noir, Rose, Bleu…)`)
-      data.colorName = tidy(colorName, others.map(o => o.colorName))
+      // from the colour list (owner, 2026-11-04); the website keeps a copy of it
+      data.colorName = await couleurFromList(body.colorName)
+      if (data.colorName) await copyCouleursToSite(data.colorName)
     }
     if ('designName' in body) {
       const typed = cleanColour(body.designName)   // same rules: text, 30 characters

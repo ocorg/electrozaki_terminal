@@ -333,6 +333,7 @@ model accessories {
   stores                              stores?        @relation(fields: [store_id], references: [store_id], onDelete: NoAction, onUpdate: NoAction)
   users_accessories_updated_byTousers user_profiles? @relation("accessories_updated_byTousers", fields: [updated_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
   category                            categories     @relation(fields: [categorie], references: [code], onDelete: Restrict, onUpdate: Cascade)
+  couleurs                            couleurs?      @relation(fields: [couleur], references: [nom], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([quantite, seuil_alerte], map: "idx_accessories_low_stock")
   @@index([store_id], map: "idx_accessories_store")
@@ -1341,4 +1342,20 @@ model web_order_followups {
   updated_by String?   @db.Uuid
 
   @@index([relance_le], map: "idx_web_order_followups_due")
+}
+
+/// The accessory colour list (owner, 2026-11-04): French name, website names and dot colour.
+/// Owner and managers add colours; accessories and website photos pick from it.
+model couleurs {
+  nom         String        @id
+  nom_en      String?
+  nom_ar      String?
+  hex         String
+  /// transparent | multicolore | ecossais: how the website draws the dot
+  motif       String?
+  ordre       Int           @default(0)
+  actif       Boolean       @default(true)
+  created_at  DateTime      @default(now()) @db.Timestamptz(6)
+  created_by  String?       @db.Uuid
+  accessories accessories[]
 }
