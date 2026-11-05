@@ -9,6 +9,7 @@ import { withNotify } from '@/lib/realtime'
 import { deviceLabels } from '@/lib/device-labels'
 import { alertLater, deviceName, money } from '@/lib/reports'
 import { workingDay } from '@/lib/catchUp'
+import { saleChoice } from '@/lib/saleColour'
 
 export async function GET(request: NextRequest) {
   try {
@@ -70,6 +71,8 @@ async function POST_(request: NextRequest) {
 
     const deviceType = body.device_type as 'telephone' | 'laptop' | 'accessoire'
     const soldQty    = Number(body.qty) || 1
+    // an accessory's colour / design, picked in the till's colour popup (lib/saleColour)
+    const choice     = await saleChoice(deviceType, body)
 
     // Selling on credit / with a down payment is a manager's decision
     // (owner, 2026-10-04) — employees sell paid in full only
@@ -168,6 +171,8 @@ async function POST_(request: NextRequest) {
           avoir_montant:         avoirMontant,
           avoir_retour_id:       avoirMontant > 0 ? avoirId : null,
           notes:                 str(body.notes),
+          couleur:               choice.couleur,
+          design:                choice.design,
           store_id:              body.store_id ?? user.store_id ?? null,
           created_by:            user.id,
           updated_by:            user.id,

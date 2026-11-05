@@ -21,7 +21,7 @@ export const AVANCE_MIN = 300
 const round2 = (n: number) => Math.round(n * 100) / 100
 const num = (v: unknown) => (v == null ? 0 : Number(v))
 
-export interface OrderItem { device_type: 'telephone' | 'accessoire'; device_id: string; qty: number; prix_vente: number; override_by?: string | null; override_reason?: string | null }
+export interface OrderItem { device_type: 'telephone' | 'accessoire'; device_id: string; qty: number; prix_vente: number; override_by?: string | null; override_reason?: string | null; couleur?: string | null; design?: string | null }
 
 /** What the delivery agent collects, and what the company pays the shop. */
 export function orderMoney(d: { montant_total: unknown; montant_avance: unknown; frais_livraison: unknown; frais_charge: string }) {
@@ -75,7 +75,7 @@ export async function releaseItems(tx: Tx, items: { device_type: string; device_
 /** Delivered: each item becomes a sale of that day, paid by bank. */
 export async function recordSales(tx: Tx, d: {
   delivery_id: string; store_id: string | null; client_id: string | null; transporteur: string | null
-  delivery_items: { item_id: string; device_type: string; device_id: string; qty: number; prix_vente: Prisma.Decimal | null; override_by: string | null; override_reason: string | null }[]
+  delivery_items: { item_id: string; device_type: string; device_id: string; qty: number; prix_vente: Prisma.Decimal | null; override_by: string | null; override_reason: string | null; couleur?: string | null; design?: string | null }[]
 }, day: Date, userId: string) {
   const txnIds: string[] = []
   for (const i of d.delivery_items) {
@@ -94,6 +94,8 @@ export async function recordSales(tx: Tx, d: {
         warranty_start: day, warranty_expiry: expiry,
         override_required: i.override_by ? true : null, override_by: i.override_by, override_reason: i.override_reason,
         notes: `Livraison ${d.delivery_id}${d.transporteur ? ` — ${d.transporteur}` : ''}`,
+        // the colour chosen at the till (lib/saleColour)
+        couleur: i.couleur ?? null, design: i.design ?? null,
         store_id: d.store_id, created_by: userId, updated_by: userId,
       },
       select: { txn_id: true },

@@ -9,13 +9,14 @@ import { usePortal } from '@/lib/context/portal'
 import { formatMAD } from '@/lib/utils'
 import { Modal, Field, inputClass, selectClass, Btn, PageHeader, EmptyState, SkeletonRow, StatusBadge, RowAction, RowMenu, Select } from '@/components/shared'
 import ScanButton from '@/components/scanner/ScanButton'
+import PhoneHistoryPanel from '@/components/phones/PhoneHistoryPanel'
 import LabelGenerator, { type LabelProduct } from '@/components/print/LabelGenerator'
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import type { AccCategory } from '@/types/database'
 import { ColourPicker, ColourDot, useCouleurs, useColourLabel } from '@/components/shared/ColourPicker'
 import {
   Package, Plus, Search, X, RefreshCw,
-  Edit2, AlertTriangle, Minus, TrendingUp, Trash2, Tag, Palette
+  Edit2, AlertTriangle, Minus, TrendingUp, Trash2, Tag, Palette, History
 } from 'lucide-react'
 
 
@@ -81,6 +82,8 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
   const portal       = usePortal()
   const isAr         = language === 'ar'
   const couleurs     = useCouleurs()
+  // an accessory's history (owner, 2026-11-06), as for phones
+  const [historyAcc, setHistoryAcc] = useState<{ acc_id: string; nom: string; couleur?: string | null } | null>(null)
   const colourLabel  = useColourLabel()
   const primary      = portal.primaryColor
   const canFinancials = user?.role === 'gerant' || user?.role === 'proprietaire'
@@ -501,7 +504,10 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
                       </RowAction>
                     )}
                     {canFinancials && (
-                      <RowMenu items={[{ label: isAr ? 'حذف' : 'Supprimer', icon: <Trash2 className="w-4 h-4" />, danger: true, onClick: () => setConfirmDelete(acc.acc_id) }]} />
+                      <RowMenu items={[
+                        { label: isAr ? 'السجل' : 'Historique', icon: <History className="w-4 h-4" />, onClick: () => setHistoryAcc(acc) },
+                        { label: isAr ? 'حذف' : 'Supprimer', icon: <Trash2 className="w-4 h-4" />, danger: true, onClick: () => setConfirmDelete(acc.acc_id) },
+                      ]} />
                     )}
                   </div>
                 </div>
@@ -559,6 +565,12 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
                         <RowAction title={isAr ? 'تعديل' : 'Modifier'} onClick={() => openEdit(acc)}>
                           <Edit2 className="w-4 h-4" />
                         </RowAction>
+                      )}
+                      {canFinancials && (
+                        <RowMenu items={[
+                        { label: isAr ? 'السجل' : 'Historique', icon: <History className="w-4 h-4" />, onClick: () => setHistoryAcc(acc) },
+                        { label: isAr ? 'حذف' : 'Supprimer', icon: <Trash2 className="w-4 h-4" />, danger: true, onClick: () => setConfirmDelete(acc.acc_id) },
+                      ]} />
                       )}
                     </div>
                   </div>
@@ -803,6 +815,11 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
           </div>
         </div>
       </Modal>
+
+      {historyAcc && (
+        <PhoneHistoryPanel accessory phoneId={historyAcc.acc_id}
+          label={[historyAcc.nom, historyAcc.couleur].filter(Boolean).join(' · ')} onClose={() => setHistoryAcc(null)} />
+      )}
     </div>
   )
 }

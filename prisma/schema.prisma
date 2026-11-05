@@ -539,6 +539,10 @@ model delivery_items {
   prix_vente      Decimal?      @db.Decimal(10, 2)
   override_by     String?       @db.Uuid
   override_reason String?
+  /// accessory: colour (colour list) and design chosen at the till (owner, 2026-11-06)
+  couleur         String?
+  design          String?
+  couleurs        couleurs?     @relation(fields: [couleur], references: [nom], onDelete: Restrict, onUpdate: Cascade)
   created_at    DateTime?     @default(now()) @db.Timestamptz(6)
   deliveries    deliveries?   @relation(fields: [delivery_id], references: [delivery_id], onDelete: Cascade, onUpdate: NoAction)
   transactions  transactions? @relation(fields: [txn_id], references: [txn_id], onDelete: NoAction, onUpdate: NoAction)
@@ -1106,6 +1110,10 @@ model transactions {
   // not new money: the caisse doesn't count it as collected.
   avoir_montant                         Decimal           @default(0) @db.Decimal(10, 2)
   avoir_retour_id                       String?
+  /// accessory sold: its colour (colour list) and design, chosen at the till (owner, 2026-11-06)
+  couleur                               String?
+  design                                String?
+  couleurs                              couleurs?         @relation(fields: [couleur], references: [nom], onDelete: Restrict, onUpdate: Cascade)
   avoir                                 retours?          @relation("avoir_spent", fields: [avoir_retour_id], references: [retour_id], onDelete: NoAction, onUpdate: NoAction)
   retours                               retours[]         @relation("retour_of_sale")
   credit_payments                       credit_payments[]
@@ -1358,4 +1366,6 @@ model couleurs {
   created_at  DateTime      @default(now()) @db.Timestamptz(6)
   created_by  String?       @db.Uuid
   accessories accessories[]
+  transactions   transactions[]
+  delivery_items delivery_items[]
 }

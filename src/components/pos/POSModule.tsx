@@ -18,6 +18,7 @@ import OrderPhoneModal from '@/components/pos/OrderPhoneModal'
 import MoneyInModal         from '@/components/pos/MoneyInModal'
 import AttendanceWidget     from '@/components/attendance/AttendanceWidget'
 import QtyPickerModal       from '@/components/pos/QtyPickerModal'
+import { ColourChoiceModal } from '@/components/pos/ColourChoiceModal'
 import OverridePinModal     from '@/components/pos/OverridePinModal'
 import ExchangeIntakePanel, { type ExchangePanelState } from '@/components/pos/ExchangeIntakePanel'
 import { ReceiptPrint, type ReceiptData } from '@/components/print/ReceiptGenerator'
@@ -38,7 +39,17 @@ type DeviceResult = (Phone | Laptop) & {
   _type:        'phone' | 'laptop' | 'accessory'
   _displayName: string
   _id:          string
+  // Colours at the till (owner, 2026-11-06; lib/saleColour):
+  /** one card for a model split by colour: its colour articles */
+  _group?:      DeviceResult[]
+  /** a pochette family: its design × colour choices (website photos) */
+  _family?:     FamilyChoice[]
+  /** the colour picked for this cart line (family) */
+  _choice?:     { couleur: string; design: string | null }
+  /** the real accessory id when _id is "article#design|colour" (one cart line per colour) */
+  _accId?:      string
 }
+type FamilyChoice = { design: string | null; couleur: string }
 
 type CartItem = DeviceResult & {
   prix_vente_saisi: number
@@ -227,6 +238,9 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
   const phonesQ = useApi<Phone[]>(`/api/phones?status=disponible&store_id=${storeId}&limit=500`)
   const accQ    = useApi<Record<string, unknown>[]>(`/api/accessories?store_id=${storeId}`)
   const lapQ    = useApi<Laptop[]>(hasLaptops ? `/api/laptops?status=disponible&store_id=${storeId}` : null)
+  // pochette families' colours (website photos) for the colour popup
+  const familyQ = useApi<Record<string, FamilyChoice[]>>(`/api/pos/couleurs?store_id=${storeId}`, { shouldRetryOnError: false })
+  const [colourFor, setColourFor] = useState<DeviceResult | null>(null)
   // Sold on this device: hidden right away, before the refreshed stock arrives
   const [soldIds, setSoldIds] = useState<Set<string>>(() => new Set())
 
@@ -238,21 +252,45 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
       _displayName: `${withBrand(p.marque, p.model)}${p.stockage ? ' ' + p.stockage : ''}${p.couleur ? ' · ' + p.couleur : ''}`,
       _id:          p.phone_id,
     }))
-    const accessories: DeviceResult[] = (accQ.data ?? []).map(a => ({
+    const families = familyQ.data ?? {}
+    const accItems: DeviceResult[] = (accQ.data ?? []).map(a => ({
       ...a,
       _type:        'accessory' as const,
       _id:          a.acc_id as string,
       // the colour too (each colour is its own item, 2026-10-29): sell the right one
       _displayName: [a.nom, a.couleur ? `· ${a.couleur}` : '', a.marque ? `· ${a.marque}` : ''].filter(Boolean).join(' '),
+      ...((families[a.acc_id as string]?.length ?? 0) > 1 && { _family: families[a.acc_id as string] }),
     }) as unknown as DeviceResult)
+    // One card per model sold in several colours (owner, 2026-11-06): its
+    // colours are picked in a popup instead of one line each.
+    const groups = new Map<string, DeviceResult[]>()
+    for (const a of accItems) {
+      const g = (a as unknown as Record<string, unknown>).groupe_couleur as string | null
+      if (g) groups.set(g, [...(groups.get(g) ?? []), a])
+    }
+    const placed = new Set<string>()
+    const accessories: DeviceResult[] = []
+    for (const a of accItems) {
+      const g = (a as unknown as Record<string, unknown>).groupe_couleur as string | null
+      const members = g ? groups.get(g)! : []
+      if (members.length < 2) { accessories.push(a); continue }
+      if (placed.has(g!)) continue
+      placed.add(g!)
+      const first = members[0] as unknown as Record<string, unknown>
+      const total = members.reduce((n, m) => n + Number((m as unknown as Record<string, unknown>).quantite ?? 0), 0)
+      accessories.push({
+        ...members[0], _id: `grp:${g}`, _group: members, quantite: total,
+        _displayName: [first.nom, first.marque ? `· ${first.marque}` : ''].filter(Boolean).join(' '),
+      } as unknown as DeviceResult)
+    }
     const laptops: DeviceResult[] = (lapQ.data ?? []).map(l => ({
       ...l,
       _type:        'laptop' as const,
       _displayName: `${withBrand(l.marque, l.model)}${l.stockage ? ' ' + l.stockage : ''}`,
       _id:          l.laptop_id,
     }))
-    return { phones, accessories, laptops }
-  }, [phonesQ.data, accQ.data, lapQ.data])
+    return { phones, accessories, accItems, laptops }
+  }, [phonesQ.data, accQ.data, lapQ.data, familyQ.data])
 
   // ── Search: phones + accessories + laptops (IMEI, serial, barcode, brand, model, name)
   const results = useMemo(() => {
@@ -266,7 +304,16 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
     const raw = (d: DeviceResult) => d as unknown as Record<string, unknown>
     return [
       ...stock.phones.filter(d => phoneMatches(raw(d), q)),
-      ...stock.accessories.filter(d => hit([raw(d).nom, raw(d).marque, raw(d).barcode, raw(d).acc_id])),
+      ...(() => {
+        const out: DeviceResult[] = []
+        const seen = new Set<string>()
+        for (const d of stock.accItems.filter(d => hit([raw(d).nom, raw(d).marque, raw(d).barcode, raw(d).acc_id, raw(d).couleur]))) {
+          const exact = [raw(d).barcode, raw(d).acc_id].some(v => v && String(v).toLowerCase() === q)
+          const card = exact ? d : stock.accessories.find(c => c._group?.some(m => m._id === d._id)) ?? d
+          if (!seen.has(card._id)) { seen.add(card._id); out.push(card) }
+        }
+        return out
+      })(),
       ...stock.laptops.filter(d => hit([raw(d).marque, raw(d).model, raw(d).stockage, raw(d).serial])),
     ].filter(d => !soldIds.has(d._id))
   }, [search, stock, soldIds])
@@ -286,8 +333,34 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
     activeCategory === 'phones'  ? phonesQ.isLoading :
     activeCategory === 'laptops' ? lapQ.isLoading    : accQ.isLoading
 
+  // The colour of a cart line (owner, 2026-11-06): picked in the popup for a
+  // pochette family, or the article's own colour when the model is split by colour.
+  function lineColour(i: DeviceResult): { couleur: string | null; design: string | null } {
+    if (i._type !== 'accessory') return { couleur: null, design: null }
+    if (i._choice) return { couleur: i._choice.couleur, design: i._choice.design }
+    return { couleur: ((i as unknown as Record<string, unknown>).couleur as string | null) ?? null, design: null }
+  }
+
+  function pickColour(device: DeviceResult, key: string) {
+    setColourFor(null)
+    if (device._group) {
+      const member = device._group.find(m => m._id === key)
+      if (member) addToCart(member)
+      return
+    }
+    const choice = device._family?.find(f => `${f.design ?? ''}|${f.couleur}` === key)
+    if (!choice) return
+    const base = device._displayName
+    addToCart({
+      ...device, _accId: device._id, _id: `${device._id}#${key}`, _choice: { couleur: choice.couleur, design: choice.design },
+      _displayName: [base, choice.design, choice.couleur].filter(Boolean).join(' · '),
+    })
+  }
+
   // ── Cart helpers ──────────────────────────────────────────
   function addToCart(device: DeviceResult) {
+    // Several colours: which one? (owner, 2026-11-06)
+    if (device._group || (device._family && !device._choice)) { setColourFor(device); setSearch(''); return }
     // Staff add stock without prices (a manager sets them): no price, no sale.
     // A service has no fixed price: its amount is typed in the cart.
     const listed = Number((device as unknown as Record<string, unknown>).prix_vente_recommande ?? 0)
@@ -492,7 +565,8 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
           avance: livAvance, avance_ref: livraison.ref, notes: saleForm.notes || undefined,
           lead_id: lead?.lead_id,
           items: cart.map(i => ({
-            device_type: i._type === 'phone' ? 'telephone' : 'accessoire', device_id: i._id, qty: i.qty ?? 1,
+            device_type: i._type === 'phone' ? 'telephone' : 'accessoire', device_id: i._accId ?? i._id, qty: i.qty ?? 1,
+            couleur: lineColour(i).couleur, design: lineColour(i).design,
             prix_vente: i.prix_vente_saisi * (i.qty ?? 1),
             override_by: overrideAuthorizedBy ?? undefined, override_reason: overrideAuthorizedBy != null ? overrideReason : undefined,
           })),
@@ -611,7 +685,9 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
           body: JSON.stringify({
             store_id:        storeId,
             device_type:     item._type === 'phone' ? 'telephone' : item._type === 'laptop' ? 'laptop' : 'accessoire',
-            device_id:       item._id,
+            device_id:       item._accId ?? item._id,
+            couleur:         lineColour(item).couleur,
+            design:          lineColour(item).design,
             client_id:       clientId,
             type_operation:  saleForm.type_operation,
             qty:             item.qty ?? 1,
@@ -1508,6 +1584,18 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
         primary={primary}
         onAuthorized={handleOverrideAuthorized}
       />
+
+      {colourFor && (
+        <ColourChoiceModal
+          title={colourFor._displayName}
+          isAr={isAr}
+          options={colourFor._group
+            ? colourFor._group.map(m => ({ key: m._id, couleur: ((m as unknown as Record<string, unknown>).couleur as string | null) ?? null, stock: Number((m as unknown as Record<string, unknown>).quantite ?? 0) }))
+            : (colourFor._family ?? []).map(f => ({ key: `${f.design ?? ''}|${f.couleur}`, couleur: f.couleur, design: f.design }))}
+          onPick={o => pickColour(colourFor, o.key)}
+          onClose={() => setColourFor(null)}
+        />
+      )}
 
       <QtyPickerModal
         device={qtyPicker ? (() => {

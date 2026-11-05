@@ -28,7 +28,8 @@ const when = (iso: string) => new Date(iso).toLocaleString('fr-FR', {
   timeZone: STORE_TIME_ZONE, day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit',
 })
 
-export default function PhoneHistoryPanel({ phoneId, label, onClose }: { phoneId: string; label?: string; onClose: () => void }) {
+// `accessory`: the same panel for an accessory (owner, 2026-11-06; api/accessories/[id]/history)
+export default function PhoneHistoryPanel({ phoneId, label, onClose, accessory = false }: { phoneId: string; label?: string; onClose: () => void; accessory?: boolean }) {
   const [events, setEvents] = useState<Event[] | null>(null)
   // A phone that came back: one block per stay in the shop
   const [stays, setStays] = useState<{ n: number; from: string | null; current: boolean }[]>([])
@@ -37,16 +38,16 @@ export default function PhoneHistoryPanel({ phoneId, label, onClose }: { phoneId
 
   useEffect(() => {
     let alive = true
-    fetch(`/api/phones/${phoneId}/history`)
+    fetch(`/api/${accessory ? 'accessories' : 'phones'}/${encodeURIComponent(phoneId)}/history`)
       .then(r => r.json().then(j => ({ ok: r.ok, j })))
       .then(({ ok, j }) => { if (!alive) return; if (!ok) setError(j.error ?? 'Erreur'); else { setEvents(j.data.events); setStays(j.data.stays ?? []) } })
       .catch(() => alive && setError('Connexion impossible'))
     return () => { alive = false }
-  }, [phoneId])
+  }, [phoneId, accessory])
 
   return createPortal(
     <div className="fixed inset-0 z-[60] flex justify-end items-end sm:items-stretch bg-black/40 backdrop-blur-sm" onClick={onClose}>
-      <aside role="dialog" aria-modal="true" aria-label="Historique du téléphone" onClick={e => e.stopPropagation()}
+      <aside role="dialog" aria-modal="true" aria-label={accessory ? "Historique de l'accessoire" : 'Historique du téléphone'} onClick={e => e.stopPropagation()}
         className="w-full sm:max-w-md max-h-[85vh] sm:max-h-none bg-white rounded-t-2xl sm:rounded-none shadow-2xl flex flex-col animate-fade-in">
         <div className="flex items-center justify-between px-5 py-4 border-b border-ez-border">
           <div className="min-w-0">

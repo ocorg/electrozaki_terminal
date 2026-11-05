@@ -2,6 +2,7 @@
 // components, which already put it in the browser bundle. Marking it as a
 // client entry makes Next's editor plugin flag every callback prop
 // (onClick, onClose…) as "must be serializable" (TS 71007).
+import { createPortal } from 'react-dom'
 import React from 'react'
 import { cn } from '@/lib/utils'
 import { codeLabel, type CodeDomain, type Code, type Lang } from '@/lib/codes'
@@ -211,38 +212,59 @@ const ROW_ACTION_TONES = {
 
 // "…" button opening a small menu — for rare or destructive row actions
 // (e.g. Supprimer), so they don't sit next to the everyday buttons.
-export function RowMenu({ items, label = 'Plus d\'actions' }: {
+export function RowMenu({ items, label = "Plus d'actions" }: {
   items: { label: string; icon?: React.ReactNode; onClick: () => void; danger?: boolean }[]
   label?: string
 }) {
-  const [open, setOpen] = React.useState(false)
-  const ref = React.useRef<HTMLDivElement>(null)
+  // Drawn over the whole page, next to its button (owner, 2026-11-06: inside a
+  // list row it was cut off by the row's edge); opens upwards near the bottom.
+  const [pos, setPos] = React.useState<{ top?: number; bottom?: number; right: number } | null>(null)
+  const ref  = React.useRef<HTMLDivElement>(null)
+  const menu = React.useRef<HTMLDivElement>(null)
+  const open = pos !== null
   React.useEffect(() => {
     if (!open) return
     const close = (e: MouseEvent | KeyboardEvent) => {
-      if (e instanceof KeyboardEvent ? e.key === 'Escape' : !ref.current?.contains(e.target as Node)) setOpen(false)
+      if (e instanceof KeyboardEvent ? e.key === 'Escape' : !ref.current?.contains(e.target as Node) && !menu.current?.contains(e.target as Node)) setPos(null)
     }
+    const away = () => setPos(null)
     document.addEventListener('mousedown', close)
     document.addEventListener('keydown', close)
-    return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', close) }
+    window.addEventListener('scroll', away, true)
+    window.addEventListener('resize', away)
+    return () => {
+      document.removeEventListener('mousedown', close); document.removeEventListener('keydown', close)
+      window.removeEventListener('scroll', away, true); window.removeEventListener('resize', away)
+    }
   }, [open])
   if (!items.length) return null
+  function toggle() {
+    if (open) { setPos(null); return }
+    const r = ref.current?.getBoundingClientRect()
+    if (!r) return
+    const height = items.length * 40 + 12
+    const right = Math.max(8, window.innerWidth - r.right)
+    setPos(window.innerHeight - r.bottom < height + 8 ? { bottom: window.innerHeight - r.top + 4, right } : { top: r.bottom + 4, right })
+  }
   return (
     <div ref={ref} className="relative flex-shrink-0" onClick={e => e.stopPropagation()}>
-      <RowAction title={label} onClick={() => setOpen(o => !o)}>
+      <RowAction title={label} onClick={toggle}>
         <span className="text-base leading-none tracking-widest -mt-1.5">…</span>
       </RowAction>
-      {open && (
-        <div role="menu" className="absolute right-0 top-9 z-20 min-w-[160px] bg-white border border-ez-border rounded-xl shadow-ez-md py-1">
+      {open && typeof document !== 'undefined' && createPortal(
+        <div ref={menu} role="menu" onClick={e => e.stopPropagation()}
+          style={{ position: 'fixed', top: pos.top, bottom: pos.bottom, right: pos.right }}
+          className="z-[70] min-w-[170px] bg-white border border-ez-border rounded-xl shadow-ez-md py-1">
           {items.map(it => (
             <button key={it.label} type="button" role="menuitem"
-              onClick={() => { setOpen(false); it.onClick() }}
+              onClick={() => { setPos(null); it.onClick() }}
               className={cn('w-full flex items-center gap-2 px-3 py-2 text-sm text-left transition-colors',
                 it.danger ? 'text-red-600 hover:bg-red-50' : 'text-ez-text hover:bg-ez-bg')}>
               {it.icon}{it.label}
             </button>
           ))}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   )
