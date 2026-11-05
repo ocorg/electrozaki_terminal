@@ -42,7 +42,7 @@ async function PUT_(request: NextRequest, { params }: Ctx) {
     })
     for (const url of dropped) await deleteSitePhoto(url).catch(() => {})
     await logSite(user, 'modification', `Fiche de « ${product.name} » modifiée (${ids.length} choix)`, { record_id: product.id })
-    refreshSite()
+    refreshSite([params.id])
     return json({ ok: true })
   } catch (err) {
     return handleError(err, 'PUT /api/site/catalog/[id]/facets')

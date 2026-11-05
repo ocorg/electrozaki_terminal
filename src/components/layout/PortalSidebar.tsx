@@ -115,10 +115,11 @@ export default function PortalSidebar({ onClose, collapsed = false, onCollapsedC
   }
 
   // New web orders / repair requests. Website submissions don't reach the
-  // ERP's live events, so this also re-checks every minute.
+  // ERP's live events, so this also re-checks every 3 minutes (owner, 2026-11-05:
+  // every minute added to the hosting's processor time).
   const siteCounts = useApi<{ orders: number; repairs: number }>(
     portal.type === 'ez' ? '/api/site/counts' : null,
-    { refreshInterval: 60_000, shouldRetryOnError: false },
+    { refreshInterval: 180_000, shouldRetryOnError: false },
   ).data
 
   const primary    = portal.primaryColor

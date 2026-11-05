@@ -10,7 +10,7 @@ export async function POST() {
   try {
     const user = await requireActiveUser(MANAGERS)
     if (!storefrontConfigured()) throw new HttpError(503, 'Site web non configuré')
-    const result = await syncStorefront()
+    const result = await syncStorefront({ refreshAll: true })
     await logActivity({
       store_id: user.store_id ?? null, user_id: user.id, user_name: user.display_name,
       action_type: 'modification', module: 'site_web',

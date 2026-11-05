@@ -23,7 +23,8 @@ export async function GET(request: Request) {
   if (!authorized(request)) return json({ error: 'Non autorisé' }, { status: 401 })
   if (!storefrontConfigured()) return json({ skipped: 'site web non configuré' })
   try {
-    const stock = await syncStorefront()
+    // the daily safety net also refreshes every page once
+    const stock = await syncStorefront({ refreshAll: true })
     await repairTrackingQuietly('cron')
     // Site statistics are kept 13 months (free database plan).
     const cutoff = new Date(Date.now() - 400 * 86_400_000)

@@ -35,7 +35,7 @@ async function POST_(request: NextRequest, { params }: Ctx) {
     await site().productImage.create({ data: { productId: product.id, url, sortOrder: count, altText: product.name } })
 
     await logSite(user, 'creation', `Photo ajoutée au produit du site « ${product.name} »`, { record_id: product.id })
-    refreshSite()
+    refreshSite([product.id])
     return json({ ok: true, url }, { status: 201 })
   } catch (err) {
     return handleError(err, 'POST /api/site/catalog/[id]/images')
@@ -82,7 +82,7 @@ async function PATCH_(request: NextRequest, { params }: Ctx) {
       'phoneShape' in data && `forme « ${data.phoneShape ? PHONE_SHAPE_LABELS[data.phoneShape] : 'toutes'} »`,
     ].filter(Boolean).join(', ')
     await logSite(user, 'modification', `Photo du produit du site « ${product.name} » : ${said}`, { record_id: product.id })
-    refreshSite()
+    refreshSite([product.id])
     return json({ ok: true, ...data })
   } catch (err) {
     return handleError(err, 'PATCH /api/site/catalog/[id]/images')
@@ -101,7 +101,7 @@ async function DELETE_(request: NextRequest, { params }: Ctx) {
     await deleteSitePhoto(image.url)
 
     await logSite(user, 'suppression', `Photo retirée du produit du site « ${product.name} »`, { record_id: product.id })
-    refreshSite()
+    refreshSite([product.id])
     return json({ ok: true })
   } catch (err) {
     return handleError(err, 'DELETE /api/site/catalog/[id]/images')

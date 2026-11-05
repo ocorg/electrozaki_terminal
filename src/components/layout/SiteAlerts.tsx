@@ -40,7 +40,7 @@ export function SiteAlerts() {
   const router   = useRouter()
   const counts = useApi<{ orders: number; repairs: number }>(
     isManager(user?.role) ? '/api/site/counts' : null,
-    { refreshInterval: 60_000, shouldRetryOnError: false },
+    { refreshInterval: 180_000, shouldRetryOnError: false },
   ).data
   const seen = useRef<{ orders: number; repairs: number } | null>(null)
 

@@ -75,7 +75,10 @@ async function PATCH_(request: NextRequest, { params }: Ctx) {
     await logSite(user, 'modification', `Produit du site « ${updated.name} » modifié`, {
       record_id: product.id, before_state: product, after_state: updated,
     })
-    refreshSite()
+    // moved to another aisle or shown / hidden: the old aisle's list too, so
+    // everything; otherwise only this product's pages and its lists
+    const listsChange = updated.categoryId !== product.categoryId || updated.published !== product.published
+    refreshSite(listsChange ? undefined : [product.id])
     return json({ ok: true, data: updated })
   } catch (err) {
     return handleError(err, 'PATCH /api/site/catalog/[id]')

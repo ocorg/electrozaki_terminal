@@ -1,7 +1,7 @@
 import Pusher from 'pusher'
 import { waitUntil } from '@vercel/functions'
 import { REALTIME_CHANNEL, REALTIME_EVENT, entitiesForWrite, prefixesFor, type ChangeEvent, type Entity } from '@/lib/data/entities'
-import { syncStorefrontQuietly } from '@/lib/storefront/sync'
+import { scheduleSiteUpdate } from '@/lib/storefront/schedule'
 import { repairTrackingQuietly } from '@/lib/storefront/tracking'
 
 const pusher = new Pusher({
@@ -36,10 +36,12 @@ export function withNotify<R extends Request, A extends unknown[]>(
       const entities = entitiesForWrite(new URL(request.url).pathname)
       if (entities.length) await notifyChange(null, entities)
       // Anything that can change sellable stock or prices → update the
-      // website, after the response (the till never waits for it).
+      // website, after the response (the till never waits for it). Grouped:
+      // one sync after a few seconds of calm, refreshing only the pages
+      // concerned (lib/storefront/schedule; owner, 2026-11-05).
       const prefixes = prefixesFor(entities)
       if (prefixes.includes('/api/phones') || prefixes.includes('/api/accessories') || prefixes.includes('/api/categories')) {
-        waitUntil(syncStorefrontQuietly(entities.join(',')))
+        waitUntil(scheduleSiteUpdate({ sync: true }))
       }
       // Repair tickets → the customer's tracking page on the website.
       if (entities.includes('repairs')) waitUntil(repairTrackingQuietly(entities.join(',')))

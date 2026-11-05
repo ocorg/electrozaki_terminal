@@ -35,7 +35,7 @@ async function POST_(request: NextRequest, { params }: Ctx) {
     await site().productFacet.update({ where: { productId_optionId: { productId: params.id, optionId } }, data: { imageUrl: url } })
     if (row.imageUrl) await deleteSitePhoto(row.imageUrl).catch(() => {})
     await logSite(user, 'modification', `Photo « ${row.option.name} » du produit du site « ${row.product.name} »`, { record_id: params.id })
-    refreshSite()
+    refreshSite([params.id])
     return json({ ok: true, url }, { status: 201 })
   } catch (err) {
     return handleError(err, 'POST /api/site/catalog/[id]/facets/photo')
@@ -52,7 +52,7 @@ async function DELETE_(request: NextRequest, { params }: Ctx) {
     await site().productFacet.update({ where: { productId_optionId: { productId: params.id, optionId } }, data: { imageUrl: null } })
     await deleteSitePhoto(row.imageUrl).catch(() => {})
     await logSite(user, 'suppression', `Photo « ${row.option.name} » retirée du produit du site « ${row.product.name} »`, { record_id: params.id })
-    refreshSite()
+    refreshSite([params.id])
     return json({ ok: true })
   } catch (err) {
     return handleError(err, 'DELETE /api/site/catalog/[id]/facets/photo')

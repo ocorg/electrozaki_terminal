@@ -4,7 +4,7 @@ import { HttpError } from '@/lib/api'
 import { prisma } from '@/lib/db'
 import { logActivity } from '@/lib/utils/logger'
 import type { AuthClaims } from '@/types/auth'
-import { revalidateStorefront } from './revalidate'
+import { scheduleSiteUpdate } from './schedule'
 import { storefrontDb, storefrontConfigured } from './db'
 import { PHONE_SAFE_SELECT, buildPhoneListings, refOf, type ErpPhone } from './listing'
 
@@ -58,9 +58,14 @@ export async function logSite(
   })
 }
 
-/** Refresh the website's pages after a presentation change (in the background). */
-export function refreshSite() {
-  waitUntil(revalidateStorefront())
+/**
+ * Refresh the website's pages after a presentation change (in the background,
+ * grouped with other quick edits). `productIds`: only those products' pages
+ * and the lists showing them; none: the whole site (aisles, filters, promo
+ * pages… change many pages).
+ */
+export function refreshSite(productIds?: string[]) {
+  waitUntil(scheduleSiteUpdate(productIds?.length ? { productIds } : { all: true }))
 }
 
 export function text(value: unknown, max: number): string | null {

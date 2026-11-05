@@ -33,6 +33,8 @@ export interface SyncResult {
   removed: number
   /** listings whose photos or units changed while the listing itself didn't */
   details: number
+  /** website products whose pages were refreshed ('all' = every page) */
+  refreshed?: number | 'all'
   ms: number
 }
 
@@ -87,7 +89,7 @@ const differs = (cur: Record<string, unknown>, want: Record<string, unknown>) =>
 const num   = (d: { toString(): string } | null | undefined) => (d === null || d === undefined ? null : Number(d.toString()))
 const newId = () => `c${randomUUID().replace(/-/g, '').slice(0, 24)}`
 
-async function reconcile(tx: Tx, phones: PhoneListing[], accessories: AccessoryListing[], labels: Map<string, string>, stats: SyncResult) {
+async function reconcile(tx: Tx, phones: PhoneListing[], accessories: AccessoryListing[], labels: Map<string, string>, stats: SyncResult, touched: Set<string>) {
   // ── Read everything once ───────────────────────────────────────────────
   const products = await tx.product.findMany({
     select: {
@@ -295,6 +297,19 @@ async function reconcile(tx: Tx, phones: PhoneListing[], accessories: AccessoryL
     stats.removed++
   }
 
+  // Website products whose pages change: only those are refreshed (owner,
+  // 2026-11-05: refreshing every page on each change used up the hosting).
+  const variantOwner = new Map(variants.map(v => [v.id, v.productId]))
+  for (const c of productCreates) { if (c.id) touched.add(c.id) }
+  for (const u of productUpdates) touched.add(u.id)
+  for (const v of variantCreates) touched.add(String(v.productId))
+  for (const u of variantUpdates) { touched.add(String(u.data.productId)); const was = variantOwner.get(u.id); if (was) touched.add(was) }
+  for (const id of variantDeletes) { const was = variantOwner.get(id); if (was) touched.add(was) }
+  for (const id of imageResets) touched.add(id)
+  for (const c of internalCreates) touched.add(c.productId)
+  for (const u of internalUpdates) touched.add(u.productId)
+  for (const c of compatCreates) { touched.add(c.productId); touched.add(c.compatibleWithId) }
+
   // ── Write (bulk where possible) ────────────────────────────────────────
   if (productCreates.length)  await tx.product.createMany({ data: productCreates })
   // Units added, changed or gone (price, photo, battery…) refresh the site too.
@@ -312,9 +327,15 @@ async function reconcile(tx: Tx, phones: PhoneListing[], accessories: AccessoryL
   if (compatCreates.length)   await tx.productCompatibility.createMany({ data: compatCreates, skipDuplicates: true })
 }
 
-export async function syncStorefront(): Promise<SyncResult> {
+/**
+ * `alsoRefresh`: website products changed by staff edits, refreshed with the
+ * ones this sync changes. `refreshAll`: refresh every page (the daily check
+ * and the "Synchroniser" button).
+ */
+export async function syncStorefront(opts: { alsoRefresh?: string[]; refreshAll?: boolean } = {}): Promise<SyncResult> {
   const started = Date.now()
   const stats: SyncResult = { phones: 0, accessories: 0, created: 0, updated: 0, removed: 0, details: 0, ms: 0 }
+  const touched = new Set<string>(opts.alsoRefresh ?? [])
   // the accessory colour list's copy (dots and names in each language) stays complete
   await copyCouleursToSite().catch(e => console.error('sync: couleurs', e))
 
@@ -336,7 +357,7 @@ export async function syncStorefront(): Promise<SyncResult> {
   await storefrontDb().$transaction(async tx => {
     await tx.$executeRaw`select pg_advisory_xact_lock(${LOCK_KEY})`
     await reconcile(tx, buildPhoneListings(phones), buildAccessoryListings(accessories),
-      new Map(categories.map(c => [c.code, c.label_fr])), stats)
+      new Map(categories.map(c => [c.code, c.label_fr])), stats, touched)
   }, { timeout: 60_000, maxWait: 20_000 })
 
   // A model just put on promo gets its promo-page row at once, so the
@@ -351,7 +372,8 @@ export async function syncStorefront(): Promise<SyncResult> {
   // A photo added in "Photo téléphone", or one unit's price, changes the
   // pages too: the S22 5G page kept showing no photo for an hour after its
   // photo was added (2026-11-04), its cached copy was never refreshed.
-  if (stats.created || stats.updated || stats.removed || stats.details) await revalidateStorefront()
+  if (opts.refreshAll) { await revalidateStorefront({ all: true }); stats.refreshed = 'all' }
+  else if (touched.size) { await revalidateStorefront({ productIds: [...touched] }); stats.refreshed = touched.size }
   return stats
 }
 
