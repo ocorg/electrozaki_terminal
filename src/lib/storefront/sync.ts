@@ -286,10 +286,16 @@ async function reconcile(tx: Tx, phones: PhoneListing[], accessories: AccessoryL
       stats.created++
       continue
     }
+    // The type follows Stock → Accessoires (owner, 2026-11-06: Oraimo became a
+    // brand, its articles moved to Câble, Écouteurs…): a product sitting in the
+    // site category of another ERP type moves to its new type's category. A
+    // site category not tied to an ERP type (picked by hand) is kept.
+    const siteCat  = categories.find(c => c.id === product.categoryId)
+    const moveTo   = siteCat?.erpCode && siteCat.erpCode !== l.categoryCode ? await ensureCategory(l.categoryCode) : null
     // Colour and model come from Stock → Accessoires (owner, 2026-10-29)
     if (num(product.recommendedSalePrice) !== price || product.availability !== availability
-        || product.colorName !== l.colorName || product.colorGroup !== l.colorGroup) {
-      productUpdates.push({ id: product.id, data: { recommendedSalePrice: price, availability, colorName: l.colorName, colorGroup: l.colorGroup } })
+        || product.colorName !== l.colorName || product.colorGroup !== l.colorGroup || moveTo) {
+      productUpdates.push({ id: product.id, data: { recommendedSalePrice: price, availability, colorName: l.colorName, colorGroup: l.colorGroup, ...(moveTo && { categoryId: moveTo }) } })
       stats.updated++
     }
     if (!stockOf.has(product.id)) internalCreates.push({ productId: product.id, stockQuantity: l.stock })
