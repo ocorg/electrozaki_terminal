@@ -34,8 +34,8 @@ export const FACET_TEMPLATES: TemplateGroup[] = [
     ] },
   { key: 'puissance', name: 'Vitesse de charge', question: 'Quelle vitesse de charge ?', multi: false, display: 'METER', sortOrder: 30,
     types: ['cable', 'chargeurs', 'tete_de_chargeur', 'powerbank'], options: [
-      { key: 'normale', name: 'Normale (jusqu’à 12 W)', level: 1 },
-      { key: 'rapide', name: 'Rapide (20 à 30 W)', level: 2 },
+      { key: 'normale', name: 'Normale (jusqu’à 15 W)', level: 1 },
+      { key: 'rapide', name: 'Rapide (18 à 44 W)', level: 2 },
       { key: 'tres-rapide', name: 'Très rapide (45 W et plus)', level: 3 },
     ] },
   { key: 'prises', name: 'Prises', question: null, multi: true, display: 'CHIPS', sortOrder: 40,

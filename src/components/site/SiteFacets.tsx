@@ -72,6 +72,90 @@ function TemplatesCard({ onDone }: { onDone: () => void }) {
   )
 }
 
+// ── Ticks guessed from the article names (owner, 2026-11-06; lib/storefront/facetSuggest) ──
+
+type Suggestion = { productId: string; name: string; erpName: string | null; category: string; options: { id: string; group: string; name: string }[] }
+
+function SuggestCard() {
+  const { L } = useSiteLang()
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="rounded-2xl border border-ez-border bg-white p-4 flex flex-wrap items-center gap-3">
+      <div className="flex-1 min-w-[220px]">
+        <p className="text-sm font-semibold text-ez-text">{L('Cocher les fiches d’après les noms', 'تعبئة البطاقات من الأسماء')}</p>
+        <p className="text-xs text-ez-subtle">{L('Propose les cases évidentes (« Cable U-C 20W 1M » → USB → USB-C, Rapide, 1 m). Vous décochez ce qui est faux avant d’appliquer.', 'يقترح الاختيارات الواضحة من أسماء المنتجات.')}</p>
+      </div>
+      <Btn variant="secondary" onClick={() => setOpen(true)}><ListChecks className="w-4 h-4" />{L('Voir les suggestions', 'عرض الاقتراحات')}</Btn>
+      {open && <SuggestModal onClose={() => setOpen(false)} />}
+    </div>
+  )
+}
+
+function SuggestModal({ onClose }: { onClose: () => void }) {
+  const { L } = useSiteLang()
+  const q = useApi<Suggestion[]>('/api/site/facets/suggest')
+  const [off, setOff] = useState<Set<string>>(new Set())   // "productId:optionId" unticked by staff
+  const [busy, setBusy] = useState(false)
+  const list = q.data ?? []
+  const keyOf = (p: string, o: string) => `${p}:${o}`
+  const kept = list.map(s => ({ productId: s.productId, optionIds: s.options.filter(o => !off.has(keyOf(s.productId, o.id))).map(o => o.id) })).filter(i => i.optionIds.length)
+  const count = kept.reduce((n, i) => n + i.optionIds.length, 0)
+  const toggle = (k: string) => setOff(prev => { const n = new Set(prev); if (n.has(k)) n.delete(k); else n.add(k); return n })
+
+  async function apply() {
+    setBusy(true)
+    try {
+      const r = await apiWrite<{ added: number }>('/api/site/facets/suggest', { method: 'POST', body: { items: kept } })
+      showSuccess(L(`${r.added} case(s) cochée(s)`, `تم تحديد ${r.added}`))
+      refreshPrefixes(['/api/site'])
+      onClose()
+    } catch (e) { showError((e as Error).message) } finally { setBusy(false) }
+  }
+
+  // by aisle
+  const byAisle = new Map<string, Suggestion[]>()
+  for (const s of list) byAisle.set(s.category, [...(byAisle.get(s.category) ?? []), s])
+
+  return (
+    <Modal open onClose={onClose} size="lg" title={L('Suggestions d’après les noms', 'اقتراحات من الأسماء')}>
+      {q.isLoading ? <div>{[0, 1, 2].map(i => <SkeletonRow key={i} />)}</div>
+        : !list.length ? <EmptyState icon={<ListChecks className="w-6 h-6" />} title={L('Rien à proposer', 'لا توجد اقتراحات')} description={L('Installez d’abord les fiches par type, ou tout est déjà coché.', '')} />
+        : (
+          <div className="space-y-4">
+            <p className="text-xs text-ez-subtle">{L('Touchez une case pour la décocher. Rien n’est enregistré avant « Appliquer ». Les cases déjà cochées ne bougent pas.', 'اضغط لإلغاء الاختيار. لا يُحفظ شيء قبل التطبيق.')}</p>
+            {[...byAisle].map(([aisle, items]) => (
+              <div key={aisle} className="space-y-1.5">
+                <p className="text-xs font-bold uppercase tracking-widest text-ez-subtle">{aisle} · {items.length}</p>
+                <div className="border border-ez-border rounded-xl divide-y divide-ez-border">
+                  {items.map(s => (
+                    <div key={s.productId} className="p-2.5 space-y-1.5">
+                      <p className="text-sm font-medium text-ez-text">{s.name}{s.erpName && s.erpName !== s.name && <span className="text-xs text-ez-faint"> · {s.erpName}</span>}</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {s.options.map(o => {
+                          const k = keyOf(s.productId, o.id), on = !off.has(k)
+                          return (
+                            <button key={o.id} type="button" onClick={() => toggle(k)}
+                              className={`px-2.5 py-1 rounded-full border text-xs ${on ? 'bg-gold text-white border-gold' : 'bg-white text-ez-placeholder border-ez-border line-through'}`}>
+                              <span className="opacity-75">{o.group} :</span> {o.name}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+            <div className="flex justify-end gap-2 pt-2 border-t border-ez-border sticky bottom-0 bg-white">
+              <Btn variant="ghost" onClick={onClose}>{L('Fermer', 'إغلاق')}</Btn>
+              <Btn onClick={apply} loading={busy} disabled={!count}>{L(`Appliquer (${count})`, `تطبيق (${count})`)}</Btn>
+            </div>
+          </div>
+        )}
+    </Modal>
+  )
+}
+
 // ── Groups and choices ───────────────────────────────────────────────────
 
 export function FacetsTab({ categories, isManager }: { categories: Category[]; isManager: boolean }) {
@@ -123,6 +207,7 @@ export function FacetsTab({ categories, isManager }: { categories: Category[]; i
            'الأسئلة التي يطرحها الموقع على الزبون في القسم (هاتفه، ذوقه، الحماية…) والاختيارات الممكنة. ثم حدّد هذه الاختيارات على كل منتج.')}
       </p>
       {isManager && <TemplatesCard onDone={() => q.refresh()} />}
+      {isManager && <SuggestCard />}
       {isManager && (
         <Btn onClick={() => setGroup({ name: '', question: '', multi: true, display: 'CHIPS', sortOrder: groups.length + 1, categoryIds: [] })}>
           <Plus className="w-4 h-4" />{L('Nouveau groupe', 'مجموعة جديدة')}
