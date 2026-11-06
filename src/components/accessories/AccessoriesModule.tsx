@@ -871,10 +871,8 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
             {siteMissing ?? (siteProduct && (
               <>
                 <FacetChecklist key={siteProduct.id} productId={siteProduct.id} categoryId={siteProduct.categoryId} categories={siteCategories}
-                  ticked={siteProduct.facetIds} photos={siteProduct.facetImages} />
-                <p className="text-xs text-ez-faint">
-                  {isAr ? 'لا توجد بطاقة لهذا النوع بعد.' : 'Rien ci-dessus ? Ce type n’a pas encore de fiche (modèles, matière…) : elles arrivent type par type à la prochaine étape.'}
-                </p>
+                  ticked={siteProduct.facetIds} photos={siteProduct.facetImages}
+                  empty={<p className="text-sm text-ez-subtle">{isAr ? 'لا توجد بطاقة لهذا النوع بعد.' : 'Ce type n’a pas encore de fiche : Catalogue du site → Fiches & filtres → Installer.'}</p>} />
               </>
             ))}
           </div>

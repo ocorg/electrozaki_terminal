@@ -1,5 +1,5 @@
 'use client'
-import { useRef, useState } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import { Plus, Pencil, Trash2, Eye, EyeOff, ListChecks, ImagePlus, RefreshCw } from 'lucide-react'
 import { useApi, apiWrite, refreshPrefixes } from '@/lib/data/api'
 import { uploadResized } from '@/lib/utils/image'
@@ -27,6 +27,49 @@ const DISPLAY: Record<FacetGroup['display'], { fr: string; ar: string }> = {
   CHIPS: { fr: 'Boutons simples',            ar: 'أزرار بسيطة' },
   TILES: { fr: 'Vignettes avec photo',       ar: 'مربعات بالصور' },
   METER: { fr: 'Échelle (niveau 1, 2, 3…)',  ar: 'سلّم (مستوى 1، 2، 3…)' },
+}
+
+// ── A fiche for each type (owner, 2026-11-06; lib/storefront/facetTemplates) ──
+
+type TemplatePlan = {
+  newGroups: { key: string; name: string; options: number; aisles: string[] }[]
+  newOptions: { group: string; names: string[] }[]
+  newLinks: { group: string; aisles: string[] }[]
+  missingAisles: string[]
+}
+
+function TemplatesCard({ onDone }: { onDone: () => void }) {
+  const { L } = useSiteLang()
+  const q = useApi<TemplatePlan>('/api/site/facets/templates')
+  const [busy, setBusy] = useState(false)
+  const plan = q.data
+  if (!plan) return null
+  const todo = plan.newGroups.length + plan.newOptions.length + plan.newLinks.length
+  if (!todo) return null
+
+  async function install() {
+    setBusy(true)
+    try {
+      await apiWrite('/api/site/facets/templates', { method: 'POST' })
+      showSuccess(L('Fiches par type installées', 'تم التثبيت'))
+      q.refresh(); onDone()
+    } catch (e) { showError((e as Error).message) } finally { setBusy(false) }
+  }
+
+  return (
+    <div className="rounded-2xl border border-gold/40 bg-gold/5 p-4 space-y-3">
+      <p className="text-sm font-semibold text-ez-text">{L('Fiches proposées pour chaque type d’accessoire', 'بطاقات مقترحة لكل نوع')}</p>
+      <p className="text-xs text-ez-subtle">{L('Ajoute seulement ce qui manque. Vous pourrez ensuite renommer, désactiver ou compléter chaque groupe ci-dessous.', 'يضيف فقط ما ينقص.')}</p>
+      <ul className="text-sm space-y-1">
+        {plan.newGroups.map(g => (
+          <li key={g.key}>• <b>{g.name}</b> — {g.options} {L('choix', 'اختيارات')} · {g.aisles.join(', ') || L('aucun rayon pour l’instant', 'بدون قسم')}</li>
+        ))}
+        {plan.newOptions.map(o => <li key={o.group}>• {o.group} : + {o.names.join(', ')}</li>)}
+        {plan.newLinks.map(l => <li key={l.group}>• {l.group} → {l.aisles.join(', ')}</li>)}
+      </ul>
+      <Btn onClick={install} loading={busy}><Plus className="w-4 h-4" />{L('Installer', 'تثبيت')}</Btn>
+    </div>
+  )
 }
 
 // ── Groups and choices ───────────────────────────────────────────────────
@@ -79,6 +122,7 @@ export function FacetsTab({ categories, isManager }: { categories: Category[]; i
         {L('Les questions que le site pose au client dans un rayon (son téléphone, son style, la protection…) et les choix possibles. Cochez ensuite ces choix sur chaque produit, dans sa fiche. Un groupe sans question devient un filtre supplémentaire.',
            'الأسئلة التي يطرحها الموقع على الزبون في القسم (هاتفه، ذوقه، الحماية…) والاختيارات الممكنة. ثم حدّد هذه الاختيارات على كل منتج.')}
       </p>
+      {isManager && <TemplatesCard onDone={() => q.refresh()} />}
       {isManager && (
         <Btn onClick={() => setGroup({ name: '', question: '', multi: true, display: 'CHIPS', sortOrder: groups.length + 1, categoryIds: [] })}>
           <Plus className="w-4 h-4" />{L('Nouveau groupe', 'مجموعة جديدة')}
@@ -224,8 +268,10 @@ export function FacetsTab({ categories, isManager }: { categories: Category[]; i
 // holder, stand, strap…); style, protection or material need none.
 const PHOTO_GROUPS = ['extras']
 
-export function FacetChecklist({ productId, categoryId, categories, ticked, photos }: {
+export function FacetChecklist({ productId, categoryId, categories, ticked, photos, empty = null }: {
   productId: string; categoryId: string; categories: Category[]; ticked: string[]
+  /** shown when this product's aisle has no fiche */
+  empty?: ReactNode
   /** accessories: this product's own photo per ticked feature (Extras…) */
   photos?: Record<string, string>
 }) {
@@ -235,6 +281,7 @@ export function FacetChecklist({ productId, categoryId, categories, ticked, phot
   // the phone models it fits, by name (ModelPicker; owner, 2026-11-06)
   const [models, setModels] = useState<string[] | null>(null)
   const [saving, setSaving] = useState(false)
+  const [dirty, setDirty]   = useState(false)
   const [photoBusy, setPhotoBusy] = useState<string | null>(null)
   const fileRef  = useRef<HTMLInputElement>(null)
   const photoFor = useRef<string | null>(null)
@@ -256,7 +303,7 @@ export function FacetChecklist({ productId, categoryId, categories, ticked, phot
 
   const parentId = categories.find(c => c.id === categoryId)?.parentId
   const groups = (q.data ?? []).filter(g => g.active && g.categoryIds.some(id => id === categoryId || id === parentId))
-  if (groups.length === 0) return null
+  if (groups.length === 0) return q.data ? <>{empty}</> : null
   const current = picked ?? ticked
   const modelGroup = groups.find(g => g.key === 'modele')
   const modelIds = new Set(modelGroup?.options.map(o => o.id) ?? [])
@@ -265,6 +312,7 @@ export function FacetChecklist({ productId, categoryId, categories, ticked, phot
 
   function toggle(group: FacetGroup, optionId: string) {
     const inGroup = new Set(group.options.map(o => o.id))
+    setDirty(true)
     if (current.includes(optionId)) setPicked(current.filter(id => id !== optionId))
     else setPicked([...(group.multi ? current : current.filter(id => !inGroup.has(id))), optionId])
   }
@@ -278,8 +326,8 @@ export function FacetChecklist({ productId, categoryId, categories, ticked, phot
       })
       refreshPrefixes(['/api/site'])
       showSuccess(L('Fiche enregistrée', 'تم حفظ البطاقة'))
-      setPicked(null)
-      setModels(null)
+      // what was saved stays on screen (the product list reloads behind it)
+      setDirty(false)
     } catch (e) { showError((e as Error).message) } finally { setSaving(false) }
   }
 
@@ -292,7 +340,7 @@ export function FacetChecklist({ productId, categoryId, categories, ticked, phot
             {g.name} <span className="normal-case tracking-normal">· {g.multi ? L('plusieurs possibles', 'عدة اختيارات') : L('un seul', 'واحد فقط')}</span>
           </p>
           {g.key === 'modele' ? (
-            <ModelPicker selected={currentModels} onChange={setModels} />
+            <ModelPicker selected={currentModels} onChange={m => { setModels(m); setDirty(true) }} />
           ) : (
           <div className="flex flex-wrap gap-1.5">
             {g.options.filter(o => o.active || current.includes(o.id)).map(o => {
@@ -339,7 +387,7 @@ export function FacetChecklist({ productId, categoryId, categories, ticked, phot
           onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) uploadPhoto(f) }} />
       )}
       <div className="flex justify-end">
-        <Btn size="sm" onClick={save} loading={saving} disabled={picked === null && models === null}>{L('Enregistrer la fiche', 'حفظ البطاقة')}</Btn>
+        <Btn size="sm" onClick={save} loading={saving} disabled={!dirty}>{L('Enregistrer la fiche', 'حفظ البطاقة')}</Btn>
       </div>
     </div>
   )
