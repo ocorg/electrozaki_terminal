@@ -1,6 +1,6 @@
 'use client'
 import { useCategories } from '@/lib/hooks/useCategories'
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { Fragment, useState, useEffect, useCallback, useMemo } from 'react'
 import { useApi } from '@/lib/data/api'
 import { useUser } from '@/lib/hooks/useUser'
 import { useLanguageStore } from '@/lib/stores/language'
@@ -14,14 +14,23 @@ import LabelGenerator, { type LabelProduct } from '@/components/print/LabelGener
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import type { AccCategory } from '@/types/database'
 import { ColourPicker, ColourDot, useCouleurs, useColourLabel } from '@/components/shared/ColourPicker'
+import { SitePhotosEditor, SiteInfoEditor, type Product as SiteProduct, type Category as SiteCategory } from '@/components/site/SiteCatalogModule'
+import { FacetChecklist } from '@/components/site/SiteFacets'
+import { Tabs } from '@/components/site/common'
 import {
   Package, Plus, Search, X, RefreshCw,
-  Edit2, AlertTriangle, Minus, TrendingUp, Trash2, Tag, Palette, History
+  Edit2, AlertTriangle, Minus, TrendingUp, Trash2, Tag, Palette, History, ChevronDown, ChevronRight, CornerDownRight
 } from 'lucide-react'
 
 
 
 const PAGE = 60
+
+// One fiche per accessory (owner, 2026-11-06): Type → Article → Variantes.
+// Général = the shop's data (stock, prices); the website parts (photos with
+// their colours, the models it fits, what customers read) are edited here
+// too, and the Catalogue du site opens this same fiche.
+type FicheTab = 'general' | 'variantes' | 'fiche' | 'site'
 
 interface Accessory {
   acc_id:                 string
@@ -106,6 +115,9 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
   // (acc_id), null = leave the model's colours, undefined = unchanged
   const [colorLink, setColorLink]   = useState<string | null | undefined>(undefined)
   const [colorSearch, setColorSearch] = useState('')
+  const [ficheTab, setFicheTab] = useState<FicheTab>('general')
+  // types folded in the list (Type → Article → Variantes)
+  const [folded, setFolded] = useState<Set<string>>(new Set())
 
   // The store's whole accessory list is cached; filters and search apply instantly here
   const accQ    = useApi<Accessory[]>(`/api/accessories?store_id=${storeId}`)
@@ -124,10 +136,56 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
     )
   }, [accQ.data, filterCat, onlyLowStock, search])
 
+  // Ordered Type → Article → its other colours just under it (owner, 2026-11-06)
+  const { accessories: dynamicCategories } = useCategories()
+  const getCatLabel = (v: string) => {
+    const c = dynamicCategories.find(x => x.code === v)
+    return c ? (isAr ? c.ar : c.fr) : v
+  }
+  const ordered = useMemo(() => {
+    const all = accQ.data ?? []
+    const leadOf = (a: Accessory) => a.groupe_couleur ?? a.acc_id
+    const leadName = new Map<string, string>()
+    for (const a of all) if (a.acc_id === leadOf(a) || !leadName.has(leadOf(a))) leadName.set(leadOf(a), a.nom)
+    const cat = (a: Accessory) => getCatLabel(a.categorie)
+    return [...accessories].sort((a, b) =>
+      cat(a).localeCompare(cat(b), 'fr')
+      || (leadName.get(leadOf(a)) ?? a.nom).localeCompare(leadName.get(leadOf(b)) ?? b.nom, 'fr', { numeric: true })
+      || leadOf(a).localeCompare(leadOf(b))
+      || Number(a.acc_id !== leadOf(a)) - Number(b.acc_id !== leadOf(b))
+      || (a.couleur ?? '').localeCompare(b.couleur ?? '', 'fr'))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accessories, accQ.data, dynamicCategories, isAr])
+  // a colour of an article listed just above it
+  const isVariantRow = (a: Accessory, i: number, list: Accessory[]) =>
+    !!a.groupe_couleur && a.acc_id !== a.groupe_couleur && i > 0 && (list[i - 1].groupe_couleur ?? list[i - 1].acc_id) === a.groupe_couleur
+  const typeTotals = useMemo(() => {
+    const m = new Map<string, { n: number; qty: number; low: number }>()
+    for (const a of accessories) {
+      const t = m.get(a.categorie) ?? { n: 0, qty: 0, low: 0 }
+      t.n++; t.qty += a.quantite; if (a.is_low_stock) t.low++
+      m.set(a.categorie, t)
+    }
+    return m
+  }, [accessories])
+
   // Long lists render in pages so the screen stays fast
   const [shown, setShown] = useState(PAGE)
   useEffect(() => setShown(PAGE), [filterCat, onlyLowStock, search])
-  const visibleAccessories = accessories.slice(0, shown)
+  // rows: a type header, then its articles (none while the type is folded)
+  type Row = { kind: 'type'; code: string } | { kind: 'acc'; acc: Accessory; variant: boolean }
+  const rows = useMemo(() => {
+    const out: Row[] = []
+    const searching = search.trim().length >= 2
+    ordered.forEach((a, i) => {
+      if (i === 0 || ordered[i - 1].categorie !== a.categorie) out.push({ kind: 'type', code: a.categorie })
+      if (!folded.has(a.categorie) || searching) out.push({ kind: 'acc', acc: a, variant: isVariantRow(a, i, ordered) })
+    })
+    return out
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ordered, folded, search])
+  const visibleRows = rows.slice(0, shown)
+  const toggleType = (code: string) => setFolded(f => { const n = new Set(f); if (n.has(code)) n.delete(code); else n.add(code); return n })
 
   // Updates the cached list right away; the background refresh confirms it
   const setAccessories = useCallback((update: (prev: Accessory[]) => Accessory[]) => {
@@ -166,6 +224,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
     setEditAcc(null)
     setForm({ ...EMPTY_FORM })
     setColorLink(undefined); setColorSearch('')
+    setFicheTab('general')
     setFormOpen(true)
   }
 
@@ -182,11 +241,13 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
       prix_vente_minimum:    acc.prix_vente_minimum != null ? String(acc.prix_vente_minimum) : '',
     })
     setColorLink(acc.acc_id); setColorSearch('')
+    setFicheTab('general')
     setFormOpen(true)
   }
 
-  function openEdit(acc: Accessory) {
+  function openEdit(acc: Accessory, tab: FicheTab = 'general') {
     setEditAcc(acc)
+    setFicheTab(tab)
     setForm({
       nom:                   acc.nom,
       categorie:             acc.categorie,
@@ -277,16 +338,35 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
     }
   }
 
+  const [deepLink, setDeepLink] = useState<{ id: string; tab: FicheTab } | null>(null)
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search)
+    const id = q.get('fiche')
+    if (!id) return
+    const tab = q.get('tab')
+    setDeepLink({ id, tab: tab === 'site' || tab === 'variantes' || tab === 'fiche' ? tab : 'general' })
+    window.history.replaceState(null, '', window.location.pathname)
+  }, [])
+  useEffect(() => {
+    if (!deepLink || !accQ.data) return
+    const acc = accQ.data.find(a => a.acc_id === deepLink.id)
+    if (acc) openEdit(acc, deepLink.tab)
+    else showError(isAr ? 'المنتج غير موجود' : 'Accessoire introuvable')
+    setDeepLink(null)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deepLink, accQ.data])
+
+  // The website side of the open fiche (managers: the Catalogue's rights)
+  const siteQ = useApi<{ data: SiteProduct[]; categories: SiteCategory[] }, { data: SiteProduct[]; categories: SiteCategory[] }>(
+    formOpen && editAcc && canFinancials ? '/api/site/catalog' : null, { select: j => j })
+  const siteProduct = editAcc ? siteQ.data?.data.find(p => p.accId === editAcc.acc_id) ?? null : null
+  const siteCategories = siteQ.data?.categories ?? []
+
   const lowStockCount = accessories.filter(a => a.is_low_stock).length
   const totalValue    = accessories.reduce((s, a) =>
     s + ((a.prix_achat ?? 0) * a.quantite), 0
   )
 
-  const { accessories: dynamicCategories } = useCategories()
-  const getCatLabel = (v: string) => {
-    const c = dynamicCategories.find(x => x.code === v)
-    return c ? (isAr ? c.ar : c.fr) : v
-  }
   /** What the label generator prints for an accessory. */
   const accLabel = (acc: Accessory): LabelProduct => ({
     id:       acc.acc_id,
@@ -298,6 +378,86 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
   const sortedCategories = [...dynamicCategories].sort((a, b) =>
     (isAr ? a.ar : a.fr).localeCompare(isAr ? b.ar : b.fr, isAr ? 'ar' : 'fr')
   )
+
+  // Colour + the same model's other colours (each colour = its own stock)
+  const colourBlock = (
+          <div className="rounded-xl border border-ez-border p-3 space-y-2">
+            <Field label={isAr ? 'اللون' : 'Couleur'} hint={isAr ? '' : 'Une couleur = un article avec son propre stock. Choisie dans la liste des couleurs.'}>
+              <ColourPicker value={form.couleur || null} onChange={nom => setF('couleur', nom ?? '')} emptyLabel={isAr ? 'بدون لون' : 'Aucune couleur'} />
+            </Field>
+            {(() => {
+              const all      = accQ.data ?? []
+              const group    = colorLink === null ? null
+                : colorLink ? (all.find(a => a.acc_id === colorLink)?.groupe_couleur ?? colorLink)
+                : editAcc?.groupe_couleur ?? null
+              const siblings = group ? all.filter(a => (a.groupe_couleur === group || a.acc_id === group) && a.acc_id !== editAcc?.acc_id) : []
+              const q        = colorSearch.trim().toLowerCase()
+              const choices  = q.length < 2 ? [] : all
+                .filter(a => a.acc_id !== editAcc?.acc_id && !siblings.some(x => x.acc_id === a.acc_id)
+                  && `${a.nom} ${a.marque ?? ''} ${a.couleur ?? ''}`.toLowerCase().includes(q))
+                .slice(0, 6)
+              return (
+                <div className="space-y-1.5">
+                  <p className="text-xs font-bold text-ez-subtle uppercase tracking-widest">{isAr ? 'نفس الطراز بألوان أخرى' : 'Même modèle, autres couleurs'}</p>
+                  {siblings.length > 0 ? (
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {siblings.map(a => (
+                        <span key={a.acc_id} title={a.nom} className="px-2.5 py-1 rounded-full text-xs border border-ez-border">
+                          {a.couleur || (isAr ? 'لون؟' : 'couleur ?')} · {a.quantite}
+                        </span>
+                      ))}
+                      {editAcc?.groupe_couleur && colorLink === undefined && (
+                        <button type="button" onClick={() => setColorLink(null)} className="text-xs text-red-500 underline ms-1">
+                          {isAr ? 'إزالة من الطراز' : 'Retirer de ce modèle'}
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-ez-faint">{colorLink === null ? (isAr ? 'سيُزال من الطراز عند الحفظ' : 'Sera retiré du modèle à l’enregistrement.') : (isAr ? 'غير مرتبط بألوان أخرى' : 'Pas lié à d’autres couleurs.')}</p>
+                  )}
+                  {siblings.some(a => !a.couleur) && <p className="text-xs text-amber-700">{isAr ? 'أعط لوناً لكل منتج' : 'Donnez une couleur à chaque article du modèle.'}</p>}
+                  <input type="text" className={inputClass} value={colorSearch} onChange={e => setColorSearch(e.target.value)}
+                    placeholder={isAr ? 'ابحث عن نفس الطراز بلون آخر…' : 'Lier au même modèle dans une autre couleur : chercher…'} />
+                  {choices.length > 0 && (
+                    <div className="border border-ez-border rounded-lg divide-y divide-ez-border">
+                      {choices.map(a => (
+                        <button key={a.acc_id} type="button" onClick={() => { setColorLink(a.acc_id); setColorSearch('') }}
+                          className="w-full flex items-center gap-2 p-2 text-sm text-start hover:bg-ez-muted">
+                          <span className="flex-1 truncate">{a.nom}{a.couleur ? ` · ${a.couleur}` : ''}</span>
+                          <span className="text-xs font-bold" style={{ color: primary }}>{isAr ? 'ربط' : 'Lier'}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
+          </div>
+  )
+
+  const ficheFooter = (
+    <div className="flex gap-3 justify-end pt-2">
+      <Btn variant="secondary" onClick={() => { setFormOpen(false); setEditAcc(null) }}>
+        {t(isAr, 'common.cancel')}
+      </Btn>
+      <Btn variant="primary" onClick={handleSubmit} loading={submitting}
+        style={{ backgroundColor: primary } as React.CSSProperties}>
+        {editAcc ? (t(isAr, 'common.save')) : (t(isAr, 'common.add'))}
+      </Btn>
+    </div>
+  )
+
+  // The website parts of the fiche: only for an article on the site
+  const siteMissing = !canFinancials ? null
+    : siteQ.isLoading ? <SkeletonRow />
+    : siteQ.error ? <p className="text-sm text-ez-subtle">{isAr ? 'الموقع غير متاح' : 'Site web indisponible'} : {siteQ.error.message}</p>
+    : !siteProduct ? (
+      <p className="text-sm text-ez-subtle">
+        {editAcc && ['service', 'chebka'].includes(editAcc.categorie)
+          ? (isAr ? 'هذا النوع لا يظهر في الموقع.' : 'Ce type n’est pas affiché sur le site.')
+          : (isAr ? 'المنتج ليس بعد في الموقع (يصل بعد الحفظ بلحظات).' : 'Pas encore sur le site : il y arrive quelques secondes après l’enregistrement.')}
+      </p>
+    ) : null
 
   return (
     <div className="flex flex-col h-full overflow-hidden animate-fade-in" dir={isAr ? 'rtl' : 'ltr'}>
@@ -423,18 +583,38 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
             />
           ) : (
             <div className="divide-y divide-ez-muted">
-              {visibleAccessories.map(acc => (
+              {visibleRows.map(row => {
+                if (row.kind === 'type') {
+                  const tot = typeTotals.get(row.code)
+                  const open = !folded.has(row.code) || search.trim().length >= 2
+                  return (
+                    <button key={`type-${row.code}`} type="button" onClick={() => toggleType(row.code)}
+                      className="w-full flex items-center gap-2 px-4 lg:px-5 py-2.5 bg-ez-bg text-start hover:bg-ez-muted transition-all">
+                      {open ? <ChevronDown className="w-4 h-4 text-ez-subtle" /> : <ChevronRight className="w-4 h-4 text-ez-subtle rtl:rotate-180" />}
+                      <span className="text-xs font-bold uppercase tracking-widest text-ez-text">{getCatLabel(row.code)}</span>
+                      <span className="text-xs text-ez-subtle">
+                        {tot?.n ?? 0} {isAr ? 'منتج' : 'article(s)'} · {tot?.qty ?? 0} {isAr ? 'في المخزون' : 'en stock'}
+                      </span>
+                      {!!tot?.low && <span className="ms-auto text-xs font-semibold text-red-500 flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5" />{tot.low}</span>}
+                    </button>
+                  )
+                }
+                const { acc, variant } = row
+                return (<Fragment key={acc.acc_id}>
                 <div
-                  key={acc.acc_id}
                   className={`hidden lg:grid items-center px-5 py-3.5 transition-all ${acc.is_low_stock ? 'bg-red-50/30' : 'hover:bg-ez-bg'}`}
                   style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 140px' }}
                 >
-                  {/* Name */}
-                  <div className="flex items-center gap-3 min-w-0">
+                  {/* Name — a colour of the article above is indented under it */}
+                  <div className={`flex items-center gap-3 min-w-0 ${variant ? 'ps-6' : ''}`}>
+                    {variant ? (
+                      <CornerDownRight className="w-4 h-4 text-ez-faint flex-shrink-0" />
+                    ) : (
                     <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
                          style={{ backgroundColor: `${primary}12` }}>
                       <Package className="w-4 h-4" style={{ color: primary }} />
                     </div>
+                    )}
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-ez-text truncate">
                         {acc.nom}
@@ -511,14 +691,13 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
                     )}
                   </div>
                 </div>
-              ))}
 
               {/* Mobile cards — name in full, then category / stock, then big +/− for thumbs */}
-              {visibleAccessories.map(acc => (
-                <div key={`mob-${acc.acc_id}`}
-                  className={`lg:hidden px-4 py-3.5 space-y-2 transition-all ${acc.is_low_stock ? 'bg-red-50/40' : 'hover:bg-ez-bg'}`}>
+                <div
+                  className={`lg:hidden ${variant ? 'ps-9 pe-4' : 'px-4'} py-3.5 space-y-2 transition-all ${acc.is_low_stock ? 'bg-red-50/40' : 'hover:bg-ez-bg'}`}>
                   <div className="flex items-start justify-between gap-3">
                     <p className="text-[15px] font-semibold text-ez-text leading-snug line-clamp-2 min-w-0">
+                      {variant && <CornerDownRight className="w-3.5 h-3.5 text-ez-faint inline me-1 align-middle" />}
                       {acc.nom}
                       {acc.couleur && <span className="ms-1.5 inline-flex items-center gap-1 text-xs font-semibold px-1.5 py-0.5 rounded-full bg-ez-muted text-ez-subtle align-middle"><ColourDot colour={couleurs.byName.get(acc.couleur)} size={10} />{colourLabel(couleurs.byName.get(acc.couleur), acc.couleur)}</span>}
                     </p>
@@ -575,11 +754,12 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
                     </div>
                   </div>
                 </div>
-              ))}
-              {accessories.length > shown && (
+                </Fragment>)
+              })}
+              {rows.length > shown && (
                 <button onClick={() => setShown(n => n + PAGE)}
                   className="w-full py-3 text-sm font-medium text-ez-subtle hover:bg-ez-bg transition-all">
-                  {isAr ? `عرض المزيد (${accessories.length - shown})` : `Afficher plus (${accessories.length - shown})`}
+                  {isAr ? `عرض المزيد (${rows.length - shown})` : `Afficher plus (${rows.length - shown})`}
                 </button>
               )}
             </div>
@@ -622,12 +802,91 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
         open={formOpen}
         onClose={() => { setFormOpen(false); setEditAcc(null) }}
         title={editAcc
-          ? (isAr ? 'تعديل الإكسسوار' : 'Modifier l\'accessoire')
+          ? [editAcc.marque, editAcc.nom, editAcc.couleur && colourLabel(couleurs.byName.get(editAcc.couleur), editAcc.couleur)].filter(Boolean).join(' · ')
           : colorLink
             ? (isAr ? 'لون جديد لنفس الطراز' : 'Nouvelle couleur du même modèle')
             : (isAr ? 'إضافة إكسسوار' : 'Ajouter un accessoire')}
-        size="md"
+        size={editAcc ? 'lg' : 'md'}
       >
+        {editAcc && (
+          <div className="flex flex-wrap items-center gap-2 mb-4" dir={isAr ? 'rtl' : 'ltr'}>
+            <Tabs<FicheTab> value={ficheTab} onChange={setFicheTab} tabs={[
+              { key: 'general',   label: isAr ? 'عام' : 'Général' },
+              { key: 'variantes', label: isAr ? 'الألوان والصور' : 'Variantes & photos' },
+              ...(canFinancials ? [
+                { key: 'fiche' as const, label: isAr ? 'الطرازات والمميزات' : 'Modèles & fiche' },
+                { key: 'site'  as const, label: isAr ? 'الموقع' : 'Site web' },
+              ] : []),
+            ]} />
+            {canFinancials && (
+              <button type="button" onClick={() => setHistoryAcc(editAcc)}
+                className="ms-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-ez-subtle hover:bg-ez-muted">
+                <History className="w-4 h-4" />{isAr ? 'السجل' : 'Historique'}
+              </button>
+            )}
+          </div>
+        )}
+
+        {editAcc && ficheTab === 'variantes' && (
+          <div className="space-y-4" dir={isAr ? 'rtl' : 'ltr'}>
+            {canFinancials && (
+              <div className="space-y-2">
+                <p className="text-xs font-bold text-ez-subtle uppercase tracking-widest">{isAr ? 'صور الموقع وألوانها' : 'Photos du site et leurs couleurs'}</p>
+                {siteMissing ?? (siteProduct && (() => {
+                  // the colours the customer can choose, from the photos
+                  const count = new Map<string, number>()
+                  for (const c of siteProduct.imageColors ?? []) if (c) count.set(c, (count.get(c) ?? 0) + 1)
+                  return (
+                    <>
+                      {count.size > 0 && (
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="text-xs text-ez-subtle me-1">{isAr ? 'الألوان في الموقع:' : 'Couleurs sur le site :'}</span>
+                          {[...count].map(([c, n]) => (
+                            <span key={c} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-ez-border text-xs">
+                              <ColourDot colour={couleurs.byName.get(c)} size={10} />{colourLabel(couleurs.byName.get(c), c)} · {n}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      <SitePhotosEditor product={siteProduct} />
+                    </>
+                  )
+                })())}
+              </div>
+            )}
+            <div className={canFinancials ? 'border-t border-ez-border pt-4 space-y-3' : 'space-y-3'}>
+              <p className="text-xs font-bold text-ez-subtle uppercase tracking-widest">{isAr ? 'لون بمخزونه الخاص' : 'Couleur comptée à part en stock'}</p>
+              <p className="text-xs text-ez-subtle">
+                {isAr ? 'لون بمخزونه الخاص = منتج مرتبط (زر « + لون » في القائمة).'
+                  : 'Quand chaque couleur a son propre stock, elle est un article lié (bouton « + couleur » dans la liste) : il apparaît sous celui-ci.'}
+              </p>
+              {colourBlock}
+              {ficheFooter}
+            </div>
+          </div>
+        )}
+
+        {editAcc && ficheTab === 'fiche' && canFinancials && (
+          <div className="space-y-3" dir={isAr ? 'rtl' : 'ltr'}>
+            {siteMissing ?? (siteProduct && (
+              <>
+                <FacetChecklist key={siteProduct.id} productId={siteProduct.id} categoryId={siteProduct.categoryId} categories={siteCategories}
+                  ticked={siteProduct.facetIds} photos={siteProduct.facetImages} />
+                <p className="text-xs text-ez-faint">
+                  {isAr ? 'لا توجد بطاقة لهذا النوع بعد.' : 'Rien ci-dessus ? Ce type n’a pas encore de fiche (modèles, matière…) : elles arrivent type par type à la prochaine étape.'}
+                </p>
+              </>
+            ))}
+          </div>
+        )}
+
+        {editAcc && ficheTab === 'site' && canFinancials && (
+          <div dir={isAr ? 'rtl' : 'ltr'}>
+            {siteMissing ?? (siteProduct && <SiteInfoEditor key={siteProduct.id} product={siteProduct} categories={siteCategories} />)}
+          </div>
+        )}
+
+        {(!editAcc || ficheTab === 'general') && (
         <div className="space-y-4" dir={isAr ? 'rtl' : 'ltr'}>
           <div className="grid grid-cols-2 gap-4">
             <Field label={t(isAr, 'common.name')} required>
@@ -673,59 +932,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
               value={form.compatible_with} onChange={e => setF('compatible_with', e.target.value)} />
           </Field>
 
-          {/* Colour + the same model's other colours (each colour = its own stock) */}
-          <div className="rounded-xl border border-ez-border p-3 space-y-2">
-            <Field label={isAr ? 'اللون' : 'Couleur'} hint={isAr ? '' : 'Une couleur = un article avec son propre stock. Choisie dans la liste des couleurs.'}>
-              <ColourPicker value={form.couleur || null} onChange={nom => setF('couleur', nom ?? '')} emptyLabel={isAr ? 'بدون لون' : 'Aucune couleur'} />
-            </Field>
-            {(() => {
-              const all      = accQ.data ?? []
-              const group    = colorLink === null ? null
-                : colorLink ? (all.find(a => a.acc_id === colorLink)?.groupe_couleur ?? colorLink)
-                : editAcc?.groupe_couleur ?? null
-              const siblings = group ? all.filter(a => (a.groupe_couleur === group || a.acc_id === group) && a.acc_id !== editAcc?.acc_id) : []
-              const q        = colorSearch.trim().toLowerCase()
-              const choices  = q.length < 2 ? [] : all
-                .filter(a => a.acc_id !== editAcc?.acc_id && !siblings.some(x => x.acc_id === a.acc_id)
-                  && `${a.nom} ${a.marque ?? ''} ${a.couleur ?? ''}`.toLowerCase().includes(q))
-                .slice(0, 6)
-              return (
-                <div className="space-y-1.5">
-                  <p className="text-xs font-bold text-ez-subtle uppercase tracking-widest">{isAr ? 'نفس الطراز بألوان أخرى' : 'Même modèle, autres couleurs'}</p>
-                  {siblings.length > 0 ? (
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      {siblings.map(a => (
-                        <span key={a.acc_id} title={a.nom} className="px-2.5 py-1 rounded-full text-xs border border-ez-border">
-                          {a.couleur || (isAr ? 'لون؟' : 'couleur ?')} · {a.quantite}
-                        </span>
-                      ))}
-                      {editAcc?.groupe_couleur && colorLink === undefined && (
-                        <button type="button" onClick={() => setColorLink(null)} className="text-xs text-red-500 underline ms-1">
-                          {isAr ? 'إزالة من الطراز' : 'Retirer de ce modèle'}
-                        </button>
-                      )}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-ez-faint">{colorLink === null ? (isAr ? 'سيُزال من الطراز عند الحفظ' : 'Sera retiré du modèle à l’enregistrement.') : (isAr ? 'غير مرتبط بألوان أخرى' : 'Pas lié à d’autres couleurs.')}</p>
-                  )}
-                  {siblings.some(a => !a.couleur) && <p className="text-xs text-amber-700">{isAr ? 'أعط لوناً لكل منتج' : 'Donnez une couleur à chaque article du modèle.'}</p>}
-                  <input type="text" className={inputClass} value={colorSearch} onChange={e => setColorSearch(e.target.value)}
-                    placeholder={isAr ? 'ابحث عن نفس الطراز بلون آخر…' : 'Lier au même modèle dans une autre couleur : chercher…'} />
-                  {choices.length > 0 && (
-                    <div className="border border-ez-border rounded-lg divide-y divide-ez-border">
-                      {choices.map(a => (
-                        <button key={a.acc_id} type="button" onClick={() => { setColorLink(a.acc_id); setColorSearch('') }}
-                          className="w-full flex items-center gap-2 p-2 text-sm text-start hover:bg-ez-muted">
-                          <span className="flex-1 truncate">{a.nom}{a.couleur ? ` · ${a.couleur}` : ''}</span>
-                          <span className="text-xs font-bold" style={{ color: primary }}>{isAr ? 'ربط' : 'Lier'}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )
-            })()}
-          </div>
+          {!editAcc && colourBlock}
 
           <div className="grid grid-cols-2 gap-4">
             <Field label={isAr ? 'الكمية الحالية' : 'Quantité actuelle'} required>
@@ -804,16 +1011,9 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
             </div>
           )}
 
-          <div className="flex gap-3 justify-end pt-2">
-            <Btn variant="secondary" onClick={() => { setFormOpen(false); setEditAcc(null) }}>
-              {t(isAr, 'common.cancel')}
-            </Btn>
-            <Btn variant="primary" onClick={handleSubmit} loading={submitting}
-              style={{ backgroundColor: primary } as React.CSSProperties}>
-              {editAcc ? (t(isAr, 'common.save')) : (t(isAr, 'common.add'))}
-            </Btn>
-          </div>
+          {ficheFooter}
         </div>
+        )}
       </Modal>
 
       {historyAcc && (

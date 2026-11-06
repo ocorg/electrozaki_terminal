@@ -11,15 +11,16 @@ import { codeOptions } from '@/lib/codes'
 import { ColourPicker, ColoursTab } from '@/components/shared/ColourPicker'
 import { FacetsTab, FacetChecklist } from './SiteFacets'
 
-interface Product {
+export interface Product {
   id: string; slug: string; name: string; brand: string | null; isPhone: boolean; source: 'ERP' | 'MANUAL'
   published: boolean; availability: string; condition: string; recommendedSalePrice: number
   description: string | null; metaTitle: string | null; metaDescription: string | null
   modelKey: string | null; categoryId: string; category: { name: string }
+  accId?: string | null
   images: string[]; imageColors?: string[]; imageDesigns?: string[]; imageShapes?: string[]; stock: number | null; giftCount: number; facetIds: string[]
   colorName: string | null; colorGroup: string | null; facetImages: Record<string, string>
 }
-interface Category {
+export interface Category {
   id: string; name: string; slug: string; parentId: string | null; sortOrder: number; erpCode: string | null
   _count: { products: number; children: number }
 }
@@ -179,7 +180,13 @@ function ProductsTab({ products, categories, isManager }: { products: Product[];
                       className={`p-2 rounded-lg ${p.published ? 'text-emerald-600 hover:bg-emerald-50' : 'text-ez-placeholder hover:bg-ez-muted'}`}>
                       {p.published ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                     </button>
-                    <button onClick={() => setEditing(p)} className="p-2 rounded-lg text-ez-subtle hover:bg-ez-muted"><Pencil className="w-4 h-4" /></button>
+                    {p.accId ? (
+                      // an ERP accessory: one fiche, in Stock → Accessoires (owner, 2026-11-06)
+                      <a href={`/ez/stock/accessories?fiche=${encodeURIComponent(p.accId)}&tab=site`} title={L('Ouvrir la fiche (Stock → Accessoires)', 'فتح البطاقة')}
+                        className="p-2 rounded-lg text-ez-subtle hover:bg-ez-muted"><Pencil className="w-4 h-4" /></a>
+                    ) : (
+                      <button onClick={() => setEditing(p)} className="p-2 rounded-lg text-ez-subtle hover:bg-ez-muted"><Pencil className="w-4 h-4" /></button>
+                    )}
                   </>
                 )}
               </div>
@@ -206,10 +213,6 @@ function ProductModal({ product, categories, accessories, onClose }: {
     published: product.published, colorName: product.colorName ?? '',
   })
   const [saving, setSaving]       = useState(false)
-  const [uploading, setUploading] = useState(false)
-  const [progress, setProgress]   = useState('')
-  const [dragOver, setDragOver]   = useState(false)
-  const fileRef = useRef<HTMLInputElement>(null)
 
   async function save() {
     setSaving(true)
@@ -224,48 +227,6 @@ function ProductModal({ product, categories, accessories, onClose }: {
       showSuccess(L('Enregistré', 'تم الحفظ'))
       onClose()
     } catch (e) { showError((e as Error).message) } finally { setSaving(false) }
-  }
-
-  // Several photos at once, picked or dropped (owner, 2026-10-28). One after
-  // the other, in the order chosen: the first one is the cover on the site.
-  async function addPhotos(list: FileList | File[]) {
-    const files = Array.from(list).filter(f => f.type.startsWith('image/'))
-    if (!files.length) { showError(L('Choisissez des images', 'اختر صوراً')); return }
-    const room = MAX_PHOTOS - product.images.length
-    if (room <= 0) { showError(L(`${MAX_PHOTOS} photos maximum`, `${MAX_PHOTOS} صور كحد أقصى`)); return }
-    const todo = files.slice(0, room)
-    setUploading(true)
-    let done = 0
-    try {
-      for (const f of todo) {
-        setProgress(`${done + 1}/${todo.length}`)
-        await uploadResized(`/api/site/catalog/${product.id}/images`, f)
-        done++
-      }
-      showSuccess(done > 1 ? L(`${done} photos ajoutées`, `تمت إضافة ${done} صور`) : L('Photo ajoutée', 'تمت إضافة الصورة'))
-      if (files.length > todo.length) showError(L(`${files.length - todo.length} photo(s) non ajoutée(s) : ${MAX_PHOTOS} maximum`, `${MAX_PHOTOS} صور كحد أقصى`))
-    } catch (e) {
-      showError(`${done ? L(`${done} ajoutée(s), puis : `, '') : ''}${(e as Error).message}`)
-    } finally {
-      refreshPrefixes(['/api/site'])
-      setUploading(false); setProgress('')
-    }
-  }
-
-  // What each photo shows (owner, 2026-11-02/03): its design, colour and the
-  // phone shape it is cut for — the site's design / colour / model choices.
-  async function savePhoto(url: string, field: 'colorName' | 'designName' | 'phoneShape', value: string, before: string) {
-    if (value.trim() === before) return
-    try {
-      await apiWrite(`/api/site/catalog/${product.id}/images`, { method: 'PATCH', body: { url, [field]: value } })
-    } catch (e) { showError((e as Error).message) } finally { refreshPrefixes(['/api/site']) }
-  }
-
-  async function removePhoto(url: string) {
-    if (!(await confirmDialog(L('Retirer cette photo ?', 'حذف هذه الصورة؟')))) return
-    try {
-      await apiWrite(`/api/site/catalog/${product.id}/images`, { method: 'DELETE', body: { url } })
-    } catch (e) { showError((e as Error).message) }
   }
 
   const set = (k: keyof typeof form, v: string | boolean) => setForm(f => ({ ...f, [k]: v }))
@@ -314,66 +275,7 @@ function ProductModal({ product, categories, accessories, onClose }: {
           photos={product.isPhone ? undefined : product.facetImages} />
 
         {nameEditable ? (
-          <div className="space-y-2"
-            onDragOver={e => { if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); setDragOver(true) } }}
-            onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(false) }}
-            onDrop={e => { e.preventDefault(); setDragOver(false); if (!uploading && e.dataTransfer.files.length) addPhotos(e.dataTransfer.files) }}>
-            <p className="text-xs uppercase tracking-widest text-ez-subtle font-medium">
-              {L('Photos', 'الصور')} <span className="normal-case tracking-normal">· {product.images.length}/{MAX_PHOTOS} · {L('la 1re est la photo principale', 'الأولى هي الصورة الرئيسية')}</span>
-            </p>
-            <div className={`flex flex-wrap gap-2 rounded-xl p-2 -m-2 border-2 border-dashed transition-colors ${dragOver ? 'border-gold bg-gold/5' : 'border-transparent'}`}>
-              {product.images.map((url, i) => {
-                const colour = product.imageColors?.[i] ?? ''
-                const design = product.imageDesigns?.[i] ?? ''
-                const shape  = product.imageShapes?.[i] ?? ''
-                const box = 'w-full rounded-md border border-ez-border px-1.5 py-1 text-[11px] focus:border-gold focus:outline-none'
-                return (
-                  <div key={url} className={`${product.isPhone ? 'w-20' : 'w-28'} space-y-1`}>
-                    <div className={`relative ${product.isPhone ? 'w-20 h-20' : 'w-28 h-28'} rounded-lg border border-ez-border overflow-hidden bg-ez-bg`}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={url} alt="" className="w-full h-full object-contain" />
-                      {i === 0 && <span className="absolute bottom-0 inset-x-0 text-[9px] font-bold text-center bg-gold text-white">{L('Principale', 'رئيسية')}</span>}
-                      <button onClick={() => removePhoto(url)} className="absolute top-1 end-1 p-1 rounded bg-white/90 text-red-600"><Trash2 className="w-3 h-3" /></button>
-                    </div>
-                    {!product.isPhone && (
-                      <>
-                        <input key={`${url}-d-${design}`} defaultValue={design} list={`photo-designs-${product.id}`} maxLength={30}
-                          placeholder={L('Design', 'التصميم')} aria-label={L('Design de cette photo', 'تصميم هذه الصورة')}
-                          onBlur={e => savePhoto(url, 'designName', e.target.value, design)}
-                          onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }} className={box} />
-                        <ColourPicker compact value={colour || null} onChange={nom => savePhoto(url, 'colorName', nom ?? '', colour)} />
-                        <select value={shape} aria-label={L('Pour quels iPhone', 'لأي iPhone')}
-                          onChange={e => savePhoto(url, 'phoneShape', e.target.value, shape)} className={box}>
-                          <option value="">{L('Tous les iPhone', 'كل iPhone')}</option>
-                          {codeOptions('phone_shape', L('fr', 'ar') as 'fr' | 'ar').map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                        </select>
-                      </>
-                    )}
-                  </div>
-                )
-              })}
-              {!product.isPhone && (
-                <>
-                  <datalist id={`photo-designs-${product.id}`}>
-                    {[...new Set((product.imageDesigns ?? []).filter(Boolean))].map(c => <option key={c} value={c} />)}
-                  </datalist>
-                </>
-              )}
-              {product.images.length < MAX_PHOTOS && (
-                <button onClick={() => fileRef.current?.click()} disabled={uploading}
-                  className="w-20 h-20 rounded-lg border-2 border-dashed border-ez-border flex flex-col items-center justify-center gap-0.5 text-ez-subtle hover:border-gold">
-                  {uploading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-5 h-5" />}
-                  <span className="text-[10px] font-bold">{uploading ? progress : L('Ajouter', 'إضافة')}</span>
-                </button>
-              )}
-              <input ref={fileRef} type="file" accept="image/*" multiple className="hidden"
-                onChange={e => { const files = Array.from(e.target.files ?? []); e.target.value = ''; if (files.length) addPhotos(files) }} />
-            </div>
-            <p className="text-xs text-ez-faint">{L('Choisissez plusieurs photos d’un coup, ou glissez-les ici. Sur le site, elles défilent en carrousel.', 'اختر عدة صور دفعة واحدة أو اسحبها هنا.')}</p>
-            {!product.isPhone && (
-              <p className="text-xs text-ez-faint">{L('Sous chaque photo : son design (si le produit en a plusieurs), sa couleur (dans la liste des couleurs) et les iPhone pour lesquels elle est faite. Sur le site, le client choisit le design, puis la couleur, puis son iPhone parmi les « Modèle » cochés dans la fiche qui existent dans cette couleur.', 'تحت كل صورة: التصميم واللون (بالفرنسية) وأجهزة iPhone المناسبة. في الموقع يختار الزبون التصميم ثم اللون ثم هاتفه.')}</p>
-            )}
-          </div>
+          <SitePhotosEditor product={product} />
         ) : (
           <>
             <p className="text-xs text-ez-subtle">{L('Les photos des téléphones se gèrent par modèle et couleur dans l’onglet « Photos téléphones ».', 'صور الهواتف تدار حسب الطراز واللون في تبويب الصور.')}</p>
@@ -387,6 +289,186 @@ function ProductModal({ product, categories, accessories, onClose }: {
         </div>
       </div>
     </Modal>
+  )
+}
+
+
+/** What the website shows of an ERP accessory (customer name, category, texts,
+ *  visibility). Inside the fiche in Stock → Accessoires (owner, 2026-11-06). */
+export function SiteInfoEditor({ product, categories }: { product: Product; categories: Category[] }) {
+  const { L } = useSiteLang()
+  const initial = () => ({
+    name: product.name, brand: product.brand ?? '', categoryId: product.categoryId,
+    description: product.description ?? '', metaTitle: product.metaTitle ?? '', metaDescription: product.metaDescription ?? '',
+    published: product.published,
+  })
+  const [form, setForm] = useState(initial)
+  const [saving, setSaving] = useState(false)
+  const set = (k: keyof ReturnType<typeof initial>, v: string | boolean) => setForm(f => ({ ...f, [k]: v }))
+  const changed = JSON.stringify(form) !== JSON.stringify(initial())
+
+  async function save() {
+    if (!form.name.trim()) { showError(L('Nom obligatoire', 'الاسم مطلوب')); return }
+    setSaving(true)
+    try {
+      await apiWrite(`/api/site/catalog/${product.id}`, { method: 'PATCH', body: form })
+      showSuccess(L('Site web enregistré', 'تم الحفظ'))
+    } catch (e) { showError((e as Error).message) } finally { setSaving(false) }
+  }
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-ez-subtle">
+        {L('Prix et stock viennent de l’onglet Général.', 'السعر والمخزون من التبويب العام.')}
+        {' · '}<a href={`${process.env.NEXT_PUBLIC_STOREFRONT_URL ?? ''}/products/${product.slug}`} target="_blank" rel="noopener noreferrer" className="underline">{L('voir sur le site', 'عرض في الموقع')}</a>
+      </p>
+      <div className="grid sm:grid-cols-2 gap-3">
+        <Field label={L('Nom affiché aux clients', 'الاسم المعروض')} required>
+          <input value={form.name} onChange={e => set('name', e.target.value)} className={inputClass} maxLength={120} />
+        </Field>
+        <Field label={L('Marque', 'العلامة')}>
+          <input value={form.brand} onChange={e => set('brand', e.target.value)} className={inputClass} maxLength={60} />
+        </Field>
+      </div>
+      <Field label={L('Catégorie du site', 'فئة الموقع')}>
+        <Select value={form.categoryId} onChange={e => set('categoryId', e.target.value)} className={selectClass}>
+          {categoryOptions(categories, { allLabel: name => name })}
+        </Select>
+      </Field>
+      <Field label={L('Description', 'الوصف')}>
+        <textarea value={form.description} onChange={e => set('description', e.target.value)} rows={4} className={inputClass} maxLength={3000} />
+      </Field>
+      <div className="grid sm:grid-cols-2 gap-3">
+        <Field label={L('Titre Google (optionnel)', 'عنوان جوجل')}>
+          <input value={form.metaTitle} onChange={e => set('metaTitle', e.target.value)} className={inputClass} maxLength={120} />
+        </Field>
+        <Field label={L('Description Google (optionnel)', 'وصف جوجل')}>
+          <input value={form.metaDescription} onChange={e => set('metaDescription', e.target.value)} className={inputClass} maxLength={300} />
+        </Field>
+      </div>
+      <label className="flex items-center gap-2 text-sm">
+        <input type="checkbox" checked={form.published} onChange={e => set('published', e.target.checked)} className="w-4 h-4" />
+        {L('Visible sur le site', 'ظاهر في الموقع')}
+      </label>
+      <div className="flex justify-end">
+        <Btn onClick={save} loading={saving} disabled={!changed}>{L('Enregistrer le site web', 'حفظ')}</Btn>
+      </div>
+    </div>
+  )
+}
+
+/** A website accessory's photos with what each one shows (design, colour,
+ *  phone shape). Also inside the fiche in Stock → Accessoires (owner, 2026-11-06). */
+export function SitePhotosEditor({ product }: { product: Product }) {
+  const { L } = useSiteLang()
+  const [uploading, setUploading] = useState(false)
+  const [progress, setProgress]   = useState('')
+  const [dragOver, setDragOver]   = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  // Several photos at once, picked or dropped (owner, 2026-10-28). One after
+  // the other, in the order chosen: the first one is the cover on the site.
+  async function addPhotos(list: FileList | File[]) {
+    const files = Array.from(list).filter(f => f.type.startsWith('image/'))
+    if (!files.length) { showError(L('Choisissez des images', 'اختر صوراً')); return }
+    const room = MAX_PHOTOS - product.images.length
+    if (room <= 0) { showError(L(`${MAX_PHOTOS} photos maximum`, `${MAX_PHOTOS} صور كحد أقصى`)); return }
+    const todo = files.slice(0, room)
+    setUploading(true)
+    let done = 0
+    try {
+      for (const f of todo) {
+        setProgress(`${done + 1}/${todo.length}`)
+        await uploadResized(`/api/site/catalog/${product.id}/images`, f)
+        done++
+      }
+      showSuccess(done > 1 ? L(`${done} photos ajoutées`, `تمت إضافة ${done} صور`) : L('Photo ajoutée', 'تمت إضافة الصورة'))
+      if (files.length > todo.length) showError(L(`${files.length - todo.length} photo(s) non ajoutée(s) : ${MAX_PHOTOS} maximum`, `${MAX_PHOTOS} صور كحد أقصى`))
+    } catch (e) {
+      showError(`${done ? L(`${done} ajoutée(s), puis : `, '') : ''}${(e as Error).message}`)
+    } finally {
+      refreshPrefixes(['/api/site'])
+      setUploading(false); setProgress('')
+    }
+  }
+
+  // What each photo shows (owner, 2026-11-02/03): its design, colour and the
+  // phone shape it is cut for — the site's design / colour / model choices.
+  async function savePhoto(url: string, field: 'colorName' | 'designName' | 'phoneShape', value: string, before: string) {
+    if (value.trim() === before) return
+    try {
+      await apiWrite(`/api/site/catalog/${product.id}/images`, { method: 'PATCH', body: { url, [field]: value } })
+    } catch (e) { showError((e as Error).message) } finally { refreshPrefixes(['/api/site']) }
+  }
+
+  async function removePhoto(url: string) {
+    if (!(await confirmDialog(L('Retirer cette photo ?', 'حذف هذه الصورة؟')))) return
+    try {
+      await apiWrite(`/api/site/catalog/${product.id}/images`, { method: 'DELETE', body: { url } })
+    } catch (e) { showError((e as Error).message) }
+  }
+
+  return (
+    <div className="space-y-2"
+      onDragOver={e => { if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); setDragOver(true) } }}
+      onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(false) }}
+      onDrop={e => { e.preventDefault(); setDragOver(false); if (!uploading && e.dataTransfer.files.length) addPhotos(e.dataTransfer.files) }}>
+      <p className="text-xs uppercase tracking-widest text-ez-subtle font-medium">
+        {L('Photos', 'الصور')} <span className="normal-case tracking-normal">· {product.images.length}/{MAX_PHOTOS} · {L('la 1re est la photo principale', 'الأولى هي الصورة الرئيسية')}</span>
+      </p>
+      <div className={`flex flex-wrap gap-2 rounded-xl p-2 -m-2 border-2 border-dashed transition-colors ${dragOver ? 'border-gold bg-gold/5' : 'border-transparent'}`}>
+        {product.images.map((url, i) => {
+          const colour = product.imageColors?.[i] ?? ''
+          const design = product.imageDesigns?.[i] ?? ''
+          const shape  = product.imageShapes?.[i] ?? ''
+          const box = 'w-full rounded-md border border-ez-border px-1.5 py-1 text-[11px] focus:border-gold focus:outline-none'
+          return (
+            <div key={url} className={`${product.isPhone ? 'w-20' : 'w-28'} space-y-1`}>
+              <div className={`relative ${product.isPhone ? 'w-20 h-20' : 'w-28 h-28'} rounded-lg border border-ez-border overflow-hidden bg-ez-bg`}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={url} alt="" className="w-full h-full object-contain" />
+                {i === 0 && <span className="absolute bottom-0 inset-x-0 text-[9px] font-bold text-center bg-gold text-white">{L('Principale', 'رئيسية')}</span>}
+                <button onClick={() => removePhoto(url)} className="absolute top-1 end-1 p-1 rounded bg-white/90 text-red-600"><Trash2 className="w-3 h-3" /></button>
+              </div>
+              {!product.isPhone && (
+                <>
+                  <input key={`${url}-d-${design}`} defaultValue={design} list={`photo-designs-${product.id}`} maxLength={30}
+                    placeholder={L('Design', 'التصميم')} aria-label={L('Design de cette photo', 'تصميم هذه الصورة')}
+                    onBlur={e => savePhoto(url, 'designName', e.target.value, design)}
+                    onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }} className={box} />
+                  <ColourPicker compact value={colour || null} onChange={nom => savePhoto(url, 'colorName', nom ?? '', colour)} />
+                  <select value={shape} aria-label={L('Pour quels iPhone', 'لأي iPhone')}
+                    onChange={e => savePhoto(url, 'phoneShape', e.target.value, shape)} className={box}>
+                    <option value="">{L('Tous les iPhone', 'كل iPhone')}</option>
+                    {codeOptions('phone_shape', L('fr', 'ar') as 'fr' | 'ar').map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                </>
+              )}
+            </div>
+          )
+        })}
+        {!product.isPhone && (
+          <>
+            <datalist id={`photo-designs-${product.id}`}>
+              {[...new Set((product.imageDesigns ?? []).filter(Boolean))].map(c => <option key={c} value={c} />)}
+            </datalist>
+          </>
+        )}
+        {product.images.length < MAX_PHOTOS && (
+          <button onClick={() => fileRef.current?.click()} disabled={uploading}
+            className="w-20 h-20 rounded-lg border-2 border-dashed border-ez-border flex flex-col items-center justify-center gap-0.5 text-ez-subtle hover:border-gold">
+            {uploading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-5 h-5" />}
+            <span className="text-[10px] font-bold">{uploading ? progress : L('Ajouter', 'إضافة')}</span>
+          </button>
+        )}
+        <input ref={fileRef} type="file" accept="image/*" multiple className="hidden"
+          onChange={e => { const files = Array.from(e.target.files ?? []); e.target.value = ''; if (files.length) addPhotos(files) }} />
+      </div>
+      <p className="text-xs text-ez-faint">{L('Choisissez plusieurs photos d’un coup, ou glissez-les ici. Sur le site, elles défilent en carrousel.', 'اختر عدة صور دفعة واحدة أو اسحبها هنا.')}</p>
+      {!product.isPhone && (
+        <p className="text-xs text-ez-faint">{L('Sous chaque photo : son design (si le produit en a plusieurs), sa couleur (dans la liste des couleurs) et les iPhone pour lesquels elle est faite. Sur le site, le client choisit le design, puis la couleur, puis son iPhone parmi les « Modèle » cochés dans la fiche qui existent dans cette couleur.', 'تحت كل صورة: التصميم واللون (بالفرنسية) وأجهزة iPhone المناسبة. في الموقع يختار الزبون التصميم ثم اللون ثم هاتفه.')}</p>
+      )}
+    </div>
   )
 }
 
