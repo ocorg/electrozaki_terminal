@@ -42,8 +42,13 @@ const PHONE_CATEGORY_CODE = 'telephone'
 /** Tablets sold from the phones stock (Galaxy Tab, iPad…): their own "Tablettes" aisle. */
 const TABLET_CATEGORY_CODE = 'tablette'
 const TABLET_RE = /\b(tab|ipad|pad)\b/i
-/** ERP accessory categories never published on the website. */
-const NOT_ON_WEBSITE = ['service']
+/**
+ * ERP accessory categories never published on the website. Chebka (owner,
+ * 2026-11-06): the shop's low-price items sold without packaging, not for
+ * online sale for now (maybe in packs later). Their website products are
+ * kept, hidden (DISCONTINUED), and come back if the category is removed here.
+ */
+const NOT_ON_WEBSITE = ['service', 'chebka']
 const LOCK_KEY = 7_345_001 // pg advisory lock: one sync at a time
 
 /** The ERP rows that may appear on the site: sellable, priced, active store, not damaged. */

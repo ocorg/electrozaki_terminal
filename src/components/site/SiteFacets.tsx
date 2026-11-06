@@ -7,6 +7,7 @@ import { Modal, Btn, EmptyState, SkeletonRow, Field, inputClass, selectClass, Se
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import { confirmDialog } from '@/components/shared/ConfirmHost'
 import { useSiteLang, Chip } from './common'
+import { ModelPicker } from './ModelPicker'
 
 // The website's product checklist ("fiches"): what a customer chooses an
 // accessory by (phone model, who for, style, protection…). Groups and their
@@ -231,6 +232,8 @@ export function FacetChecklist({ productId, categoryId, categories, ticked, phot
   const { L } = useSiteLang()
   const q = useApi<FacetGroup[]>(FACETS)
   const [picked, setPicked] = useState<string[] | null>(null)
+  // the phone models it fits, by name (ModelPicker; owner, 2026-11-06)
+  const [models, setModels] = useState<string[] | null>(null)
   const [saving, setSaving] = useState(false)
   const [photoBusy, setPhotoBusy] = useState<string | null>(null)
   const fileRef  = useRef<HTMLInputElement>(null)
@@ -255,6 +258,10 @@ export function FacetChecklist({ productId, categoryId, categories, ticked, phot
   const groups = (q.data ?? []).filter(g => g.active && g.categoryIds.some(id => id === categoryId || id === parentId))
   if (groups.length === 0) return null
   const current = picked ?? ticked
+  const modelGroup = groups.find(g => g.key === 'modele')
+  const modelIds = new Set(modelGroup?.options.map(o => o.id) ?? [])
+  const tickedModels = (modelGroup?.options ?? []).filter(o => ticked.includes(o.id)).map(o => o.name)
+  const currentModels = models ?? tickedModels
 
   function toggle(group: FacetGroup, optionId: string) {
     const inGroup = new Set(group.options.map(o => o.id))
@@ -265,9 +272,14 @@ export function FacetChecklist({ productId, categoryId, categories, ticked, phot
   async function save() {
     setSaving(true)
     try {
-      await apiWrite(`/api/site/catalog/${productId}/facets`, { method: 'PUT', body: { optionIds: current } })
+      await apiWrite(`/api/site/catalog/${productId}/facets`, {
+        method: 'PUT',
+        body: { optionIds: current.filter(id => !modelIds.has(id)), ...(modelGroup && { models: currentModels }) },
+      })
+      refreshPrefixes(['/api/site'])
       showSuccess(L('Fiche enregistrée', 'تم حفظ البطاقة'))
       setPicked(null)
+      setModels(null)
     } catch (e) { showError((e as Error).message) } finally { setSaving(false) }
   }
 
@@ -279,6 +291,9 @@ export function FacetChecklist({ productId, categoryId, categories, ticked, phot
           <p className="text-xs uppercase tracking-widest text-ez-subtle font-medium mb-1.5">
             {g.name} <span className="normal-case tracking-normal">· {g.multi ? L('plusieurs possibles', 'عدة اختيارات') : L('un seul', 'واحد فقط')}</span>
           </p>
+          {g.key === 'modele' ? (
+            <ModelPicker selected={currentModels} onChange={setModels} />
+          ) : (
           <div className="flex flex-wrap gap-1.5">
             {g.options.filter(o => o.active || current.includes(o.id)).map(o => {
               const on = current.includes(o.id)
@@ -290,6 +305,7 @@ export function FacetChecklist({ productId, categoryId, categories, ticked, phot
               )
             })}
           </div>
+          )}
           {/* Photo of THIS product's feature (its stand, its card holder…), once the tick is saved */}
           {photos && PHOTO_GROUPS.includes(g.key) && g.options.some(o => ticked.includes(o.id) && current.includes(o.id)) && (
             <div className="flex flex-wrap gap-2 mt-2">
@@ -323,7 +339,7 @@ export function FacetChecklist({ productId, categoryId, categories, ticked, phot
           onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) uploadPhoto(f) }} />
       )}
       <div className="flex justify-end">
-        <Btn size="sm" onClick={save} loading={saving} disabled={picked === null}>{L('Enregistrer la fiche', 'حفظ البطاقة')}</Btn>
+        <Btn size="sm" onClick={save} loading={saving} disabled={picked === null && models === null}>{L('Enregistrer la fiche', 'حفظ البطاقة')}</Btn>
       </div>
     </div>
   )
