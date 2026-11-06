@@ -192,7 +192,7 @@ export default function MovementsModule({ storeId }: MovementsModuleProps) {
               </button>
             )}
           </div>
-          <ScanButton
+          <ScanButton sound="movements"
             onScan={v => setSearch(v)}
             hint="Scannez l'IMEI"
             color={primary}
@@ -334,7 +334,7 @@ export default function MovementsModule({ storeId }: MovementsModuleProps) {
                 placeholder={form.device_type === 'telephone' ? 'IMEI complet (ou PHO-0001)' : form.device_type === 'accessoire' ? 'Code-barres (ou EZ-ACC-000001)' : 'LAP-0001'}
                 value={form.device_id}
                 onChange={e => setF('device_id', e.target.value)} />
-              <ScanButton
+              <ScanButton sound="movements"
                 onScan={v => setF('device_id', v)}
                 hint={form.device_type === 'telephone' ? "Scannez l'IMEI" : 'Scannez le code'}
                 color={primary}

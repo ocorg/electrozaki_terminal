@@ -18,6 +18,7 @@ import { codeLabel, type Code } from '@/lib/codes'
 import { STORE_TIME_ZONE } from '@/lib/time'
 import { Select } from '@/components/shared'
 import { getBusinessDate } from '@/lib/utils'
+import { imeiProblem, imeiDigits } from '@/lib/imei'
 
 // ── Types ───────────────────────────────────────────────────────────
 interface CreditSale {
@@ -813,8 +814,10 @@ function NewCreditModal({
               <div className="grid grid-cols-2 gap-2">
                 <input
                   value={form.reprise_imei}
-                  onChange={(e) => setForm((f) => ({ ...f, reprise_imei: e.target.value }))}
-                  placeholder="IMEI (optionnel)"
+                  inputMode="numeric" maxLength={15}
+                  onChange={(e) => setForm((f) => ({ ...f, reprise_imei: imeiDigits(e.target.value).slice(0, 15) }))}
+                  title={imeiProblem(form.reprise_imei) ?? undefined}
+                  placeholder="IMEI (optionnel, 15 chiffres)"
                   className="bg-black/20 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-blue-400/50"
                 />
                 <div className="relative">

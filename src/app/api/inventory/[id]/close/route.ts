@@ -2,7 +2,8 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { json, handleError, requireActiveUser, HttpError, MANAGERS } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
-import { countByResult, syncInventoryWithStock } from '@/lib/inventory'
+import { countByResult, syncInventoryWithStock, inventorySummary } from '@/lib/inventory'
+import { alertLater } from '@/lib/reports'
 import { withNotify } from '@/lib/realtime'
 
 async function PATCH_(req: NextRequest, { params }: { params: { id: string } }) {
@@ -41,6 +42,9 @@ async function PATCH_(req: NextRequest, { params }: { params: { id: string } }) 
       ip_address:  getIpFromRequest(req),
       after_state: { session_id: params.id, counts },
     })
+
+    // the summary to the managers' Telegram group (owner, 2026-11-06)
+    alertLater(() => inventorySummary(params.id, user.display_name))
 
     return json({ session: closedSession, counts })
   } catch (err) {

@@ -11,6 +11,7 @@ import { assertManualStatus } from '@/lib/phoneExit'
 import { sameImei, inShop } from '@/lib/phoneExit'
 import { codeLabel } from '@/lib/codes'
 import { alertLater, waitingFor } from '@/lib/reports'
+import { cleanImeiOrThrow } from '@/lib/imei'
 
 // Hidden from staff: purchase price, iCloud password, settlement and audit fields
 const STAFF_OMIT = {
@@ -115,7 +116,8 @@ async function POST_(request: NextRequest) {
     // second life, linked to the old one, which keeps its sale. Never two
     // records of the same IMEI in the shop at once.
     const fields = input as Record<string, unknown>
-    if (typeof fields.imei === 'string') fields.imei = fields.imei.trim() || null
+    // exactly 15 digits (owner, 2026-11-06; lib/imei)
+    if ('imei' in fields) fields.imei = cleanImeiOrThrow(fields.imei, m => new HttpError(400, m))
     const earlier = await sameImei(prisma, fields.imei as string | null)
     const stillHere = earlier.find(p => inShop(p.status))
     if (stillHere) throw new HttpError(409, `Ce téléphone est déjà au magasin (« ${codeLabel('device_status', stillHere.status, 'fr')} », entré le ${stillHere.date_entree?.toISOString().slice(0, 10) ?? '?'}) : pas de deuxième fiche`)
@@ -204,6 +206,11 @@ async function PATCH_(request: NextRequest) {
     // "Vendu", "Réservé" and "The Void" come from a real operation, never from a list
     if (manager && typeof input.status === 'string') await assertManualStatus(prisma, before, input.status)
     if (!manager && !Object.keys(input).length) throw new HttpError(403, 'Réservé aux gérants : prix, statut et promotions')
+    // An IMEI typed or changed: exactly 15 digits (owner, 2026-11-06; lib/imei).
+    // An unchanged old IMEI is left as it is, so old records stay editable.
+    if ('imei' in input && String(input.imei ?? '').trim() !== (before.imei ?? '')) {
+      input.imei = cleanImeiOrThrow(input.imei, m => new HttpError(400, m))
+    }
     // An ordered phone arrives (lib/phoneOrder): its IMEI typed validates it —
     // unless that IMEI is already a phone in the shop
     let arrived = false

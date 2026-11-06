@@ -404,7 +404,7 @@ export default function PhonesModule({ storeId }: PhonesModuleProps) {
               </button>
             )}
           </div>
-          <ScanButton
+          <ScanButton sound="phones"
             onScan={v => onSearch(v)}
             hint="Scannez un IMEI ou code-barres"
             color={primary}

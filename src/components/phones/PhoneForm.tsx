@@ -13,6 +13,7 @@ import ScanButton from '@/components/scanner/ScanButton'
 import ComboBox from '@/components/phones/ComboBox'
 import { usePhoneCatalog } from '@/lib/hooks/usePhoneCatalog'
 import { modelNameProblem, colourLooksEnglish } from '@/lib/phoneNaming'
+import { imeiProblem, imeiDigits } from '@/lib/imei'
 
 interface PhoneFormProps {
   open:     boolean
@@ -341,13 +342,14 @@ export default function PhoneForm({ open, onClose, onSaved, phone, role, storeId
                 onChange={e => set('imei', e.target.value.replace(/\D/g, '').slice(0, 15))}
                 maxLength={15}
               />
-              <ScanButton
-                onScan={v => set('imei', v)}
+              <ScanButton sound="phones"
+                onScan={v => set('imei', imeiDigits(v).slice(0, 15))}
                 hint="Scannez le code-barres IMEI"
                 mode="barcode"
                 color={primary}
               />
             </div>
+            {imeiProblem(form.imei) && <p className="text-xs text-red-600 mt-1">{imeiProblem(form.imei)}</p>}
           </Field>
 
           {isApple && (

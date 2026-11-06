@@ -4,6 +4,7 @@ import { json, handleError, requireActiveUser, HttpError, MANAGERS } from '@/lib
 import { phoneLabel, syncInventoryWithStock } from '@/lib/inventory'
 import { withNotify } from '@/lib/realtime'
 import { inShop } from '@/lib/phoneExit'
+import { looksLikeImei } from '@/lib/scanSound'
 
 // Response `type`: trouve | hors_perimetre | non_enregistre | deja_scanne
 async function POST_(req: NextRequest, { params }: { params: { id: string } }) {
@@ -11,6 +12,8 @@ async function POST_(req: NextRequest, { params }: { params: { id: string } }) {
     const body = await req.json()
     const rawImei: string = (body.imei ?? '').trim()
     if (!rawImei) throw new HttpError(400, 'IMEI requis')
+    // only a real IMEI or a PHO- label: a box EAN must not become "non enregistré" (owner, 2026-11-06)
+    if (!looksLikeImei(rawImei) && !/^PHO-\d+$/i.test(rawImei)) throw new HttpError(400, `${rawImei} n'est pas un IMEI`)
 
     const user = await requireActiveUser(MANAGERS)
     const session = await prisma.inventory_sessions.findFirst({

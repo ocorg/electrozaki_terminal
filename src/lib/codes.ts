@@ -270,6 +270,14 @@ export const CODES = {
   },
   // The camera opening a case photo is cut for (website ProductImage.phoneShape,
   // owner 2026-11-03): the site offers only the iPhones of that shape.
+  // Where a sale stands, in the Transactions lists (lib/transactionDetails, 2026-11-06)
+  sale_state: {
+    payee:          { fr: 'Payée',          ar: 'مدفوعة' },
+    reste:          { fr: 'Reste à payer',  ar: 'باقي للدفع' },
+    retour_partiel: { fr: 'Retour partiel', ar: 'إرجاع جزئي' },
+    retournee:      { fr: 'Retournée',      ar: 'مُرجعة' },
+    annulee:        { fr: 'Annulée',        ar: 'ملغاة' },
+  },
   phone_shape: {
     carre:   { fr: 'iPhone 11 → 15, 16 Pro / Pro Max', ar: 'iPhone 11 → 15، 16 Pro / Pro Max' },
     pilule:  { fr: 'iPhone 16, 16 Plus, 17',           ar: 'iPhone 16، 16 Plus، 17' },

@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { ScanLine } from 'lucide-react'
 import dynamic from 'next/dynamic'
+import { playScanSound, type ScanSound } from '@/lib/scanSound'
 
 // Lazy-load scanner to avoid SSR issues with camera APIs
 const Scanner = dynamic(() => import('./Scanner'), { ssr: false })
@@ -12,12 +13,15 @@ interface ScanButtonProps {
   mode?:   'barcode' | 'qr'
   size?:   'sm' | 'md'
   color?:  string
+  /** the module's own beep, so staff hear the scan read (owner, 2026-11-06) */
+  sound?:  ScanSound
 }
 
-export default function ScanButton({ onScan, hint, mode, size = 'md', color = '#C9A440' }: ScanButtonProps) {
+export default function ScanButton({ onScan, hint, mode, size = 'md', color = '#C9A440', sound = 'phones' }: ScanButtonProps) {
   const [open, setOpen] = useState(false)
 
   function handleResult(value: string) {
+    playScanSound(sound)
     setOpen(false)
     onScan(value)
   }

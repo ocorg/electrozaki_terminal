@@ -5,6 +5,7 @@ import { json, handleError, requireActiveUser, HttpError, MANAGERS } from '@/lib
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { withNotify } from '@/lib/realtime'
 import { recomputeCredit, requireMotif } from '@/lib/phoneCredits'
+import { cleanImeiOrThrow } from '@/lib/imei'
 
 const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : null)
 const ETATS: reprise_etat[] = ['bon', 'moyen', 'mauvais']
@@ -64,7 +65,7 @@ async function PATCH_(req: NextRequest, { params }: { params: { id: string } }) 
           Object.assign(update, {
             has_reprise: true, reprise_marque: marque, reprise_model: model, reprise_valeur: repriseValeur,
             reprise_serie: 'reprise_serie' in body ? str(body.reprise_serie) : before.reprise_serie,
-            reprise_imei:  'reprise_imei'  in body ? str(body.reprise_imei)  : before.reprise_imei,
+            reprise_imei:  'reprise_imei'  in body ? cleanImeiOrThrow(body.reprise_imei, m => new HttpError(400, m), 'IMEI de la reprise') : before.reprise_imei,
             reprise_etat:  ETATS.includes(etat) ? etat : 'bon',
           })
         } else if (before.has_reprise) {

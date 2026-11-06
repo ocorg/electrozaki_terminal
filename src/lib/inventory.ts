@@ -96,3 +96,42 @@ export async function syncInventoryWithStock(sessionId: string, storeId: string)
     return changed
   }, { timeout: 20_000 })
 }
+
+/**
+ * What the missing phones of an inventory cost (purchase prices, owner
+ * 2026-11-06): the report shows what a gap is worth, not only how many.
+ * `waiting`: an open count's phones not scanned yet are counted too.
+ */
+export async function missingValue(sessionId: string, waiting = false): Promise<number> {
+  const items = await prisma.inventory_session_items.findMany({
+    where:  { session_id: sessionId, resultat: { in: waiting ? ['manquant', 'en_attente'] : ['manquant'] }, phone_id: { not: null } },
+    select: { phone_id: true },
+  })
+  if (!items.length) return 0
+  const r = await prisma.phones.aggregate({ where: { phone_id: { in: items.map(i => i.phone_id!) } }, _sum: { prix_achat: true } })
+  return Number(r._sum.prix_achat ?? 0)
+}
+
+/** The Telegram message sent when an inventory is closed (owner, 2026-11-06). */
+export async function inventorySummary(sessionId: string, closedBy: string): Promise<string | null> {
+  const { bold } = await import('@/lib/siteNotify')
+  const s = await prisma.inventory_sessions.findUnique({ where: { session_id: sessionId } })
+  if (!s) return null
+  const items = await prisma.inventory_session_items.findMany({ where: { session_id: sessionId }, select: { resultat: true, phone_label: true, imei: true, phone_id: true } })
+  const c = countByResult(items)
+  const value = await missingValue(sessionId)
+  const missing = items.filter(i => i.resultat === 'manquant')
+  const dh = (n: number) => bold(`${n.toLocaleString('fr-FR')} DH`)
+  const lines = [
+    `📦 ${bold('Inventaire clôturé')} — ${s.store_id} · par ${closedBy}`,
+    `✅ Trouvés : ${bold(c.trouve ?? 0)} / ${s.snapshot_count}`,
+    `❌ Manquants : ${bold(c.manquant ?? 0)}${value > 0 ? ` (valeur d'achat ${dh(value)})` : ''}`,
+    `⚠️ Non enregistrés : ${c.non_enregistre ?? 0} · 🔵 Hors périmètre : ${c.hors_perimetre ?? 0}`,
+  ]
+  if (missing.length) {
+    lines.push('', 'Manquants :')
+    for (const m of missing.slice(0, 15)) lines.push(`• ${m.phone_label ?? '—'} · ${m.imei}${m.phone_id ? ` (${m.phone_id})` : ''}`)
+    if (missing.length > 15) lines.push(`… et ${missing.length - 15} autre(s) : voir le rapport dans l'ERP`)
+  }
+  return lines.join('\n')
+}

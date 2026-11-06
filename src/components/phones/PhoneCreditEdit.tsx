@@ -9,6 +9,7 @@ import { useEscapeKey } from '@/lib/hooks/useEscapeKey'
 import { whatsappLink } from '@/components/site/common'
 import { scheduleStatus, monthlyPlan, type Echeance, type ScheduleStatus } from '@/lib/creditSchedule'
 import { storeDate } from '@/lib/time'
+import { imeiProblem, imeiDigits } from '@/lib/imei'
 
 export interface EditableCredit {
   credit_id:        string
@@ -146,7 +147,8 @@ export function EditCreditModal({ credit, onClose, onSaved }: { credit: Editable
           <div className="grid grid-cols-2 gap-2">
             <input className={inputCls} placeholder="Marque" value={f.reprise_marque} disabled={repriseLocked} onChange={e => set('reprise_marque', e.target.value)} />
             <input className={inputCls} placeholder="Modèle" value={f.reprise_model} disabled={repriseLocked} onChange={e => set('reprise_model', e.target.value)} />
-            <input className={inputCls} placeholder="IMEI (optionnel)" value={f.reprise_imei} disabled={repriseLocked} onChange={e => set('reprise_imei', e.target.value)} />
+            <input className={inputCls} placeholder="IMEI (optionnel, 15 chiffres)" inputMode="numeric" maxLength={15} value={f.reprise_imei} disabled={repriseLocked} onChange={e => set('reprise_imei', imeiDigits(e.target.value).slice(0, 15))} />
+            {imeiProblem(f.reprise_imei) && <p className="text-xs text-red-600 mt-1">{imeiProblem(f.reprise_imei)}</p>}
             <input type="number" min={0} className={inputCls} placeholder="Valeur (DH)" value={f.reprise_valeur} disabled={repriseLocked} onChange={e => set('reprise_valeur', e.target.value)} />
             <select className={inputCls} value={f.reprise_etat} disabled={repriseLocked} onChange={e => set('reprise_etat', e.target.value)}>
               <option value="bon">Bon état</option><option value="moyen">État moyen</option><option value="mauvais">Mauvais état</option>

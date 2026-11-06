@@ -5,6 +5,7 @@ import { json, handleError, requireUser, requireActiveUser, dateOnly, todayDate,
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { withNotify } from '@/lib/realtime'
 import { assertCaisseOpen } from '@/lib/phoneCredits'
+import { cleanImeiOrThrow } from '@/lib/imei'
 
 // ─────────────────────────────────────────────
 // GET /api/phone-credits
@@ -115,7 +116,7 @@ async function POST_(req: NextRequest) {
           reprise_serie:     has_reprise ? ((body.reprise_serie as string | undefined) ?? null) : null,
           reprise_model:     has_reprise ? (body.reprise_model as string) : null,
           reprise_valeur:    has_reprise ? reprise_valeur : null,
-          reprise_imei:      has_reprise ? ((body.reprise_imei as string | undefined) ?? null) : null,
+          reprise_imei:      has_reprise ? cleanImeiOrThrow(body.reprise_imei, m => new HttpError(400, m), 'IMEI de la reprise') : null,
           reprise_etat:      has_reprise ? ((body.reprise_etat as reprise_etat | undefined) ?? 'bon') : 'bon',
           reprise_remise:    reprise_remis_now,
           reprise_remise_at: reprise_remis_now ? new Date() : null,

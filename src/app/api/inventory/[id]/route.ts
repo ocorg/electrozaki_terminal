@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { json, handleError, requireUser, HttpError, MANAGERS } from '@/lib/api'
-import { syncInventoryWithStock } from '@/lib/inventory'
+import { syncInventoryWithStock, missingValue } from '@/lib/inventory'
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -21,7 +21,9 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
       where:   { session_id: params.id },
       orderBy: { scanned_at: { sort: 'desc', nulls: 'last' } },
     })
-    return json({ session, items })
+    // what the missing phones cost (the report), or would cost if the count stopped now
+    const missing_value = await missingValue(params.id, session.statut === 'en_cours')
+    return json({ session, items, missing_value })
   } catch (err) {
     return handleError(err, 'GET /api/inventory/[id]')
   }

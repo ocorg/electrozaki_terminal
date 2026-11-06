@@ -10,6 +10,8 @@ import { deviceLabels } from '@/lib/device-labels'
 import { alertLater, deviceName, money } from '@/lib/reports'
 import { workingDay } from '@/lib/catchUp'
 import { saleChoice } from '@/lib/saleColour'
+import { transactionDetails } from '@/lib/transactionDetails'
+import { cleanImeiOrThrow } from '@/lib/imei'
 
 export async function GET(request: NextRequest) {
   try {
@@ -36,6 +38,9 @@ export async function GET(request: NextRequest) {
       orderBy: { created_at: 'desc' },
       take:    limit,
     })
+
+    // The Transactions lists (BZG / EZ): the whole story of each sale (lib/transactionDetails)
+    if (searchParams.get('details')) return json({ data: await transactionDetails(rows) })
 
     const labels = searchParams.get('with_device') ? await deviceLabels(rows) : null
 
@@ -160,7 +165,7 @@ async function POST_(request: NextRequest) {
           stockage_echange:      str(body.stockage_echange),
           ram_echange:           str(body.ram_echange),
           etat_batterie_echange: body.etat_batterie_echange == null ? null : Number(body.etat_batterie_echange),
-          imei_echange:          str(body.imei_echange),
+          imei_echange:          cleanImeiOrThrow(body.imei_echange, m => new HttpError(400, m), 'IMEI de la reprise'),
           description_echange:   str(body.description_echange),
           warranty_start:        warrantyStart,
           warranty_expiry:       warrantyExpiry,

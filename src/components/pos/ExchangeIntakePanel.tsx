@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import { t } from '@/lib/i18n/t'
 import { modelNameProblem, colourLooksEnglish } from '@/lib/phoneNaming'
+import { imeiProblem, imeiDigits } from '@/lib/imei'
 
 export interface ExchangePanelState {
   txn_id:                  string
@@ -121,8 +122,9 @@ export default function ExchangeIntakePanel({ exchangePanel, storeId, isAr, onSu
         </div>
         <div>
           <label className="text-xs text-amber-700 font-medium">IMEI *</label>
-          <input className={INPUT + ' font-mono'}
-            value={form.imei as string} onChange={e => set('imei', e.target.value)} />
+          <input className={INPUT + ' font-mono'} inputMode="numeric" maxLength={15} placeholder="15 chiffres"
+            value={form.imei as string} onChange={e => set('imei', imeiDigits(e.target.value).slice(0, 15))} />
+          {imeiProblem(form.imei) && <p className="text-xs text-red-600 mt-1">{imeiProblem(form.imei)}</p>}
         </div>
         <div>
           <label className="text-xs text-amber-700 font-medium">{isAr ? 'اللون' : 'Couleur'}</label>

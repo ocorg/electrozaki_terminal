@@ -12,18 +12,25 @@ import type { InventorySession, InventorySessionItem, InventoryResultat, DeviceS
 import { codeLabel } from '@/lib/codes'
 import { STORE_TIME_ZONE } from '@/lib/time'
 import { makeDetector, openCamera, tuneCamera } from '@/lib/barcode'
+import { playScanSound, looksLikeImei, type ScanSound } from '@/lib/scanSound'
 
 // ── Types internes ─────────────────────────────────────────
 interface SessionWithCounts extends InventorySession {
   counts: Record<string, number>
 }
 
-type ScanType = 'trouve' | 'hors_perimetre' | 'non_enregistre' | 'deja_scanne'
+type ScanType = 'trouve' | 'hors_perimetre' | 'non_enregistre' | 'deja_scanne' | 'ignore'
+
+// One sound per result (owner, 2026-11-06): the counter hears what happened
+const SOUND: Record<ScanType, ScanSound> = {
+  trouve: 'inv_found', deja_scanne: 'inv_duplicate', non_enregistre: 'inv_unknown', hors_perimetre: 'inv_outside', ignore: 'inv_ignored',
+}
 
 interface ScanFeedback {
-  type:  ScanType
-  label: string
-  imei:  string
+  type:    ScanType
+  label:   string
+  imei:    string
+  itemId?: string
 }
 
 // ── Config visuelle par résultat ───────────────────────────
@@ -34,12 +41,13 @@ function ResultIcon({ type, className = 'inline w-3.5 h-3.5 -mt-0.5 mr-1' }: { t
 }
 
 const RC: Record<string, { label: string; color: string; bg: string; border: string; icon: React.ElementType }> = {
-  'trouve':          { label: 'Trouvé',          color: 'text-emerald-400', bg: 'bg-emerald-950/60', border: 'border-emerald-700', icon: CheckCircle2 },
-  'manquant':        { label: 'Manquant',         color: 'text-red-400',     bg: 'bg-red-950/60',     border: 'border-red-800',     icon: XCircle },
-  'non_enregistre':  { label: 'Non enregistré',   color: 'text-amber-400',   bg: 'bg-amber-950/60',   border: 'border-amber-700',   icon: AlertTriangle },
-  'hors_perimetre':  { label: 'Hors périmètre',   color: 'text-blue-400',    bg: 'bg-blue-950/60',    border: 'border-blue-800',    icon: CircleDot },
-  'en_attente':      { label: 'En attente',        color: 'text-zinc-400',    bg: 'bg-zinc-900',       border: 'border-zinc-700',    icon: Hourglass },
-  'deja_scanne':     { label: 'Déjà scanné',      color: 'text-zinc-400',    bg: 'bg-zinc-900',       border: 'border-zinc-700',    icon: Undo2 },
+  'trouve':          { label: 'Trouvé',          color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200', icon: CheckCircle2 },
+  'manquant':        { label: 'Manquant',         color: 'text-red-600',     bg: 'bg-red-50',     border: 'border-red-200',     icon: XCircle },
+  'non_enregistre':  { label: 'Non enregistré',   color: 'text-amber-600',   bg: 'bg-amber-50',   border: 'border-amber-200',   icon: AlertTriangle },
+  'hors_perimetre':  { label: 'Hors périmètre',   color: 'text-blue-600',    bg: 'bg-blue-50',    border: 'border-blue-200',    icon: CircleDot },
+  'en_attente':      { label: 'En attente',        color: 'text-ez-subtle',    bg: 'bg-white',       border: 'border-ez-border',    icon: Hourglass },
+  'deja_scanne':     { label: 'Déjà scanné',      color: 'text-ez-subtle',    bg: 'bg-white',       border: 'border-ez-border',    icon: Undo2 },
+  'ignore':          { label: 'Code ignoré',      color: 'text-ez-subtle',    bg: 'bg-white',       border: 'border-ez-border',    icon: ScanLine },
 }
 
 const formatDate = (iso: string) =>
@@ -71,6 +79,9 @@ export default function InventoryModule({ role }: { role: string }) {
   const [activeTab,       setActiveTab]       = useState<InventoryResultat>('manquant')
   const [showConfirm,     setShowConfirm]     = useState(false)
   const [cameraOk,        setCameraOk]        = useState(true)
+  // what the missing phones cost (purchase prices; owner, 2026-11-06)
+  const [missingValue,    setMissingValue]    = useState(0)
+  const [busyItem,        setBusyItem]        = useState<string | null>(null)
   useEscapeKey(() => setShowConfirm(false), showConfirm)
 
   // Refs — pour éviter les closures périmées dans la boucle BarcodeDetector
@@ -123,6 +134,7 @@ export default function InventoryModule({ role }: { role: string }) {
       if (!res.ok) throw new Error(data.error)
       setCurrentSession(data.session)
       setItems(data.items ?? [])
+      setMissingValue(Number(data.missing_value ?? 0))
       return data
     } catch {
       toast.error('Impossible de charger la session')
@@ -146,6 +158,7 @@ export default function InventoryModule({ role }: { role: string }) {
         if (isProcessingRef.current) return   // a scan landed meanwhile: its answer is newer
         setCurrentSession(data.session)
         setItems(data.items ?? [])
+        setMissingValue(Number(data.missing_value ?? 0))
       } catch { /* next round */ }
     }
     const timer = setInterval(refresh, 8000)
@@ -169,6 +182,19 @@ export default function InventoryModule({ role }: { role: string }) {
     if (lastScanRef.current?.imei === imei && now - lastScanRef.current.time < 2000) return
     lastScanRef.current = { imei, time: now }
 
+    // A phone box carries several barcodes (EAN, serial…): only an IMEI or a
+    // PHO- label counts (owner, 2026-11-06: most "non enregistrés" were the
+    // box's EAN). Anything else: a soft tick and a hint, nothing recorded.
+    const code = imei.trim()
+    if (!looksLikeImei(code) && !/^PHO-\d+$/i.test(code)) {
+      playScanSound('inv_ignored')
+      const feedback: ScanFeedback = { type: 'ignore', label: `${code} — pas un IMEI, visez le code IMEI`, imei: code }
+      setScanFeedback(feedback)
+      if (feedbackTimer.current) clearTimeout(feedbackTimer.current)
+      feedbackTimer.current = setTimeout(() => setScanFeedback(null), 2500)
+      return
+    }
+
     isProcessingRef.current = true
     setIsProcessing(true)
 
@@ -179,9 +205,10 @@ export default function InventoryModule({ role }: { role: string }) {
         body:    JSON.stringify({ imei }),
       })
       const data = await res.json()
-      if (!res.ok) { toast.error(data.error ?? 'Erreur scan'); return }
+      if (!res.ok) { playScanSound('error'); toast.error(data.error ?? 'Erreur scan'); return }
 
       const { type, item } = data as { type: ScanType; item: InventorySessionItem }
+      playScanSound(SOUND[type] ?? 'inv_found')
 
       setItems(prev => {
         const idx = prev.findIndex(i => i.item_id === item.item_id)
@@ -200,13 +227,14 @@ export default function InventoryModule({ role }: { role: string }) {
         'deja_scanne':    item.phone_label ?? imei,
       }
 
-      const feedback: ScanFeedback = { type, label: labelMap[type] ?? imei, imei }
+      const feedback: ScanFeedback = { type, label: labelMap[type] ?? imei, imei, itemId: type === 'deja_scanne' ? undefined : item.item_id }
       setScanFeedback(feedback)
       setRecentScans(prev => [feedback, ...prev].slice(0, 5))
       if (feedbackTimer.current) clearTimeout(feedbackTimer.current)
       feedbackTimer.current = setTimeout(() => setScanFeedback(null), 2500)
 
     } catch {
+      playScanSound('error')
       toast.error('Erreur réseau')
     } finally {
       isProcessingRef.current = false
@@ -308,6 +336,27 @@ export default function InventoryModule({ role }: { role: string }) {
     fetchSessions()
   }
 
+  // A phone found by hand (label unreadable), or a scan taken back (owner, 2026-11-06)
+  const itemAction = async (itemId: string, action: 'found' | 'undo') => {
+    if (!currentSession) return
+    setBusyItem(itemId)
+    try {
+      const res  = await fetch(`/api/inventory/${currentSession.session_id}/items/${itemId}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action }),
+      })
+      const data = await res.json()
+      if (!res.ok) { toast.error(data.error ?? 'Erreur'); return }
+      if (action === 'found') playScanSound('inv_found')
+      setRecentScans(prev => prev.filter(r => r.itemId !== itemId))
+      await fetchSessionDetail(currentSession.session_id)
+      toast.success(action === 'found' ? 'Marqué trouvé' : 'Scan annulé')
+    } catch {
+      toast.error('Erreur réseau')
+    } finally {
+      setBusyItem(null)
+    }
+  }
+
   const handleManualScan = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!manualImei.trim()) return
@@ -325,10 +374,10 @@ export default function InventoryModule({ role }: { role: string }) {
             <PackageSearch className="text-gold" size={24} />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white tracking-wide" style={{ fontFamily: 'Barlow Condensed, sans-serif' }}>
+            <h1 className="text-2xl font-bold text-ez-text tracking-wide" style={{ fontFamily: 'Barlow Condensed, sans-serif' }}>
               VÉRIFICATION D'INVENTAIRE
             </h1>
-            <p className="text-zinc-500 text-sm">Rapprochement physique · Téléphones</p>
+            <p className="text-ez-subtle text-sm">Rapprochement physique · Téléphones</p>
           </div>
         </div>
         {!activeSession && (
@@ -348,14 +397,14 @@ export default function InventoryModule({ role }: { role: string }) {
         <div className="mb-6 p-4 rounded-2xl border border-gold/40 bg-gold/8 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <p className="text-gold font-bold text-sm tracking-wide flex items-center gap-1.5"><ScanLine className="w-4 h-4" />Vérification en cours</p>
-            <p className="text-zinc-300 text-sm mt-1">
+            <p className="text-ez-text text-sm mt-1">
               Démarrée le {formatDate(activeSession.started_at)} · {activeSession.snapshot_count} téléphones en périmètre
             </p>
             <div className="flex flex-wrap gap-4 mt-2 text-xs">
-              <span className="text-emerald-400"><CheckCircle2 className="inline w-3.5 h-3.5 -mt-0.5 mr-1" />{activeSession.counts?.['trouve'] ?? 0} trouvés</span>
-              <span className="text-zinc-500"><Hourglass className="inline w-3.5 h-3.5 -mt-0.5 mr-1" />{activeSession.counts?.['en_attente'] ?? 0} en attente</span>
-              <span className="text-amber-400"><AlertTriangle className="inline w-3.5 h-3.5 -mt-0.5 mr-1" />{activeSession.counts?.['non_enregistre'] ?? 0} non enregistrés</span>
-              <span className="text-blue-400"><CircleDot className="inline w-3.5 h-3.5 -mt-0.5 mr-1" />{activeSession.counts?.['hors_perimetre'] ?? 0} hors périmètre</span>
+              <span className="text-emerald-600"><CheckCircle2 className="inline w-3.5 h-3.5 -mt-0.5 mr-1" />{activeSession.counts?.['trouve'] ?? 0} trouvés</span>
+              <span className="text-ez-subtle"><Hourglass className="inline w-3.5 h-3.5 -mt-0.5 mr-1" />{activeSession.counts?.['en_attente'] ?? 0} en attente</span>
+              <span className="text-amber-600"><AlertTriangle className="inline w-3.5 h-3.5 -mt-0.5 mr-1" />{activeSession.counts?.['non_enregistre'] ?? 0} non enregistrés</span>
+              <span className="text-blue-600"><CircleDot className="inline w-3.5 h-3.5 -mt-0.5 mr-1" />{activeSession.counts?.['hors_perimetre'] ?? 0} hors périmètre</span>
             </div>
           </div>
           <button
@@ -370,36 +419,36 @@ export default function InventoryModule({ role }: { role: string }) {
       {/* Historique */}
       {isLoading ? (
         <div className="flex justify-center py-20">
-          <Loader2 className="animate-spin text-zinc-600" size={28} />
+          <Loader2 className="animate-spin text-ez-faint" size={28} />
         </div>
       ) : sessions.filter(s => s.statut === 'terminee').length === 0 ? (
         <div className="text-center py-20">
-          <PackageSearch size={44} className="mx-auto mb-4 text-zinc-700" />
-          <p className="text-zinc-500 text-sm">Aucune vérification terminée</p>
+          <PackageSearch size={44} className="mx-auto mb-4 text-ez-faint" />
+          <p className="text-ez-subtle text-sm">Aucune vérification terminée</p>
         </div>
       ) : (
         <div className="space-y-2">
-          <p className="text-xs text-zinc-600 font-semibold uppercase tracking-widest mb-3">Historique</p>
+          <p className="text-xs text-ez-faint font-semibold uppercase tracking-widest mb-3">Historique</p>
           {sessions.filter(s => s.statut === 'terminee').map(s => (
             <div
               key={s.session_id}
-              className="bg-zinc-900/80 border border-zinc-800 rounded-2xl p-4 flex items-center justify-between hover:border-zinc-700 transition-colors"
+              className="bg-white border border-ez-border rounded-2xl p-4 flex items-center justify-between hover:border-ez-border transition-colors"
             >
               <div>
-                <p className="text-white text-sm font-semibold">{formatDate(s.started_at)}</p>
-                <p className="text-zinc-500 text-xs mt-0.5">
+                <p className="text-ez-text text-sm font-semibold">{formatDate(s.started_at)}</p>
+                <p className="text-ez-subtle text-xs mt-0.5">
                   {s.snapshot_count} en périmètre · Clôturée {s.completed_at ? formatDate(s.completed_at) : '—'}
                 </p>
                 <div className="flex flex-wrap gap-4 mt-2 text-xs">
-                  <span className="text-emerald-400"><CheckCircle2 className="inline w-3.5 h-3.5 -mt-0.5 mr-1" />{s.counts?.['trouve'] ?? 0}</span>
-                  <span className="text-red-400"><XCircle className="inline w-3.5 h-3.5 -mt-0.5 mr-1" />{s.counts?.['manquant'] ?? 0}</span>
-                  <span className="text-amber-400"><AlertTriangle className="inline w-3.5 h-3.5 -mt-0.5 mr-1" />{s.counts?.['non_enregistre'] ?? 0}</span>
-                  <span className="text-blue-400"><CircleDot className="inline w-3.5 h-3.5 -mt-0.5 mr-1" />{s.counts?.['hors_perimetre'] ?? 0}</span>
+                  <span className="text-emerald-600"><CheckCircle2 className="inline w-3.5 h-3.5 -mt-0.5 mr-1" />{s.counts?.['trouve'] ?? 0}</span>
+                  <span className="text-red-600"><XCircle className="inline w-3.5 h-3.5 -mt-0.5 mr-1" />{s.counts?.['manquant'] ?? 0}</span>
+                  <span className="text-amber-600"><AlertTriangle className="inline w-3.5 h-3.5 -mt-0.5 mr-1" />{s.counts?.['non_enregistre'] ?? 0}</span>
+                  <span className="text-blue-600"><CircleDot className="inline w-3.5 h-3.5 -mt-0.5 mr-1" />{s.counts?.['hors_perimetre'] ?? 0}</span>
                 </div>
               </div>
               <button
                 onClick={() => handleViewReport(s.session_id)}
-                className="flex items-center gap-1.5 px-3 py-1.5 border border-zinc-700 text-zinc-400 rounded-xl text-xs hover:border-zinc-500 hover:text-white transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 border border-ez-border text-ez-subtle rounded-xl text-xs hover:border-gold hover:text-ez-text transition-colors"
               >
                 <Eye size={13} /> Rapport
               </button>
@@ -417,14 +466,14 @@ export default function InventoryModule({ role }: { role: string }) {
       <div className="flex items-center justify-between mb-5">
         <button
           onClick={() => setViewMode('list')}
-          className="flex items-center gap-1.5 text-zinc-400 hover:text-white transition-colors text-sm"
+          className="flex items-center gap-1.5 text-ez-subtle hover:text-ez-text transition-colors text-sm"
         >
           <ChevronLeft size={18} /> Liste
         </button>
-        <span className="text-zinc-600 text-xs font-mono">#{currentSession?.session_id.slice(-8).toUpperCase()}</span>
+        <span className="text-ez-faint text-xs font-mono">#{currentSession?.session_id.slice(-8).toUpperCase()}</span>
         <button
           onClick={() => setShowConfirm(true)}
-          className="px-3 py-1.5 border border-red-800 text-red-400 rounded-xl text-xs hover:bg-red-950/40 transition-colors"
+          className="px-3 py-1.5 border border-red-200 text-red-600 rounded-xl text-xs hover:bg-red-50 transition-colors"
         >
           Clôturer
         </button>
@@ -434,44 +483,44 @@ export default function InventoryModule({ role }: { role: string }) {
       <div className={`mb-4 rounded-xl border p-3 transition-all duration-200 ${
         scanFeedback
           ? `${RC[scanFeedback.type]?.bg} ${RC[scanFeedback.type]?.border} opacity-100`
-          : 'bg-zinc-900 border-zinc-800 opacity-40'
+          : 'bg-white border-ez-border opacity-40'
       }`}>
         {scanFeedback ? (
           <>
             <p className={`font-bold text-sm ${RC[scanFeedback.type]?.color}`}>
               <ResultIcon type={scanFeedback.type} className="inline w-4 h-4 -mt-0.5 mr-1" />{RC[scanFeedback.type]?.label}
             </p>
-            <p className="text-zinc-300 text-xs mt-0.5 truncate">{scanFeedback.label}</p>
+            <p className="text-ez-text text-xs mt-0.5 truncate">{scanFeedback.label}</p>
           </>
         ) : (
-          <p className="text-zinc-600 text-sm text-center">En attente d'un scan…</p>
+          <p className="text-ez-faint text-sm text-center">En attente d'un scan…</p>
         )}
       </div>
 
       {/* Compteurs */}
       <div className="grid grid-cols-2 gap-2 mb-4">
         {[
-          { key: 'en_attente',     label: 'En attente',      icon: Hourglass, color: 'text-zinc-300' },
-          { key: 'trouve',         label: 'Trouvés',         icon: CheckCircle2, color: 'text-emerald-400' },
-          { key: 'non_enregistre', label: 'Non enregistrés', icon: AlertTriangle, color: 'text-amber-400' },
-          { key: 'hors_perimetre', label: 'Hors périmètre',  icon: CircleDot, color: 'text-blue-400' },
+          { key: 'en_attente',     label: 'En attente',      icon: Hourglass, color: 'text-ez-text' },
+          { key: 'trouve',         label: 'Trouvés',         icon: CheckCircle2, color: 'text-emerald-600' },
+          { key: 'non_enregistre', label: 'Non enregistrés', icon: AlertTriangle, color: 'text-amber-600' },
+          { key: 'hors_perimetre', label: 'Hors périmètre',  icon: CircleDot, color: 'text-blue-600' },
         ].map(({ key, label, icon: Icon, color }) => (
-          <div key={key} className="bg-zinc-900 border border-zinc-800 rounded-xl p-3 text-center">
+          <div key={key} className="bg-white border border-ez-border rounded-xl p-3 text-center">
             <p className={`text-3xl font-bold ${color}`} style={{ fontFamily: 'Barlow Condensed, sans-serif' }}>
               {counts[key] ?? 0}
             </p>
-            <p className="text-zinc-500 text-xs mt-0.5"><Icon className="inline w-3.5 h-3.5 -mt-0.5 mr-1" />{label}</p>
+            <p className="text-ez-subtle text-xs mt-0.5"><Icon className="inline w-3.5 h-3.5 -mt-0.5 mr-1" />{label}</p>
           </div>
         ))}
       </div>
 
       {/* Barre de progression */}
       <div className="mb-5">
-        <div className="flex justify-between text-xs text-zinc-500 mb-1.5">
+        <div className="flex justify-between text-xs text-ez-subtle mb-1.5">
           <span>Progression</span>
           <span>{counts['trouve'] ?? 0} / {currentSession?.snapshot_count ?? 0} ({progress}%)</span>
         </div>
-        <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
+        <div className="h-2 bg-ez-muted rounded-full overflow-hidden">
           <div
             className="h-full bg-gold rounded-full transition-all duration-700"
             style={{ width: `${progress}%` }}
@@ -481,7 +530,7 @@ export default function InventoryModule({ role }: { role: string }) {
 
       {/* Flux vidéo */}
       {!manualMode && cameraOk && (
-        <div className="relative mb-4 rounded-2xl overflow-hidden bg-zinc-900 border border-zinc-800">
+        <div className="relative mb-4 rounded-2xl overflow-hidden bg-black border border-ez-border">
           <video
             ref={videoRef}
             muted
@@ -497,7 +546,7 @@ export default function InventoryModule({ role }: { role: string }) {
             </div>
           </div>
           {isProcessing && (
-            <div className="absolute top-2 right-2 bg-black/60 rounded-full p-1">
+            <div className="absolute top-2 right-2 bg-white/80 rounded-full p-1">
               <Loader2 size={14} className="animate-spin text-gold" />
             </div>
           )}
@@ -507,7 +556,7 @@ export default function InventoryModule({ role }: { role: string }) {
       {/* Basculer mode */}
       <button
         onClick={() => setManualMode(m => !m)}
-        className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-300 transition-colors mb-3"
+        className="flex items-center gap-1.5 text-xs text-ez-subtle hover:text-ez-text transition-colors mb-3"
       >
         {manualMode
           ? <><ScanLine size={13} /> {cameraOk ? 'Utiliser la caméra' : 'Caméra indisponible'}</>
@@ -522,7 +571,7 @@ export default function InventoryModule({ role }: { role: string }) {
           value={manualImei}
           onChange={e => setManualImei(e.target.value)}
           placeholder="IMEI ou code-barres…"
-          className="flex-1 bg-zinc-900 border border-zinc-700 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-gold placeholder-zinc-600 transition-colors"
+          className="flex-1 bg-white border border-ez-border rounded-xl px-3 py-2.5 text-ez-text text-sm focus:outline-none focus:border-gold placeholder:text-ez-placeholder transition-colors"
         />
         <button
           type="submit"
@@ -536,7 +585,7 @@ export default function InventoryModule({ role }: { role: string }) {
       {/* Derniers scans */}
       {recentScans.length > 0 && (
         <div className="mb-5">
-          <p className="text-xs text-zinc-600 font-semibold uppercase tracking-widest mb-2">Derniers scans</p>
+          <p className="text-xs text-ez-faint font-semibold uppercase tracking-widest mb-2">Derniers scans</p>
           <div className="space-y-1.5">
             {recentScans.map((scan, i) => (
               <div
@@ -545,6 +594,12 @@ export default function InventoryModule({ role }: { role: string }) {
               >
                 <span className={`text-sm ${RC[scan.type]?.color ?? ''}`}><ResultIcon type={scan.type} className="w-4 h-4" /></span>
                 <span className={`text-xs flex-1 truncate ${RC[scan.type]?.color}`}>{scan.label}</span>
+                {scan.itemId && (
+                  <button type="button" disabled={busyItem === scan.itemId} onClick={() => itemAction(scan.itemId!, 'undo')}
+                    className="text-xs text-ez-subtle hover:text-red-600 underline underline-offset-2 shrink-0 disabled:opacity-40">
+                    Annuler
+                  </button>
+                )}
               </div>
             ))}
           </div>
@@ -554,22 +609,29 @@ export default function InventoryModule({ role }: { role: string }) {
       {/* Articles en attente */}
       {(counts['en_attente'] ?? 0) > 0 && (
         <div>
-          <p className="text-xs text-zinc-600 font-semibold uppercase tracking-widest mb-2">
+          <p className="text-xs text-ez-faint font-semibold uppercase tracking-widest mb-2">
             En attente ({counts['en_attente'] ?? 0})
           </p>
           <div className="space-y-1.5 max-h-64 overflow-y-auto rounded-xl">
             {items.filter(i => i.resultat === 'en_attente').map(item => (
               <div
                 key={item.item_id}
-                className="flex items-center justify-between px-3 py-2.5 bg-zinc-900 border border-zinc-800 rounded-xl"
+                className="flex items-center justify-between px-3 py-2.5 bg-white border border-ez-border rounded-xl"
               >
                 <div className="min-w-0">
-                  <p className="text-white text-sm truncate">{item.phone_label ?? '—'}</p>
-                  <p className="text-zinc-600 text-xs font-mono">{item.imei}</p>
+                  <p className="text-ez-text text-sm truncate">{item.phone_label ?? '—'}</p>
+                  <p className="text-ez-faint text-xs font-mono">{item.imei}</p>
                 </div>
-                <span className="text-xs text-zinc-600 bg-zinc-800 px-2 py-0.5 rounded-lg ml-2 shrink-0">
-                  {codeLabel('device_status', item.phone_status as DeviceStatus, 'fr')}
-                </span>
+                <div className="flex items-center gap-2 ml-2 shrink-0">
+                  <span className="text-xs text-ez-faint bg-ez-muted px-2 py-0.5 rounded-lg">
+                    {codeLabel('device_status', item.phone_status as DeviceStatus, 'fr')}
+                  </span>
+                  <button type="button" disabled={busyItem === item.item_id} onClick={() => itemAction(item.item_id, 'found')}
+                    title="Étiquette illisible : marquer ce téléphone trouvé à la main"
+                    className="px-2.5 py-1 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 disabled:opacity-40">
+                    Trouvé
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -581,19 +643,19 @@ export default function InventoryModule({ role }: { role: string }) {
         <div role="dialog" aria-modal="true" aria-label="Clôturer la session"
              className="fixed inset-0 bg-black/75 flex items-end sm:items-center justify-center z-50 p-4"
              onClick={() => setShowConfirm(false)}>
-          <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
-            <h3 className="text-white font-bold text-lg mb-2" style={{ fontFamily: 'Barlow Condensed, sans-serif' }}>
+          <div className="bg-white border border-ez-border rounded-2xl p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
+            <h3 className="text-ez-text font-bold text-lg mb-2" style={{ fontFamily: 'Barlow Condensed, sans-serif' }}>
               CLÔTURER LA SESSION ?
             </h3>
-            <p className="text-zinc-400 text-sm mb-5 leading-relaxed">
-              Les <span className="text-white font-semibold">{counts['en_attente'] ?? 0}</span> téléphone(s) encore en attente
-              seront marqués <span className="text-red-400 font-semibold">manquants</span>.
+            <p className="text-ez-subtle text-sm mb-5 leading-relaxed">
+              Les <span className="text-ez-text font-semibold">{counts['en_attente'] ?? 0}</span> téléphone(s) encore en attente
+              seront marqués <span className="text-red-600 font-semibold">manquants</span>.
               Cette action est irréversible.
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setShowConfirm(false)}
-                className="flex-1 py-2.5 border border-zinc-700 text-zinc-300 rounded-xl text-sm hover:border-zinc-500 transition-colors"
+                className="flex-1 py-2.5 border border-ez-border text-ez-text rounded-xl text-sm hover:border-gold transition-colors"
               >
                 Annuler
               </button>
@@ -614,10 +676,10 @@ export default function InventoryModule({ role }: { role: string }) {
   // ── Render : Rapport ───────────────────────────────────
   const renderReport = () => {
     const tabs: Array<{ key: InventoryResultat; label: string; color: string }> = [
-      { key: 'manquant',       label: 'Manquants',       color: 'text-red-400' },
-      { key: 'hors_perimetre', label: 'Hors périmètre',  color: 'text-blue-400' },
-      { key: 'non_enregistre', label: 'Non enregistrés', color: 'text-amber-400' },
-      { key: 'trouve',         label: 'Trouvés',         color: 'text-emerald-400' },
+      { key: 'manquant',       label: 'Manquants',       color: 'text-red-600' },
+      { key: 'hors_perimetre', label: 'Hors périmètre',  color: 'text-blue-600' },
+      { key: 'non_enregistre', label: 'Non enregistrés', color: 'text-amber-600' },
+      { key: 'trouve',         label: 'Trouvés',         color: 'text-emerald-600' },
     ]
 
     const tabItems = items.filter(i => i.resultat === activeTab)
@@ -628,16 +690,17 @@ export default function InventoryModule({ role }: { role: string }) {
         <div className="flex items-center gap-4 mb-6">
           <button
             onClick={handleBackToList}
-            className="flex items-center gap-1.5 text-zinc-400 hover:text-white transition-colors text-sm"
+            className="flex items-center gap-1.5 text-ez-subtle hover:text-ez-text transition-colors text-sm"
           >
             <ChevronLeft size={18} /> Liste
           </button>
           <div>
-            <h1 className="text-xl font-bold text-white tracking-wide" style={{ fontFamily: 'Barlow Condensed, sans-serif' }}>
+            <h1 className="text-xl font-bold text-ez-text tracking-wide" style={{ fontFamily: 'Barlow Condensed, sans-serif' }}>
               RAPPORT D'INVENTAIRE
             </h1>
-            <p className="text-zinc-500 text-xs">
+            <p className="text-ez-subtle text-xs">
               {currentSession && formatDate(currentSession.started_at)} · {currentSession?.snapshot_count ?? 0} en périmètre
+              {missingValue > 0 && <> · <span className="text-red-600 font-semibold">manquants : {missingValue.toLocaleString('fr-FR').replace(/\s/g, ' ')} DH (prix d’achat)</span></>}
             </p>
           </div>
         </div>
@@ -651,29 +714,32 @@ export default function InventoryModule({ role }: { role: string }) {
               className={`p-4 rounded-2xl border text-center transition-all ${
                 activeTab === key
                   ? 'border-gold bg-gold/5'
-                  : 'border-zinc-800 bg-zinc-900 hover:border-zinc-700'
+                  : 'border-ez-border bg-white hover:border-ez-border'
               }`}
             >
               <p className={`text-3xl font-bold ${color}`} style={{ fontFamily: 'Barlow Condensed, sans-serif' }}>
                 {counts[key] ?? 0}
               </p>
-              <p className="text-zinc-500 text-xs mt-1"><ResultIcon type={key} />{label}</p>
+              <p className="text-ez-subtle text-xs mt-1"><ResultIcon type={key} />{label}</p>
+              {key === 'manquant' && missingValue > 0 && (
+                <p className="text-red-600 text-xs font-semibold mt-0.5">{missingValue.toLocaleString('fr-FR').replace(/\s/g, ' ')} DH</p>
+              )}
             </button>
           ))}
         </div>
 
         {/* Table d'articles */}
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
+        <div className="bg-white border border-ez-border rounded-2xl overflow-hidden">
           {/* Onglets */}
-          <div className="flex border-b border-zinc-800 overflow-x-auto">
+          <div className="flex border-b border-ez-border overflow-x-auto">
             {tabs.map(({ key, label, color }) => (
               <button
                 key={key}
                 onClick={() => setActiveTab(key)}
-                className={`flex-1 min-w-[6rem] py-3 text-xs font-semibold transition-colors whitespace-nowrap px-2 ${
+                className={`flex-1 shrink-0 min-w-max py-3 text-xs font-semibold transition-colors whitespace-nowrap px-3 ${
                   activeTab === key
-                    ? `${color} border-b-2 border-gold bg-zinc-800/40`
-                    : 'text-zinc-500 hover:text-zinc-300'
+                    ? `${color} border-b-2 border-gold bg-ez-muted`
+                    : 'text-ez-subtle hover:text-ez-text'
                 }`}
               >
                 {label} ({counts[key] ?? 0})
@@ -685,26 +751,26 @@ export default function InventoryModule({ role }: { role: string }) {
           <div className="max-h-[58vh] overflow-y-auto">
             {tabItems.length === 0 ? (
               <div className="py-14 text-center">
-                <CheckCircle2 size={32} className="mx-auto mb-3 text-zinc-700" />
-                <p className="text-zinc-500 text-sm">Aucun élément dans cette catégorie</p>
+                <CheckCircle2 size={32} className="mx-auto mb-3 text-ez-faint" />
+                <p className="text-ez-subtle text-sm">Aucun élément dans cette catégorie</p>
               </div>
             ) : (
-              <div className="divide-y divide-zinc-800/70">
+              <div className="divide-y divide-ez-border">
                 {tabItems.map(item => (
                   <div
                     key={item.item_id}
-                    className="flex items-center justify-between px-4 py-3.5 hover:bg-zinc-800/30 transition-colors"
+                    className="flex items-center justify-between px-4 py-3.5 hover:bg-ez-bg transition-colors"
                   >
                     <div className="min-w-0 mr-3">
-                      <p className="text-white text-sm font-medium truncate">{item.phone_label ?? '—'}</p>
-                      <p className="text-zinc-500 text-xs font-mono mt-0.5">{item.imei}</p>
+                      <p className="text-ez-text text-sm font-medium truncate">{item.phone_label ?? '—'}</p>
+                      <p className="text-ez-subtle text-xs font-mono mt-0.5">{item.imei}</p>
                       {item.phone_status && (
-                        <span className="text-zinc-600 text-xs">{codeLabel('device_status', item.phone_status as DeviceStatus, 'fr')}</span>
+                        <span className="text-ez-faint text-xs">{codeLabel('device_status', item.phone_status as DeviceStatus, 'fr')}</span>
                       )}
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       {item.scanned_at && (
-                        <span className="text-zinc-600 text-xs">
+                        <span className="text-ez-faint text-xs">
                           {new Date(item.scanned_at).toLocaleTimeString('fr-FR', { timeZone: STORE_TIME_ZONE, hour: '2-digit', minute: '2-digit' })}
                         </span>
                       )}
@@ -719,7 +785,7 @@ export default function InventoryModule({ role }: { role: string }) {
                       {(activeTab === 'manquant' || activeTab === 'hors_perimetre') && item.phone_id && (
                         <a
                           href={`/ez/stock/phones?id=${item.phone_id}`}
-                          className="px-2.5 py-1 text-xs bg-zinc-800 text-zinc-300 border border-zinc-700 rounded-lg hover:bg-zinc-700 transition-colors"
+                          className="px-2.5 py-1 text-xs bg-ez-muted text-ez-text border border-ez-border rounded-lg hover:bg-ez-border transition-colors"
                         >
                           Voir
                         </a>
@@ -737,7 +803,7 @@ export default function InventoryModule({ role }: { role: string }) {
 
   // ── Render principal ───────────────────────────────────
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-ez-bg text-ez-text">
       {viewMode === 'list' && renderList()}
       {viewMode === 'scan'   && currentSession && renderScan()}
       {viewMode === 'report' && currentSession && renderReport()}

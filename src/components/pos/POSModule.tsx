@@ -33,6 +33,7 @@ import {
 import { STORE_TIME_ZONE } from '@/lib/time'
 import { phoneMatches } from '@/lib/phoneSearch'
 import { useWorkDay } from '@/lib/stores/workDay'
+import { imeiProblem, imeiDigits } from '@/lib/imei'
 
 // ─── Types ────────────────────────────────────────────────────
 type DeviceResult = (Phone | Laptop) & {
@@ -905,7 +906,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                 </button>
               ) : null}
             </div>
-            <ScanButton onScan={v => setSearch(v)} hint="Scannez un IMEI ou code-barres" mode="barcode" color={primary} />
+            <ScanButton sound="pos" onScan={v => setSearch(v)} hint="Scannez un IMEI ou code-barres" mode="barcode" color={primary} />
           </div>
         </div>
 
@@ -1140,8 +1141,9 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                   <input className={inputClass} placeholder="356XXXXXXXXXXXXX" type="text" inputMode="numeric"
                     value={saleForm.imei_echange}
                     onChange={e => setSale('imei_echange', e.target.value.replace(/\D/g, '').slice(0, 15))} />
-                  <ScanButton onScan={v => setSale('imei_echange', v)} hint="Scannez l'IMEI de l'appareil repris" color={primary} mode="barcode" />
+                  <ScanButton sound="pos" onScan={v => setSale('imei_echange', imeiDigits(v).slice(0, 15))} hint="Scannez l'IMEI de l'appareil repris" color={primary} mode="barcode" />
                 </div>
+                {imeiProblem(saleForm.imei_echange) && <p className="text-xs text-red-600 mt-1">{imeiProblem(saleForm.imei_echange)}</p>}
                 {knownTradeIn && knownTradeIn.imei === saleForm.imei_echange && (
                   knownTradeIn.in_shop
                     ? <p className="text-xs font-bold text-red-600 mt-1">Ce téléphone est déjà au magasin : vérifiez l&apos;IMEI.</p>

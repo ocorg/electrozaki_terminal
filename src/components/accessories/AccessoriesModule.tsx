@@ -360,7 +360,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
               onBlur={e => { e.target.style.borderColor = '#E8E5DE'; e.target.style.boxShadow = 'none' }}
             />
           </div>
-          <ScanButton
+          <ScanButton sound="accessories"
             onScan={v => setSearch(v)}
             hint="Scannez un code-barres accessoire"
             color={primary}
@@ -657,7 +657,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
                 <input type="text" className={inputClass}
                   placeholder="6901234567890"
                   value={form.barcode} onChange={e => setF('barcode', e.target.value)} />
-                <ScanButton
+                <ScanButton sound="accessories"
                   onScan={v => setF('barcode', v)}
                   hint="Scannez le code-barres"
                   color={primary}
