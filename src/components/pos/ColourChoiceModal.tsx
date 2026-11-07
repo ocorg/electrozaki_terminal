@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Smartphone } from 'lucide-react'
 import { Modal } from '@/components/shared'
 import { ColourDot, useCouleurs, useColourLabel } from '@/components/shared/ColourPicker'
@@ -11,7 +11,7 @@ import { ColourDot, useCouleurs, useColourLabel } from '@/components/shared/Colo
 // `stock`: the variant's own count; undefined = not counted per variant (sold
 // from the non réparti pieces when `free` > 0).
 
-export type ColourOption = { key: string; couleur: string | null; design?: string | null; modele?: string | null; stock?: number }
+export type ColourOption = { key: string; couleur: string | null; design?: string | null; modele?: string | null; stock?: number; photos?: string[] }
 
 export function ColourChoiceModal({ title, options, isAr, free, onPick, onClose }: {
   title: string
@@ -27,6 +27,17 @@ export function ColourChoiceModal({ title, options, isAr, free, onPick, onClose 
   const L = (fr: string, ar: string) => (isAr ? ar : fr)
   const designs = [...new Set(options.map(o => o.design).filter((d): d is string => !!d))]
   const [design, setDesign] = useState<string | null>(designs.length === 1 ? designs[0] : null)
+  // each design button shows one of its website photos, picked at random each
+  // time the popup opens (owner, 2026-11-07); the colour step keeps its dots
+  const designPhoto = useMemo(() => {
+    const out = new Map<string, string>()
+    for (const d of designs) {
+      const pool = options.filter(o => o.design === d).flatMap(o => o.photos ?? [])
+      if (pool.length) out.set(d, pool[Math.floor(Math.random() * pool.length)])
+    }
+    return out
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const [colour, setColour] = useState<string | null | undefined>(undefined)
   const byDesign = designs.length > 1 ? options.filter(o => o.design === design) : options
   const colours = [...new Map(byDesign.map(o => [o.couleur ?? '', o.couleur])).values()]
@@ -60,13 +71,22 @@ export function ColourChoiceModal({ title, options, isAr, free, onPick, onClose 
         {designs.length > 1 && (
           <div>
             <p className={step}>{L('Design', 'التصميم')}</p>
-            <div className="flex flex-wrap gap-2">
-              {designs.map(d => (
-                <button key={d} type="button" onClick={() => { setDesign(d); setColour(undefined) }}
-                  className={`min-h-12 px-5 rounded-xl border text-sm font-semibold transition-colors ${design === d ? 'border-gold bg-gold/10 text-ez-text' : 'border-ez-border hover:border-gold'}`}>
-                  {d}
-                </button>
-              ))}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {designs.map(d => {
+                const photo = designPhoto.get(d)
+                return (
+                  <button key={d} type="button" onClick={() => { setDesign(d); setColour(undefined) }}
+                    className={`flex flex-col items-center gap-1.5 rounded-xl border p-2 text-sm font-semibold transition-colors ${design === d ? 'border-gold bg-gold/10 text-ez-text' : 'border-ez-border hover:border-gold'}`}>
+                    {photo ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={photo} alt="" className="w-full aspect-square object-contain rounded-lg bg-ez-bg" />
+                    ) : (
+                      <span className="w-full aspect-square rounded-lg bg-ez-bg" />
+                    )}
+                    <span className="truncate max-w-full">{d}</span>
+                  </button>
+                )
+              })}
             </div>
           </div>
         )}

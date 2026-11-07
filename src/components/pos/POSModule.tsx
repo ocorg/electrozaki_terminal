@@ -52,7 +52,7 @@ type DeviceResult = (Phone | Laptop) & {
   /** the real accessory id when _id is "article#design|colour" (one cart line per colour) */
   _accId?:      string
 }
-type FamilyChoice = { design: string | null; couleur: string | null; modele?: string | null; stock?: number }
+type FamilyChoice = { design: string | null; couleur: string | null; modele?: string | null; stock?: number; photos?: string[] }
 const choiceKey = (c: { design?: string | null; couleur?: string | null; modele?: string | null }) => `${c.design ?? ''}|${c.couleur ?? ''}|${c.modele ?? ''}`
 
 type CartItem = DeviceResult & {
@@ -263,7 +263,9 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
       const variants = (a.variants as { design: string | null; couleur: string | null; modele: string | null; quantite: number }[] | undefined) ?? []
       const photos = families[a.acc_id as string] ?? []
       const choices: FamilyChoice[] = [
-        ...variants.map(v => ({ design: v.design, couleur: v.couleur, modele: v.modele, stock: v.quantite })),
+        // a counted variant shows the website photos of its design × colour
+        ...variants.map(v => ({ design: v.design, couleur: v.couleur, modele: v.modele, stock: v.quantite,
+          photos: photos.find(p => (p.design ?? '') === (v.design ?? '') && (p.couleur ?? '') === (v.couleur ?? ''))?.photos ?? [] })),
         ...photos.filter(p => !variants.some(v => (v.design ?? '') === (p.design ?? '') && (v.couleur ?? '') === (p.couleur ?? ''))),
       ]
       const counted = variants.reduce((n, v) => n + v.quantite, 0)
@@ -1611,7 +1613,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
           isAr={isAr}
           options={colourFor._group
             ? colourFor._group.map(m => ({ key: m._id, couleur: ((m as unknown as Record<string, unknown>).couleur as string | null) ?? null, stock: Number((m as unknown as Record<string, unknown>).quantite ?? 0) }))
-            : (colourFor._family ?? []).map(f => ({ key: choiceKey(f), couleur: f.couleur, design: f.design, modele: f.modele ?? null, stock: f.stock }))}
+            : (colourFor._family ?? []).map(f => ({ key: choiceKey(f), couleur: f.couleur, design: f.design, modele: f.modele ?? null, stock: f.stock, photos: f.photos ?? [] }))}
           free={colourFor._group ? undefined : colourFor._free}
           onPick={o => pickColour(colourFor, o.key)}
           onClose={() => setColourFor(null)}

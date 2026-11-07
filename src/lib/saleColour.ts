@@ -31,7 +31,8 @@ export async function saleChoice(deviceType: string, body: { couleur?: unknown; 
   return { couleur: await couleurFromList(body.couleur), design: shortText(body.design, 'Design'), modele: shortText(body.modele, 'Modèle') }
 }
 
-export type FamilyChoice = { design: string | null; couleur: string }
+// photos: the website photos of that design × colour (the till shows one on the design buttons, owner 2026-11-07)
+export type FamilyChoice = { design: string | null; couleur: string; photos: string[] }
 
 /**
  * For each ERP accessory whose website product has photos with a colour
@@ -49,19 +50,20 @@ export async function familyChoices(storeId: string | null): Promise<Record<stri
     const byRef = new Map(accs.map(a => [refOf('acc', a.acc_id), a.acc_id]))
     const products = await storefrontDb().product.findMany({
       where: { isPhone: false, erpKey: { in: [...byRef.keys()] }, images: { some: { colorName: { not: null } } } },
-      select: { erpKey: true, images: { where: { colorName: { not: null } }, select: { designName: true, colorName: true }, orderBy: { sortOrder: 'asc' } } },
+      select: { erpKey: true, images: { where: { colorName: { not: null } }, select: { designName: true, colorName: true, url: true }, orderBy: { sortOrder: 'asc' } } },
     })
     const out: Record<string, FamilyChoice[]> = {}
     for (const p of products) {
       const accId = byRef.get(p.erpKey!)
       if (!accId) continue
-      const seen = new Set<string>()
-      out[accId] = p.images.flatMap(i => {
+      const byKey = new Map<string, FamilyChoice>()
+      for (const i of p.images) {
         const key = `${i.designName ?? ''}|${i.colorName}`
-        if (seen.has(key)) return []
-        seen.add(key)
-        return [{ design: i.designName, couleur: i.colorName! }]
-      })
+        const known = byKey.get(key)
+        if (known) known.photos.push(i.url)
+        else byKey.set(key, { design: i.designName, couleur: i.colorName!, photos: [i.url] })
+      }
+      out[accId] = [...byKey.values()]
     }
     return out
   } catch (err) {
