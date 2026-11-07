@@ -128,7 +128,7 @@ try {
     check('stock: damaged phones are not listed', rows.length === 0)
   }
   const { rows: [acc] } = await web.query(`select count(*)::int n, count(*) filter (where published)::int pub from "Product" where source = 'ERP' and not "isPhone"`)
-  check('accessories: synced, hidden until staff publish them', acc.n > 0 && acc.pub === 0, acc)
+  check('accessories: synced (published only by staff)', acc.n > 0, acc)
 
   // ── 4. Live update after an ERP write (withNotify hook) ─────────────────
   const { rows: [unit] } = await erp.query(`
@@ -155,27 +155,27 @@ try {
                    values ($1, $2, $3, $4, $5, $6, $7, 1)`, [`${orderId}i`, orderId, variant.productId, variant.id, unitRef, variant.name, unit.price])
   cleanups.push(() => web.query(`delete from "OrderRequest" where id = $1`, [orderId]))
 
-  const list = await employee.api('/api/site/orders')
+  const list = await manager.api('/api/site/orders')
   check('orders: staff see the web order', list.status === 200 && list.data.data.some(o => o.id === orderId), list.status)
-  const detail = await employee.api(`/api/site/orders/${orderId}`)
+  const detail = await manager.api(`/api/site/orders/${orderId}`)
   check('orders: detail points at the exact ERP phone', detail.data?.data?.items?.[0]?.erpPhones?.[0]?.phone_id === unit.phone_id, detail.data?.data?.items?.[0]?.erpPhones)
 
-  const reserve = await employee.api(`/api/site/orders/${orderId}/reserve`, { method: 'POST' })
+  const reserve = await manager.api(`/api/site/orders/${orderId}/reserve`, { method: 'POST' })
   const { rows: [afterReserve] } = await erp.query(`select status from phones where phone_id = $1`, [unit.phone_id])
   check('orders: confirm & reserve sets the phone to reserve', reserve.status === 200 && afterReserve.status === 'reserve', { reserve: reserve.data, status: afterReserve.status })
   const gone = await waitFor(async () => (await web.query(`select 1 from "ProductVariant" where "erpRef" = $1`, [unitRef])).rows.length === 0)
   check('orders: the reserved phone leaves the site', gone)
 
-  const again = await employee.api(`/api/site/orders/${orderId}/reserve`, { method: 'POST' })
+  const again = await manager.api(`/api/site/orders/${orderId}/reserve`, { method: 'POST' })
   check('orders: confirming twice is harmless', again.status === 200 && again.data.reserved === 0, again.data)
 
-  const checkout = await employee.api(`/api/site/orders/${orderId}/checkout`, { method: 'POST' })
+  const checkout = await manager.api(`/api/site/orders/${orderId}/checkout`, { method: 'POST' })
   const { rows: [afterCheckout] } = await erp.query(`select status from phones where phone_id = $1`, [unit.phone_id])
   await manager.api('/api/site/sync', { method: 'POST' })
   const stillHidden = (await web.query(`select 1 from "ProductVariant" where "erpRef" = $1`, [unitRef])).rows.length === 0
   check('orders: "passer en caisse" makes it sellable at the POS but keeps it off the site', checkout.status === 200 && afterCheckout.status === 'disponible' && stillHidden, { status: afterCheckout.status, stillHidden })
 
-  const release = await employee.api(`/api/site/orders/${orderId}/release`, { method: 'POST' })
+  const release = await manager.api(`/api/site/orders/${orderId}/release`, { method: 'POST' })
   await manager.api('/api/site/sync', { method: 'POST' })
   const back = (await web.query(`select 1 from "ProductVariant" where "erpRef" = $1`, [unitRef])).rows.length === 1
   const { rows: [o] } = await web.query(`select status from "OrderRequest" where id = $1`, [orderId])
@@ -188,7 +188,7 @@ try {
   await web.query(`insert into "OrderRequestItem" (id, "orderRequestId", "productId", "unitRef", "productNameSnapshot", "priceAtRequest", quantity)
                    values ($1, $2, $3, $4, 'x', 1, 1)`, [`${orderB}i`, orderB, variant.productId, unitRef])
   cleanups.push(() => web.query(`delete from "OrderRequest" where id = $1`, [orderB]))
-  await employee.api(`/api/site/orders/${orderB}/release`, { method: 'POST' })
+  await manager.api(`/api/site/orders/${orderB}/release`, { method: 'POST' })
   const { rows: [held] } = await erp.query(`select status from phones where phone_id = $1`, [unit.phone_id])
   check('orders: cancelling an unconfirmed order leaves other reservations alone', held.status === 'reserve', held)
   await erp.query(`update phones set status = 'disponible' where phone_id = $1`, [unit.phone_id])

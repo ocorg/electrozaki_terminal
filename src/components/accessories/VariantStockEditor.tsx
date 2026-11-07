@@ -90,7 +90,7 @@ export function VariantStockEditor({ accId, total, variants, isAr, photoChoices 
 
   async function save() {
     if (extra > 0 && !(await confirmDialog(L(
-      `Les variantes comptent ${counted} pièces, le stock en a ${total} : ${extra} nouvelle(s) pièce(s) seront ajoutées au stock (${total} → ${counted}). Continuer ?`,
+      `Les variantes comptent ${counted} pièces, le stock en a ${total} : ${extra} nouvelle(s) pièce(s) seront ajoutées au stock (${total} → ${counted}). Si elles ont été payées avec l’argent de la caisse, annulez et augmentez plutôt la quantité dans l’onglet Général en cochant « payé de la caisse ». Continuer ?`,
       `ستضاف ${extra} قطعة جديدة إلى المخزون. متابعة؟`)))) return
     setSaving(true)
     try {

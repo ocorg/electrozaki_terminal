@@ -87,9 +87,9 @@ try {
   const su = sess?.user ?? {}
   check('session carries claims', su.role === 'employe' && su.store_id === 'EZ-001' && su.store_locked === true && !('password_hash' in su), JSON.stringify(sess))
   r = await get('/ez/dashboard', l.jar)
-  check('staff: /ez/dashboard allowed', r.status === 200, `${r.status} ${r.location}`)
+  check('staff: /ez/dashboard → /ez/pos (staff pages only, 2026-10-01)', r.status === 307 && r.location.endsWith('/ez/pos'), `${r.status} ${r.location}`)
   r = await get('/bzg/dashboard', l.jar)
-  check('staff: /bzg → /ez/dashboard (store lock)', r.status === 307 && r.location.endsWith('/ez/dashboard'), `${r.status} ${r.location}`)
+  check('staff: /bzg → /ez/pos (store lock)', r.status === 307 && r.location.endsWith('/ez/pos'), `${r.status} ${r.location}`)
   r = await get('/login', l.jar)
   check('staff: /login → /select-store', r.status === 307 && r.location.endsWith('/select-store'), `${r.status} ${r.location}`)
 

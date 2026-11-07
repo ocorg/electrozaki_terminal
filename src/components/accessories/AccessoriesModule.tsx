@@ -1,5 +1,6 @@
 'use client'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useCategories } from '@/lib/hooks/useCategories'
 import { Fragment, useState, useEffect, useCallback, useMemo } from 'react'
 import { useApi } from '@/lib/data/api'
@@ -98,6 +99,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
   const portal       = usePortal()
   const isAr         = language === 'ar'
   const couleurs     = useCouleurs()
+  const router       = useRouter()
   // an accessory's history (owner, 2026-11-06), as for phones
   const [historyAcc, setHistoryAcc] = useState<{ acc_id: string; nom: string; couleur?: string | null } | null>(null)
   const colourLabel  = useColourLabel()
@@ -671,8 +673,8 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
                   {/* Actions */}
                   <div className="flex items-center gap-2 justify-end">
                     <RowAction
-                      title={isAr ? 'طباعة الملصق' : 'Générer étiquette'}
-                      onClick={() => setLabelProduct(accLabel(acc))}
+                      title={isAr ? 'طباعة الملصق' : 'Imprimer des étiquettes (A4)'}
+                      onClick={() => router.push(`/ez/stock/accessories/etiquettes?acc=${encodeURIComponent(acc.acc_id)}`)}
                     >
                       <Tag className="w-4 h-4" />
                     </RowAction>
@@ -736,7 +738,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
                       <span className="text-xs text-ez-faint">{isAr ? 'في المخزون' : 'en stock'}</span>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      <RowAction title={isAr ? 'طباعة الملصق' : 'Générer étiquette'} onClick={() => setLabelProduct(accLabel(acc))}>
+                      <RowAction title={isAr ? 'طباعة الملصق' : 'Imprimer des étiquettes (A4)'} onClick={() => router.push(`/ez/stock/accessories/etiquettes?acc=${encodeURIComponent(acc.acc_id)}`)}>
                         <Tag className="w-4 h-4" />
                       </RowAction>
                       {canEdit && (
@@ -926,7 +928,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
                 placeholder="Apple, Samsung..."
                 value={form.marque} onChange={e => setF('marque', e.target.value)} />
             </Field>
-            <Field label={isAr ? 'رمز الباركود' : 'Code-barres'}>
+            <Field label={isAr ? 'رمز الباركود' : 'Code-barres principal'} hint={editAcc ? (isAr ? '' : 'Les codes des boîtes : bloc « Codes » en bas.') : undefined}>
               <div className="flex gap-2">
                 <input type="text" className={inputClass}
                   placeholder="6901234567890"
@@ -941,13 +943,22 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
             </Field>
           </div>
 
-          <Field label={isAr ? 'متوافق مع' : 'Compatible avec'}>
-            <input type="text" className={inputClass}
-              placeholder="iPhone 14/15, Galaxy S23..."
-              value={form.compatible_with} onChange={e => setF('compatible_with', e.target.value)} />
-          </Field>
+          {/* the old free-text field (owner, 2026-11-07): the phones are now picked
+              in « Modèles & fiche » and in the variants; kept only where it was filled */}
+          {!!editAcc?.compatible_with && (
+            <Field label={isAr ? 'متوافق مع' : 'Compatible avec (ancien champ)'} hint={isAr ? '' : 'Choisissez plutôt les téléphones dans l’onglet « Modèles & fiche ».'}>
+              <input type="text" className={inputClass}
+                value={form.compatible_with} onChange={e => setF('compatible_with', e.target.value)} />
+            </Field>
+          )}
 
-          {!editAcc && colourBlock}
+          {/* a new article: one colour at most; several colours, designs or phones
+              are its variants (owner, 2026-11-06), added once it is created */}
+          {!editAcc && (
+            <Field label={isAr ? 'اللون' : 'Couleur'} hint={isAr ? '' : 'Plusieurs couleurs, designs ou téléphones ? Créez l’article, puis ajoutez ses variantes (onglet « Variantes & photos »).'}>
+              <ColourPicker value={form.couleur || null} onChange={nom => setF('couleur', nom ?? '')} emptyLabel={isAr ? 'بدون لون' : 'Aucune couleur'} />
+            </Field>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <Field label={isAr ? 'الكمية الحالية' : 'Quantité actuelle'} required>
