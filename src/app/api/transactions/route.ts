@@ -94,7 +94,7 @@ async function POST_(request: NextRequest) {
       if (due > 0 && Math.abs(paid - due) > 0.05) throw new HttpError(400, `Mixte : espèces + virement (${paid}) ≠ montant à payer (${due})`)
     }
     // A phone paid in several times: the sale + its credit file (dossier)
-    const dossier = body.dossier && typeof body.dossier === 'object' ? body.dossier as { phone_remis?: boolean } : null
+    const dossier = body.dossier && typeof body.dossier === 'object' ? body.dossier as { phone_remis?: boolean; reprise_plus_tard?: boolean } : null
     if (dossier) {
       if (!isManager(user.role)) throw new HttpError(403, 'Paiement en plusieurs fois : réservé aux gérants')
       if (deviceType !== 'telephone') throw new HttpError(400, 'Un dossier se crée pour un téléphone')
@@ -216,8 +216,12 @@ async function POST_(request: NextRequest) {
               ...(reprise > 0 && {
                 reprise_marque: txn.marque_echange ?? 'Reprise', reprise_model: txn.model_echange ?? 'Reprise',
                 reprise_valeur: reprise, reprise_imei: txn.imei_echange,
-                // handed over at the POS: it is recorded in stock right after the sale
-                reprise_remise: true, reprise_remise_at: new Date(),
+                // handed over at the POS: it is recorded in stock right after the sale.
+                // Or the client brings it later (owner, 2026-11-07): « À recevoir » on
+                // the file, it enters the stock when received / at discharge.
+                ...(dossier.reprise_plus_tard === true
+                  ? { reprise_remise: false, reprise_remise_at: null }
+                  : { reprise_remise: true, reprise_remise_at: new Date() }),
               }),
             },
           })

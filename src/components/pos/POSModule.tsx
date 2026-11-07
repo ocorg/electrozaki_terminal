@@ -205,6 +205,8 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
   const [mixAuto, setMixAuto]     = useState(true)   // Mixte: the transfer takes the rest until typed by hand
 
   const [exchangePanel, setExchangePanel] = useState<ExchangePanelState & { open: boolean } | null>(null)
+  // Plusieurs fois with a trade-in the client brings later (owner, 2026-11-07): no stock entry now
+  const [repriseLater, setRepriseLater] = useState(false)
   const [successTxn,    setSuccessTxn]    = useState<string | null>(null)
 
   const [activeCategory, setActiveCategory] = useState('phones')
@@ -656,7 +658,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
   }
 
   function resetAll() {
-    setCart([]); setPriceInputs({}); setMixAuto(true); setSaleForm({ ...EMPTY_SALE }); setOverrideAuthorizedBy(null); setOverrideToken(null); setOverrideReason(''); setSelectedClientId(null); setShowClient(false); setClientSuggestions([]); setAvoir(null)
+    setCart([]); setPriceInputs({}); setMixAuto(true); setSaleForm({ ...EMPTY_SALE }); setOverrideAuthorizedBy(null); setOverrideToken(null); setRepriseLater(false); setOverrideReason(''); setSelectedClientId(null); setShowClient(false); setClientSuggestions([]); setAvoir(null)
     setLivrer(false); setLivraison({ adresse: '', ville: '', transporteur: '', frais: '', charge: 'client', avance: '', ref: '' }); setLead(null)
     if (window.location.search.includes('lead=')) window.history.replaceState(null, '', window.location.pathname)
   }
@@ -765,7 +767,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
             prix_vente:      itemPv,
             payment_method:  severalTimes && itemAvance > 0 ? (saleForm.avance_sub_method as PaymentMethod) : saleForm.payment_method,
             // a phone with something left to pay gets its credit file with the sale
-            dossier:         severalTimes && item._type === 'phone' && itemReste > 0.01 ? { phone_remis: saleForm.phone_remis !== false } : undefined,
+            dossier:         severalTimes && item._type === 'phone' && itemReste > 0.01 ? { phone_remis: saleForm.phone_remis !== false, reprise_plus_tard: repriseLater && saleForm.valeur_echange > 0 } : undefined,
             avance:          itemAvance  || 0,
             payment_ref:     saleForm.payment_ref     || undefined,
             montant_especes: itemEspeces || 0,
@@ -826,7 +828,10 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
       const sold = new Set(cart.filter(i => i._type !== 'accessory').map(i => i._id))
       if (sold.size > 0) setSoldIds(prev => new Set([...Array.from(prev), ...Array.from(sold)]))
 
-      if (saleForm.valeur_echange > 0) {
+      // a trade-in the client brings later: noted « À recevoir » on the file, not in stock yet
+      if (saleForm.valeur_echange > 0 && severalTimes && repriseLater) {
+        showSuccess(isAr ? 'الهاتف المستبدل: سيُستلم لاحقاً' : 'Reprise à recevoir : notée sur le dossier, pas encore en stock')
+      } else if (saleForm.valeur_echange > 0) {
         setExchangePanel({
           open:                    true,
           txn_id:                  lastTxnId || '',
@@ -1246,6 +1251,22 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                 <input type="number" className={`${inputClass} mt-1`}
                   value={saleForm.valeur_echange || ''} onChange={e => setSale('valeur_echange', Number(e.target.value))} />
               </div>
+              {severalTimes && (
+                <div className="space-y-1.5">
+                  <p className="text-xs text-blue-700 font-medium">{isAr ? 'الهاتف المستبدل' : 'Le téléphone en reprise est'}</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button type="button" onClick={() => setRepriseLater(false)}
+                      className={`px-3 py-2 rounded-xl border text-xs font-semibold ${!repriseLater ? 'border-blue-500 bg-blue-50 text-blue-800' : 'border-ez-border text-ez-subtle'}`}>
+                      {isAr ? 'سُلّم اليوم' : 'Remis aujourd’hui'}
+                    </button>
+                    <button type="button" onClick={() => setRepriseLater(true)}
+                      className={`px-3 py-2 rounded-xl border text-xs font-semibold ${repriseLater ? 'border-amber-500 bg-amber-50 text-amber-800' : 'border-ez-border text-ez-subtle'}`}>
+                      {isAr ? 'سيُحضره لاحقاً' : 'Apporté plus tard'}
+                    </button>
+                  </div>
+                  {repriseLater && <p className="text-[11px] text-amber-700">{isAr ? '' : 'Pas mis en stock maintenant : le dossier l’affiche « À recevoir » (« Marquer comme reçu » quand il arrive). Il entre en stock à la remise du téléphone vendu.'}</p>}
+                </div>
+              )}
               <div>
                 <label className="text-xs text-blue-700 font-medium block mb-1">{isAr ? 'ملاحظات عن الجهاز' : "Notes sur l'appareil repris"}</label>
                 <textarea className={`${inputClass} resize-none text-xs`} rows={2}
