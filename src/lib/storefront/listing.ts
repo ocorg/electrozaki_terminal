@@ -36,7 +36,7 @@ export const ACCESSORY_SAFE_SELECT = {
   couleur:               true,
   groupe_couleur:        true, // an acc_id: only ever sent through refOf()
   // stock per variant: only which choices are in stock reaches the site, never the counts
-  variants:              { select: { design: true, couleur: true, modele: true, quantite: true } },
+  variants:              { select: { design: true, couleur: true, modeles: true, quantite: true } },
 } as const
 
 export const FORBIDDEN_FIELDS = [
@@ -71,7 +71,7 @@ export interface ErpAccessory {
   quantite: number
   couleur: string | null
   groupe_couleur: string | null
-  variants?: { design: string | null; couleur: string | null; modele: string | null; quantite: number }[]
+  variants?: { design: string | null; couleur: string | null; modeles: string[]; quantite: number }[]
 }
 
 export type Grade = 'NEUF' | 'TRES_BON' | 'BON' | 'PIECES_REMPLACEES'
@@ -404,8 +404,9 @@ export function choicesInStockOf(a: Pick<ErpAccessory, 'quantite' | 'variants'>)
   if (!variants.length) return null
   const counted = variants.reduce((n, v) => n + v.quantite, 0)
   if (a.quantite > counted) return null
+  // a group of phones (13 · 14 · 15) = one entry per phone for the site
   return variants.filter(v => v.quantite > 0)
-    .map(v => ({ design: clean(v.design) || null, color: clean(v.couleur) || null, model: clean(v.modele) || null }))
+    .flatMap(v => (v.modeles.length ? v.modeles : [null]).map(m => ({ design: clean(v.design) || null, color: clean(v.couleur) || null, model: m ? clean(m) || null : null })))
     .sort((x, y) => JSON.stringify(x).localeCompare(JSON.stringify(y)))
 }
 

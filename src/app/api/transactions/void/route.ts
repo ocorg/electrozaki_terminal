@@ -57,7 +57,7 @@ async function PATCH_(request: NextRequest) {
           data:  { quantite: { increment: before.qty || 1 }, updated_by: user.id },
         })
         // …and onto its variant (lib/accessoryVariants)
-        await putBackOnVariant(tx, before.device_id, { design: before.design, couleur: before.couleur, modele: before.modele }, before.qty || 1)
+        await putBackOnVariant(tx, before.device_id, { design: before.design, couleur: before.couleur, modele: before.modele, variant_id: before.variant_id }, before.qty || 1)
       }
       const after = await tx.transactions.findUniqueOrThrow({ where: { txn_id } })
       return { before, after }

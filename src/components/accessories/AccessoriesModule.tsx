@@ -18,6 +18,7 @@ import { SitePhotosEditor, SiteInfoEditor, type Product as SiteProduct, type Cat
 import { FacetChecklist } from '@/components/site/SiteFacets'
 import { Tabs } from '@/components/site/common'
 import { VariantStockEditor, type Variant } from '@/components/accessories/VariantStockEditor'
+import { AccessoryCodes } from '@/components/accessories/AccessoryCodes'
 import {
   Package, Plus, Search, X, RefreshCw,
   Edit2, AlertTriangle, Minus, TrendingUp, Trash2, Tag, Palette, History, ChevronDown, ChevronRight, CornerDownRight
@@ -50,6 +51,8 @@ interface Accessory {
   groupe_couleur?:        string | null
   /** stock per variant (owner, 2026-11-06): design × colour × phone model */
   variants?:              Variant[]
+  /** codes of its boxes / sachets (owner, 2026-11-07) */
+  codes?:                 { code: string; variant_id: string | null }[]
   status_computed?:       string
   is_low_stock?:          boolean
 }
@@ -135,7 +138,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
       (!filterCat || a.categorie === filterCat) &&
       (!onlyLowStock || a.is_low_stock) &&
       (search.trim().length < 2 || tokens.every(tok =>
-        [a.nom, a.marque, a.barcode, a.couleur].some(v => v?.toLowerCase().includes(tok))))
+        [a.nom, a.marque, a.barcode, a.couleur, ...(a.codes ?? []).map(c => c.code)].some(v => v?.toLowerCase().includes(tok))))
     )
   }, [accQ.data, filterCat, onlyLowStock, search])
 
@@ -346,7 +349,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
   useEffect(() => {
     if (!editAcc || !accQ.data) return
     const fresh = accQ.data.find(a => a.acc_id === editAcc.acc_id)
-    if (fresh && (fresh.quantite !== editAcc.quantite || JSON.stringify(fresh.variants ?? []) !== JSON.stringify(editAcc.variants ?? []))) setEditAcc(fresh)
+    if (fresh && (fresh.quantite !== editAcc.quantite || JSON.stringify([fresh.variants ?? [], fresh.codes ?? []]) !== JSON.stringify([editAcc.variants ?? [], editAcc.codes ?? []]))) setEditAcc(fresh)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accQ.data])
 
@@ -1011,6 +1014,10 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
                 </p>
               </div>
             </div>
+          )}
+
+          {editAcc && (
+            <AccessoryCodes accId={editAcc.acc_id} codes={editAcc.codes ?? []} variants={editAcc.variants ?? []} isAr={isAr} canDelete={canFinancials} />
           )}
 
           {ficheFooter}

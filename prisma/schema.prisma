@@ -335,28 +335,45 @@ model accessories {
   category                            categories           @relation(fields: [categorie], references: [code], onDelete: Restrict, onUpdate: Cascade)
   couleurs                            couleurs?            @relation(fields: [couleur], references: [nom], onDelete: Restrict, onUpdate: Cascade)
   variants                            accessory_variants[]
+  codes                               accessory_codes[]
 
   @@index([quantite, seuil_alerte], map: "idx_accessories_low_stock")
   @@index([store_id], map: "idx_accessories_store")
   @@index([groupe_couleur], map: "idx_accessories_groupe_couleur")
 }
 
-/// Stock per variant (owner, 2026-11-06): design × colour × phone model of one
+/// Stock per variant (owner, 2026-11-06): design × colour × phone models of one
 /// article. Pieces not counted here are "non réparti" (accessories.quantite − Σ).
-/// Unique (acc_id, design, couleur, modele) with nulls as '' — in the SQL.
+/// modeles: the phones it fits, one shared stock (2026-11-07). One line per
+/// design × colour × models: checked in lib/accessoryVariants.
 model accessory_variants {
-  variant_id String      @id @default(dbgenerated("('VAR-'::text || lpad((nextval('accessory_variants_seq'::regclass))::text, 6, '0'::text))"))
+  variant_id String            @id @default(dbgenerated("('VAR-'::text || lpad((nextval('accessory_variants_seq'::regclass))::text, 6, '0'::text))"))
   acc_id     String
   design     String?
   couleur    String?
-  modele     String?
-  quantite   Int         @default(0)
-  created_at DateTime    @default(now()) @db.Timestamptz(6)
-  updated_at DateTime    @default(now()) @db.Timestamptz(6)
-  accessory  accessories @relation(fields: [acc_id], references: [acc_id], onDelete: Cascade)
-  couleurs   couleurs?   @relation(fields: [couleur], references: [nom], onDelete: Restrict, onUpdate: Cascade)
+  modeles    String[]          @default([])
+  quantite   Int               @default(0)
+  created_at DateTime          @default(now()) @db.Timestamptz(6)
+  updated_at DateTime          @default(now()) @db.Timestamptz(6)
+  accessory  accessories       @relation(fields: [acc_id], references: [acc_id], onDelete: Cascade)
+  couleurs   couleurs?         @relation(fields: [couleur], references: [nom], onDelete: Restrict, onUpdate: Cascade)
+  codes      accessory_codes[]
 
   @@index([acc_id], map: "idx_accessory_variants_acc")
+}
+
+/// Codes that find an accessory (owner, 2026-11-07): manufacturer codes on
+/// boxes / sachets, learned when first scanned; on the article or one variant.
+model accessory_codes {
+  code       String              @id
+  acc_id     String
+  variant_id String?
+  created_at DateTime            @default(now()) @db.Timestamptz(6)
+  created_by String?             @db.Uuid
+  accessory  accessories         @relation(fields: [acc_id], references: [acc_id], onDelete: Cascade)
+  variant    accessory_variants? @relation(fields: [variant_id], references: [variant_id], onDelete: SetNull)
+
+  @@index([acc_id], map: "idx_accessory_codes_acc")
 }
 
 model activity_log {
@@ -562,6 +579,7 @@ model delivery_items {
   couleur         String?
   design          String?
   modele          String?
+  variant_id      String?
   couleurs        couleurs?     @relation(fields: [couleur], references: [nom], onDelete: Restrict, onUpdate: Cascade)
   created_at      DateTime?     @default(now()) @db.Timestamptz(6)
   deliveries      deliveries?   @relation(fields: [delivery_id], references: [delivery_id], onDelete: Cascade, onUpdate: NoAction)
@@ -1135,6 +1153,8 @@ model transactions {
   design                                String?
   /// …and the phone model it was for (owner, 2026-11-06, stock per variant)
   modele                                String?
+  /// the variant the piece came from (2026-11-07): a return puts it back there
+  variant_id                            String?
   couleurs                              couleurs?         @relation(fields: [couleur], references: [nom], onDelete: Restrict, onUpdate: Cascade)
   avoir                                 retours?          @relation("avoir_spent", fields: [avoir_retour_id], references: [retour_id], onDelete: NoAction, onUpdate: NoAction)
   retours                               retours[]         @relation("retour_of_sale")

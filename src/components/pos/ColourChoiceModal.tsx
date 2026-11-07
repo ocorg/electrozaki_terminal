@@ -11,7 +11,9 @@ import { ColourDot, useCouleurs, useColourLabel } from '@/components/shared/Colo
 // `stock`: the variant's own count; undefined = not counted per variant (sold
 // from the non réparti pieces when `free` > 0).
 
-export type ColourOption = { key: string; couleur: string | null; design?: string | null; modele?: string | null; stock?: number; photos?: string[] }
+// group / variant_id: a variant covering several phones (13 · 14 · 15) gives one
+// option per phone, all with the same shared stock (owner, 2026-11-07)
+export type ColourOption = { key: string; couleur: string | null; design?: string | null; modele?: string | null; stock?: number; photos?: string[]; group?: string; variant_id?: string }
 
 export function ColourChoiceModal({ title, options, isAr, free, onPick, onClose }: {
   title: string
@@ -55,7 +57,15 @@ export function ColourChoiceModal({ title, options, isAr, free, onPick, onClose 
       ? free0 > 0 ? L('non compté · pris du non réparti', 'من غير الموزع') : L('Épuisé', 'نفد')
       : null
   // a colour's total for the colour step
-  const colourStock = (c: string | null) => byDesign.filter(o => (o.couleur ?? null) === c && o.stock !== undefined).reduce((n, o) => n + (o.stock ?? 0), 0)
+  // a colour's count: each variant once (a group of phones repeats its stock on each phone)
+  const colourStock = (c: string | null) => {
+    const seen = new Set<string>()
+    return byDesign.filter(o => (o.couleur ?? null) === c && o.stock !== undefined).reduce((n, o) => {
+      const k = o.variant_id ?? o.key
+      if (seen.has(k)) return n
+      seen.add(k); return n + (o.stock ?? 0)
+    }, 0)
+  }
 
   function chooseColour(c: string | null) {
     const list = byDesign.filter(o => (o.couleur ?? null) === c)
@@ -128,6 +138,7 @@ export function ColourChoiceModal({ title, options, isAr, free, onPick, onClose 
                     <span className="flex-1 min-w-0">
                       <span className="block text-sm font-semibold truncate">{o.modele ?? L('Modèle non précisé', 'غير محدد')}</span>
                       {stockText(o) && <span className={`block text-xs ${out ? 'text-red-600' : 'text-ez-subtle'}`}>{stockText(o)}</span>}
+                      {o.group && <span className="block text-[11px] text-ez-faint truncate" title={L('Un seul stock pour ce groupe', 'مخزون مشترك')}>{L('stock commun', 'مشترك')} · {o.group}</span>}
                     </span>
                   </button>
                 )

@@ -4,7 +4,7 @@ import { json, handleError, requireUser, requireActiveUser, HttpError } from '@/
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { withNotify } from '@/lib/realtime'
 import { listCouleurs } from '@/lib/couleurs'
-import { stockOf, cleanLines, setVariants, variantLabel } from '@/lib/accessoryVariants'
+import { stockOf, cleanLines, setVariants, lineLabel } from '@/lib/accessoryVariants'
 
 // An article's stock per variant (owner, 2026-11-06; rules in lib/accessoryVariants).
 // Everyone who counts stock may set it, like the article's quantity.
@@ -20,7 +20,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   }
 }
 
-// PUT { lines: [{ design, couleur, modele, quantite }] } — replaces the variants
+// PUT { lines: [{ design, couleur, modeles: [], quantite }] } — replaces the variants (ids kept)
 async function PUT_(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const user = await requireActiveUser()
@@ -34,7 +34,7 @@ async function PUT_(request: NextRequest, { params }: { params: { id: string } }
       store_id: acc.store_id, user_id: user.id, user_name: user.display_name,
       action_type: 'modification', module: 'accessoires', record_id: acc.acc_id,
       before_state: result.before, after_state: result.after,
-      notes: `Stock par variante de « ${acc.nom} » : ${lines.map(l => `${variantLabel(l)} = ${l.quantite}`).join(', ') || 'aucune'}`
+      notes: `Stock par variante de « ${acc.nom} » : ${lines.map(l => `${lineLabel(l)} = ${l.quantite}`).join(', ') || 'aucune'}`
         + (result.added > 0 ? ` · ${result.added} pièce(s) ajoutée(s) au stock` : ''),
       ip_address: getIpFromRequest(request),
     })

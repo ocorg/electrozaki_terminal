@@ -40,7 +40,11 @@ export async function GET(request: NextRequest) {
       where,
       orderBy: { created_at: 'desc' },
       // stock per variant (owner, 2026-11-06): the fiche, the list and the till's popup
-      include: { variants: { select: { variant_id: true, design: true, couleur: true, modele: true, quantite: true }, orderBy: [{ design: 'asc' }, { couleur: 'asc' }, { modele: 'asc' }] } },
+      include: {
+        variants: { select: { variant_id: true, design: true, couleur: true, modeles: true, quantite: true }, orderBy: [{ design: 'asc' }, { couleur: 'asc' }, { variant_id: 'asc' }] },
+        // the codes that find it (boxes, sachets: owner, 2026-11-07)
+        codes:    { select: { code: true, variant_id: true }, orderBy: { created_at: 'asc' } },
+      },
       // Staff sell and look up stock, never see what it cost
       ...(!isManager(user.role) && { omit: { prix_achat: true } }),
     })

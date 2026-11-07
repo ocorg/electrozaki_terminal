@@ -7,16 +7,18 @@ import { showSuccess, showError } from '@/lib/utils/toasts'
 import { confirmDialog } from '@/components/shared/ConfirmHost'
 import { ColourPicker, ColourDot, useCouleurs, useColourLabel } from '@/components/shared/ColourPicker'
 import { ModelPicker } from '@/components/site/ModelPicker'
+import { cleanModels, modelsLabel } from '@/lib/phoneGroups'
 
 // Stock per variant in the fiche (owner, 2026-11-06; rules in lib/accessoryVariants):
 // design × colour × phone model, each optional. Pieces not counted here are
-// "non réparti". Adding: one design + colour, then tick the phone models →
-// one line per model.
+// "non réparti". Adding: one design + colour, then tick the phones → one
+// line for the whole group (one shared stock: a glass for iPhone 13 / 14 / 15,
+// owner 2026-11-07), or one line per phone.
 
-export type Variant = { variant_id?: string; design: string | null; couleur: string | null; modele: string | null; quantite: number }
+export type Variant = { variant_id?: string; design: string | null; couleur: string | null; modeles: string[]; quantite: number }
 type Line = Variant & { key: string }
 
-const keyOf = (v: Omit<Variant, 'quantite'>) => `${(v.design ?? '').toLowerCase()}|${(v.couleur ?? '').toLowerCase()}|${(v.modele ?? '').toLowerCase()}`
+const keyOf = (v: Omit<Variant, 'quantite'>) => `${(v.design ?? '').toLowerCase()}|${(v.couleur ?? '').toLowerCase()}|${cleanModels(v.modeles).join(',').toLowerCase()}`
 
 export function VariantStockEditor({ accId, total, variants, isAr, photoChoices = [], onSaved }: {
   accId: string
@@ -40,6 +42,7 @@ export function VariantStockEditor({ accId, total, variants, isAr, photoChoices 
   const [couleur, setCouleur] = useState<string | null>(null)
   const [models, setModels] = useState<string[]>([])
   const [qty, setQty] = useState('0')
+  const [grouped, setGrouped] = useState(true)   // the ticked phones share one stock
 
   const counted = lines.reduce((n, l) => n + l.quantite, 0)
   const unassigned = Math.max(0, total - counted)
@@ -47,7 +50,7 @@ export function VariantStockEditor({ accId, total, variants, isAr, photoChoices 
   const changed = JSON.stringify(lines.map(l => [l.key, l.quantite])) !== JSON.stringify(initial.map(l => [l.key, l.quantite]))
   const designs = [...new Set([...photoChoices.map(p => p.design), ...lines.map(l => l.design)].filter((d): d is string => !!d))]
 
-  const label = (l: Variant) => [l.design, l.couleur && colourLabel(couleurs.byName.get(l.couleur), l.couleur), l.modele].filter(Boolean).join(' · ')
+  const label = (l: Variant) => [l.design, l.couleur && colourLabel(couleurs.byName.get(l.couleur), l.couleur), modelsLabel(l.modeles)].filter(Boolean).join(' · ')
   const shown = filter.trim() ? lines.filter(l => label(l).toLowerCase().includes(filter.trim().toLowerCase())) : lines
 
   function setQ(key: string, q: number) { setLines(ls => ls.map(l => l.key === key ? { ...l, quantite: Math.max(0, Math.floor(q) || 0) } : l)) }
@@ -56,8 +59,9 @@ export function VariantStockEditor({ accId, total, variants, isAr, photoChoices 
   function addLines() {
     const d = design.trim() || null
     const q = Math.max(0, Math.floor(Number(qty)) || 0)
-    const list = (models.length ? models : [null]).map(m => ({ design: d, couleur, modele: m, quantite: q }))
-    if (list.every(v => !v.design && !v.couleur && !v.modele)) { showError(L('Choisissez un design, une couleur ou un modèle', 'اختر تصميماً أو لوناً أو طرازاً')); return }
+    const groups: string[][] = !models.length ? [[]] : grouped ? [cleanModels(models)] : models.map(m => [m])
+    const list = groups.map(g => ({ design: d, couleur, modeles: g, quantite: q }))
+    if (list.every(v => !v.design && !v.couleur && !v.modeles.length)) { showError(L('Choisissez un design, une couleur ou un modèle', 'اختر تصميماً أو لوناً أو طرازاً')); return }
     setLines(ls => {
       const out = [...ls]
       for (const v of list) {
@@ -76,7 +80,7 @@ export function VariantStockEditor({ accId, total, variants, isAr, photoChoices 
     setLines(ls => {
       const out = [...ls]
       for (const p of photoChoices) {
-        const v = { design: p.design, couleur: p.couleur, modele: null, quantite: 0 }
+        const v = { design: p.design, couleur: p.couleur, modeles: [] as string[], quantite: 0 }
         const key = keyOf(v)
         if (!out.some(l => l.key === key)) out.push({ ...v, key })
       }
@@ -91,7 +95,7 @@ export function VariantStockEditor({ accId, total, variants, isAr, photoChoices 
     setSaving(true)
     try {
       await apiWrite(`/api/accessories/${encodeURIComponent(accId)}/variants`, {
-        method: 'PUT', body: { lines: lines.map(({ design, couleur, modele, quantite }) => ({ design, couleur, modele, quantite })) },
+        method: 'PUT', body: { lines: lines.map(({ design, couleur, modeles, quantite }) => ({ design, couleur, modeles, quantite })) },
       })
       showSuccess(L('Stock par variante enregistré', 'تم الحفظ'))
       onSaved?.()
@@ -130,7 +134,8 @@ export function VariantStockEditor({ accId, total, variants, isAr, photoChoices 
             {shown.map(l => (
               <div key={l.key} className="flex items-center gap-2 px-3 py-2">
                 {l.couleur ? <ColourDot colour={couleurs.byName.get(l.couleur)} size={14} /> : <Layers className="w-3.5 h-3.5 text-ez-faint" />}
-                <span className="flex-1 min-w-0 text-sm truncate">{label(l)}</span>
+                <span className="flex-1 min-w-0 text-sm truncate" title={l.modeles.join(', ')}>{label(l)}</span>
+                {l.variant_id && <span className="text-[11px] font-mono text-ez-faint" title={L('Code de la variante (étiquettes)', 'رمز النوع')}>EV{Number(l.variant_id.replace(/\D/g, ''))}</span>}
                 <button type="button" onClick={() => setQ(l.key, l.quantite - 1)} disabled={l.quantite === 0} aria-label={L('Retirer 1', 'إنقاص')}
                   className="w-8 h-8 rounded-lg border border-ez-border flex items-center justify-center disabled:opacity-30"><Minus className="w-3.5 h-3.5" /></button>
                 <input type="number" min={0} value={l.quantite} onChange={e => setQ(l.key, Number(e.target.value))}
@@ -166,15 +171,27 @@ export function VariantStockEditor({ accId, total, variants, isAr, photoChoices 
             </div>
           </div>
           <div>
-            <p className="text-xs font-semibold text-ez-subtle mb-1">{L('Téléphones (une ligne par modèle coché ; aucun = pas de modèle)', 'الهواتف')}</p>
+            <p className="text-xs font-semibold text-ez-subtle mb-1">{L('Téléphones (aucun = pour tous)', 'الهواتف')}</p>
             <ModelPicker selected={models} onChange={setModels} emptyNote={null} />
+            {models.length > 1 && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                <button type="button" onClick={() => setGrouped(true)}
+                  className={`px-3 py-1.5 rounded-lg border text-sm ${grouped ? 'border-gold bg-gold/10 font-semibold' : 'border-ez-border'}`}>
+                  {L(`Un seul stock pour les ${models.length} (groupe)`, 'مخزون واحد')}
+                </button>
+                <button type="button" onClick={() => setGrouped(false)}
+                  className={`px-3 py-1.5 rounded-lg border text-sm ${!grouped ? 'border-gold bg-gold/10 font-semibold' : 'border-ez-border'}`}>
+                  {L('Un stock par téléphone', 'مخزون لكل هاتف')}
+                </button>
+              </div>
+            )}
           </div>
           <div className="flex flex-wrap items-end gap-2">
             <div>
-              <p className="text-xs font-semibold text-ez-subtle mb-1">{L('Pièces par ligne', 'القطع لكل سطر')}</p>
+              <p className="text-xs font-semibold text-ez-subtle mb-1">{L('Pièces', 'القطع')}{!grouped && models.length > 1 ? L(' par téléphone', '') : ''}</p>
               <input type="number" min={0} value={qty} onChange={e => setQty(e.target.value)} className={`${inputClass} w-28`} />
             </div>
-            <Btn size="sm" onClick={addLines}><Plus className="w-4 h-4" />{L(`Ajouter ${Math.max(1, models.length)} ligne(s)`, 'إضافة')}</Btn>
+            <Btn size="sm" onClick={addLines}><Plus className="w-4 h-4" />{L(`Ajouter ${grouped || models.length < 2 ? 1 : models.length} ligne(s)`, 'إضافة')}</Btn>
           </div>
         </div>
       )}

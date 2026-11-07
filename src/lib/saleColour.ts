@@ -17,7 +17,7 @@ import { storefrontDb, storefrontConfigured } from '@/lib/storefront/db'
 
 // Since stock is counted per variant (2026-11-06, lib/accessoryVariants), the
 // popup also asks the phone model, and the sale takes from that variant.
-export type SaleChoice = { couleur: string | null; design: string | null; modele: string | null }
+export type SaleChoice = { couleur: string | null; design: string | null; modele: string | null; variant_id: string | null }
 
 const shortText = (v: unknown, what: string): string | null => {
   if (v === undefined || v === null || v === '') return null
@@ -26,9 +26,11 @@ const shortText = (v: unknown, what: string): string | null => {
 }
 
 /** The colour / design / phone model sent with an accessory sale line: colour from the list, the others short text. */
-export async function saleChoice(deviceType: string, body: { couleur?: unknown; design?: unknown; modele?: unknown }): Promise<SaleChoice> {
-  if (deviceType !== 'accessoire') return { couleur: null, design: null, modele: null }
-  return { couleur: await couleurFromList(body.couleur), design: shortText(body.design, 'Design'), modele: shortText(body.modele, 'Modèle') }
+export async function saleChoice(deviceType: string, body: { couleur?: unknown; design?: unknown; modele?: unknown; variant_id?: unknown }): Promise<SaleChoice> {
+  if (deviceType !== 'accessoire') return { couleur: null, design: null, modele: null, variant_id: null }
+  // the variant picked at the till (a group of phones): checked when the stock is taken
+  const variant_id = typeof body.variant_id === 'string' && /^VAR-\d{1,9}$/.test(body.variant_id) ? body.variant_id : null
+  return { couleur: await couleurFromList(body.couleur), design: shortText(body.design, 'Design'), modele: shortText(body.modele, 'Modèle'), variant_id }
 }
 
 // photos: the website photos of that design × colour (the till shows one on the design buttons, owner 2026-11-07)

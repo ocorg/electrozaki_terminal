@@ -19,6 +19,8 @@ import MoneyInModal         from '@/components/pos/MoneyInModal'
 import AttendanceWidget     from '@/components/attendance/AttendanceWidget'
 import QtyPickerModal       from '@/components/pos/QtyPickerModal'
 import { ColourChoiceModal } from '@/components/pos/ColourChoiceModal'
+import { LinkCodeModal } from '@/components/pos/LinkCodeModal'
+import { modelsLabel } from '@/lib/phoneGroups'
 import OverridePinModal     from '@/components/pos/OverridePinModal'
 import ExchangeIntakePanel, { type ExchangePanelState } from '@/components/pos/ExchangeIntakePanel'
 import { ReceiptPrint, type ReceiptData } from '@/components/print/ReceiptGenerator'
@@ -48,11 +50,12 @@ type DeviceResult = (Phone | Laptop) & {
   /** stock per variant: the non réparti pieces (undefined = not counted per variant) */
   _free?:       number
   /** the variant picked for this cart line */
-  _choice?:     { couleur: string | null; design: string | null; modele: string | null }
+  _choice?:     { couleur: string | null; design: string | null; modele: string | null; variant_id?: string | null }
   /** the real accessory id when _id is "article#design|colour" (one cart line per colour) */
   _accId?:      string
 }
-type FamilyChoice = { design: string | null; couleur: string | null; modele?: string | null; stock?: number; photos?: string[] }
+// a variant covering a group of phones (13 · 14 · 15) gives one choice per phone, same stock (2026-11-07)
+type FamilyChoice = { design: string | null; couleur: string | null; modele?: string | null; stock?: number; photos?: string[]; variant_id?: string; group?: string }
 const choiceKey = (c: { design?: string | null; couleur?: string | null; modele?: string | null }) => `${c.design ?? ''}|${c.couleur ?? ''}|${c.modele ?? ''}`
 
 type CartItem = DeviceResult & {
@@ -260,12 +263,13 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
     const accItems: DeviceResult[] = (accQ.data ?? []).map(a => {
       // stock per variant (owner, 2026-11-06): the counted variants, then the
       // website photos' design × colour not counted yet
-      const variants = (a.variants as { design: string | null; couleur: string | null; modele: string | null; quantite: number }[] | undefined) ?? []
+      const variants = (a.variants as { variant_id: string; design: string | null; couleur: string | null; modeles: string[]; quantite: number }[] | undefined) ?? []
       const photos = families[a.acc_id as string] ?? []
       const choices: FamilyChoice[] = [
         // a counted variant shows the website photos of its design × colour
-        ...variants.map(v => ({ design: v.design, couleur: v.couleur, modele: v.modele, stock: v.quantite,
-          photos: photos.find(p => (p.design ?? '') === (v.design ?? '') && (p.couleur ?? '') === (v.couleur ?? ''))?.photos ?? [] })),
+        ...variants.flatMap(v => (v.modeles.length ? v.modeles : [null]).map(m => ({ design: v.design, couleur: v.couleur, modele: m, stock: v.quantite,
+          variant_id: v.variant_id, group: v.modeles.length > 1 ? modelsLabel(v.modeles) : undefined,
+          photos: photos.find(p => (p.design ?? '') === (v.design ?? '') && (p.couleur ?? '') === (v.couleur ?? ''))?.photos ?? [] }))),
         ...photos.filter(p => !variants.some(v => (v.design ?? '') === (p.design ?? '') && (v.couleur ?? '') === (p.couleur ?? ''))),
       ]
       const counted = variants.reduce((n, v) => n + v.quantite, 0)
@@ -325,8 +329,8 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
       ...(() => {
         const out: DeviceResult[] = []
         const seen = new Set<string>()
-        for (const d of stock.accItems.filter(d => hit([raw(d).nom, raw(d).marque, raw(d).barcode, raw(d).acc_id, raw(d).couleur]))) {
-          const exact = [raw(d).barcode, raw(d).acc_id].some(v => v && String(v).toLowerCase() === q)
+        for (const d of stock.accItems.filter(d => hit([raw(d).nom, raw(d).marque, raw(d).barcode, raw(d).acc_id, raw(d).couleur, ...((raw(d).codes as { code: string }[] | undefined) ?? []).map(c => c.code)]))) {
+          const exact = [raw(d).barcode, raw(d).acc_id, ...((raw(d).codes as { code: string }[] | undefined) ?? []).map(c => c.code)].some(v => v && String(v).toLowerCase() === q)
           const card = exact ? d : stock.accessories.find(c => c._group?.some(m => m._id === d._id)) ?? d
           if (!seen.has(card._id)) { seen.add(card._id); out.push(card) }
         }
@@ -353,10 +357,10 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
 
   // The colour of a cart line (owner, 2026-11-06): picked in the popup for a
   // pochette family, or the article's own colour when the model is split by colour.
-  function lineColour(i: DeviceResult): { couleur: string | null; design: string | null; modele: string | null } {
-    if (i._type !== 'accessory') return { couleur: null, design: null, modele: null }
-    if (i._choice) return i._choice
-    return { couleur: ((i as unknown as Record<string, unknown>).couleur as string | null) ?? null, design: null, modele: null }
+  function lineColour(i: DeviceResult): { couleur: string | null; design: string | null; modele: string | null; variant_id: string | null } {
+    if (i._type !== 'accessory') return { couleur: null, design: null, modele: null, variant_id: null }
+    if (i._choice) return { ...i._choice, variant_id: i._choice.variant_id ?? null }
+    return { couleur: ((i as unknown as Record<string, unknown>).couleur as string | null) ?? null, design: null, modele: null, variant_id: null }
   }
 
   function pickColour(device: DeviceResult, key: string) {
@@ -372,9 +376,51 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
     const base = device._displayName
     addToCart({
       ...device, _accId: device._id, _id: `${device._id}#${key}`,
-      _choice: { couleur: choice.couleur ?? null, design: choice.design ?? null, modele: choice.modele ?? null },
+      _choice: { couleur: choice.couleur ?? null, design: choice.design ?? null, modele: choice.modele ?? null, variant_id: (choice as FamilyChoice).variant_id ?? null },
       _displayName: [base, choice.design, choice.couleur, choice.modele].filter(Boolean).join(' · '),
     })
+  }
+
+  // ── Scan (owner, 2026-11-07; lib/accessoryCodes): a box code, our EZ / EV
+  // label or the article's code finds the article, and the variant when the
+  // code says it. An unknown code: "C'est quel article ?" (LinkCodeModal).
+  const [unknownCode, setUnknownCode] = useState<string | null>(null)
+  const [linkFor, setLinkFor] = useState<string | null>(null)
+  const codeIndex = useMemo(() => {
+    const m = new Map<string, { acc_id: string; variant_id: string | null }>()
+    for (const a of (accQ.data ?? []) as Record<string, unknown>[]) {
+      const id = a.acc_id as string
+      for (const c of (a.codes as { code: string; variant_id: string | null }[] | undefined) ?? []) m.set(c.code.toLowerCase(), { acc_id: id, variant_id: c.variant_id })
+      if (a.barcode) m.set(String(a.barcode).toLowerCase(), { acc_id: id, variant_id: null })
+      m.set(id.toLowerCase(), { acc_id: id, variant_id: null })
+      m.set(`ez${Number(id.replace(/\D/g, ''))}`, { acc_id: id, variant_id: null })
+      for (const v of (a.variants as { variant_id: string }[] | undefined) ?? []) m.set(`ev${Number(v.variant_id.replace(/\D/g, ''))}`, { acc_id: id, variant_id: v.variant_id })
+    }
+    return m
+  }, [accQ.data])
+
+  function addFound(hit: { acc_id: string; variant_id: string | null }) {
+    const item = stock.accItems.find(d => d._id === hit.acc_id)
+    if (!item) return false
+    if (hit.variant_id && item._family) {
+      const opts = item._family.filter(f => f.variant_id === hit.variant_id)
+      if (opts.length === 1) { pickColour(item, choiceKey(opts[0])); return true }
+      // a group label (13 · 14 · 15): the window asks only the customer's phone
+      if (opts.length > 1) { setColourFor({ ...item, _family: opts }); return true }
+    }
+    addToCart(item)
+    return true
+  }
+
+  function handleScan(raw: string) {
+    const code = raw.trim()
+    setUnknownCode(null)
+    const hit = codeIndex.get(code.toLowerCase())
+    if (hit && addFound(hit)) { setSearch(''); return }
+    setSearch(code)
+    // not an accessory: a phone's IMEI or serial is found by the search as before
+    const isPhoneCode = /^\d{14,17}$/.test(code)
+    if (!isPhoneCode && code.length >= 4 && !/\s/.test(code)) setUnknownCode(code)
   }
 
   // ── Cart helpers ──────────────────────────────────────────
@@ -586,7 +632,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
           lead_id: lead?.lead_id,
           items: cart.map(i => ({
             device_type: i._type === 'phone' ? 'telephone' : 'accessoire', device_id: i._accId ?? i._id, qty: i.qty ?? 1,
-            couleur: lineColour(i).couleur, design: lineColour(i).design, modele: lineColour(i).modele,
+            couleur: lineColour(i).couleur, design: lineColour(i).design, modele: lineColour(i).modele, variant_id: lineColour(i).variant_id,
             prix_vente: i.prix_vente_saisi * (i.qty ?? 1),
             override_by: overrideAuthorizedBy ?? undefined, override_reason: overrideAuthorizedBy != null ? overrideReason : undefined,
           })),
@@ -709,6 +755,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
             couleur:         lineColour(item).couleur,
             design:          lineColour(item).design,
             modele:          lineColour(item).modele,
+            variant_id:      lineColour(item).variant_id,
             client_id:       clientId,
             type_operation:  saleForm.type_operation,
             qty:             item.qty ?? 1,
@@ -926,7 +973,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
                 </button>
               ) : null}
             </div>
-            <ScanButton sound="pos" onScan={v => setSearch(v)} hint="Scannez un IMEI ou code-barres" mode="barcode" color={primary} />
+            <ScanButton sound="pos" onScan={handleScan} hint="Scannez un IMEI ou code-barres" mode="barcode" color={primary} />
           </div>
         </div>
 
@@ -963,6 +1010,12 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
             <div className="flex flex-col items-center justify-center h-32 text-center">
               <Search className="w-8 h-8 text-ez-faint mb-2 opacity-40" />
               <p className="text-sm text-ez-faint">{t(isAr, 'common.noResults')}</p>
+              {unknownCode && search.trim() === unknownCode && (
+                <button type="button" onClick={() => setLinkFor(unknownCode)}
+                  className="mt-3 px-4 py-2 rounded-xl border border-gold text-sm font-semibold hover:bg-gold/10">
+                  {isAr ? 'ربط هذا الرمز بمنتج' : 'Code inconnu : l’associer à un article'}
+                </button>
+              )}
             </div>
           ) : !isSearching && gridItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-32 text-center">
@@ -1607,13 +1660,20 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
         onAuthorized={handleOverrideAuthorized}
       />
 
+      {linkFor && (
+        <LinkCodeModal code={linkFor} isAr={isAr}
+          accessories={(accQ.data ?? []) as unknown as Parameters<typeof LinkCodeModal>[0]['accessories']}
+          onClose={() => setLinkFor(null)}
+          onLinked={(accId, variantId) => { setLinkFor(null); setUnknownCode(null); setSearch(''); addFound({ acc_id: accId, variant_id: variantId }) }} />
+      )}
+
       {colourFor && (
         <ColourChoiceModal
           title={colourFor._displayName}
           isAr={isAr}
           options={colourFor._group
             ? colourFor._group.map(m => ({ key: m._id, couleur: ((m as unknown as Record<string, unknown>).couleur as string | null) ?? null, stock: Number((m as unknown as Record<string, unknown>).quantite ?? 0) }))
-            : (colourFor._family ?? []).map(f => ({ key: choiceKey(f), couleur: f.couleur, design: f.design, modele: f.modele ?? null, stock: f.stock, photos: f.photos ?? [] }))}
+            : (colourFor._family ?? []).map(f => ({ key: choiceKey(f), couleur: f.couleur, design: f.design, modele: f.modele ?? null, stock: f.stock, photos: f.photos ?? [], group: f.group, variant_id: f.variant_id }))}
           free={colourFor._group ? undefined : colourFor._free}
           onPick={o => pickColour(colourFor, o.key)}
           onClose={() => setColourFor(null)}

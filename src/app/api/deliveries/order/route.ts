@@ -31,10 +31,10 @@ async function POST_(request: NextRequest) {
       device_type: i.device_type, device_id: String(i.device_id ?? ''), qty: Number(i.qty ?? 1),
       prix_vente: Math.round(Number(i.prix_vente) * 100) / 100,
       override_by: str(i.override_by), override_reason: str(i.override_reason),
-      couleur: i.couleur, design: i.design, modele: i.modele,
+      couleur: i.couleur, design: i.design, modele: i.modele, variant_id: i.variant_id,
     })) as OrderItem[]
     // the colour chosen at the till, checked against the colour list (lib/saleColour)
-    for (const it of items) Object.assign(it, await saleChoice(it.device_type, { couleur: it.couleur, design: it.design, modele: it.modele }))
+    for (const it of items) Object.assign(it, await saleChoice(it.device_type, { couleur: it.couleur, design: it.design, modele: it.modele, variant_id: it.variant_id }))
     const frais       = Math.round(Number(body.frais_livraison ?? 0) * 100) / 100
     const fraisCharge = body.frais_charge === 'boutique' ? 'boutique' : 'client'
     const avance      = Math.round(Number(body.avance ?? 0) * 100) / 100
@@ -64,7 +64,7 @@ async function POST_(request: NextRequest) {
           avance_ref: str(body.avance_ref), avance_date: avance > 0 ? (dateOnly(body.avance_date) ?? todayDate()) : null,
           statut, notes: str(body.notes), lead_id: leadId, commande: true,
           created_by: user.id, updated_by: user.id,
-          delivery_items: { create: items.map(i => ({ device_type: i.device_type, device_id: i.device_id, qty: i.qty, prix_vente: i.prix_vente, override_by: i.override_by, override_reason: i.override_reason, couleur: i.couleur ?? null, design: i.design ?? null, modele: i.modele ?? null })) },
+          delivery_items: { create: items.map(i => ({ device_type: i.device_type, device_id: i.device_id, qty: i.qty, prix_vente: i.prix_vente, override_by: i.override_by, override_reason: i.override_reason, couleur: i.couleur ?? null, design: i.design ?? null, modele: i.modele ?? null, variant_id: i.variant_id ?? null })) },
         },
       })
       if (leadId) {

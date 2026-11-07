@@ -220,7 +220,8 @@ async function POST_(request: NextRequest) {
         await tx.laptops.update({ where: { laptop_id: txn.device_id }, data: { status: 'vendu', updated_by: user.id } })
       } else if (deviceType === 'accessoire') {
         // the chosen variant first, then the non réparti pieces (lib/accessoryVariants)
-        await takeFromVariant(tx, txn.device_id, choice, soldQty)
+        const variantId = await takeFromVariant(tx, txn.device_id, choice, soldQty)
+        if (variantId) await tx.transactions.update({ where: { txn_id: txn.txn_id }, data: { variant_id: variantId } })
         // Atomic decrement, floored at 0 (two simultaneous sales can't lose an update)
         await tx.$executeRaw`
           UPDATE accessories SET quantite = GREATEST(quantite - ${soldQty}, 0), updated_by = ${user.id}::uuid

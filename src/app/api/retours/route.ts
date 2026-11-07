@@ -200,7 +200,7 @@ async function POST_(request: NextRequest) {
       } else if (sale.device_type === 'accessoire' && destination === 'stock') {
         await tx.accessories.update({ where: { acc_id: sale.device_id }, data: { quantite: { increment: qty }, updated_by: user.id } })
         // back on its variant (lib/accessoryVariants)
-        await putBackOnVariant(tx, sale.device_id, { design: sale.design, couleur: sale.couleur, modele: sale.modele }, qty)
+        await putBackOnVariant(tx, sale.device_id, { design: sale.design, couleur: sale.couleur, modele: sale.modele, variant_id: sale.variant_id }, qty)
       }
       // accessoire + défectueux: not put back in stock (written off)
       return { created, sale }
