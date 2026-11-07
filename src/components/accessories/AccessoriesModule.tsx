@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { useCategories } from '@/lib/hooks/useCategories'
 import { Fragment, useState, useEffect, useCallback, useMemo } from 'react'
 import { useApi } from '@/lib/data/api'
@@ -470,6 +471,10 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
                 className="p-2 rounded-xl border border-ez-border bg-white text-ez-subtle hover:bg-ez-bg transition-all">
                 <RefreshCw className={`w-4 h-4 ${manualRefresh ? 'animate-spin' : ''}`} />
               </button>
+              <Link href="/ez/stock/accessories/etiquettes" title={isAr ? 'طباعة الملصقات' : 'Imprimer des étiquettes (A4)'}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-ez-border bg-white text-sm text-ez-subtle hover:bg-ez-bg">
+                <Tag className="w-4 h-4" /><span className="hidden sm:inline">{isAr ? 'ملصقات' : 'Étiquettes'}</span>
+              </Link>
               {canEdit && (
                 <Btn variant="primary" onClick={openAdd}
                   style={{ backgroundColor: primary } as React.CSSProperties}>
@@ -829,7 +834,12 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
         {editAcc && ficheTab === 'variantes' && (
           <div className="space-y-4" dir={isAr ? 'rtl' : 'ltr'}>
             <div className="space-y-2">
-              <p className="text-xs font-bold text-ez-subtle uppercase tracking-widest">{isAr ? 'المخزون حسب النوع' : 'Stock par variante'}</p>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs font-bold text-ez-subtle uppercase tracking-widest">{isAr ? 'المخزون حسب النوع' : 'Stock par variante'}</p>
+                <Link href={`/ez/stock/accessories/etiquettes?acc=${encodeURIComponent(editAcc.acc_id)}`} className="flex items-center gap-1 text-xs underline text-ez-subtle">
+                  <Tag className="w-3.5 h-3.5" />{isAr ? 'طباعة الملصقات' : 'Imprimer les étiquettes'}
+                </Link>
+              </div>
               <VariantStockEditor key={JSON.stringify(editAcc.variants ?? []) + editAcc.quantite} accId={editAcc.acc_id} total={editAcc.quantite}
                 variants={editAcc.variants ?? []} isAr={isAr}
                 photoChoices={siteProduct ? [...new Map((siteProduct.imageColors ?? []).map((c, i) => [`${siteProduct.imageDesigns?.[i] ?? ''}|${c}`, { design: siteProduct.imageDesigns?.[i] || null, couleur: c }])).values()].filter(p => p.couleur) : []} />
