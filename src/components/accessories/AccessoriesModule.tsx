@@ -17,6 +17,7 @@ import { ColourPicker, ColourDot, useCouleurs, useColourLabel } from '@/componen
 import { SitePhotosEditor, SiteInfoEditor, type Product as SiteProduct, type Category as SiteCategory } from '@/components/site/SiteCatalogModule'
 import { FacetChecklist } from '@/components/site/SiteFacets'
 import { Tabs } from '@/components/site/common'
+import { VariantStockEditor, type Variant } from '@/components/accessories/VariantStockEditor'
 import {
   Package, Plus, Search, X, RefreshCw,
   Edit2, AlertTriangle, Minus, TrendingUp, Trash2, Tag, Palette, History, ChevronDown, ChevronRight, CornerDownRight
@@ -47,6 +48,8 @@ interface Accessory {
   store_id?:              string | null
   couleur?:               string | null
   groupe_couleur?:        string | null
+  /** stock per variant (owner, 2026-11-06): design × colour × phone model */
+  variants?:              Variant[]
   status_computed?:       string
   is_low_stock?:          boolean
 }
@@ -228,23 +231,6 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
     setFormOpen(true)
   }
 
-  // "+ Couleur": the same model in another colour — a new accessory (its own
-  // stock), filled in from this one and joined to its colours
-  function openAddColour(acc: Accessory) {
-    setEditAcc(null)
-    setForm({
-      ...EMPTY_FORM,
-      nom: acc.nom, categorie: acc.categorie, marque: acc.marque ?? '', compatible_with: acc.compatible_with ?? '',
-      seuil_alerte: String(acc.seuil_alerte),
-      prix_achat:            acc.prix_achat != null ? String(acc.prix_achat) : '',
-      prix_vente_recommande: acc.prix_vente_recommande != null ? String(acc.prix_vente_recommande) : '',
-      prix_vente_minimum:    acc.prix_vente_minimum != null ? String(acc.prix_vente_minimum) : '',
-    })
-    setColorLink(acc.acc_id); setColorSearch('')
-    setFicheTab('general')
-    setFormOpen(true)
-  }
-
   function openEdit(acc: Accessory, tab: FicheTab = 'general') {
     setEditAcc(acc)
     setFicheTab(tab)
@@ -355,6 +341,14 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
     setDeepLink(null)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deepLink, accQ.data])
+
+  // the open fiche follows the saved data (stock per variant, quantity)
+  useEffect(() => {
+    if (!editAcc || !accQ.data) return
+    const fresh = accQ.data.find(a => a.acc_id === editAcc.acc_id)
+    if (fresh && (fresh.quantite !== editAcc.quantite || JSON.stringify(fresh.variants ?? []) !== JSON.stringify(editAcc.variants ?? []))) setEditAcc(fresh)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accQ.data])
 
   // The website side of the open fiche (managers: the Catalogue's rights)
   const siteQ = useApi<{ data: SiteProduct[]; categories: SiteCategory[] }, { data: SiteProduct[]; categories: SiteCategory[] }>(
@@ -622,6 +616,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
                       </p>
                       <p className="text-xs text-ez-faint">
                         {acc.marque ? `${acc.marque} · ` : ''}{acc.barcode || acc.acc_id}
+                        {!!acc.variants?.length && <VariantSummary acc={acc} isAr={isAr} />}
                       </p>
                     </div>
                   </div>
@@ -674,7 +669,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
                       <Tag className="w-4 h-4" />
                     </RowAction>
                     {canEdit && (
-                      <RowAction title={isAr ? 'لون آخر' : 'Ajouter une autre couleur (même modèle)'} onClick={() => openAddColour(acc)}>
+                      <RowAction title={isAr ? 'الأنواع' : 'Variantes (couleurs, designs, iPhone)'} onClick={() => openEdit(acc, 'variantes')}>
                         <Palette className="w-4 h-4" />
                       </RowAction>
                     )}
@@ -710,6 +705,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-ez-muted text-ez-subtle">{getCatLabel(acc.categorie)}</span>
                     {acc.marque && <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-ez-muted text-ez-subtle">{acc.marque}</span>}
+                    {!!acc.variants?.length && <span className="text-xs text-ez-faint"><VariantSummary acc={acc} isAr={isAr} /></span>}
                     <StatusBadge domain="stock_level" code={acc.status_computed ?? 'disponible'} size="sm" />
                   </div>
                   <div className="flex items-center justify-between gap-3">
@@ -736,7 +732,7 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
                         <Tag className="w-4 h-4" />
                       </RowAction>
                       {canEdit && (
-                        <RowAction title={isAr ? 'لون آخر' : 'Ajouter une autre couleur (même modèle)'} onClick={() => openAddColour(acc)}>
+                        <RowAction title={isAr ? 'الأنواع' : 'Variantes (couleurs, designs, iPhone)'} onClick={() => openEdit(acc, 'variantes')}>
                           <Palette className="w-4 h-4" />
                         </RowAction>
                       )}
@@ -829,6 +825,12 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
 
         {editAcc && ficheTab === 'variantes' && (
           <div className="space-y-4" dir={isAr ? 'rtl' : 'ltr'}>
+            <div className="space-y-2">
+              <p className="text-xs font-bold text-ez-subtle uppercase tracking-widest">{isAr ? 'المخزون حسب النوع' : 'Stock par variante'}</p>
+              <VariantStockEditor key={JSON.stringify(editAcc.variants ?? []) + editAcc.quantite} accId={editAcc.acc_id} total={editAcc.quantite}
+                variants={editAcc.variants ?? []} isAr={isAr}
+                photoChoices={siteProduct ? [...new Map((siteProduct.imageColors ?? []).map((c, i) => [`${siteProduct.imageDesigns?.[i] ?? ''}|${c}`, { design: siteProduct.imageDesigns?.[i] || null, couleur: c }])).values()].filter(p => p.couleur) : []} />
+            </div>
             {canFinancials && (
               <div className="space-y-2">
                 <p className="text-xs font-bold text-ez-subtle uppercase tracking-widest">{isAr ? 'صور الموقع وألوانها' : 'Photos du site et leurs couleurs'}</p>
@@ -854,15 +856,17 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
                 })())}
               </div>
             )}
-            <div className={canFinancials ? 'border-t border-ez-border pt-4 space-y-3' : 'space-y-3'}>
-              <p className="text-xs font-bold text-ez-subtle uppercase tracking-widest">{isAr ? 'لون بمخزونه الخاص' : 'Couleur comptée à part en stock'}</p>
+            {editAcc.groupe_couleur && (
+            <div className="border-t border-ez-border pt-4 space-y-3">
+              <p className="text-xs font-bold text-ez-subtle uppercase tracking-widest">{isAr ? 'لون بمخزونه الخاص' : 'Ancien système : couleur comptée comme un article à part'}</p>
               <p className="text-xs text-ez-subtle">
                 {isAr ? 'لون بمخزونه الخاص = منتج مرتبط (زر « + لون » في القائمة).'
-                  : 'Quand chaque couleur a son propre stock, elle est un article lié (bouton « + couleur » dans la liste) : il apparaît sous celui-ci.'}
+                  : 'Ces couleurs sont encore des articles séparés : elles deviendront des variantes de cet article.'}
               </p>
               {colourBlock}
               {ficheFooter}
             </div>
+            )}
           </div>
         )}
 
@@ -1020,4 +1024,11 @@ export default function AccessoriesModule({ storeId }: AccessoriesModuleProps) {
       )}
     </div>
   )
+}
+/** "· 12 variantes · 3 non réparties" under an article counted per variant */
+function VariantSummary({ acc, isAr }: { acc: Accessory; isAr: boolean }) {
+  const counted = (acc.variants ?? []).reduce((n, v) => n + v.quantite, 0)
+  const free = Math.max(0, acc.quantite - counted)
+  const n = acc.variants?.length ?? 0
+  return <> · {n} {isAr ? 'نوع' : n > 1 ? 'variantes' : 'variante'}{free > 0 ? ` · ${free} ${isAr ? 'غير موزع' : free > 1 ? 'non réparties' : 'non répartie'}` : ''}</>
 }

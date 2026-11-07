@@ -5,6 +5,7 @@ import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { withNotify } from '@/lib/realtime'
 import { alertLater, deviceName, money } from '@/lib/reports'
 import { assertNoLiveTwin } from '@/lib/phoneExit'
+import { putBackOnVariant } from '@/lib/accessoryVariants'
 
 async function PATCH_(request: NextRequest) {
   try {
@@ -55,6 +56,8 @@ async function PATCH_(request: NextRequest) {
           where: { acc_id: before.device_id },
           data:  { quantite: { increment: before.qty || 1 }, updated_by: user.id },
         })
+        // …and onto its variant (lib/accessoryVariants)
+        await putBackOnVariant(tx, before.device_id, { design: before.design, couleur: before.couleur, modele: before.modele }, before.qty || 1)
       }
       const after = await tx.transactions.findUniqueOrThrow({ where: { txn_id } })
       return { before, after }

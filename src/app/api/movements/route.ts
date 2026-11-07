@@ -6,6 +6,7 @@ import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { codeLabel } from '@/lib/codes'
 import { withNotify } from '@/lib/realtime'
 import { inShop } from '@/lib/phoneExit'
+import { checkTotalAgainstVariants } from '@/lib/accessoryVariants'
 
 export async function GET(request: NextRequest) {
   try {
@@ -142,7 +143,9 @@ async function POST_(request: NextRequest) {
           await tx.accessories.update({ where: { acc_id: srcAcc.acc_id }, data: { location: to, store_id: destStoreId, updated_by: user.id } })
         } else {
           // Partial move: decrement the source, then merge into the same SKU at the
-          // destination or create it there.
+          // destination or create it there. Pieces counted per variant stay:
+          // only non réparti pieces move (lib/accessoryVariants).
+          await checkTotalAgainstVariants(tx, srcAcc.acc_id, srcAcc.quantite - movedQty)
           await tx.accessories.update({ where: { acc_id: srcAcc.acc_id }, data: { quantite: { decrement: movedQty }, updated_by: user.id } })
           const destMatch = await tx.accessories.findFirst({
             where: {

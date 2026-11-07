@@ -7,6 +7,7 @@ import { withNotify } from '@/lib/realtime'
 import { drawerAmount, payFromDrawer } from '@/lib/stockPurchase'
 import { colourGroupWith } from '@/lib/accessoryColors'
 import { couleurFromList } from '@/lib/couleurs'
+import { checkTotalAgainstVariants } from '@/lib/accessoryVariants'
 
 // groupe_couleur is never typed: it is set through "colorWith" (lib/accessoryColors)
 const EDITABLE = columnsOf('accessories', ['acc_id', 'groupe_couleur'])
@@ -38,6 +39,8 @@ export async function GET(request: NextRequest) {
     const rows = await prisma.accessories.findMany({
       where,
       orderBy: { created_at: 'desc' },
+      // stock per variant (owner, 2026-11-06): the fiche, the list and the till's popup
+      include: { variants: { select: { variant_id: true, design: true, couleur: true, modele: true, quantite: true }, orderBy: [{ design: 'asc' }, { couleur: 'asc' }, { modele: 'asc' }] } },
       // Staff sell and look up stock, never see what it cost
       ...(!isManager(user.role) && { omit: { prix_achat: true } }),
     })
@@ -111,6 +114,8 @@ async function PATCH_(request: NextRequest) {
     const data = await prisma.$transaction(async (tx) => {
       // Same model in another colour: join (or leave, with null) its group
       if ('colorWith' in body) input.groupe_couleur = await colourGroupWith(tx, body.colorWith, acc_id, before.store_id)
+      // the pieces counted per variant leave from the fiche, not from −
+      if (typeof input.quantite === 'number' && input.quantite < before.quantite) await checkTotalAgainstVariants(tx, acc_id, input.quantite)
       const updated = await tx.accessories.update({
         where: { acc_id },
         data:  { ...input, updated_by: user.id },

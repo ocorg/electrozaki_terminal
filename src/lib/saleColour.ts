@@ -15,18 +15,20 @@ import { storefrontDb, storefrontConfigured } from '@/lib/storefront/db'
 // Shared by the sale (api/transactions), "Vente à livrer" (lib/deliveryOrders)
 // and the till's popup (api/pos/couleurs).
 
-export type SaleChoice = { couleur: string | null; design: string | null }
+// Since stock is counted per variant (2026-11-06, lib/accessoryVariants), the
+// popup also asks the phone model, and the sale takes from that variant.
+export type SaleChoice = { couleur: string | null; design: string | null; modele: string | null }
 
-/** The colour / design sent with an accessory sale line: colour from the list, design short text. */
-export async function saleChoice(deviceType: string, body: { couleur?: unknown; design?: unknown }): Promise<SaleChoice> {
-  if (deviceType !== 'accessoire') return { couleur: null, design: null }
-  const couleur = await couleurFromList(body.couleur)
-  let design: string | null = null
-  if (body.design !== undefined && body.design !== null && body.design !== '') {
-    if (typeof body.design !== 'string') throw new HttpError(400, 'Design invalide')
-    design = body.design.trim().slice(0, 40) || null
-  }
-  return { couleur, design }
+const shortText = (v: unknown, what: string): string | null => {
+  if (v === undefined || v === null || v === '') return null
+  if (typeof v !== 'string') throw new HttpError(400, `${what} invalide`)
+  return v.trim().replace(/\s+/g, ' ').slice(0, 40) || null
+}
+
+/** The colour / design / phone model sent with an accessory sale line: colour from the list, the others short text. */
+export async function saleChoice(deviceType: string, body: { couleur?: unknown; design?: unknown; modele?: unknown }): Promise<SaleChoice> {
+  if (deviceType !== 'accessoire') return { couleur: null, design: null, modele: null }
+  return { couleur: await couleurFromList(body.couleur), design: shortText(body.design, 'Design'), modele: shortText(body.modele, 'Modèle') }
 }
 
 export type FamilyChoice = { design: string | null; couleur: string }

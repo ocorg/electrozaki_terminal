@@ -10,6 +10,7 @@ import { saleBalance, unpaidSale, settledSales, assertDrawerOpen, lockSale } fro
 import { alertLater, deviceName, money } from '@/lib/reports'
 import { assertNoLiveTwin } from '@/lib/phoneExit'
 import { workingDay } from '@/lib/catchUp'
+import { putBackOnVariant } from '@/lib/accessoryVariants'
 
 const num = (v: Prisma.Decimal | number | null | undefined) => (v == null ? 0 : Number(v))
 
@@ -198,6 +199,8 @@ async function POST_(request: NextRequest) {
         })
       } else if (sale.device_type === 'accessoire' && destination === 'stock') {
         await tx.accessories.update({ where: { acc_id: sale.device_id }, data: { quantite: { increment: qty }, updated_by: user.id } })
+        // back on its variant (lib/accessoryVariants)
+        await putBackOnVariant(tx, sale.device_id, { design: sale.design, couleur: sale.couleur, modele: sale.modele }, qty)
       }
       // accessoire + défectueux: not put back in stock (written off)
       return { created, sale }

@@ -11,7 +11,7 @@ import { deviceLabels } from '@/lib/device-labels'
 type Row = {
   txn_id: string; device_type: string; device_id: string; qty: number; prix_vente: unknown; avance: unknown
   valeur_echange: unknown; payment_method: string; created_by: string | null; voided: boolean
-  couleur?: string | null; design?: string | null
+  couleur?: string | null; design?: string | null; modele?: string | null
 }
 
 export type SaleState = 'payee' | 'reste' | 'retour_partiel' | 'retournee' | 'annulee'
@@ -46,7 +46,7 @@ export async function transactionDetails<T extends Row>(rows: T[]) {
       : reste > 0 ? 'reste' : 'payee'
     return {
       ...t,
-      device_label: [labels.get(t.device_id) ?? t.device_id, t.design, t.couleur].filter(Boolean).join(' · '),
+      device_label: [labels.get(t.device_id) ?? t.device_id, t.design, t.couleur, t.modele].filter(Boolean).join(' · '),
       seller: t.created_by ? seller.get(t.created_by) ?? null : null,
       reste,
       paid_later: paidLater,

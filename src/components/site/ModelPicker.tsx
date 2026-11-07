@@ -11,7 +11,7 @@ import { useSiteLang } from './common'
 
 type CompatModel = { brand: string; serie: string; model: string }
 
-export function ModelPicker({ selected, onChange }: { selected: string[]; onChange: (models: string[]) => void }) {
+export function ModelPicker({ selected, onChange, emptyNote }: { selected: string[]; onChange: (models: string[]) => void; emptyNote?: string | null }) {
   const { L } = useSiteLang()
   const q = useApi<CompatModel[]>('/api/site/compat-models')
   const all = useMemo(() => q.data ?? [], [q.data])
@@ -93,7 +93,7 @@ export function ModelPicker({ selected, onChange }: { selected: string[]; onChan
           ))}
         </div>
       ) : (
-        <p className="text-xs text-ez-subtle">{L('Aucun modèle coché : sur le site, l’article ne demande pas de modèle (universel).', 'بدون طراز: المنتج عام.')}</p>
+        emptyNote === null ? null : <p className="text-xs text-ez-subtle">{emptyNote ?? L('Aucun modèle coché : sur le site, l’article ne demande pas de modèle (universel).', 'بدون طراز: المنتج عام.')}</p>
       )}
     </div>
   )

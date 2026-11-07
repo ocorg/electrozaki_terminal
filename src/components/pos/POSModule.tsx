@@ -43,14 +43,17 @@ type DeviceResult = (Phone | Laptop) & {
   // Colours at the till (owner, 2026-11-06; lib/saleColour):
   /** one card for a model split by colour: its colour articles */
   _group?:      DeviceResult[]
-  /** a pochette family: its design × colour choices (website photos) */
+  /** a pochette family / an article counted per variant: its design × colour × phone choices */
   _family?:     FamilyChoice[]
-  /** the colour picked for this cart line (family) */
-  _choice?:     { couleur: string; design: string | null }
+  /** stock per variant: the non réparti pieces (undefined = not counted per variant) */
+  _free?:       number
+  /** the variant picked for this cart line */
+  _choice?:     { couleur: string | null; design: string | null; modele: string | null }
   /** the real accessory id when _id is "article#design|colour" (one cart line per colour) */
   _accId?:      string
 }
-type FamilyChoice = { design: string | null; couleur: string }
+type FamilyChoice = { design: string | null; couleur: string | null; modele?: string | null; stock?: number }
+const choiceKey = (c: { design?: string | null; couleur?: string | null; modele?: string | null }) => `${c.design ?? ''}|${c.couleur ?? ''}|${c.modele ?? ''}`
 
 type CartItem = DeviceResult & {
   prix_vente_saisi: number
@@ -254,14 +257,26 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
       _id:          p.phone_id,
     }))
     const families = familyQ.data ?? {}
-    const accItems: DeviceResult[] = (accQ.data ?? []).map(a => ({
-      ...a,
-      _type:        'accessory' as const,
-      _id:          a.acc_id as string,
-      // the colour too (each colour is its own item, 2026-10-29): sell the right one
-      _displayName: [a.nom, a.couleur ? `· ${a.couleur}` : '', a.marque ? `· ${a.marque}` : ''].filter(Boolean).join(' '),
-      ...((families[a.acc_id as string]?.length ?? 0) > 1 && { _family: families[a.acc_id as string] }),
-    }) as unknown as DeviceResult)
+    const accItems: DeviceResult[] = (accQ.data ?? []).map(a => {
+      // stock per variant (owner, 2026-11-06): the counted variants, then the
+      // website photos' design × colour not counted yet
+      const variants = (a.variants as { design: string | null; couleur: string | null; modele: string | null; quantite: number }[] | undefined) ?? []
+      const photos = families[a.acc_id as string] ?? []
+      const choices: FamilyChoice[] = [
+        ...variants.map(v => ({ design: v.design, couleur: v.couleur, modele: v.modele, stock: v.quantite })),
+        ...photos.filter(p => !variants.some(v => (v.design ?? '') === (p.design ?? '') && (v.couleur ?? '') === (p.couleur ?? ''))),
+      ]
+      const counted = variants.reduce((n, v) => n + v.quantite, 0)
+      return {
+        ...a,
+        _type:        'accessory' as const,
+        _id:          a.acc_id as string,
+        // the colour too (each colour is its own item, 2026-10-29): sell the right one
+        _displayName: [a.nom, a.couleur ? `· ${a.couleur}` : '', a.marque ? `· ${a.marque}` : ''].filter(Boolean).join(' '),
+        ...((variants.length > 0 || choices.length > 1) && { _family: choices }),
+        ...(variants.length > 0 && { _free: Math.max(0, Number(a.quantite ?? 0) - counted) }),
+      } as unknown as DeviceResult
+    })
     // One card per model sold in several colours (owner, 2026-11-06): its
     // colours are picked in a popup instead of one line each.
     const groups = new Map<string, DeviceResult[]>()
@@ -336,10 +351,10 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
 
   // The colour of a cart line (owner, 2026-11-06): picked in the popup for a
   // pochette family, or the article's own colour when the model is split by colour.
-  function lineColour(i: DeviceResult): { couleur: string | null; design: string | null } {
-    if (i._type !== 'accessory') return { couleur: null, design: null }
-    if (i._choice) return { couleur: i._choice.couleur, design: i._choice.design }
-    return { couleur: ((i as unknown as Record<string, unknown>).couleur as string | null) ?? null, design: null }
+  function lineColour(i: DeviceResult): { couleur: string | null; design: string | null; modele: string | null } {
+    if (i._type !== 'accessory') return { couleur: null, design: null, modele: null }
+    if (i._choice) return i._choice
+    return { couleur: ((i as unknown as Record<string, unknown>).couleur as string | null) ?? null, design: null, modele: null }
   }
 
   function pickColour(device: DeviceResult, key: string) {
@@ -349,12 +364,14 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
       if (member) addToCart(member)
       return
     }
-    const choice = device._family?.find(f => `${f.design ?? ''}|${f.couleur}` === key)
+    // "||": sold without saying which variant (from the non réparti pieces)
+    const choice = key === '||' ? { design: null, couleur: null, modele: null } : device._family?.find(f => choiceKey(f) === key)
     if (!choice) return
     const base = device._displayName
     addToCart({
-      ...device, _accId: device._id, _id: `${device._id}#${key}`, _choice: { couleur: choice.couleur, design: choice.design },
-      _displayName: [base, choice.design, choice.couleur].filter(Boolean).join(' · '),
+      ...device, _accId: device._id, _id: `${device._id}#${key}`,
+      _choice: { couleur: choice.couleur ?? null, design: choice.design ?? null, modele: choice.modele ?? null },
+      _displayName: [base, choice.design, choice.couleur, choice.modele].filter(Boolean).join(' · '),
     })
   }
 
@@ -567,7 +584,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
           lead_id: lead?.lead_id,
           items: cart.map(i => ({
             device_type: i._type === 'phone' ? 'telephone' : 'accessoire', device_id: i._accId ?? i._id, qty: i.qty ?? 1,
-            couleur: lineColour(i).couleur, design: lineColour(i).design,
+            couleur: lineColour(i).couleur, design: lineColour(i).design, modele: lineColour(i).modele,
             prix_vente: i.prix_vente_saisi * (i.qty ?? 1),
             override_by: overrideAuthorizedBy ?? undefined, override_reason: overrideAuthorizedBy != null ? overrideReason : undefined,
           })),
@@ -689,6 +706,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
             device_id:       item._accId ?? item._id,
             couleur:         lineColour(item).couleur,
             design:          lineColour(item).design,
+            modele:          lineColour(item).modele,
             client_id:       clientId,
             type_operation:  saleForm.type_operation,
             qty:             item.qty ?? 1,
@@ -1593,7 +1611,8 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
           isAr={isAr}
           options={colourFor._group
             ? colourFor._group.map(m => ({ key: m._id, couleur: ((m as unknown as Record<string, unknown>).couleur as string | null) ?? null, stock: Number((m as unknown as Record<string, unknown>).quantite ?? 0) }))
-            : (colourFor._family ?? []).map(f => ({ key: `${f.design ?? ''}|${f.couleur}`, couleur: f.couleur, design: f.design }))}
+            : (colourFor._family ?? []).map(f => ({ key: choiceKey(f), couleur: f.couleur, design: f.design, modele: f.modele ?? null, stock: f.stock }))}
+          free={colourFor._group ? undefined : colourFor._free}
           onPick={o => pickColour(colourFor, o.key)}
           onClose={() => setColourFor(null)}
         />

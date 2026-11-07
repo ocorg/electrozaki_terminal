@@ -10,6 +10,7 @@ import { deviceLabels } from '@/lib/device-labels'
 import { alertLater, deviceName, money } from '@/lib/reports'
 import { workingDay } from '@/lib/catchUp'
 import { saleChoice } from '@/lib/saleColour'
+import { takeFromVariant } from '@/lib/accessoryVariants'
 import { transactionDetails } from '@/lib/transactionDetails'
 import { cleanImeiOrThrow } from '@/lib/imei'
 
@@ -178,6 +179,7 @@ async function POST_(request: NextRequest) {
           notes:                 str(body.notes),
           couleur:               choice.couleur,
           design:                choice.design,
+          modele:                choice.modele,
           store_id:              body.store_id ?? user.store_id ?? null,
           created_by:            user.id,
           updated_by:            user.id,
@@ -217,6 +219,8 @@ async function POST_(request: NextRequest) {
       } else if (deviceType === 'laptop') {
         await tx.laptops.update({ where: { laptop_id: txn.device_id }, data: { status: 'vendu', updated_by: user.id } })
       } else if (deviceType === 'accessoire') {
+        // the chosen variant first, then the non réparti pieces (lib/accessoryVariants)
+        await takeFromVariant(tx, txn.device_id, choice, soldQty)
         // Atomic decrement, floored at 0 (two simultaneous sales can't lose an update)
         await tx.$executeRaw`
           UPDATE accessories SET quantite = GREATEST(quantite - ${soldQty}, 0), updated_by = ${user.id}::uuid

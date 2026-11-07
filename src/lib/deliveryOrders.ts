@@ -14,6 +14,7 @@
 // shop (an expense, taken from what the company pays).
 import type { Prisma } from '@prisma/client'
 import { HttpError } from '@/lib/api'
+import { takeFromVariant, putBackOnVariant } from '@/lib/accessoryVariants'
 
 type Tx = Prisma.TransactionClient
 
@@ -21,7 +22,7 @@ export const AVANCE_MIN = 300
 const round2 = (n: number) => Math.round(n * 100) / 100
 const num = (v: unknown) => (v == null ? 0 : Number(v))
 
-export interface OrderItem { device_type: 'telephone' | 'accessoire'; device_id: string; qty: number; prix_vente: number; override_by?: string | null; override_reason?: string | null; couleur?: string | null; design?: string | null }
+export interface OrderItem { device_type: 'telephone' | 'accessoire'; device_id: string; qty: number; prix_vente: number; override_by?: string | null; override_reason?: string | null; couleur?: string | null; design?: string | null; modele?: string | null }
 
 /** What the delivery agent collects, and what the company pays the shop. */
 export function orderMoney(d: { montant_total: unknown; montant_avance: unknown; frais_livraison: unknown; frais_charge: string }) {
@@ -51,6 +52,8 @@ export async function reserveItems(tx: Tx, items: OrderItem[], userId: string) {
       if (!count) throw new HttpError(409, `Le téléphone ${i.device_id} n'est plus disponible`)
     } else {
       if (!(Number.isInteger(i.qty) && i.qty >= 1)) throw new HttpError(400, 'Quantité invalide')
+      // the chosen variant first, then the non réparti pieces (lib/accessoryVariants)
+      await takeFromVariant(tx, i.device_id, { design: i.design ?? null, couleur: i.couleur ?? null, modele: i.modele ?? null }, i.qty)
       const { count } = await tx.accessories.updateMany({
         where: { acc_id: i.device_id, quantite: { gte: i.qty }, is_deleted: false },
         data:  { quantite: { decrement: i.qty }, updated_by: userId },
@@ -61,13 +64,14 @@ export async function reserveItems(tx: Tx, items: OrderItem[], userId: string) {
 }
 
 /** A refused or cancelled order: its items go back to stock. */
-export async function releaseItems(tx: Tx, items: { device_type: string; device_id: string; qty: number; txn_id: string | null }[], userId: string) {
+export async function releaseItems(tx: Tx, items: { device_type: string; device_id: string; qty: number; txn_id: string | null; couleur?: string | null; design?: string | null; modele?: string | null }[], userId: string) {
   for (const i of items) {
     if (i.txn_id) continue   // already sold (never happens for an order that is not delivered)
     if (i.device_type === 'telephone') {
       await tx.phones.updateMany({ where: { phone_id: i.device_id, status: { in: ['en_livraison', 'reserve'] } }, data: { status: 'disponible', updated_by: userId } })
     } else if (i.device_type === 'accessoire') {
       await tx.accessories.update({ where: { acc_id: i.device_id }, data: { quantite: { increment: i.qty }, updated_by: userId } })
+      await putBackOnVariant(tx, i.device_id, { design: i.design ?? null, couleur: i.couleur ?? null, modele: i.modele ?? null }, i.qty)
     }
   }
 }
@@ -75,7 +79,7 @@ export async function releaseItems(tx: Tx, items: { device_type: string; device_
 /** Delivered: each item becomes a sale of that day, paid by bank. */
 export async function recordSales(tx: Tx, d: {
   delivery_id: string; store_id: string | null; client_id: string | null; transporteur: string | null
-  delivery_items: { item_id: string; device_type: string; device_id: string; qty: number; prix_vente: Prisma.Decimal | null; override_by: string | null; override_reason: string | null; couleur?: string | null; design?: string | null }[]
+  delivery_items: { item_id: string; device_type: string; device_id: string; qty: number; prix_vente: Prisma.Decimal | null; override_by: string | null; override_reason: string | null; couleur?: string | null; design?: string | null; modele?: string | null }[]
 }, day: Date, userId: string) {
   const txnIds: string[] = []
   for (const i of d.delivery_items) {
@@ -95,7 +99,7 @@ export async function recordSales(tx: Tx, d: {
         override_required: i.override_by ? true : null, override_by: i.override_by, override_reason: i.override_reason,
         notes: `Livraison ${d.delivery_id}${d.transporteur ? ` — ${d.transporteur}` : ''}`,
         // the colour chosen at the till (lib/saleColour)
-        couleur: i.couleur ?? null, design: i.design ?? null,
+        couleur: i.couleur ?? null, design: i.design ?? null, modele: i.modele ?? null,
         store_id: d.store_id, created_by: userId, updated_by: userId,
       },
       select: { txn_id: true },

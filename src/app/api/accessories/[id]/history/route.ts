@@ -82,7 +82,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
       add({
         at: (t.created_at ?? new Date()).toISOString(), kind: 'sale',
         title: `${op === 'Vente' ? 'Vendu' : op} × ${t.qty} — ${t.txn_id}`,
-        detail: [[t.design, t.couleur].filter(Boolean).join(' · ') || null, dh(t.prix_vente), codeLabel('payment_method', t.payment_method as never, 'fr'),
+        detail: [[t.design, t.couleur, t.modele].filter(Boolean).join(' · ') || null, dh(t.prix_vente), codeLabel('payment_method', t.payment_method as never, 'fr'),
           t.override_reason ? `sous le minimum : ${t.override_reason}` : null].filter(Boolean).join(' · '),
         by: userName(t.created_by),
       })
@@ -96,7 +96,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     // ── Deliveries ("Vente à livrer", web orders) ─────────────────────
     for (const d of deliveryItems) {
       add({ at: (d.created_at ?? new Date()).toISOString(), kind: 'credit', title: `Livraison ${d.deliveries?.delivery_id ?? ''} × ${d.qty}`,
-        detail: [[d.design, d.couleur].filter(Boolean).join(' · ') || null, d.deliveries?.client_name, d.deliveries?.ville,
+        detail: [[d.design, d.couleur, d.modele].filter(Boolean).join(' · ') || null, d.deliveries?.client_name, d.deliveries?.ville,
           d.deliveries?.statut ? codeLabel('delivery_status', d.deliveries.statut as never, 'fr') : null].filter(Boolean).join(' · ') })
     }
 
