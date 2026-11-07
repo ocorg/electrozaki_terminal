@@ -6,6 +6,7 @@ import AuthProvider from '@/components/shared/AuthProvider'
 import DataProvider from '@/components/shared/DataProvider'
 import './globals.css'
 import ConfirmHost from '@/components/shared/ConfirmHost'
+import { ToastJanitor } from '@/components/shared/ToastJanitor'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 
@@ -41,10 +42,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <DataProvider>{children}</DataProvider>
           <ConfirmHost />
         </AuthProvider>
+        <ToastJanitor />
         <Toaster
           position="top-right"
           richColors={false}
           expand={false}
+          // at most 3 at a time, each with a small × to close it with one tap (owner, 2026-11-07)
+          visibleToasts={3}
+          closeButton
           toastOptions={{
             duration: 2500,
             style: {
