@@ -20,6 +20,7 @@ import AttendanceWidget     from '@/components/attendance/AttendanceWidget'
 import QtyPickerModal       from '@/components/pos/QtyPickerModal'
 import { ColourChoiceModal } from '@/components/pos/ColourChoiceModal'
 import { LinkCodeModal } from '@/components/pos/LinkCodeModal'
+import { CodeMatchesModal } from '@/components/pos/CodeMatchesModal'
 import { modelsLabel } from '@/lib/phoneGroups'
 import OverridePinModal     from '@/components/pos/OverridePinModal'
 import ExchangeIntakePanel, { type ExchangePanelState } from '@/components/pos/ExchangeIntakePanel'
@@ -390,15 +391,21 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
   // code says it. An unknown code: "C'est quel article ?" (LinkCodeModal).
   const [unknownCode, setUnknownCode] = useState<string | null>(null)
   const [linkFor, setLinkFor] = useState<string | null>(null)
+  // a box code printed on several products: which one? (2026-11-07)
+  const [matchesFor, setMatchesFor] = useState<{ code: string; hits: { acc_id: string; variant_id: string | null }[] } | null>(null)
   const codeIndex = useMemo(() => {
-    const m = new Map<string, { acc_id: string; variant_id: string | null }>()
+    const m = new Map<string, { acc_id: string; variant_id: string | null }[]>()
+    const put = (k: string, hit: { acc_id: string; variant_id: string | null }) => {
+      const list = m.get(k) ?? []
+      if (!list.some(h => h.acc_id === hit.acc_id)) m.set(k, [...list, hit])
+    }
     for (const a of (accQ.data ?? []) as Record<string, unknown>[]) {
       const id = a.acc_id as string
-      for (const c of (a.codes as { code: string; variant_id: string | null }[] | undefined) ?? []) m.set(c.code.toLowerCase(), { acc_id: id, variant_id: c.variant_id })
-      if (a.barcode) m.set(String(a.barcode).toLowerCase(), { acc_id: id, variant_id: null })
-      m.set(id.toLowerCase(), { acc_id: id, variant_id: null })
-      m.set(`ez${Number(id.replace(/\D/g, ''))}`, { acc_id: id, variant_id: null })
-      for (const v of (a.variants as { variant_id: string }[] | undefined) ?? []) m.set(`ev${Number(v.variant_id.replace(/\D/g, ''))}`, { acc_id: id, variant_id: v.variant_id })
+      for (const c of (a.codes as { code: string; variant_id: string | null }[] | undefined) ?? []) put(c.code.toLowerCase(), { acc_id: id, variant_id: c.variant_id })
+      if (a.barcode) put(String(a.barcode).toLowerCase(), { acc_id: id, variant_id: null })
+      put(id.toLowerCase(), { acc_id: id, variant_id: null })
+      put(`ez${Number(id.replace(/\D/g, ''))}`, { acc_id: id, variant_id: null })
+      for (const v of (a.variants as { variant_id: string }[] | undefined) ?? []) put(`ev${Number(v.variant_id.replace(/\D/g, ''))}`, { acc_id: id, variant_id: v.variant_id })
     }
     return m
   }, [accQ.data])
@@ -419,8 +426,9 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
   function handleScan(raw: string) {
     const code = raw.trim()
     setUnknownCode(null)
-    const hit = codeIndex.get(code.toLowerCase())
-    if (hit && addFound(hit)) { setSearch(''); return }
+    const hits = codeIndex.get(code.toLowerCase()) ?? []
+    if (hits.length > 1) { setSearch(''); setMatchesFor({ code, hits }); return }
+    if (hits[0] && addFound(hits[0])) { setSearch(''); return }
     setSearch(code)
     // not an accessory: a phone's IMEI or serial is found by the search as before
     const isPhoneCode = /^\d{14,17}$/.test(code)
@@ -1684,6 +1692,13 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
         primary={primary}
         onAuthorized={handleOverrideAuthorized}
       />
+
+      {matchesFor && (
+        <CodeMatchesModal code={matchesFor.code} hits={matchesFor.hits}
+          accessories={(accQ.data ?? []) as unknown as Parameters<typeof CodeMatchesModal>[0]['accessories']}
+          onClose={() => setMatchesFor(null)}
+          onPick={h => { setMatchesFor(null); addFound(h) }} />
+      )}
 
       {linkFor && (
         <LinkCodeModal code={linkFor} isAr={isAr}

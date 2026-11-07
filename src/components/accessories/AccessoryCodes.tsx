@@ -6,6 +6,7 @@ import { Btn, inputClass, selectClass, Select } from '@/components/shared'
 import ScanButton from '@/components/scanner/ScanButton'
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import { playScanSound } from '@/lib/scanSound'
+import { confirmDialog } from '@/components/shared/ConfirmHost'
 import { useCouleurs, useColourLabel } from '@/components/shared/ColourPicker'
 import { modelsLabel } from '@/lib/phoneGroups'
 import type { Variant } from './VariantStockEditor'
@@ -31,17 +32,26 @@ export function AccessoryCodes({ accId, codes, variants, isAr, canDelete }: {
   const vLabel = (v: Variant) => [v.design, v.couleur && colourLabel(couleurs.byName.get(v.couleur), v.couleur), modelsLabel(v.modeles)].filter(Boolean).join(' · ')
   const of = (id: string | null) => { const v = id ? variants.find(x => x.variant_id === id) : null; return v ? vLabel(v) : L('tout l’article', 'كل المنتج') }
 
-  async function add(code: string) {
+  async function add(code: string, share = false) {
     if (!code.trim()) return
     setBusy(true)
     try {
-      const r = await apiWrite<{ data: { added: boolean; moved?: boolean } }>(`/api/accessories/${encodeURIComponent(accId)}/codes`, { method: 'POST', body: { code, variant_id: target || null } })
+      const r = await apiWrite<{ data: { added: boolean; moved?: boolean } }>(`/api/accessories/${encodeURIComponent(accId)}/codes`, { method: 'POST', body: { code, variant_id: target || null, share } })
       const d = (r as unknown as { data: { added: boolean; moved?: boolean } }).data ?? r
       if (d.added) { playScanSound('inv_found'); showSuccess(L(`Code ${code.trim()} ajouté`, 'تمت الإضافة')) }
       else if (d.moved) { playScanSound('inv_found'); showSuccess(L('Code déplacé sur la variante choisie', 'تم النقل')) }
       else { playScanSound('inv_duplicate'); showSuccess(L('Code déjà connu', 'الرمز معروف')) }
       setTyped('')
-    } catch (e) { playScanSound('error'); showError((e as Error).message) } finally { setBusy(false) }
+    } catch (e) {
+      const msg = (e as Error).message
+      // the same code printed on another article's product: share it after a yes (2026-11-07)
+      if (!share && /partagez-le/.test(msg)) {
+        setBusy(false)
+        if (await confirmDialog(`${msg}\n\nPartager ce code avec cet article ?`)) return add(code, true)
+        return
+      }
+      playScanSound('error'); showError(msg)
+    } finally { setBusy(false) }
   }
 
   async function remove(code: string) {

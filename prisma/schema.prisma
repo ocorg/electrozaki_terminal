@@ -365,8 +365,9 @@ model accessory_variants {
 
 /// Codes that find an accessory (owner, 2026-11-07): manufacturer codes on
 /// boxes / sachets, learned when first scanned; on the article or one variant.
+/// A code may be shared by several articles (2026-11-07): the scan then asks which.
 model accessory_codes {
-  code       String              @id
+  code       String
   acc_id     String
   variant_id String?
   created_at DateTime            @default(now()) @db.Timestamptz(6)
@@ -374,7 +375,9 @@ model accessory_codes {
   accessory  accessories         @relation(fields: [acc_id], references: [acc_id], onDelete: Cascade)
   variant    accessory_variants? @relation(fields: [variant_id], references: [variant_id], onDelete: SetNull)
 
+  @@id([code, acc_id])
   @@index([acc_id], map: "idx_accessory_codes_acc")
+  @@index([code], map: "idx_accessory_codes_code")
 }
 
 /// Accessory stock count (owner, 2026-11-07; lib/accessoryCount). One open per store (partial index in SQL).

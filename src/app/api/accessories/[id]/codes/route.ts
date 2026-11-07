@@ -18,7 +18,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   }
 }
 
-// POST { code, variant_id? }
+// POST { code, variant_id?, share? } — share: the same code is really on another article's product too
 async function POST_(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const user = await requireActiveUser()
@@ -26,10 +26,10 @@ async function POST_(request: NextRequest, { params }: { params: { id: string } 
     const acc = await prisma.accessories.findUnique({ where: { acc_id: params.id }, select: { acc_id: true, nom: true, store_id: true, is_deleted: true } })
     if (!acc || acc.is_deleted) throw new HttpError(404, 'Accessoire introuvable')
     const variantId = typeof body.variant_id === 'string' && body.variant_id ? body.variant_id : null
-    const r = await prisma.$transaction(tx => addCode(tx, acc.acc_id, body.code, variantId, user.id))
+    const r = await prisma.$transaction(tx => addCode(tx, acc.acc_id, body.code, variantId, user.id, body.share === true))
     if (r.added || r.moved) await logActivity({
       store_id: acc.store_id, user_id: user.id, user_name: user.display_name, action_type: 'modification', module: 'accessoires',
-      record_id: acc.acc_id, notes: `Code ${r.code} ${r.moved ? 'déplacé' : 'associé'} à « ${acc.nom} »${variantId ? ` (variante ${variantId})` : ''}`,
+      record_id: acc.acc_id, notes: `Code ${r.code} ${r.moved ? 'déplacé' : 'associé'} à « ${acc.nom} »${variantId ? ` (variante ${variantId})` : ''}${'shared' in r && r.shared ? ' — partagé avec un autre article' : ''}`,
       ip_address: getIpFromRequest(request),
     })
     return json({ ok: true, data: r }, { status: r.added ? 201 : 200 })

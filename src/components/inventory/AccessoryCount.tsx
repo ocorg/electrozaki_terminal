@@ -10,6 +10,7 @@ import { playScanSound } from '@/lib/scanSound'
 import { confirmDialog } from '@/components/shared/ConfirmHost'
 import { modelsLabel } from '@/lib/phoneGroups'
 import { LinkCodeModal } from '@/components/pos/LinkCodeModal'
+import { CodeMatchesModal } from '@/components/pos/CodeMatchesModal'
 
 // Inventaire → Accessoires (owner, 2026-11-07; rules in lib/accessoryCount).
 // Scan = +1 on the article or the variant its code says; naked products get
@@ -32,6 +33,7 @@ export default function AccessoryCount({ storeId }: { storeId: string }) {
   const [linkFor, setLinkFor] = useState<string | null>(null)
   const [chooseFor, setChooseFor] = useState<Acc | null>(null)
   const [gaps, setGaps] = useState<Gap[] | null>(null)
+  const [matchesFor, setMatchesFor] = useState<{ code: string; hits: { acc_id: string; variant_id: string | null }[] } | null>(null)
 
   const catLabel = (c: string) => cats.find(x => x.code === c)?.fr ?? c
   const inScope = useMemo(() => (accQ.data ?? []).filter(a => a.categorie !== 'service' && (!count?.categories.length || count.categories.includes(a.categorie))), [accQ.data, count])
@@ -40,13 +42,17 @@ export default function AccessoryCount({ storeId }: { storeId: string }) {
 
   // the scanned code → article / variant (same rules as the till, lib/accessoryCodes)
   const codeIndex = useMemo(() => {
-    const m = new Map<string, { acc_id: string; variant_id: string | null }>()
+    const m = new Map<string, { acc_id: string; variant_id: string | null }[]>()
+    const put = (k: string, hit: { acc_id: string; variant_id: string | null }) => {
+      const list = m.get(k) ?? []
+      if (!list.some(h => h.acc_id === hit.acc_id)) m.set(k, [...list, hit])
+    }
     for (const a of accQ.data ?? []) {
-      for (const c of a.codes ?? []) m.set(c.code.toLowerCase(), { acc_id: a.acc_id, variant_id: c.variant_id })
-      if (a.barcode) m.set(a.barcode.toLowerCase(), { acc_id: a.acc_id, variant_id: null })
-      m.set(a.acc_id.toLowerCase(), { acc_id: a.acc_id, variant_id: null })
-      m.set(`ez${Number(a.acc_id.replace(/\D/g, ''))}`, { acc_id: a.acc_id, variant_id: null })
-      for (const v of a.variants ?? []) m.set(`ev${Number(v.variant_id.replace(/\D/g, ''))}`, { acc_id: a.acc_id, variant_id: v.variant_id })
+      for (const c of a.codes ?? []) put(c.code.toLowerCase(), { acc_id: a.acc_id, variant_id: c.variant_id })
+      if (a.barcode) put(a.barcode.toLowerCase(), { acc_id: a.acc_id, variant_id: null })
+      put(a.acc_id.toLowerCase(), { acc_id: a.acc_id, variant_id: null })
+      put(`ez${Number(a.acc_id.replace(/\D/g, ''))}`, { acc_id: a.acc_id, variant_id: null })
+      for (const v of a.variants ?? []) put(`ev${Number(v.variant_id.replace(/\D/g, ''))}`, { acc_id: a.acc_id, variant_id: v.variant_id })
     }
     return m
   }, [accQ.data])
@@ -60,7 +66,12 @@ export default function AccessoryCount({ storeId }: { storeId: string }) {
   }
 
   function onScan(raw: string) {
-    const hit = codeIndex.get(raw.trim().toLowerCase())
+    const hits = (codeIndex.get(raw.trim().toLowerCase()) ?? []).filter(h => inScope.some(a => a.acc_id === h.acc_id))
+    if (hits.length > 1) { setMatchesFor({ code: raw.trim(), hits }); return }
+    countHit(raw, hits[0] ?? codeIndex.get(raw.trim().toLowerCase())?.[0])
+  }
+
+  function countHit(raw: string, hit: { acc_id: string; variant_id: string | null } | undefined) {
     if (!hit) { playScanSound('inv_unknown'); setLinkFor(raw.trim()); return }
     const acc = inScope.find(a => a.acc_id === hit.acc_id)
     if (!acc) { playScanSound('inv_outside'); showError('Cet article ne fait pas partie de ce comptage'); return }
@@ -200,6 +211,13 @@ export default function AccessoryCount({ storeId }: { storeId: string }) {
             <button type="button" onClick={() => { patch(chooseFor.acc_id, ART, { add: 1 }); setChooseFor(null) }} className="text-start px-3 py-2.5 rounded-xl border border-dashed border-ez-border text-sm text-ez-subtle">Sans variante (non réparti)</button>
           </div>
         </Modal>
+      )}
+
+      {matchesFor && (
+        <CodeMatchesModal code={matchesFor.code} hits={matchesFor.hits} showPrice={false}
+          accessories={inScope as unknown as Parameters<typeof CodeMatchesModal>[0]['accessories']}
+          onClose={() => setMatchesFor(null)}
+          onPick={h => { const c = matchesFor.code; setMatchesFor(null); countHit(c, h) }} />
       )}
 
       {linkFor && (

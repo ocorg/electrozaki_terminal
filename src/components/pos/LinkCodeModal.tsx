@@ -5,6 +5,7 @@ import { Modal, Btn, inputClass, selectClass, Select } from '@/components/shared
 import { apiWrite } from '@/lib/data/api'
 import { showError, showSuccess } from '@/lib/utils/toasts'
 import { modelsLabel } from '@/lib/phoneGroups'
+import { confirmDialog } from '@/components/shared/ConfirmHost'
 
 // An unknown code scanned at the till (owner, 2026-11-07; lib/accessoryCodes):
 // « C'est quel article ? ». Picked once, the code is kept on the article (or one
@@ -30,14 +31,22 @@ export function LinkCodeModal({ code, accessories, isAr, onLinked, onClose }: {
     return accessories.filter(a => tokens.every(t => [a.nom, a.marque, a.couleur, a.acc_id].some(v => v?.toLowerCase().includes(t)))).slice(0, 8)
   }, [q, accessories])
 
-  async function link() {
+  async function link(share = false) {
     if (!picked) return
     setBusy(true)
     try {
-      await apiWrite(`/api/accessories/${encodeURIComponent(picked.acc_id)}/codes`, { method: 'POST', body: { code, variant_id: variant || null } })
+      await apiWrite(`/api/accessories/${encodeURIComponent(picked.acc_id)}/codes`, { method: 'POST', body: { code, variant_id: variant || null, share } })
       showSuccess(L('Code associé : il sera reconnu la prochaine fois', 'تم الربط'))
       onLinked(picked.acc_id, variant || null)
-    } catch (e) { showError((e as Error).message) } finally { setBusy(false) }
+    } catch (e) {
+      const msg = (e as Error).message
+      if (!share && /partagez-le/.test(msg)) {
+        setBusy(false)
+        if (await confirmDialog(`${msg}\n\nPartager ce code ?`)) return link(true)
+        return
+      }
+      showError(msg)
+    } finally { setBusy(false) }
   }
 
   return (
@@ -74,7 +83,7 @@ export function LinkCodeModal({ code, accessories, isAr, onLinked, onClose }: {
             )}
             <div className="flex justify-end gap-2">
               <Btn variant="ghost" onClick={onClose}>{L('Annuler', 'إلغاء')}</Btn>
-              <Btn onClick={link} loading={busy}>{L('Associer et ajouter au panier', 'ربط وإضافة')}</Btn>
+              <Btn onClick={() => link()} loading={busy}>{L('Associer et ajouter au panier', 'ربط وإضافة')}</Btn>
             </div>
           </>
         )}
