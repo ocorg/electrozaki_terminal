@@ -336,6 +336,7 @@ model accessories {
   couleurs                            couleurs?            @relation(fields: [couleur], references: [nom], onDelete: Restrict, onUpdate: Cascade)
   variants                            accessory_variants[]
   codes                               accessory_codes[]
+  count_lines                         acc_count_lines[]
 
   @@index([quantite, seuil_alerte], map: "idx_accessories_low_stock")
   @@index([store_id], map: "idx_accessories_store")
@@ -374,6 +375,33 @@ model accessory_codes {
   variant    accessory_variants? @relation(fields: [variant_id], references: [variant_id], onDelete: SetNull)
 
   @@index([acc_id], map: "idx_accessory_codes_acc")
+}
+
+/// Accessory stock count (owner, 2026-11-07; lib/accessoryCount). One open per store (partial index in SQL).
+model acc_counts {
+  count_id   String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  store_id   String
+  categories String[]          @default([])
+  statut     String            @default("en_cours")
+  started_at DateTime          @default(now()) @db.Timestamptz(6)
+  closed_at  DateTime?         @db.Timestamptz(6)
+  created_by String?           @db.Uuid
+  closed_by  String?           @db.Uuid
+  lines      acc_count_lines[]
+}
+
+/// A counted line: an article (line_key '-') or one of its variants (line_key = variant_id).
+model acc_count_lines {
+  count_id   String      @db.Uuid
+  acc_id     String
+  line_key   String      @default("-")
+  counted    Int         @default(0)
+  updated_at DateTime    @default(now()) @db.Timestamptz(6)
+  updated_by String?     @db.Uuid
+  count      acc_counts  @relation(fields: [count_id], references: [count_id], onDelete: Cascade)
+  accessory  accessories @relation(fields: [acc_id], references: [acc_id], onDelete: Cascade)
+
+  @@id([count_id, acc_id, line_key])
 }
 
 model activity_log {
