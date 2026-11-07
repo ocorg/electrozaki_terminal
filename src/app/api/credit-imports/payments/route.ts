@@ -1,12 +1,13 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
-import { json, handleError, requireActiveUser, todayDate, HttpError } from '@/lib/api'
+import { json, handleError, requireActiveUser, todayDate, HttpError, MANAGERS } from '@/lib/api'
 import { logActivity, getIpFromRequest } from '@/lib/utils/logger'
 import { withNotify } from '@/lib/realtime'
 
 async function POST_(request: NextRequest) {
   try {
-    const user = await requireActiveUser()
+    // imported debts are managed in Crédits clients, a managers' screen (security review 2026-11-07)
+    const user = await requireActiveUser(MANAGERS)
     const body = await request.json() as Record<string, unknown>
     const import_id = body.import_id as string | undefined
     const montant   = Number(body.montant)

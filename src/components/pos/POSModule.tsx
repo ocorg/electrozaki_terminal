@@ -160,6 +160,8 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
   const [overrideItem,         setOverrideItem]         = useState<CartItem | null>(null)
   const [overrideReason,       setOverrideReason]       = useState('')
   const [overrideAuthorizedBy, setOverrideAuthorizedBy] = useState<string | null>(null)
+  // the server's signed permission after a manager's PIN (lib/overridePin)
+  const [overrideToken, setOverrideToken] = useState<string | null>(null)
 
   const [submitting,  setSubmitting]  = useState(false)
   const [retourOpen,  setRetourOpen]  = useState(false)
@@ -526,8 +528,9 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
   }
 
   // ── Override authorized callback (called by OverridePinModal) ─
-  function handleOverrideAuthorized(userId: string | null, reason: string) {
+  function handleOverrideAuthorized(userId: string | null, reason: string, token: string | null) {
     setOverrideAuthorizedBy(userId)
+    setOverrideToken(token)
     setOverrideReason(reason)
     if (overrideItem) {
       setCart(prev => prev.map(c =>
@@ -653,7 +656,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
   }
 
   function resetAll() {
-    setCart([]); setPriceInputs({}); setMixAuto(true); setSaleForm({ ...EMPTY_SALE }); setOverrideAuthorizedBy(null); setOverrideReason(''); setSelectedClientId(null); setShowClient(false); setClientSuggestions([]); setAvoir(null)
+    setCart([]); setPriceInputs({}); setMixAuto(true); setSaleForm({ ...EMPTY_SALE }); setOverrideAuthorizedBy(null); setOverrideToken(null); setOverrideReason(''); setSelectedClientId(null); setShowClient(false); setClientSuggestions([]); setAvoir(null)
     setLivrer(false); setLivraison({ adresse: '', ville: '', transporteur: '', frais: '', charge: 'client', avance: '', ref: '' }); setLead(null)
     if (window.location.search.includes('lead=')) window.history.replaceState(null, '', window.location.pathname)
   }
@@ -783,6 +786,7 @@ export default function POSModule({ storeId, hasLaptops = true }: POSModuleProps
             avoir_retour_id: itemAvoir > 0 ? avoir?.retour_id : undefined,
             override_required: overrideAuthorizedBy != null ? true : undefined,
             override_by:       overrideAuthorizedBy ?? undefined,
+            override_token:    overrideToken ?? undefined,
             override_reason:   overrideAuthorizedBy != null ? overrideReason : undefined,
           }),
         })

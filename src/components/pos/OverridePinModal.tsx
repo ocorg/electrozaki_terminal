@@ -11,7 +11,8 @@ interface Props {
   overrideItem: { _id: string; _displayName: string } | null
   isAr:         boolean
   primary:      string
-  onAuthorized: (userId: string | null, reason: string) => void
+  /** token: the server's signed permission, sent with the sale (lib/overridePin) */
+  onAuthorized: (userId: string | null, reason: string, token: string | null) => void
 }
 
 export default function OverridePinModal({ open, onClose, isAr, primary, onAuthorized }: Props) {
@@ -38,9 +39,9 @@ export default function OverridePinModal({ open, onClose, isAr, primary, onAutho
         body:    JSON.stringify({ pin }),
       })
       const json = await res.json()
-      if (!json.authorized) throw new Error(isAr ? 'كود غلط' : 'Code incorrect')
+      if (!json.authorized) throw new Error(json.error ?? (isAr ? 'كود غلط' : 'Code incorrect'))
       showSuccess(isAr ? 'تمت الموافقة ✓' : 'Dérogation autorisée ✓')
-      onAuthorized(json.user_id ?? null, reason.trim())
+      onAuthorized(json.user_id ?? null, reason.trim(), json.token ?? null)
       handleClose()
     } catch (err: unknown) {
       showError((err as Error).message)

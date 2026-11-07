@@ -21,7 +21,8 @@ export async function GET(request: NextRequest) {
 
 async function POST_(request: NextRequest) {
   try {
-    const user = await requireActiveUser()
+    // imported debts are managed in Crédits clients, a managers' screen (security review 2026-11-07)
+    const user = await requireActiveUser(MANAGERS)
     const { client_id, client_name_free, client_phone_free, store_id, montant_du, description, date_origine, notes } = await request.json()
     if (!(Number(montant_du) > 0)) throw new HttpError(400, 'Montant invalide')
     if (!date_origine) throw new HttpError(400, 'Date requise')
@@ -61,7 +62,8 @@ async function POST_(request: NextRequest) {
 // PATCH: retroactively link a free-text import to a real client
 async function PATCH_(request: NextRequest) {
   try {
-    const user = await requireActiveUser()
+    // imported debts are managed in Crédits clients, a managers' screen (security review 2026-11-07)
+    const user = await requireActiveUser(MANAGERS)
     const { import_id, client_id } = await request.json()
     if (!import_id || !client_id) throw new HttpError(400, 'import_id et client_id requis')
 
@@ -87,7 +89,8 @@ async function PATCH_(request: NextRequest) {
 
 async function DELETE_(request: NextRequest) {
   try {
-    const user = await requireActiveUser()
+    // imported debts are managed in Crédits clients, a managers' screen (security review 2026-11-07)
+    const user = await requireActiveUser(MANAGERS)
     if (user.role !== 'proprietaire') throw new HttpError(403, 'Réservé au propriétaire')
     const import_id = new URL(request.url).searchParams.get('import_id')
     if (!import_id) throw new HttpError(400, 'import_id requis')

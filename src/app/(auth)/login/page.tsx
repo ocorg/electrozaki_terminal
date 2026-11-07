@@ -27,7 +27,9 @@ export default function LoginPage() {
     if (result?.error) {
       setError(result.code === 'inactive'
         ? 'Compte désactivé. Contactez votre administrateur.'
-        : 'Email ou mot de passe incorrect')
+        : result.code === 'too_many'
+          ? 'Trop d’essais avec ce compte : réessayez dans 15 minutes.'
+          : 'Email ou mot de passe incorrect')
       setLoading(false)
       return
     }

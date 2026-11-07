@@ -13,6 +13,7 @@ import { saleChoice } from '@/lib/saleColour'
 import { takeFromVariant } from '@/lib/accessoryVariants'
 import { transactionDetails } from '@/lib/transactionDetails'
 import { cleanImeiOrThrow } from '@/lib/imei'
+import { minimumPriceCheck } from '@/lib/overridePin'
 
 export async function GET(request: NextRequest) {
   try {
@@ -143,6 +144,11 @@ async function POST_(request: NextRequest) {
         })
         if (count === 0) throw new HttpError(409, 'Avoir introuvable ou solde insuffisant')
       }
+      // under the minimum price: an employé needs a manager's PIN, checked here (lib/overridePin)
+      const override = await minimumPriceCheck(tx, user, {
+        device_type: deviceType, device_id: String(body.device_id), prix_vente: Number(body.prix_vente), qty: soldQty,
+        override_token: body.override_token, override_by: str(body.override_by), override_required: body.override_required ?? null,
+      })
       const txn = await tx.transactions.create({
         data: {
           device_type:           deviceType,
@@ -170,8 +176,8 @@ async function POST_(request: NextRequest) {
           description_echange:   str(body.description_echange),
           warranty_start:        warrantyStart,
           warranty_expiry:       warrantyExpiry,
-          override_required:     body.override_required ?? null,
-          override_by:           str(body.override_by),
+          override_required:     override.override_required,
+          override_by:           override.override_by,
           override_reason:       str(body.override_reason),
           facture_ref:           str(body.facture_ref),
           avoir_montant:         avoirMontant,
