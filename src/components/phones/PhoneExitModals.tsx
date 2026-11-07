@@ -3,6 +3,7 @@
 // 2026-10-04): "Vente passée" when the sale is remembered (true date), and
 // "The Void" when it isn't, or when the phone was taken apart for parts.
 import { useState } from 'react'
+import { Search } from 'lucide-react'
 import { Modal, Field, Btn, inputClass } from '@/components/shared'
 import { showSuccess, showError } from '@/lib/utils/toasts'
 import { getBusinessDate } from '@/lib/utils'
@@ -57,13 +58,38 @@ export function VoidModal({ phone, onClose, onDone }: { phone: PhoneRef; onClose
 export function PastSaleModal({ phone, onClose, onDone }: { phone: PhoneRef; onClose: () => void; onDone: () => void }) {
   const [date, setDate]     = useState(getBusinessDate())
   const [prix, setPrix]     = useState(phone.prix_vente_recommande != null ? String(phone.prix_vente_recommande) : '')
-  const [method, setMethod] = useState<'especes' | 'virement'>('especes')
+  const [method, setMethod] = useState<'especes' | 'virement' | 'credit'>('especes')
   const [notes, setNotes]   = useState('')
   const [busy, setBusy]     = useState(false)
+  // « Plusieurs fois » (owner, 2026-11-07): the client and the acompte paid that day
+  const [avance, setAvance] = useState('')
+  const [client, setClient] = useState<{ client_id: string; nom: string; telephone: string } | null>(null)
+  const [q, setQ]           = useState('')
+  const [found, setFound]   = useState<{ client_id: string; nom: string; telephone: string }[]>([])
+  const [newName, setNewName] = useState('')
+  const credit = method === 'credit'
+  const reste  = Math.max((Number(prix) || 0) - (Number(avance) || 0), 0)
+
+  async function search(v: string) {
+    setQ(v)
+    if (v.trim().length < 2) { setFound([]); return }
+    const res = await fetch(`/api/clients?search=${encodeURIComponent(v.trim())}`).then(r => r.json()).catch(() => ({ data: [] }))
+    setFound((res.data ?? []).slice(0, 6))
+  }
+
   async function submit() {
     setBusy(true)
     try {
-      const d = await send(`/api/phones/${phone.phone_id}/past-sale`, 'POST', { date_vente: date, prix_vente: Number(prix), payment_method: method, notes })
+      let c = client
+      if (credit && !c) {
+        // a new client: the name and the phone typed here
+        if (newName.trim().length < 2 || q.replace(/\D/g, '').length < 9) throw new Error('Choisissez le client, ou tapez son nom et son numéro de téléphone')
+        c = await send('/api/clients', 'POST', { nom: newName.trim(), telephone: q.replace(/\s/g, '') })
+      }
+      const d = await send(`/api/phones/${phone.phone_id}/past-sale`, 'POST', {
+        date_vente: date, prix_vente: Number(prix), payment_method: method, notes,
+        ...(credit && { client_id: c!.client_id, avance: Number(avance) || 0 }),
+      })
       showSuccess(`Vente enregistrée au ${d.date_vente} — ${d.txn_id}`); onDone(); onClose()
     } catch (e) { showError((e as Error).message) } finally { setBusy(false) }
   }
@@ -81,21 +107,56 @@ export function PastSaleModal({ phone, onClose, onDone }: { phone: PhoneRef; onC
             <input type="number" min={0} className={inputClass} value={prix} onChange={e => setPrix(e.target.value)} />
           </Field>
         </div>
-        <div className="grid grid-cols-2 gap-2">
-          {(['especes', 'virement'] as const).map(m => (
+        <div className="grid grid-cols-3 gap-2">
+          {(['especes', 'virement', 'credit'] as const).map(m => (
             <button key={m} type="button" onClick={() => setMethod(m)}
               className={`py-2 rounded-xl text-xs font-bold border ${method === m ? 'bg-gold text-white border-gold' : 'border-ez-border text-ez-subtle'}`}>
-              {m === 'especes' ? 'Espèces' : 'Virement'}
+              {m === 'especes' ? 'Espèces' : m === 'virement' ? 'Virement' : 'Plusieurs fois'}
             </button>
           ))}
         </div>
+        {credit && (
+          <div className="rounded-xl border border-gold/40 bg-gold/5 p-3 space-y-3">
+            <Field label="Client *">
+              {client ? (
+                <div className="flex items-center justify-between gap-2 text-sm">
+                  <span><b>{client.nom}</b> · <span className="font-mono">{client.telephone}</span></span>
+                  <button type="button" className="text-xs underline text-ez-subtle" onClick={() => { setClient(null); setQ(''); setFound([]) }}>Changer</button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="relative">
+                    <Search className="w-4 h-4 absolute start-3 top-1/2 -translate-y-1/2 text-ez-placeholder" />
+                    <input className={`${inputClass} ps-9`} value={q} onChange={e => void search(e.target.value)} placeholder="Nom ou téléphone du client" autoComplete="off" />
+                  </div>
+                  {found.length > 0 && (
+                    <div className="border border-ez-border rounded-xl divide-y divide-ez-border bg-white">
+                      {found.map(c => (
+                        <button key={c.client_id} type="button" onClick={() => setClient(c)} className="w-full text-start px-3 py-2 hover:bg-ez-muted text-sm">
+                          <b>{c.nom}</b> <span className="text-ez-faint font-mono text-xs">{c.telephone}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {q.replace(/\D/g, '').length >= 9 && !found.length && (
+                    <input className={inputClass} value={newName} onChange={e => setNewName(e.target.value)} placeholder="Nouveau client : son nom" />
+                  )}
+                </div>
+              )}
+            </Field>
+            <Field label="Acompte payé ce jour-là (DH)">
+              <input type="number" min={0} className={inputClass} value={avance} onChange={e => setAvance(e.target.value)} placeholder="0" />
+            </Field>
+            <p className="text-xs text-ez-subtle">Reste à payer : <b className="text-ez-text">{reste.toLocaleString('fr-FR')} DH</b>. Un dossier s’ouvre dans Crédits ; les versements suivants s’ajoutent sur le dossier.</p>
+          </div>
+        )}
         <Field label="Note (client, détail…)">
           <input className={inputClass} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Optionnel" />
         </Field>
         <p className="text-xs text-ez-faint">Une caisse déjà clôturée garde ses totaux. La garantie part de la date de vente.</p>
         <div className="flex gap-2">
           <Btn variant="secondary" className="flex-1" onClick={onClose}>Retour</Btn>
-          <Btn variant="primary" className="flex-1" disabled={!date || !(Number(prix) > 0)} loading={busy} onClick={submit}>Enregistrer la vente</Btn>
+          <Btn variant="primary" className="flex-1" disabled={!date || !(Number(prix) > 0) || (credit && !(reste > 0))} loading={busy} onClick={submit}>Enregistrer la vente</Btn>
         </div>
       </div>
     </Modal>
