@@ -80,7 +80,7 @@ export function ColourChoiceModal({ title, options, isAr, free, onPick, onClose 
       <div className="space-y-4">
         {designs.length > 1 && (
           <div>
-            <p className={step}>{L('Design', 'التصميم')}</p>
+            <p className={step}>{L('Type / design', 'النوع / التصميم')}</p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {designs.map(d => {
                 const photo = designPhoto.get(d)
