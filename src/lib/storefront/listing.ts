@@ -35,6 +35,8 @@ export const ACCESSORY_SAFE_SELECT = {
   quantite:              true,
   couleur:               true,
   groupe_couleur:        true, // an acc_id: only ever sent through refOf()
+  // stock per variant: only which choices are in stock reaches the site, never the counts
+  variants:              { select: { design: true, couleur: true, modele: true, quantite: true } },
 } as const
 
 export const FORBIDDEN_FIELDS = [
@@ -69,6 +71,7 @@ export interface ErpAccessory {
   quantite: number
   couleur: string | null
   groupe_couleur: string | null
+  variants?: { design: string | null; couleur: string | null; modele: string | null; quantite: number }[]
 }
 
 export type Grade = 'NEUF' | 'TRES_BON' | 'BON' | 'PIECES_REMPLACEES'
@@ -389,6 +392,21 @@ export interface AccessoryListing {
   /** the colours of one model (Stock → Accessoires): colour buttons on the site */
   colorName: string | null
   colorGroup: string | null
+  /** stock per variant (owner, 2026-11-07): the design × colour × phone choices
+   *  still in stock; null = no limit (not counted per variant, or pieces not yet
+   *  assigned to a variant). No counts: the website only learns what can be ordered. */
+  choicesInStock: { design: string | null; color: string | null; model: string | null }[] | null
+}
+
+/** null while some pieces are not counted per variant (they can be any choice) */
+export function choicesInStockOf(a: Pick<ErpAccessory, 'quantite' | 'variants'>): AccessoryListing['choicesInStock'] {
+  const variants = a.variants ?? []
+  if (!variants.length) return null
+  const counted = variants.reduce((n, v) => n + v.quantite, 0)
+  if (a.quantite > counted) return null
+  return variants.filter(v => v.quantite > 0)
+    .map(v => ({ design: clean(v.design) || null, color: clean(v.couleur) || null, model: clean(v.modele) || null }))
+    .sort((x, y) => JSON.stringify(x).localeCompare(JSON.stringify(y)))
 }
 
 export function buildAccessoryListings(accessories: ErpAccessory[]): AccessoryListing[] {
@@ -405,6 +423,7 @@ export function buildAccessoryListings(accessories: ErpAccessory[]): AccessoryLi
       colorName:    clean(a.couleur) || null,
       // an opaque reference, never the acc_id itself
       colorGroup:   a.groupe_couleur ? refOf('col', a.groupe_couleur) : null,
+      choicesInStock: choicesInStockOf(a),
     }
   })
 }

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { copyCouleursToSite } from '@/lib/couleurs'
 import { prisma } from '@/lib/db'
-import type { Prisma } from '@/generated/storefront/client'
+import { Prisma } from '@/generated/storefront/client'
 import { storefrontDb, storefrontConfigured } from './db'
 import { revalidateStorefront } from './revalidate'
 import { currentPhoneOffers, ensurePhoneOfferPages } from './phone-offers'
@@ -100,7 +100,7 @@ async function reconcile(tx: Tx, phones: PhoneListing[], accessories: AccessoryL
     select: {
       id: true, slug: true, source: true, erpKey: true, modelKey: true, isPhone: true, name: true, condition: true, categoryId: true,
       brand: true, recommendedSalePrice: true, compareAtPrice: true, availability: true, tags: true, specs: true,
-      colorName: true, colorGroup: true,
+      colorName: true, colorGroup: true, choicesInStock: true,
     },
   })
   const categories = await tx.category.findMany({ select: { id: true, slug: true, erpCode: true } })
@@ -281,6 +281,7 @@ async function reconcile(tx: Tx, phones: PhoneListing[], accessories: AccessoryL
         id, slug: claimSlug(l.slugBase), name: l.name, brand: l.brand, condition: 'NEUF', isPhone: false,
         recommendedSalePrice: price, availability, categoryId: await ensureCategory(l.categoryCode),
         source: 'ERP', erpKey: l.erpKey, published: false, colorName: l.colorName, colorGroup: l.colorGroup,
+        ...(l.choicesInStock && { choicesInStock: l.choicesInStock }),
       })
       internalCreates.push({ productId: id, stockQuantity: l.stock })
       stats.created++
@@ -294,8 +295,13 @@ async function reconcile(tx: Tx, phones: PhoneListing[], accessories: AccessoryL
     const moveTo   = siteCat?.erpCode && siteCat.erpCode !== l.categoryCode ? await ensureCategory(l.categoryCode) : null
     // Colour and model come from Stock → Accessoires (owner, 2026-10-29)
     if (num(product.recommendedSalePrice) !== price || product.availability !== availability
-        || product.colorName !== l.colorName || product.colorGroup !== l.colorGroup || moveTo) {
-      productUpdates.push({ id: product.id, data: { recommendedSalePrice: price, availability, colorName: l.colorName, colorGroup: l.colorGroup, ...(moveTo && { categoryId: moveTo }) } })
+        || product.colorName !== l.colorName || product.colorGroup !== l.colorGroup || moveTo
+        || !same(product.choicesInStock ?? null, l.choicesInStock)) {
+      productUpdates.push({ id: product.id, data: {
+        recommendedSalePrice: price, availability, colorName: l.colorName, colorGroup: l.colorGroup, ...(moveTo && { categoryId: moveTo }),
+        // stock per variant: which choices are still orderable (Prisma.DbNull clears it)
+        choicesInStock: l.choicesInStock ?? Prisma.DbNull,
+      } })
       stats.updated++
     }
     if (!stockOf.has(product.id)) internalCreates.push({ productId: product.id, stockQuantity: l.stock })

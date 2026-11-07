@@ -153,6 +153,12 @@ model Product {
   // each page shows buttons to the others. Set in ERP Site web → Catalogue.
   colorName  String?
   colorGroup String?
+  // Stock per variant (owner, 2026-11-07): the design × colour × phone model
+  // choices still in stock, from the ERP — [{ design, color, model }], each
+  // part null = any. Null = no restriction (not counted per variant, or pieces
+  // not yet assigned to a variant). Public: says what can be ordered, never
+  // how many (the counts stay in the ERP).
+  choicesInStock Json?
 
   // Phase-2 "transparency" spec: battery health is iPhone-specific in
   // practice but kept generic here rather than a phone-only subtype: any
